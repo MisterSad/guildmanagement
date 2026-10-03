@@ -29,6 +29,11 @@ import {
   sortSessionsDesc,
   clearEventHistory,
   deleteHistorySession,
+  listEventSessions,
+  listAllWarSessions,
+  fetchGloryParticipantRows,
+  fetchSessionParticipants,
+  updateSessionParticipantField,
   type HistorySession
 } from '../history.service';
 import { EventsService, type WarEventName } from '../../events/events.service';
@@ -142,7 +147,7 @@ export class HistoryView {
     this.historyLoading = true;
 
     try {
-      const res = await db.rpc('gm_list_event_sessions', { p_guild: currentG });
+      const res = await listEventSessions(db, currentG);
       if (res.error) {
         console.error('gm_list_event_sessions', res.error);
         this.render();
@@ -151,7 +156,7 @@ export class HistoryView {
       this.sessions = (res.data || []) as HistorySession[];
 
       // War metadata (opponent + daily results) for SvS/GvG cards/modal.
-      const warRes = await db.rpc('gm_list_war_sessions', { p_guild: currentG, p_event_name: '' });
+      const warRes = await listAllWarSessions(db, currentG);
       if (!warRes.error && warRes.data && warRes.data.ok && Array.isArray(warRes.data.sessions)) {
         this.warSessions = {};
         (warRes.data.sessions as any[]).forEach((ws) => {
@@ -162,10 +167,7 @@ export class HistoryView {
       // Manual fetch for Glory if not returned by the sessions RPC.
       const hasGlory = this.sessions.some((s) => s.event_name === 'Glory');
       if (!hasGlory) {
-        const gloryRes = await db.from('event_participants')
-          .select('pseudo, week_start, participated, score, session_id')
-          .eq('guild', currentG)
-          .eq('event_name', 'Glory');
+        const gloryRes = await fetchGloryParticipantRows(db, currentG);
 
         if (!gloryRes.error && gloryRes.data && gloryRes.data.length > 0) {
           const gloryMap: Record<string, any> = {};
@@ -395,14 +397,7 @@ export class HistoryView {
     const meta: any = EVENT_META[eventName] || { label: displayName || eventName, icon: 'ph-circle', hasScore: false, border: 'var(--border-soft)' };
     if (displayName) meta.label = displayName;
 
-    let query: any = db.from('event_participants')
-      .select('pseudo, participated, score, score_prep, score_pvp, appointed, excused, late, sub_present')
-      .eq('guild', legacy.getActiveGuild())
-      .eq('event_name', eventName)
-      .eq('week_start', weekStart);
-
-    if (sessionId) query = query.eq('session_id', sessionId);
-    else query = query.is('session_id', null);
+    const query: any = fetchSessionParticipants(db, legacy.getActiveGuild(), eventName, weekStart, sessionId);
 
     const res = await query;
     if (res.error) {
@@ -477,14 +472,7 @@ export class HistoryView {
     const db = legacy.getDb();
     if (!db) return;
     const currentG = legacy.getActiveGuild();
-    let query: any = db.from('event_participants')
-      .update({ [field]: value })
-      .eq('guild', currentG)
-      .eq('event_name', eventName)
-      .eq('week_start', weekStart)
-      .eq('pseudo', pseudo);
-    if (sessionId) query = query.eq('session_id', sessionId);
-    else query = query.is('session_id', null);
+    const query: any = updateSessionParticipantField(db, currentG, eventName, weekStart, sessionId, pseudo, field, value);
     const updateRes = await query;
     if (updateRes.error) {
       legacy.showToast('Error: ' + updateRes.error.message, 'error');

@@ -7,6 +7,7 @@
  */
 
 import { guildWrite } from '../../core/api/guild-rpc';
+import type { DbClient } from '../../core/api/db-client';
 
 export interface HistoryEventMeta {
   icon: string;
@@ -145,4 +146,54 @@ export function clearEventHistory(eventNames: string[]): Promise<{ ok: true; par
 /** Deletes one session of the History detail dialog in one transaction. Throws on refusal. */
 export function deleteHistorySession(eventName: string, weekStart: string, sessionId: string | null): Promise<{ ok: true; participants: number }> {
   return guildWrite('gm_delete_history_session', { p_event_name: eventName, p_week_start: weekStart, p_session_id: sessionId });
+}
+
+// ── Data access (M4b) ─────────────────────────────────────────────────────────
+// Each builder takes the client the view hands it and returns the
+// builder/promise; the view awaits it and keeps its own error handling.
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+/** List the guild's event sessions through `gm_list_event_sessions`. */
+export function listEventSessions(db: DbClient, guild: string | null) {
+  return db.rpc('gm_list_event_sessions', { p_guild: guild });
+}
+
+/** List the guild's war sessions (all war events) through `gm_list_war_sessions`. */
+export function listAllWarSessions(db: DbClient, guild: string | null) {
+  return db.rpc('gm_list_war_sessions', { p_guild: guild, p_event_name: '' });
+}
+
+/** Read every Glory participant row of the guild. */
+export function fetchGloryParticipantRows(db: DbClient, guild: string | null) {
+  return db.from('event_participants')
+    .select('pseudo, week_start, participated, score, session_id')
+    .eq('guild', guild)
+    .eq('event_name', 'Glory');
+}
+
+/** Read one session's participant rows for the History detail dialog. */
+export function fetchSessionParticipants(db: DbClient, guild: string | null, eventName: string, weekStart: string, sessionId: string | null) {
+  let query: any = db.from('event_participants')
+    .select('pseudo, participated, score, score_prep, score_pvp, appointed, excused, late, sub_present')
+    .eq('guild', guild)
+    .eq('event_name', eventName)
+    .eq('week_start', weekStart);
+
+  if (sessionId) query = query.eq('session_id', sessionId);
+  else query = query.is('session_id', null);
+  return query;
+}
+
+/** Update one whitelisted field of a participant row in a session. The caller enforces the whitelist. */
+export function updateSessionParticipantField(db: DbClient, guild: string | null, eventName: string, weekStart: string, sessionId: string | null, pseudo: string, field: string, value: unknown) {
+  let query: any = db.from('event_participants')
+    .update({ [field]: value })
+    .eq('guild', guild)
+    .eq('event_name', eventName)
+    .eq('week_start', weekStart)
+    .eq('pseudo', pseudo);
+  if (sessionId) query = query.eq('session_id', sessionId);
+  else query = query.is('session_id', null);
+  return query;
 }

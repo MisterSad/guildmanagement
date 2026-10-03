@@ -13,7 +13,7 @@ import { t, esc, byId } from '../admin/utils';
 import { getActiveGuild } from '../../../core/auth/roles';
 import { getAppState, patchAppState, type CollapsedRoles } from '../../../core/state/app-state';
 import { getAccounts } from '../admin/admin-store';
-import { filterBulkEligibleMembers, isRoleAllowedForBulk } from '../../members/members.service';
+import { filterBulkEligibleMembers, isRoleAllowedForBulk, bulkSetMemberRole } from '../../members/members.service';
 import {
   type GuildMember,
   getGuildMembers,
@@ -643,10 +643,7 @@ export async function bulkUpdateMemberRoles(targetRole: string): Promise<boolean
   try {
     const db = w().GM && w().GM.db ? w().GM.db : null;
     if (!db) throw new Error('no_client');
-    const res = await db.from('guild_members')
-      .update({ role: targetRole, metrics_updated_at: new Date().toISOString() })
-      .eq('guild', activeGuild)
-      .in('pseudo', eligiblePseudos);
+    const res = await bulkSetMemberRole(db, activeGuild, eligiblePseudos, targetRole);
     if (res.error) throw res.error;
 
     const updatedCount = eligiblePseudos.length;

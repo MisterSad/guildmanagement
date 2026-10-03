@@ -24,6 +24,18 @@ import {
   MigrationHubFilterState,
   MigrationWikiComment
 } from '../types';
+import {
+  queryWikiPages,
+  updateWikiPage,
+  insertWikiPage,
+  setWikiPagePinned,
+  deleteWikiPage,
+  queryWikiComments,
+  insertWikiComment,
+  deleteWikiComment,
+  requestPageSummary,
+  requestScopeBriefing
+} from '../migration.service';
 
 function winAny(): any {
   return (typeof window !== 'undefined' ? window : ({} as any)) as any;
@@ -310,15 +322,7 @@ export class MigrationHubView {
     if (serverLabel) serverLabel.textContent = `Server Intel [${serverNumber || '?'}]`;
 
     try {
-      let query = db.from('migration_wiki_pages').select('*');
-
-      if (this.filterState.scope === 'guild') {
-        query = query.eq('scope', 'guild').eq('guild_id', currentG);
-      } else {
-        query = query.eq('scope', 'server').eq('server_number', serverNumber);
-      }
-
-      query = query.order('is_pinned', { ascending: false }).order('updated_at', { ascending: false });
+      const query = queryWikiPages(db, this.filterState.scope, currentG, serverNumber);
 
       const { data, error } = await query;
       if (error) {
@@ -726,16 +730,7 @@ export class MigrationHubView {
     try {
       if (this.editingPageId) {
         // Update existing page
-        const { error } = await db
-          .from('migration_wiki_pages')
-          .update({
-            title,
-            category,
-            content,
-            is_pinned: isPinned,
-            attachments: this.pendingAttachments
-          })
-          .eq('id', this.editingPageId);
+        const { error } = await updateWikiPage(db, this.editingPageId, title, category, content, isPinned, this.pendingAttachments);
 
         if (error) {
           console.error('[MigrationHub] Update failed', error);
@@ -747,24 +742,7 @@ export class MigrationHubView {
         this.filterState.activePageId = this.editingPageId;
       } else {
         // Create new page
-        const { data, error } = await db
-          .from('migration_wiki_pages')
-          .insert({
-            scope: this.filterState.scope,
-            server_number: serverNumber,
-            guild_id: this.filterState.scope === 'guild' ? currentG : null,
-            category,
-            title,
-            content,
-            is_pinned: isPinned,
-            attachments: this.pendingAttachments,
-            // Authorship and owner guild are stamped by the database from the
-            // session; NOT NULL placeholders only (trg_migration_wiki_pages_stamp).
-            created_by_pseudo: pseudo,
-            updated_by_pseudo: pseudo
-          })
-          .select('id')
-          .single();
+        const { data, error } = await insertWikiPage(db, this.filterState.scope, serverNumber, currentG, category, title, content, isPinned, this.pendingAttachments, pseudo);
 
         if (error) {
           console.error('[MigrationHub] Insert failed', error);
@@ -799,10 +777,7 @@ export class MigrationHubView {
     if (!db) return;
 
     const newPinned = !page.is_pinned;
-    const { error } = await db
-      .from('migration_wiki_pages')
-      .update({ is_pinned: newPinned, updated_at: new Date().toISOString() })
-      .eq('id', page.id);
+    const { error } = await setWikiPagePinned(db, page.id, newPinned);
 
     if (error) {
       legacy.showToast('Failed to pin/unpin page', 'error');
@@ -834,7 +809,7 @@ export class MigrationHubView {
 
         // RLS filters a refused delete to zero rows without an error, so ask
         // for the deleted rows back and check one came.
-        const { data, error } = await db.from('migration_wiki_pages').delete().eq('id', page.id).select('id');
+        const { data, error } = await deleteWikiPage(db, page.id);
         if (error || !data || data.length === 0) {
           legacy.showToast(error ? 'Failed to delete page: ' + (error.message || 'Forbidden') : 'Only the page\'s creator can delete it.', 'error');
           return;
@@ -883,11 +858,7 @@ export class MigrationHubView {
     if (!db) return;
 
     try {
-      const { data, error } = await db
-        .from('migration_wiki_comments')
-        .select('*')
-        .eq('page_id', pageId)
-        .order('created_at', { ascending: true });
+      const { data, error } = await queryWikiComments(db, pageId);
 
       if (error) {
         console.error('[MigrationHub] Failed to fetch comments', error);
@@ -991,13 +962,7 @@ export class MigrationHubView {
     if (submitBtn) submitBtn.disabled = true;
 
     try {
-      const { error } = await db.from('migration_wiki_comments').insert({
-        page_id: activePageId,
-        content,
-        // Author fields are stamped by the database from the session
-        // (trg_migration_wiki_comments_stamp); NOT NULL placeholder only.
-        author_pseudo: pseudo
-      });
+      const { error } = await insertWikiComment(db, activePageId, content, pseudo);
 
       if (error) {
         console.error('[MigrationHub] Comment submit error', error);
@@ -1024,7 +989,7 @@ export class MigrationHubView {
       const db = legacy.getDb();
       if (!db) return;
 
-      const { error } = await db.from('migration_wiki_comments').delete().eq('id', commentId);
+      const { error } = await deleteWikiComment(db, commentId);
       if (error) {
         console.error('[MigrationHub] delete comment error', error);
         legacy.showToast('Failed to delete comment: ' + (error.message || 'Forbidden'), 'error');
@@ -1285,15 +1250,7 @@ export class MigrationHubView {
 
     try {
       const db = legacy.getDb();
-      const { data, error } = await db.functions.invoke('migration-summary', {
-        body: {
-          mode: 'page',
-          pageId: activePage.id,
-          scope: activePage.scope,
-          guildId: activePage.guild_id,
-          serverNumber: activePage.server_number
-        }
-      });
+      const { data, error } = await requestPageSummary(db, activePage.id, activePage.scope, activePage.guild_id, activePage.server_number);
 
       if (error || !data || !data.ok) {
         const errMsg = error?.message || data?.message || 'Failed to generate summary';
@@ -1353,14 +1310,7 @@ export class MigrationHubView {
 
     try {
       const db = legacy.getDb();
-      const { data, error } = await db.functions.invoke('migration-summary', {
-        body: {
-          mode: 'scope',
-          scope: this.filterState.scope,
-          guildId: this.filterState.scope === 'guild' ? currentG : null,
-          serverNumber
-        }
-      });
+      const { data, error } = await requestScopeBriefing(db, this.filterState.scope, currentG, serverNumber);
 
       if (error || !data || !data.ok) {
         const errMsg = error?.message || data?.message || 'Failed to generate briefing';

@@ -10,6 +10,7 @@ import { guildWrite } from '../../core/api/guild-rpc';
 import { buildEventSessionId, sessionIdBase } from '../../core/config/events';
 import { EventStatus, EventParticipant, ChestTier, WarSession, EventDailyScore, WarOpponentKind } from '../../types/database';
 import { logger } from '../../core/logger/logger';
+import type { DbClient } from '../../core/api/db-client';
 
 export type WarEventName = 'SvS' | 'GvG';
 
@@ -374,6 +375,104 @@ export class EventsService {
   public static async deleteSession(eventName: string, sessionId: string | null): Promise<{ ok: true; participants: number }> {
     return guildWrite('gm_delete_event_session', { p_event_name: eventName, p_session_id: sessionId });
   }
+}
+
+// ── Events view data access (M4b) ────────────────────────────────────────────
+// Each builder takes the client the view hands it and returns the
+// builder/promise; the view awaits it and keeps its own error handling.
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+/** Read a tab's `event_status` rows for a guild. */
+export function fetchTabEventStatus(db: DbClient, guild: string | null, dbEvents: string[]) {
+  let query: any = db.from('event_status').select('event_name, is_active, session_id, stage, start_at').in('event_name', dbEvents);
+  query = query.eq('guild', guild);
+  return query;
+}
+
+/** Upsert an event's `event_status` row (start or end of a session). */
+export function upsertEventStatus(db: DbClient, row: Record<string, unknown>) {
+  return db.from('event_status').upsert(
+    row,
+    { onConflict: 'guild,event_name' }
+  );
+}
+
+/** Enrol the guild's members into a session through `gm_populate_event_participants`. */
+export function populateEventParticipants(db: DbClient, eventName: string | null, sessionId: string | null, weekStart: string, guild: string | null) {
+  return db.rpc('gm_populate_event_participants', {
+    p_event_name: eventName,
+    p_session_id: sessionId,
+    p_week_start: weekStart,
+    p_guild: guild
+  });
+}
+
+/** Read the guild's active `event_status` rows among the given events. */
+export function fetchActiveEventStatuses(db: DbClient, guild: string | null, eventNames: string[]) {
+  return db.from('event_status')
+    .select('event_name, session_id, start_at')
+    .eq('guild', guild)
+    .eq('is_active', true)
+    .in('event_name', eventNames);
+}
+
+/** Read the participants of one session, by pseudo. */
+export function fetchEventSessionParticipants(db: DbClient, guild: string | null, eventName: string | null, sessionId: string | null) {
+  return db.from('event_participants').select('*')
+    .eq('guild', guild)
+    .eq('event_name', eventName)
+    .eq('session_id', sessionId)
+    .order('pseudo', { ascending: true });
+}
+
+/** Read the guild's member pseudos and UIDs. */
+export function fetchGuildMemberUids(db: DbClient, guild: string | null) {
+  return db.from('guild_members').select('pseudo, uid').eq('guild', guild);
+}
+
+/** Set one participant's participation flag in a session. */
+export function setParticipantParticipation(db: DbClient, guild: string | null, eventName: string | null, sessionId: string | null, pseudo: string, value: number) {
+  return db.from('event_participants').update({ participated: value })
+    .eq('guild', guild)
+    .eq('event_name', eventName)
+    .eq('session_id', sessionId)
+    .eq('pseudo', pseudo);
+}
+
+/** Set one participant's appointed flag in a session. */
+export function setParticipantAppointed(db: DbClient, guild: string | null, eventName: string | null, sessionId: string | null, pseudo: string, value: boolean) {
+  return db.from('event_participants').update({ appointed: value })
+    .eq('guild', guild)
+    .eq('event_name', eventName)
+    .eq('session_id', sessionId)
+    .eq('pseudo', pseudo);
+}
+
+/** Apply a score update to one participant in a session. */
+export function updateParticipantScore(db: DbClient, guild: string | null, eventName: string | null, sessionId: string | null, pseudo: string, update: Record<string, unknown>) {
+  return db.from('event_participants').update(update)
+    .eq('guild', guild)
+    .eq('event_name', eventName)
+    .eq('session_id', sessionId)
+    .eq('pseudo', pseudo);
+}
+
+/** Read an event's scheduled start. */
+export function fetchEventStartAt(db: DbClient, guild: string | null, eventName: string | null) {
+  return db.from('event_status').select('start_at')
+    .eq('guild', guild)
+    .eq('event_name', eventName).maybeSingle();
+}
+
+/** Approve one player's pending submission through `gm_approve_participant_submission`. */
+export function approveParticipantSubmission(db: DbClient, guild: string | null, eventName: string | null, sessionId: string | null, pseudo: string) {
+  return db.rpc('gm_approve_participant_submission', {
+    p_guild: guild,
+    p_event_name: eventName,
+    p_session_id: sessionId,
+    p_pseudo: pseudo
+  });
 }
 
 // ── Events view constants (verbatim from the root events.js) ──────────────────

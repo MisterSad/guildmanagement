@@ -46,8 +46,11 @@ describe('Glory OCR weekly routing (v128.1)', () => {
   });
 
   it('the Glory tab still reads weekly scores from event_participants by week_start', () => {
+    // The query lives in the module service since M4b; the view calls it per week.
+    const service = read('src/modules/glory/glory.service.ts');
+    expect(service).toContain(".eq('event_name', 'Glory')");
+    expect(service).toContain(".eq('week_start', week)");
     const glory = read('src/modules/glory/views/GloryView.ts');
-    expect(glory).toContain(".eq('event_name', 'Glory')");
-    expect(glory).toContain(".eq('week_start', week)");
+    expect(glory).toContain('fetchGloryWeekScores(db, currentG, week)');
   });
 });

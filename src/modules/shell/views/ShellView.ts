@@ -81,6 +81,7 @@ const EVENT_TABS = [
 // ── Legacy adapter (call-time reads, no writes) ───────────────────────────────
 
 import { escapeHTML } from '../../../core/utils/text';
+import { createTicket } from '../shell.service';
 import { overviewView } from '../../overview/views/OverviewView';
 import { shadowfrontView } from '../../shadowfront/views/ShadowfrontView';
 import { armsRaceView } from '../../armsrace/views/ArmsRaceView';
@@ -843,20 +844,17 @@ export class ShellView {
         try {
           const db = legacy.db();
           if (!db || !db.functions) throw new Error('db unavailable');
-          const res = await db.functions.invoke('tickets', {
-            body: {
-              action: 'create',
-              title,
-              description,
-              category,
-              severity,
-              current_behavior: currentBehavior,
-              expected_behavior: expectedBehavior,
-              steps,
-              additional_context: additionalContext,
-              env,
-              attachments: attachedScreenshots
-            }
+          const res = await createTicket(db, {
+            title,
+            description,
+            category,
+            severity,
+            currentBehavior,
+            expectedBehavior,
+            steps,
+            additionalContext,
+            env,
+            attachedScreenshots
           });
           const data = res && res.data;
           if (!data || !data.ok) {

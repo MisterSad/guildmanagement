@@ -128,7 +128,8 @@ describe('whole-history reads', () => {
 
   it('the roster reads one Glory score per player', () => {
     const src = read('src/modules/app/members/members.controller.ts');
-    expect(src).toContain("client.rpc('gm_latest_glory_scores', { p_guild: currentG })");
+    expect(src).toContain('fetchLatestGloryScores(client, currentG)');
+    expect(read('src/modules/members/members.service.ts')).toContain("db.rpc('gm_latest_glory_scores', { p_guild: guild })");
     expect(src).not.toMatch(/eq\('event_name', 'Glory'\)\.not\('score'/);
   });
 });

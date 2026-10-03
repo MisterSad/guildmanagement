@@ -21,7 +21,16 @@ import {
   compressImageForUpload,
   fuseOcrPlayers,
   recordEventAttendance,
-  commitOcrRoster
+  commitOcrRoster,
+  invokeOcrVideo,
+  invokeOcrImages,
+  fetchEventSessionStatus,
+  listShadowfrontAssignments,
+  findBannedUids,
+  uploadOcrVideo,
+  removeOcrVideo,
+  checkUidExistsGlobally,
+  findPlayerByUid
 } from '../../ocr/ocr.service';
 import { getActiveGuild } from '../../../core/auth/roles';
 import { fetchGuildMembers } from '../members/members.controller';
@@ -360,7 +369,6 @@ export function initOcrGeminiModule(): void {
 // for gaps, and re-reads the gaps once.
 
 /** Mirrors the bucket (migration 20261001194004) and the Edge Function. */
-const OCR_VIDEO_BUCKET = 'ocr-videos';
 const OCR_VIDEO_MAX_BYTES = 64 * 1024 * 1024;
 const OCR_VIDEO_MAX_DURATION_SEC = 300;
 const OCR_VIDEO_EXTENSIONS: Record<string, string> = {
@@ -417,7 +425,7 @@ export async function callGeminiOcrVideoApi(
   const path = guild + '/' + crypto.randomUUID() + '.' + ext;
 
   if (updateStatusCallback) updateStatusCallback('Uploading the video…');
-  const up = await client.storage.from(OCR_VIDEO_BUCKET).upload(path, file, { contentType: mimeType, upsert: false });
+  const up = await uploadOcrVideo(client, path, file, mimeType);
   if (up && up.error) {
     console.error('OCR video upload failed:', up.error);
     throw new Error('video_upload_failed');
@@ -428,13 +436,11 @@ export async function callGeminiOcrVideoApi(
   if (metricType === 'svs_day' || metricType === 'gvg_day') metadata = { scanDay: getOcrScanDay() };
   let res: any;
   try {
-    res = await client.functions.invoke('ocr-guild-members', {
-      body: { video: { path, mimeType }, metricType, guildTag, rankHint: rankHint || null, metadata },
-    });
+    res = await invokeOcrVideo(client, path, mimeType, metricType, guildTag, rankHint, metadata);
   } finally {
     // The function deletes the object itself; this covers a call that never
     // reached it. Removing an object that is already gone is a no-op.
-    client.storage.from(OCR_VIDEO_BUCKET).remove([path]).catch(() => {});
+    removeOcrVideo(client, path).catch(() => {});
   }
 
   if (res && res.data && res.data.ok && Array.isArray(res.data.players)) {
@@ -741,7 +747,7 @@ export async function callGeminiOcrBatchApi(
   // object (the Edge Function re-validates it through the Zod scanDay enum).
   let metadata: { scanDay: number } | undefined;
   if (metricType === 'svs_day' || metricType === 'gvg_day') metadata = { scanDay: getOcrScanDay() };
-  const res = await client.functions.invoke('ocr-guild-members', { body: { images: batchImageItems, metricType, guildTag, rankHint: rankHint || null, metadata } });
+  const res = await invokeOcrImages(client, batchImageItems, metricType, guildTag, rankHint, metadata);
   if (res.data && res.data.ok && Array.isArray(res.data.players)) {
     const sanitized = res.data.players.map((p: any) => {
       const parsedScore = parseOcrScore(p.score, p.raw_score);
@@ -786,13 +792,13 @@ export async function commitOcrUpdates(): Promise<void> {
       const currentG = currentGuild();
       if (meta.eventType === 'shadowfront') {
         const sqName = meta.squad === 'squad1' ? 'Shadowfront Squad 1' : 'Shadowfront Squad 2';
-        const sqRes = await client.from('event_status').select('session_id, is_active, start_at').eq('guild', currentG).eq('event_name', sqName).maybeSingle();
+        const sqRes = await fetchEventSessionStatus(client, currentG, sqName);
         if (!sqRes.data || !sqRes.data.is_active || !sqRes.data.session_id) {
           showToast('Please start the ' + (meta.squad === 'squad1' ? 'Squad 1' : 'Squad 2') + ' session in Events before applying OCR updates.', 'error');
           return;
         }
         const activeSid = sqRes.data.session_id;
-        const assignRes = await client.from('shadowfront_squads').select('pseudo, role, squad').eq('guild', currentG).eq('session_id', activeSid);
+        const assignRes = await listShadowfrontAssignments(client, currentG, activeSid);
         const assignMap: Record<string, string> = {};
         (assignRes.data || []).forEach((a: any) => { assignMap[String(a.pseudo).toLowerCase()] = a.role; });
         // One transaction for the whole read (M4a): each player's row is
@@ -809,7 +815,7 @@ export async function commitOcrUpdates(): Promise<void> {
         await shadowfrontView.load();
       } else if (meta.eventType === 'armsrace') {
         const arEvName = meta.stage === 'stageA' ? 'ARMS RACE STAGE A' : 'ARMS RACE STAGE B';
-        const arRes = await client.from('event_status').select('session_id, is_active, start_at').eq('guild', currentG).eq('event_name', arEvName).maybeSingle();
+        const arRes = await fetchEventSessionStatus(client, currentG, arEvName);
         if (!arRes.data || !arRes.data.is_active || !arRes.data.session_id) {
           showToast('Please start Arms Race ' + (meta.stage === 'stageA' ? 'Stage A' : 'Stage B') + ' session in Events before applying OCR updates.', 'error');
           return;
@@ -828,7 +834,7 @@ export async function commitOcrUpdates(): Promise<void> {
           showToast('This OCR metric has no event configured.', 'error');
           return;
         }
-        const evRes = await client.from('event_status').select('session_id, is_active, start_at').eq('guild', currentG).eq('event_name', evName).maybeSingle();
+        const evRes = await fetchEventSessionStatus(client, currentG, evName);
         if (!evRes.data || !evRes.data.is_active || !evRes.data.session_id) {
           showToast('Please start the ' + evName + ' session in Events before applying OCR updates.', 'error');
           return;
@@ -927,7 +933,7 @@ export async function commitOcrUpdates(): Promise<void> {
     // uses in five other places. Same results, same error tolerance (a failed
     // probe is still swallowed per UID, never failing the whole commit).
     try {
-      const banRes = await client.from('banned_players').select('uid').in('uid', targetUids);
+      const banRes = await findBannedUids(client, targetUids);
       ((banRes && banRes.data) || []).forEach((row: any) => {
         const u = String(row && row.uid ? row.uid : '').trim();
         if (u) bannedUidSet.add(u);
@@ -936,9 +942,9 @@ export async function commitOcrUpdates(): Promise<void> {
 
     await runInChunks(targetUids, 10, async (targetUid: string) => {
       try {
-        const chkRes = await client.rpc('check_uid_exists_globally', { p_uid: targetUid });
+        const chkRes = await checkUidExistsGlobally(client, targetUid);
         if (chkRes && chkRes.data === true) {
-          try { const l = await client.rpc('gm_find_player_by_uid', { p_uid: targetUid }); collidingUidInfo[targetUid] = (l && l.data && l.data.ok) ? l.data : null; }
+          try { const l = await findPlayerByUid(client, targetUid); collidingUidInfo[targetUid] = (l && l.data && l.data.ok) ? l.data : null; }
           catch (_) { collidingUidInfo[targetUid] = null; }
         }
       } catch (_) { /* warned in legacy */ }

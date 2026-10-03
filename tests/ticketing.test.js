@@ -87,7 +87,9 @@ describe('Bug-report ticketing (V3.5.3)', () => {
 
   it('tickets are submitted through the tickets Edge Function and escape output', () => {
     const shell = read('src/modules/shell/views/ShellView.ts');
-    expect(shell).toContain("functions.invoke('tickets'");
+    // The invoke lives in the shell service since M4b; the modal calls it.
+    expect(read('src/modules/shell/shell.service.ts')).toContain("functions.invoke('tickets'");
+    expect(shell).toContain('createTicket(db,');
     const modalStart = shell.indexOf('public openBugReportModal(): void');
     const modal = shell.slice(modalStart, modalStart + 20000);
     expect(modal).toContain('gm-modal-overlay');
@@ -142,9 +144,13 @@ describe('Bug-report ticketing (V3.5.3)', () => {
 
   it('the super-admin tickets console lists, updates statuses, and displays screenshot thumbnails', () => {
     const tickets = read('src/modules/tickets/views/TicketsView.ts');
+    // The Edge Function calls live in the tickets service since M4b.
+    const ticketsService = read('src/modules/tickets/tickets.service.ts');
     expect(tickets).toContain('ticketsView');
-    expect(tickets).toContain("action: 'list'");
-    expect(tickets).toContain("action: 'update-status'");
+    expect(ticketsService).toContain("action: 'list'");
+    expect(ticketsService).toContain("action: 'update-status'");
+    expect(tickets).toContain('listTickets(db)');
+    expect(tickets).toContain('updateTicketStatus(db,');
     expect(tickets).toContain('gm-ticket-status');
     expect(tickets).toContain('gm-ticket-thumb');
     expect(tickets).toContain('openLightbox');

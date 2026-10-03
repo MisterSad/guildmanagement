@@ -16,6 +16,7 @@ import { renderAccounts, revealAccountPassword } from './accounts.render';
 import { showToast } from '../dialogs/dialogs.service';
 import { shellView } from '../../shell/views/ShellView';
 import { patchAppState } from '../../../core/state/app-state';
+import { queryGuildList, insertGuild } from './admin.service';
 
 export async function fetchAccounts(): Promise<void> {
   const g = gm();
@@ -48,7 +49,7 @@ export async function fetchGuilds(): Promise<void> {
   if (!db) return;
   const w = winAny();
   try {
-    const res = await db.from('guilds').select('id, server_number').order('id');
+    const res = await queryGuildList(db);
     if (res.error) return;
     const data = res.data;
     if (data && data.length > 0) {
@@ -427,7 +428,7 @@ async function onCreateGuildSubmit(e: Event): Promise<void> {
 
   try {
     const db = getDb();
-    const { error } = await db.from('guilds').insert({ id: guildName, server_number: serverNum });
+    const { error } = await insertGuild(db, guildName, serverNum);
     if (error) throw error;
     showToast('Guild ' + guildName + ' (Server #' + serverNum + ') created successfully!', 'success');
     if (nameInput) nameInput.value = '';

@@ -54,7 +54,8 @@ describe('1. transfers: whoever asks never decides', () => {
     expect(code).not.toMatch(/'ALPHA'/);
   });
   it('the client never writes guild_transfers directly', () => {
-    const src = read('src/modules/app/members/members.controller.ts');
+    // M4b: the members queries live in members.service.
+    const src = read('src/modules/app/members/members.controller.ts') + read('src/modules/members/members.service.ts');
     expect(src).not.toMatch(/from\('guild_transfers'\)\.(update|insert|delete)/);
     expect(src).toContain("select('id, uid, pseudo, source_guild, target_guild, requested_by')");
   });

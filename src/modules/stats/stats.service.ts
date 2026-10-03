@@ -2,10 +2,12 @@
  * src/modules/stats/stats.service.ts
  *
  * Pure leaderboard computation for the Stats page: weighted scoring, attendance
- * rates and per-event aggregation. No DOM, no I/O.
+ * rates and per-event aggregation. No DOM. The only I/O is the query builders
+ * at the end of the file (M4b), which return the query for the view to await.
  */
 
 import { eventScoringKey } from '../../core/config/events';
+import type { DbClient } from '../../core/api/db-client';
 import { weightedRate, type BucketCounts } from '../../core/scoring/reliability';
 
 
@@ -616,4 +618,46 @@ export function matchesEventName(rowEventName?: string, targetMode?: string): bo
   if (target === 'dtr') return row.indexOf('dtr') !== -1 || row.indexOf('defend trade route') !== -1;
   if (target === 'glory') return row.indexOf('glory') !== -1;
   return row === target;
+}
+
+// ---------------------------------------------------------------------------
+// Queries (M4b). Each returns the builder/promise; the view awaits it.
+// ---------------------------------------------------------------------------
+
+/** The weeks that hold participation data for a guild (gm_stats_weeks). */
+export function queryStatsWeeks(db: DbClient, guild: string | null) {
+  return db.rpc('gm_stats_weeks', { p_guild: guild });
+}
+
+/** Guild health over the last eight weeks (gm_stats_health). */
+export function queryStatsHealth(db: DbClient, guild: string | null) {
+  return db.rpc('gm_stats_health', { p_guild: guild, p_weeks: 8 });
+}
+
+/** Per-member aggregates over the given weeks, all weeks when empty (gm_stats_members). */
+export function queryStatsMembers(db: DbClient, guild: string | null, weeks: string[], withTrend?: boolean) {
+  return db.rpc('gm_stats_members', {
+    p_guild: guild,
+    p_weeks: weeks && weeks.length ? weeks : null,
+    p_trend: withTrend === true
+  });
+}
+
+/** The guild's roster with power and role. */
+export function queryRosterPower(db: DbClient, guild: string | null) {
+  return db.from('guild_members').select('pseudo, overall_power, role').eq('guild', guild);
+}
+
+/** Pending transfers into the guild. */
+export function queryPendingIncomingTransfers(db: DbClient, guild: string | null) {
+  return db.from('guild_transfers').select('pseudo, source_guild, status').eq('status', 'pending').eq('target_guild', guild);
+}
+
+/** Per-event aggregates for one scoring bucket over the given weeks (gm_stats_events). */
+export function queryStatsEvents(db: DbClient, guild: string | null, bucket: unknown, requested: string[]) {
+  return db.rpc('gm_stats_events', {
+    p_guild: guild,
+    p_bucket: bucket,
+    p_weeks: requested && requested.length ? requested : null
+  });
 }

@@ -40,6 +40,7 @@ import {
   type ShadowfrontRole,
   type ShadowfrontCategory
 } from '../shadowfront.service';
+import * as ShadowfrontData from '../shadowfront.service';
 import { escapeHTML } from '../../../core/utils/text';
 import { pendingApprovalHtml, wirePendingApprovals } from '../../events/pending-approval';
 import { EventsService } from '../../events/events.service';
@@ -258,16 +259,12 @@ export class ShadowfrontView {
       const currentWeek = legacy.getWeekStart();
       const currentG = legacy.getActiveGuild();
 
-      let statusQ: any = db.from('event_status').select('event_name, is_active, session_id, start_at').in('event_name', [SHADOWFRONT_SQUAD_EVENT.squad1, SHADOWFRONT_SQUAD_EVENT.squad2]);
-      let membersQ: any = db.from('guild_members').select('pseudo, uid, overall_power').order('pseudo', { ascending: true });
+      let statusQ: any = ShadowfrontData.fetchSquadStatuses(db);
+      let membersQ: any = ShadowfrontData.fetchRosterMembers(db);
       // Whole-history reads: paged, since one answer stops at 1,000 rows.
-      const squadsQ = fetchAllRows((from, to) => db.from('shadowfront_squads').select('pseudo, session_id')
-        .eq('guild', currentG).order('id', { ascending: true }).range(from, to));
-      const partsQ = fetchAllRows((from, to) => db.from('event_participants')
-        .select('pseudo, participated, session_id, excused, late, sub_present')
-        .eq('guild', currentG).eq('event_name', SHADOWFRONT_EVENT_NAME)
-        .order('id', { ascending: true }).range(from, to));
-      let signupsQ: any = db.from('shadowfront_signups').select('*').eq('week_start', currentWeek);
+      const squadsQ = fetchAllRows((from, to) => ShadowfrontData.fetchSquadHistoryPage(db, currentG, from, to));
+      const partsQ = fetchAllRows((from, to) => ShadowfrontData.fetchParticipationHistoryPage(db, currentG, from, to));
+      let signupsQ: any = ShadowfrontData.fetchWeekSignups(db, currentWeek);
 
       statusQ = statusQ.eq('guild', currentG);
       membersQ = membersQ.eq('guild', currentG);
@@ -316,11 +313,8 @@ export class ShadowfrontView {
 
       if (currentSids.length) {
         const [assignRes, partRes] = await Promise.all([
-          db.from('shadowfront_squads').select('*')
-            .eq('guild', currentG).in('session_id', currentSids).order('pseudo', { ascending: true }),
-          db.from('event_participants').select('*')
-            .eq('guild', currentG).eq('event_name', SHADOWFRONT_EVENT_NAME).in('session_id', currentSids)
-            .order('pseudo', { ascending: true })
+          ShadowfrontData.fetchSquadAssignments(db, currentG, currentSids),
+          ShadowfrontData.fetchSessionParticipants(db, currentG, currentSids)
         ]);
         this.state.assignments = (assignRes.data || []) as ShadowfrontAssignmentRow[];
         this.state.participants = (partRes.data || []) as ShadowfrontParticipantRow[];
@@ -362,20 +356,9 @@ export class ShadowfrontView {
     if (sq) sq.ended = false;
     try {
       if (oldSessionId && oldSessionId !== sessionId) {
-        await db.from('shadowfront_squads').update({ session_id: sessionId })
-          .eq('guild', currentG).eq('session_id', oldSessionId);
+        await ShadowfrontData.moveSquadAssignmentsSession(db, currentG, oldSessionId, sessionId);
       }
-      const res = await db.from('event_status').upsert(
-        {
-          guild: currentG,
-          event_name: SHADOWFRONT_SQUAD_EVENT[squad],
-          is_active: true,
-          session_id: sessionId,
-          start_at: startAt || null,
-          updated_at: new Date().toISOString()
-        },
-        { onConflict: 'guild,event_name' }
-      );
+      const res = await ShadowfrontData.upsertActiveSquadStatus(db, currentG, squad, sessionId, startAt);
       if (res.error) throw res.error;
 
       await this.syncParticipantRows(sessionId);
@@ -398,17 +381,7 @@ export class ShadowfrontView {
       const squad = squads[i];
       const currentSession = this.state.squads[squad] ? this.state.squads[squad].sessionId : null;
       try {
-        await db.from('event_status').upsert(
-          {
-            guild: currentG,
-            event_name: SHADOWFRONT_SQUAD_EVENT[squad],
-            is_active: false,
-            session_id: currentSession,
-            start_at: null,
-            updated_at: new Date().toISOString()
-          },
-          { onConflict: 'guild,event_name' }
-        );
+        await ShadowfrontData.upsertInactiveSquadStatus(db, currentG, squad, currentSession);
       } catch (err) { console.error('endSquad', err); }
     }
     legacy.showToast(legacy.t('sf_squad_ended'), 'success');
@@ -423,9 +396,7 @@ export class ShadowfrontView {
 
     try {
       const currentG = legacy.getActiveGuild();
-      const res = await db.from('event_status').select('start_at')
-        .eq('guild', currentG)
-        .eq('event_name', SHADOWFRONT_SQUAD_EVENT[squad]).maybeSingle();
+      const res = await ShadowfrontData.fetchSquadStartAt(db, currentG, squad);
       if (res.error) throw res.error;
 
       const currentStartAt = res.data ? res.data.start_at : null;
@@ -533,14 +504,7 @@ export class ShadowfrontView {
       sq.sessionId = legacy.buildEventSessionId(SHADOWFRONT_SQUAD_EVENT[squad], sq.startAt || new Date());
       sq.ended = false;
       try {
-        await db.from('event_status').upsert({
-          guild: currentG,
-          event_name: SHADOWFRONT_SQUAD_EVENT[squad],
-          is_active: false,
-          session_id: sq.sessionId,
-          start_at: null,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'guild,event_name' });
+        await ShadowfrontData.upsertInactiveSquadStatus(db, currentG, squad, sq.sessionId);
       } catch (err) {
         console.error('auto create squad session error', err);
       }
@@ -553,20 +517,12 @@ export class ShadowfrontView {
     const week = legacy.getWeekStart(sq.startAt || legacy.sessionDateFromId(sq.sessionId) || new Date());
 
     try {
-      await db.from('shadowfront_squads').delete()
-        .eq('guild', currentG).eq('week_start', week).eq('pseudo', pseudo);
+      await ShadowfrontData.deleteWeekAssignment(db, currentG, week, pseudo);
     } catch (delErr) {
       console.warn('delete old assignment error', delErr);
     }
 
-    const upsertRes = await db.from('shadowfront_squads').upsert({
-      guild: currentG,
-      week_start: week,
-      session_id: sq.sessionId,
-      pseudo: pseudo,
-      squad: squad,
-      role: role
-    }, { onConflict: 'guild,session_id,pseudo' });
+    const upsertRes = await ShadowfrontData.upsertSquadAssignment(db, currentG, week, sq.sessionId, pseudo, squad, role);
 
     if (upsertRes.error) {
       console.error('shadowfront_squads upsert error', upsertRes.error);
@@ -587,23 +543,17 @@ export class ShadowfrontView {
       if (hasSignup) {
         const week = legacy.getWeekStart();
         const currentG = legacy.getActiveGuild();
-        await db.from('shadowfront_signups').delete().eq('guild', currentG).eq('week_start', week).eq('pseudo', pseudo);
+        await ShadowfrontData.deleteSignup(db, currentG, week, pseudo);
       }
       return;
     }
     const g = (a && a.guild) || legacy.getActiveGuild();
     try {
-      await db.rpc('gm_unsync_shadowfront_participant', {
-        p_guild: g,
-        p_session_id: a.session_id,
-        p_pseudo: pseudo
-      });
+      await ShadowfrontData.unsyncParticipant(db, g, a.session_id, pseudo);
     } catch (err) {
       console.warn('gm_unsync_shadowfront_participant RPC fallback:', err);
-      await db.from('shadowfront_squads').delete()
-        .eq('guild', g).eq('session_id', a.session_id).eq('pseudo', pseudo);
-      await db.from('event_participants').delete()
-        .eq('guild', g).eq('session_id', a.session_id).eq('pseudo', pseudo);
+      await ShadowfrontData.deleteSessionAssignment(db, g, a.session_id, pseudo);
+      await ShadowfrontData.deleteSessionParticipantRow(db, g, a.session_id, pseudo);
     }
     await this.load();
   }
@@ -629,8 +579,7 @@ export class ShadowfrontView {
     }
 
     const currentG = legacy.getActiveGuild();
-    await db.from('shadowfront_squads').update({ is_commander: isNewCommander })
-      .eq('guild', currentG).eq('session_id', sq.sessionId).eq('pseudo', pseudo);
+    await ShadowfrontData.updateCommander(db, currentG, sq.sessionId, pseudo, isNewCommander);
 
     await this.load();
   }
@@ -641,10 +590,7 @@ export class ShadowfrontView {
     if (!db || !sessionId) return;
     const currentG = legacy.getActiveGuild();
     try {
-      const res = await db.rpc('gm_sync_shadowfront_participants', {
-        p_guild: currentG,
-        p_session_id: sessionId
-      });
+      const res = await ShadowfrontData.syncParticipants(db, currentG, sessionId);
       if (res.error) {
         console.error('syncParticipantRows RPC failed', res.error);
       }
@@ -659,8 +605,7 @@ export class ShadowfrontView {
     const p = this.state.participants.find((x) => x.pseudo === pseudo);
     if (!p) return;
     const g = p.guild || legacy.getActiveGuild();
-    await db.from('event_participants').update({ participated: value })
-      .eq('guild', g).eq('event_name', SHADOWFRONT_EVENT_NAME).eq('session_id', p.session_id).eq('pseudo', pseudo);
+    await ShadowfrontData.updateParticipated(db, g, p.session_id, pseudo, value);
   }
 
   private async saveLate(pseudo: string, value: boolean): Promise<void> {
@@ -669,8 +614,7 @@ export class ShadowfrontView {
     const p = this.state.participants.find((x) => x.pseudo === pseudo);
     if (!p) return;
     const g = p.guild || legacy.getActiveGuild();
-    await db.from('event_participants').update({ late: value })
-      .eq('guild', g).eq('event_name', SHADOWFRONT_EVENT_NAME).eq('session_id', p.session_id).eq('pseudo', pseudo);
+    await ShadowfrontData.updateLate(db, g, p.session_id, pseudo, value);
   }
 
   private async saveExcused(pseudo: string, value: boolean): Promise<void> {
@@ -679,8 +623,7 @@ export class ShadowfrontView {
     const p = this.state.participants.find((x) => x.pseudo === pseudo);
     if (!p) return;
     const g = p.guild || legacy.getActiveGuild();
-    await db.from('event_participants').update({ excused: value })
-      .eq('guild', g).eq('event_name', SHADOWFRONT_EVENT_NAME).eq('session_id', p.session_id).eq('pseudo', pseudo);
+    await ShadowfrontData.updateExcused(db, g, p.session_id, pseudo, value);
   }
 
   private async saveSubPresent(pseudo: string, value: boolean): Promise<void> {
@@ -689,8 +632,7 @@ export class ShadowfrontView {
     const p = this.state.participants.find((x) => x.pseudo === pseudo);
     if (!p) return;
     const g = p.guild || legacy.getActiveGuild();
-    await db.from('event_participants').update({ sub_present: value })
-      .eq('guild', g).eq('event_name', SHADOWFRONT_EVENT_NAME).eq('session_id', p.session_id).eq('pseudo', pseudo);
+    await ShadowfrontData.updateSubPresent(db, g, p.session_id, pseudo, value);
   }
 
   // ── Main render ────────────────────────────────────────────────────────────
@@ -1112,8 +1054,7 @@ export class ShadowfrontView {
     if (!sq || !sq.sessionId) return;
     try {
       const currentG = legacy.getActiveGuild();
-      await db.from('event_participants').update({ participated: value })
-        .eq('guild', currentG).eq('event_name', SHADOWFRONT_EVENT_NAME).eq('session_id', sq.sessionId);
+      await ShadowfrontData.updateSessionParticipated(db, currentG, sq.sessionId, value);
       this.state.participants.forEach((p) => {
         if (p.session_id === sq.sessionId) p.participated = value;
       });
@@ -1303,11 +1244,7 @@ export class ShadowfrontView {
             const p = this.state.participants.find((x) => x.pseudo === pseudo);
             if (!p) return;
             const g = p.guild || legacy.getActiveGuild();
-            await db.from('event_participants').delete()
-              .eq('guild', g)
-              .eq('event_name', SHADOWFRONT_EVENT_NAME)
-              .eq('session_id', p.session_id)
-              .eq('pseudo', pseudo);
+            await ShadowfrontData.deleteParticipant(db, g, p.session_id, pseudo);
             this.load();
           }
         );

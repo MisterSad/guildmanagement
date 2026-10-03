@@ -19,6 +19,17 @@ import {
   type EventTabKey,
   type EventTabState,
   EventsService,
+  fetchTabEventStatus,
+  upsertEventStatus,
+  populateEventParticipants,
+  fetchActiveEventStatuses,
+  fetchEventSessionParticipants,
+  fetchGuildMemberUids,
+  setParticipantParticipation,
+  setParticipantAppointed,
+  updateParticipantScore,
+  fetchEventStartAt,
+  approveParticipantSubmission,
   type WarEventName,
   type OpponentCandidate
 } from '../events.service';
@@ -157,8 +168,7 @@ export class EventsView {
     try {
       const dbEvents = TAB_TO_DB_EVENTS[tabKey];
       const currentG = this.currentGuild();
-      let query: any = db.from('event_status').select('event_name, is_active, session_id, stage, start_at').in('event_name', dbEvents);
-      query = query.eq('guild', currentG);
+      const query: any = fetchTabEventStatus(db, currentG, dbEvents);
       const res = await query;
 
       const active = ((res.data || []) as any[]).find((r) => r.is_active);
@@ -208,7 +218,7 @@ export class EventsView {
     }
     const sessionId = legacy.buildEventSessionId(dbEventName, ref, taken.ids);
     try {
-      const statusRes = await db.from('event_status').upsert(
+      const statusRes = await upsertEventStatus(db,
         {
           guild: currentG,
           event_name: dbEventName,
@@ -217,8 +227,7 @@ export class EventsView {
           stage: stage || null,
           start_at: startAt || null,
           updated_at: new Date().toISOString()
-        },
-        { onConflict: 'guild,event_name' }
+        }
       );
       if (statusRes.error) throw statusRes.error;
       legacy.showToast(legacy.t('event_session_started'), 'success');
@@ -238,7 +247,7 @@ export class EventsView {
     if (!s.activeEventName) return;
     const currentG = this.currentGuild();
     try {
-      const statusRes = await db.from('event_status').upsert(
+      const statusRes = await upsertEventStatus(db,
         {
           guild: currentG,
           event_name: s.activeEventName,
@@ -246,8 +255,7 @@ export class EventsView {
           session_id: s.sessionId,
           stage: s.stage,
           updated_at: new Date().toISOString()
-        },
-        { onConflict: 'guild,event_name' }
+        }
       );
       if (statusRes.error) throw statusRes.error;
       s.activeEventName = null;
@@ -272,12 +280,7 @@ export class EventsView {
 
     const week = legacy.getWeekStart(s.startAt);
     const currentG = this.currentGuild();
-    const rpcRes = await db.rpc('gm_populate_event_participants', {
-      p_event_name: s.activeEventName,
-      p_session_id: s.sessionId,
-      p_week_start: week,
-      p_guild: currentG
-    });
+    const rpcRes = await populateEventParticipants(db, s.activeEventName, s.sessionId, week, currentG);
 
     if (rpcRes.error) {
       console.error('populateParticipants: rpc error', rpcRes.error);
@@ -300,11 +303,7 @@ export class EventsView {
 
     try {
       const currentG = this.currentGuild();
-      const statusRes = await db.from('event_status')
-        .select('event_name, session_id, start_at')
-        .eq('guild', currentG)
-        .eq('is_active', true)
-        .in('event_name', dbEventNames);
+      const statusRes = await fetchActiveEventStatuses(db, currentG, dbEventNames);
       if (statusRes.error) throw statusRes.error;
 
       const active = ((statusRes.data || []) as any[]).filter((r) => r.session_id);
@@ -359,21 +358,12 @@ export class EventsView {
 
     // Auto-sync missing/transferred guild members before fetching.
     try {
-      await db.rpc('gm_populate_event_participants', {
-        p_event_name: s.activeEventName,
-        p_session_id: s.sessionId,
-        p_week_start: week,
-        p_guild: currentG
-      });
+      await populateEventParticipants(db, s.activeEventName, s.sessionId, week, currentG);
     } catch (_) { /* best-effort sync */ }
 
     const [partRes, memRes] = await Promise.all([
-      db.from('event_participants').select('*')
-        .eq('guild', currentG)
-        .eq('event_name', s.activeEventName)
-        .eq('session_id', s.sessionId)
-        .order('pseudo', { ascending: true }),
-      db.from('guild_members').select('pseudo, uid').eq('guild', currentG)
+      fetchEventSessionParticipants(db, currentG, s.activeEventName, s.sessionId),
+      fetchGuildMemberUids(db, currentG)
     ]);
     if (partRes.error) return;
     ((memRes.data || []) as any[]).forEach((m) => { this.uidMap[m.pseudo] = m.uid; });
@@ -897,11 +887,7 @@ export class EventsView {
     if (!db) return;
     const s = this.state[tabKey];
     const currentG = this.currentGuild();
-    await db.from('event_participants').update({ participated: value })
-      .eq('guild', currentG)
-      .eq('event_name', s.activeEventName)
-      .eq('session_id', s.sessionId)
-      .eq('pseudo', pseudo);
+    await setParticipantParticipation(db, currentG, s.activeEventName, s.sessionId, pseudo, value);
   }
 
   private async saveAppointed(tabKey: string, pseudo: string, value: boolean): Promise<void> {
@@ -909,11 +895,7 @@ export class EventsView {
     if (!db) return;
     const s = this.state[tabKey];
     const currentG = this.currentGuild();
-    await db.from('event_participants').update({ appointed: value })
-      .eq('guild', currentG)
-      .eq('event_name', s.activeEventName)
-      .eq('session_id', s.sessionId)
-      .eq('pseudo', pseudo);
+    await setParticipantAppointed(db, currentG, s.activeEventName, s.sessionId, pseudo, value);
   }
 
   private async saveScoreField(tabKey: string, pseudo: string, field: string, value: unknown): Promise<void> {
@@ -927,11 +909,7 @@ export class EventsView {
     if (num > 0) {
       update.participated = 1;
     }
-    const updateRes = await db.from('event_participants').update(update)
-      .eq('guild', currentG)
-      .eq('event_name', s.activeEventName)
-      .eq('session_id', s.sessionId)
-      .eq('pseudo', pseudo);
+    const updateRes = await updateParticipantScore(db, currentG, s.activeEventName, s.sessionId, pseudo, update);
     if (updateRes.error) {
       legacy.showToast('Error: ' + updateRes.error.message, 'error');
     } else {
@@ -956,9 +934,7 @@ export class EventsView {
 
     const currentG = this.currentGuild();
     try {
-      const res = await db.from('event_status').select('start_at')
-        .eq('guild', currentG)
-        .eq('event_name', s.activeEventName).maybeSingle();
+      const res = await fetchEventStartAt(db, currentG, s.activeEventName);
       if (res.error) throw res.error;
 
       const currentStartAt = res.data ? res.data.start_at : null;
@@ -1359,12 +1335,7 @@ export class EventsView {
         btn.textContent = '...';
         try {
           const db = legacy.getDb();
-          const rpcRes = await db.rpc('gm_approve_participant_submission', {
-            p_guild: this.currentGuild(),
-            p_event_name: s.activeEventName,
-            p_session_id: s.sessionId,
-            p_pseudo: pseudo
-          });
+          const rpcRes = await approveParticipantSubmission(db, this.currentGuild(), s.activeEventName, s.sessionId, pseudo);
           if (rpcRes.error) throw rpcRes.error;
           const data = rpcRes.data;
           const ok = data && (data.ok !== false);
@@ -1395,12 +1366,7 @@ export class EventsView {
           const activeGuildForApproval = this.currentGuild();
           await legacy.runInChunks(pendingPseudos, 10, async (pseudo: string) => {
             const db = legacy.getDb();
-            const rpcRes = await db.rpc('gm_approve_participant_submission', {
-              p_guild: activeGuildForApproval,
-              p_event_name: s.activeEventName,
-              p_session_id: s.sessionId,
-              p_pseudo: pseudo
-            });
+            const rpcRes = await approveParticipantSubmission(db, activeGuildForApproval, s.activeEventName, s.sessionId, pseudo);
             if (rpcRes.error) throw rpcRes.error;
           });
           this.state[tabKey].participants.forEach((p) => { if (p.is_pending) p.is_pending = false; });

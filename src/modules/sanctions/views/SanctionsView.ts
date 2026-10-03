@@ -15,6 +15,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { escapeHTML } from '../../../core/utils/text';
+import { queryMemberPseudos, querySanctions, insertSanction, deleteSanction } from '../sanctions.service';
 
 function winAny(): any {
   return (typeof window !== 'undefined' ? window : ({} as any)) as any;
@@ -72,8 +73,8 @@ export class SanctionsView {
     if (!db) return;
 
     const currentG = legacy.getActiveGuild();
-    const membersQ = db.from('guild_members').select('pseudo').eq('guild', currentG).order('pseudo', { ascending: true });
-    const sanctionsQ = db.from('sanctions').select('*').eq('guild', currentG).order('created_at', { ascending: false });
+    const membersQ = queryMemberPseudos(db, currentG);
+    const sanctionsQ = querySanctions(db, currentG);
 
     const [membersRes, res] = await Promise.all([membersQ, sanctionsQ]);
 
@@ -110,7 +111,7 @@ export class SanctionsView {
           const db = legacy.getDb();
           if (!db) return;
           const currentG = legacy.getActiveGuild();
-          const res = await db.from('sanctions').insert([{ guild: currentG, pseudo, comment }]).select();
+          const res = await insertSanction(db, currentG, pseudo, comment);
           if (res.error) throw res.error;
 
           pseudoInput.value = '';
@@ -216,7 +217,7 @@ export class SanctionsView {
     const db = legacy.getDb();
     if (!db) return;
     try {
-      const res = await db.from('sanctions').delete().eq('id', id);
+      const res = await deleteSanction(db, id);
       if (res.error) throw res.error;
       await this.load();
       legacy.showToast(legacy.t('toast_sanction_deleted'), 'success');

@@ -80,7 +80,9 @@ describe('9. Migration Hub page deletion', () => {
   });
   it('a refused delete is reported, not announced as done', () => {
     const src = read('src/modules/migration/views/MigrationHubView.ts');
-    expect(src).toContain(".delete().eq('id', page.id).select('id')");
+    // M4b: the query lives in migration.service; the view checks its result.
+    expect(read('src/modules/migration/migration.service.ts')).toContain(".delete().eq('id', pageId).select('id')");
+    expect(src).toContain('await deleteWikiPage(db, page.id)');
     expect(src).toContain('if (error || !data || data.length === 0)');
   });
   it('the page title is escaped in the HTML confirm dialog', () => {

@@ -22,6 +22,7 @@ import { t, esc, winAny, byId, getDb, ls } from './utils';
 import { fetchGuilds } from './accounts.controller';
 import { showToast } from '../dialogs/dialogs.service';
 import { openRenameGuildDialog } from './guild-rename';
+import { queryGuildList, updateGuildServerNumber, deleteGuild } from './admin.service';
 
 export async function renderGuildsList(): Promise<void> {
   const container = byId('guilds-list-container');
@@ -30,7 +31,7 @@ export async function renderGuildsList(): Promise<void> {
   const w = winAny();
 
   try {
-    const res = await db.from('guilds').select('id, server_number').order('id');
+    const res = await queryGuildList(db);
     if (res.error) throw res.error;
     const guildsListRaw = res.data;
     if (!guildsListRaw || guildsListRaw.length === 0) {
@@ -155,7 +156,7 @@ export async function renderGuildsList(): Promise<void> {
         }
 
         try {
-          const res = await db.from('guilds').update({ server_number: serverNum || null }).eq('id', guildId).select();
+          const res = await updateGuildServerNumber(db, guildId, serverNum);
           if (res.error) throw new Error(res.error.message || JSON.stringify(res.error));
           showToast('Guild ' + guildId + (serverNum ? ' (Server #' + serverNum + ')' : '') + ' updated successfully!', 'success');
           await fetchGuilds();
@@ -194,7 +195,7 @@ export async function renderGuildsList(): Promise<void> {
             const origText = btn.innerHTML;
             btn.innerHTML = '<i class="ph ph-circle-notch spinner"></i>...';
             try {
-              const rpcRes = await db.rpc('gm_delete_guild', { p_guild_id: guildId });
+              const rpcRes = await deleteGuild(db, guildId);
               if (rpcRes.error) throw new Error(rpcRes.error.message || JSON.stringify(rpcRes.error));
               const row = (Array.isArray(rpcRes.data) ? rpcRes.data[0] : rpcRes.data) || {};
               if (!row.ok) throw new Error(row.error || 'Failed to delete guild');

@@ -127,7 +127,8 @@ describe('Batched per-row Supabase calls (previously sequential for-loops)', () 
     // requests for a 100-player import, ~16-24s of frozen UI.
     expect(ocrJs).not.toMatch(/for \(const targetUid of Array\.from\(newUidSeen\)\)/);
     // The ban check is now one query for the whole batch...
-    expect(ocrJs).toMatch(/from\('banned_players'\)\.select\('uid'\)\.in\('uid', targetUids\)/);
+    expect(ocrJs).toContain('await findBannedUids(client, targetUids)');
+    expect(read('src/modules/ocr/ocr.service.ts')).toMatch(/from\('banned_players'\)\.select\('uid'\)\.in\('uid', uids\)/);
     // ...and the collision probes run 10 at a time.
     expect(ocrJs).toContain('runInChunks(targetUids, 10');
     // A single UID failing must still not fail the whole commit.
@@ -147,8 +148,8 @@ describe('showTransferMemberDialog fires its two independent queries in parallel
   it('kicks off both promises before awaiting either', () => {
     const fnStart = membersCtrl.indexOf('function showTransferMemberDialog');
     const fn = membersCtrl.slice(fnStart, fnStart + 3000);
-    const eligIdx = fn.indexOf('const eligPromise = client.rpc');
-    const curIdx = fn.indexOf('const curPromise = client.from');
+    const eligIdx = fn.indexOf('const eligPromise = listTransferEligibleGuilds(client');
+    const curIdx = fn.indexOf('const curPromise = fetchGuildServerNumber(client');
     const firstAwaitIdx = fn.indexOf('await eligPromise');
     expect(eligIdx).toBeGreaterThan(-1);
     expect(curIdx).toBeGreaterThan(-1);

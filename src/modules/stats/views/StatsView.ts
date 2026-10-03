@@ -38,7 +38,13 @@ import {
   type HealthPowerPoint,
   type HealthWeek,
   type ReliabilityRow,
-  summariseEngagement
+  summariseEngagement,
+  queryStatsWeeks,
+  queryStatsHealth,
+  queryStatsMembers,
+  queryRosterPower,
+  queryPendingIncomingTransfers,
+  queryStatsEvents
 } from '../stats.service';
 
 // ── Legacy global adapter (typed, no writes) ──────────────────────────────────
@@ -355,7 +361,7 @@ export class StatsView {
       // months. Nothing read `.error`, the list fell through to the single-week
       // fallback below, and every period filter (2w / 4w / 8w) silently became
       // 1w because it was slicing a one-element array. Read the error now.
-      const rpcRes = await db.rpc('gm_stats_weeks', { p_guild: state.activeGuild });
+      const rpcRes = await queryStatsWeeks(db, state.activeGuild);
       if (rpcRes.error) throw rpcRes.error;
 
       const payload = (rpcRes.data || {}) as { ok?: boolean; error?: string; weeks?: unknown };
@@ -593,10 +599,10 @@ export class StatsView {
     try {
       const recentWeeks = state.allWeeks.slice(0, 4);
       const [healthRes, membersRes, rosterRes, transRes] = await Promise.all([
-        db.rpc('gm_stats_health', { p_guild: g, p_weeks: 8 }),
-        db.rpc('gm_stats_members', { p_guild: g, p_weeks: recentWeeks.length ? recentWeeks : null, p_trend: false }),
-        db.from('guild_members').select('pseudo, overall_power, role').eq('guild', g),
-        db.from('guild_transfers').select('pseudo, source_guild, status').eq('status', 'pending').eq('target_guild', g)
+        queryStatsHealth(db, g),
+        queryStatsMembers(db, g, recentWeeks, false),
+        queryRosterPower(db, g),
+        queryPendingIncomingTransfers(db, g)
       ]);
 
       if (healthRes.error) throw healthRes.error;
@@ -924,11 +930,7 @@ export class StatsView {
   private async fetchStatsMembers(weeks: string[], withTrend?: boolean): Promise<StatsMembersPayload | null> {
     const db = legacy.getDb();
     if (!db) return null;
-    const res = await db.rpc('gm_stats_members', {
-      p_guild: this.state.activeGuild,
-      p_weeks: weeks && weeks.length ? weeks : null,
-      p_trend: withTrend === true
-    });
+    const res = await queryStatsMembers(db, this.state.activeGuild, weeks, withTrend);
     if (res.error) throw res.error;
     const payload = (res.data || null) as StatsMembersPayload | null;
     if (!payload || payload.ok === false) {
@@ -1011,11 +1013,7 @@ export class StatsView {
       const isAllTime = (state.statsPeriod === 'all');
       const requested = isAllTime ? state.allWeeks.slice() : weeksToLoad;
 
-      const res = await db.rpc('gm_stats_events', {
-        p_guild: state.activeGuild,
-        p_bucket: resolveEventBucket(eventName),
-        p_weeks: requested && requested.length ? requested : null
-      });
+      const res = await queryStatsEvents(db, state.activeGuild, resolveEventBucket(eventName), requested);
       if (res.error) throw res.error;
       const payload = (res.data || {}) as StatsEventsPayload;
       if (payload.ok === false) throw new Error(payload.error || 'stats_events_failed');

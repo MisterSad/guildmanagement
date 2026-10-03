@@ -160,7 +160,8 @@ describe('phase-6 findings that measurement contradicted', () => {
 
   it('NOT A DEFECT: the OCR validation loop is already batched', () => {
     const ocr = read('src/modules/app/ocr/ocr.controller.ts');
-    expect(ocr).toContain("from('banned_players').select('uid').in('uid', targetUids)");
+    expect(ocr).toContain('await findBannedUids(client, targetUids)');
+    expect(read('src/modules/ocr/ocr.service.ts')).toContain("from('banned_players').select('uid').in('uid', uids)");
     expect(ocr).toContain('runInChunks(targetUids, 10');
   });
 });

@@ -12,6 +12,7 @@ import { findBestMatchingMember, cleanPlayerPseudo, parseGeminiJson } from '../.
 import { getClient } from '../../core/api/supabase';
 import { SUPABASE_URL } from '../../core/config/constants';
 import { guildWrite } from '../../core/api/guild-rpc';
+import type { DbClient } from '../../core/api/db-client';
 
 export { parseGeminiJson };
 
@@ -496,4 +497,51 @@ export function commitOcrRoster(
   removals: string[]
 ): Promise<OcrRosterResult> {
   return guildWrite('gm_commit_ocr_roster', { p_field: field, p_existing: existing, p_new: newRows, p_removals: removals });
+}
+
+// ── OCR queries (M4b) ───────────────────────────────────────────────────────
+// Each returns the query builder (or promise) unchanged; the caller awaits it
+// and keeps its own error handling. `db` is the guarded client the caller holds.
+
+// The UID collision probes are roster queries; OCR uses the same ones.
+export { checkUidExistsGlobally, findPlayerByUid } from '../members/members.service';
+
+/** Sends an uploaded OCR video to the `ocr-guild-members` Edge Function. */
+export function invokeOcrVideo(db: DbClient, path: string, mimeType: string, metricType: any, guildTag: any, rankHint: any, metadata: { scanDay: number } | undefined) {
+  return db.functions.invoke('ocr-guild-members', {
+      body: { video: { path, mimeType }, metricType, guildTag, rankHint: rankHint || null, metadata },
+    });
+}
+
+/** Sends a batch of screenshots to the `ocr-guild-members` Edge Function. */
+export function invokeOcrImages(db: DbClient, batchImageItems: any[], metricType: any, guildTag: any, rankHint: any, metadata: { scanDay: number } | undefined) {
+  return db.functions.invoke('ocr-guild-members', { body: { images: batchImageItems, metricType, guildTag, rankHint: rankHint || null, metadata } });
+}
+
+/** Reads one event's session status (session id, active flag, start) in a guild. */
+export function fetchEventSessionStatus(db: DbClient, guild: string | null, eventName: string) {
+  return db.from('event_status').select('session_id, is_active, start_at').eq('guild', guild).eq('event_name', eventName).maybeSingle();
+}
+
+/** Lists the Shadowfront squad assignments of one session. */
+export function listShadowfrontAssignments(db: DbClient, guild: string | null, sessionId: string) {
+  return db.from('shadowfront_squads').select('pseudo, role, squad').eq('guild', guild).eq('session_id', sessionId);
+}
+
+/** Lists the ban rows matching any of the given UIDs. */
+export function findBannedUids(db: DbClient, uids: string[]) {
+  return db.from('banned_players').select('uid').in('uid', uids);
+}
+
+/** The private bucket an OCR video transits through on its way to the ocr Edge Function. */
+export const OCR_VIDEO_BUCKET = 'ocr-videos';
+
+/** Uploads an OCR video under `path` (`<guild>/<uuid>.<ext>`); never overwrites. */
+export function uploadOcrVideo(db: DbClient, path: string, file: Blob, mimeType: string) {
+  return db.storage.from(OCR_VIDEO_BUCKET).upload(path, file, { contentType: mimeType, upsert: false });
+}
+
+/** Removes an uploaded OCR video. The function removes it too; this covers a call that never reached it. */
+export function removeOcrVideo(db: DbClient, path: string): Promise<unknown> {
+  return db.storage.from(OCR_VIDEO_BUCKET).remove([path]);
 }

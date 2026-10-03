@@ -3,7 +3,13 @@
  *
  * Pure domain helpers for Arms Race (Stage A & Stage B), extracted from the
  * legacy root `armsrace.js`. No DOM, no globals.
+ *
+ * Data access (M4b): the query builders at the bottom take the client the view
+ * hands them and return the builder/promise; the view awaits it and keeps its
+ * own error handling.
  */
+
+import type { DbClient } from '../../core/api/db-client';
 
 /**
  * Real `event_status` / `event_participants` event_name values (verbatim from
@@ -86,4 +92,70 @@ export function computeArmsRaceStats(participants: ArmsRaceParticipantRow[]): { 
   const total = participants.length;
   const done = participants.reduce((acc, p) => acc + (Number(p.participated) || 0), 0);
   return { total, done, absent: total - done };
+}
+
+// ── Data access (M4b) ─────────────────────────────────────────────────────────
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+/** Read both stages' `event_status` rows for a guild. */
+export function fetchArmsRaceStatus(db: DbClient, guild: string | null) {
+  let statusQ: any = db.from('event_status').select('event_name, is_active, session_id, start_at')
+    .in('event_name', [ARMSRACE_STAGE_EVENTS.stageA, ARMSRACE_STAGE_EVENTS.stageB]);
+  statusQ = statusQ.eq('guild', guild);
+  return statusQ;
+}
+
+/** Read the guild's member pseudos and UIDs. */
+export function fetchArmsRaceMembers(db: DbClient, guild: string | null) {
+  let membersQ: any = db.from('guild_members').select('pseudo, uid');
+  membersQ = membersQ.eq('guild', guild);
+  return membersQ;
+}
+
+/** Read the participants of both stages for the given session ids. */
+export function fetchArmsRaceParticipants(db: DbClient, guild: string | null, sessionIds: string[]) {
+  return db.from('event_participants').select('*')
+    .eq('guild', guild)
+    .in('event_name', [ARMSRACE_STAGE_EVENTS.stageA, ARMSRACE_STAGE_EVENTS.stageB])
+    .in('session_id', sessionIds)
+    .order('pseudo', { ascending: true });
+}
+
+/** Read the participants of one stage session. */
+export function fetchStageParticipants(db: DbClient, guild: string | null, eventName: string, sessionId: string | null) {
+  return db.from('event_participants').select('*')
+    .eq('guild', guild)
+    .eq('event_name', eventName)
+    .eq('session_id', sessionId)
+    .order('pseudo', { ascending: true });
+}
+
+/** Enrol the guild's members into a stage session through `gm_populate_event_participants`. */
+export function populateStageParticipants(db: DbClient, stageKey: ArmsRaceStageKey, sessionId: string, weekStart: string, guild: string) {
+  return db.rpc('gm_populate_event_participants', buildPopulateParams(stageKey, sessionId, weekStart, guild));
+}
+
+/** Upsert a stage's `event_status` row (start or end). */
+export function upsertStageStatus(db: DbClient, row: Record<string, unknown>) {
+  return db.from('event_status').upsert(
+    row,
+    { onConflict: 'guild,event_name' }
+  );
+}
+
+/** Read a stage's scheduled start. */
+export function fetchStageStartAt(db: DbClient, guild: string | null, eventName: string) {
+  return db.from('event_status').select('start_at')
+    .eq('guild', guild)
+    .eq('event_name', eventName).maybeSingle();
+}
+
+/** Set one participant's participation flag in a stage session. */
+export function updateStageParticipation(db: DbClient, guild: string | null, eventName: string, sessionId: string | null, pseudo: string, value: number) {
+  return db.from('event_participants').update({ participated: value })
+    .eq('guild', guild)
+    .eq('event_name', eventName)
+    .eq('session_id', sessionId)
+    .eq('pseudo', pseudo);
 }

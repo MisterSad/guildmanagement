@@ -23,7 +23,17 @@ import {
   parseTimezoneClocks,
   serializeTimezoneClocks,
   buildOfficerClocks,
-  hasDiscordWebhook
+  hasDiscordWebhook,
+  queryMemberCount,
+  queryEventStatus,
+  queryGloryScores,
+  queryRecentSanctions,
+  queryRecentMembers,
+  queryRecentTransfers,
+  queryMemberPower,
+  queryOfficerTimezones,
+  queryGuildOfficerTimezones,
+  fetchConfiguredWebhooks
 } from '../overview.service';
 import { escapeHTML } from '../../../core/utils/text';
 import {
@@ -152,15 +162,15 @@ export class OverviewView {
       const prevWeek = legacy.getPrevWeekStart(week);
       const currentG = legacy.getActiveGuild();
 
-      let memCountQ = db.from('guild_members').select('id', { count: 'exact', head: true });
-      let statusQ = db.from('event_status').select('event_name, is_active, updated_at, session_id, start_at');
-      let gloryQ = db.from('event_participants').select('pseudo, score').eq('event_name', 'Glory').eq('week_start', week);
-      let gloryPrevQ = db.from('event_participants').select('pseudo, score').eq('event_name', 'Glory').eq('week_start', prevWeek);
-      let sanctionsQ = db.from('sanctions').select('id, pseudo, comment, created_by, created_at').order('created_at', { ascending: false }).limit(5);
-      let recentMemQ = db.from('guild_members').select('pseudo, created_at').order('created_at', { ascending: false }).limit(5);
-      const transfersQ = db.from('guild_transfers').select('pseudo, source_guild, target_guild, resolved_at').eq('status', 'approved').or('source_guild.eq.' + currentG + ',target_guild.eq.' + currentG).order('resolved_at', { ascending: false }).limit(5);
-      let powerQ = db.from('guild_members').select('overall_power');
-      let officersQ = db.from('guild_members').select('pseudo, role, timezone, timezone_offset');
+      let memCountQ = queryMemberCount(db);
+      let statusQ = queryEventStatus(db);
+      let gloryQ = queryGloryScores(db, week);
+      let gloryPrevQ = queryGloryScores(db, prevWeek);
+      let sanctionsQ = queryRecentSanctions(db);
+      let recentMemQ = queryRecentMembers(db);
+      const transfersQ = queryRecentTransfers(db, currentG);
+      let powerQ = queryMemberPower(db);
+      let officersQ = queryOfficerTimezones(db);
 
       memCountQ = memCountQ.eq('guild', currentG);
       statusQ = statusQ.eq('guild', currentG);
@@ -262,7 +272,7 @@ export class OverviewView {
     const guild = legacy.getActiveGuild();
     if (!slot || !guild) return;
     try {
-      const res = await db.rpc('gm_configured_webhooks', { p_guild: guild });
+      const res = await fetchConfiguredWebhooks(db, guild);
       if (res.error || hasDiscordWebhook(res.data)) return;
     } catch (_) {
       return;
@@ -730,7 +740,7 @@ export class OverviewView {
         if (!db) return;
         const currentG = legacy.getActiveGuild();
         try {
-          const res = await db.from('guild_members').select('pseudo, role, timezone, timezone_offset').eq('guild', currentG);
+          const res = await queryGuildOfficerTimezones(db, currentG);
           if (res.error) throw res.error;
           const officerClocks = buildOfficerClocks(res.data || []);
           this.clockMembers = officerClocks;

@@ -66,6 +66,7 @@ describe('Cross-server migration groups migration', () => {
 
 describe('Cross-server migration groups UI wiring', () => {
   const appJs = fs.readFileSync(path.resolve(__dirname, '../src/modules/app/admin/migration-groups.controller.ts'), 'utf-8');
+  const migrationService = fs.readFileSync(path.resolve(__dirname, '../src/modules/migration/migration.service.ts'), 'utf-8');
   const membersCtrl = fs.readFileSync(path.resolve(__dirname, '../src/modules/app/members/members.controller.ts'), 'utf-8');
   const indexHtml = fs.readFileSync(path.resolve(__dirname, '../index.html'), 'utf-8');
   const portalJs = fs.readFileSync(path.resolve(__dirname, '../src/modules/portal/views/PortalView.ts'), 'utf-8');
@@ -79,14 +80,18 @@ describe('Cross-server migration groups UI wiring', () => {
 
   it('defines renderMigrationGroupsList and wires it into the Super Admin tab load path', () => {
     expect(appJs).toContain('function renderMigrationGroupsList');
-    expect(appJs).toContain("server_migration_groups");
-    expect(appJs).toContain("server_migration_group_servers");
+    // The queries live in the migration service since M4b; the controller calls them.
+    expect(migrationService).toContain("server_migration_groups");
+    expect(migrationService).toContain("server_migration_group_servers");
+    expect(appJs).toContain('queryMigrationGroups(db)');
+    expect(appJs).toContain('queryMigrationGroupServers(db)');
     const callSites = (appJs.match(/renderMigrationGroupsList\(\);/g) || []).length;
     expect(callSites).toBeGreaterThanOrEqual(2);
   });
 
   it('showTransferMemberDialog uses the backend-authoritative eligibility RPC and labels cross-server options', () => {
-    expect(membersCtrl).toContain("gm_list_transfer_eligible_guilds");
+    expect(membersCtrl).toContain('listTransferEligibleGuilds(client, currentG)');
+    expect(fs.readFileSync(path.resolve(__dirname, '../src/modules/members/members.service.ts'), 'utf-8')).toContain("db.rpc('gm_list_transfer_eligible_guilds'");
     expect(membersCtrl).toContain('Migration Window');
   });
 

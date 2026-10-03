@@ -25,8 +25,15 @@ import {
   armsRaceStageLetter,
   filterStageParticipants,
   sortArmsRaceParticipants,
-  buildPopulateParams,
   computeArmsRaceStats,
+  fetchArmsRaceStatus,
+  fetchArmsRaceMembers,
+  fetchArmsRaceParticipants,
+  fetchStageParticipants,
+  populateStageParticipants,
+  upsertStageStatus,
+  fetchStageStartAt,
+  updateStageParticipation,
   type ArmsRaceStageKey,
   type ArmsRaceStageState,
   type ArmsRaceParticipantRow
@@ -136,12 +143,8 @@ export class ArmsRaceView {
         this.render();
         return;
       }
-      let statusQ: any = db.from('event_status').select('event_name, is_active, session_id, start_at')
-        .in('event_name', [ARMSRACE_STAGE_EVENTS.stageA, ARMSRACE_STAGE_EVENTS.stageB]);
-      let membersQ: any = db.from('guild_members').select('pseudo, uid');
-
-      statusQ = statusQ.eq('guild', currentG);
-      membersQ = membersQ.eq('guild', currentG);
+      const statusQ: any = fetchArmsRaceStatus(db, currentG);
+      const membersQ: any = fetchArmsRaceMembers(db, currentG);
 
       const [statusRes, membersRes] = await Promise.all([statusQ, membersQ]);
 
@@ -160,11 +163,7 @@ export class ArmsRaceView {
         .filter(Boolean) as string[];
 
       if (sids.length) {
-        const partRes = await db.from('event_participants').select('*')
-          .eq('guild', currentG)
-          .in('event_name', [ARMSRACE_STAGE_EVENTS.stageA, ARMSRACE_STAGE_EVENTS.stageB])
-          .in('session_id', sids)
-          .order('pseudo', { ascending: true });
+        const partRes = await fetchArmsRaceParticipants(db, currentG, sids);
         const parts = (partRes.data || []) as ArmsRaceParticipantRow[];
 
         for (const k of ARMSRACE_STAGE_KEYS) {
@@ -177,13 +176,9 @@ export class ArmsRaceView {
           if (this.state.stages[k].active && sid) {
             const week = legacy.getWeekStart(this.state.stages[k].startAt);
             try {
-              await db.rpc('gm_populate_event_participants', buildPopulateParams(k, sid, week, currentG));
+              await populateStageParticipants(db, k, sid, week, currentG);
             } catch (_) { /* best-effort */ }
-            const healRes = await db.from('event_participants').select('*')
-              .eq('guild', currentG)
-              .eq('event_name', evName)
-              .eq('session_id', sid)
-              .order('pseudo', { ascending: true });
+            const healRes = await fetchStageParticipants(db, currentG, evName, sid);
             this.state.stages[k].participants = (healRes.data || []) as ArmsRaceParticipantRow[];
           }
         }
@@ -226,7 +221,7 @@ export class ArmsRaceView {
     }
 
     try {
-      const res = await db.from('event_status').upsert(
+      const res = await upsertStageStatus(db,
         {
           guild: currentG,
           event_name: evName,
@@ -235,13 +230,12 @@ export class ArmsRaceView {
           start_at: startAt || null,
           stage: stageLetter,
           updated_at: new Date().toISOString()
-        },
-        { onConflict: 'guild,event_name' }
+        }
       );
       if (res.error) throw res.error;
 
       const week = legacy.getWeekStart(startAt);
-      const rpcRes = await db.rpc('gm_populate_event_participants', buildPopulateParams(stageKey, sessionId, week, currentG));
+      const rpcRes = await populateStageParticipants(db, stageKey, sessionId, week, currentG);
       if (rpcRes.error) throw rpcRes.error;
 
       legacy.showToast('Arms Race ' + armsRaceStageLabel(stageKey) + ' - ' + (legacy.t('event_started') || 'Started'), 'success');
@@ -261,7 +255,7 @@ export class ArmsRaceView {
     const currentG = legacy.getActiveGuild();
 
     try {
-      await db.from('event_status').upsert(
+      await upsertStageStatus(db,
         {
           guild: currentG,
           event_name: ARMSRACE_STAGE_EVENTS[stageKey],
@@ -270,8 +264,7 @@ export class ArmsRaceView {
           start_at: null,
           stage: armsRaceStageLetter(stageKey),
           updated_at: new Date().toISOString()
-        },
-        { onConflict: 'guild,event_name' }
+        }
       );
     } catch (err) { console.error('endStage', err); }
 
@@ -287,9 +280,7 @@ export class ArmsRaceView {
 
     try {
       const currentG = legacy.getActiveGuild();
-      const res = await db.from('event_status').select('start_at')
-        .eq('guild', currentG)
-        .eq('event_name', ARMSRACE_STAGE_EVENTS[stageKey]).maybeSingle();
+      const res = await fetchStageStartAt(db, currentG, ARMSRACE_STAGE_EVENTS[stageKey]);
       if (res.error) throw res.error;
 
       const currentStartAt = res.data ? res.data.start_at : null;
@@ -351,11 +342,7 @@ export class ArmsRaceView {
     if (!db) return;
     const stg = this.state.stages[this.activeStage];
     const currentG = legacy.getActiveGuild();
-    await db.from('event_participants').update({ participated: value })
-      .eq('guild', currentG)
-      .eq('event_name', ARMSRACE_STAGE_EVENTS[this.activeStage])
-      .eq('session_id', stg.sessionId)
-      .eq('pseudo', pseudo);
+    await updateStageParticipation(db, currentG, ARMSRACE_STAGE_EVENTS[this.activeStage], stg.sessionId, pseudo, value);
   }
 
   // ── Dynamic member sync (memory only; DB writes happen upstream via RPC) ────

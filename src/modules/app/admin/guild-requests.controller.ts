@@ -9,7 +9,6 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { escapeLike } from '../../../core/utils/text';
 import { getActiveGuild } from '../../../core/auth/roles';
 import { t, esc, gm, winAny, byId, getDb } from './utils';
 import { type AccountRow, getAccounts, filterAccountsOut } from './admin-store';
@@ -19,6 +18,7 @@ import { initChestTiersSettings, loadChestTiers } from '../../events/chest-setti
 import { testDiscordWebhook, formatDiscordRoleMention, sendDiscordWebhookDetailed, configuredWebhooks, setDiscordWebhook } from '../../../core/integrations/discord';
 import { buildGvgDailyTaskEmbed } from '../../../core/config/gvg-tasks';
 import { overviewView } from '../../overview/views/OverviewView';
+import { queryPendingMemberAccounts } from './admin.service';
 
 const GUILD_REQUEST_STATUS_META: Record<string, { label: string; cls: string }> = {
   pending: { label: 'Pending', cls: 'gm-chip-warning' },
@@ -440,11 +440,7 @@ export async function renderPendingRegistrations(activeG?: string | null): Promi
     const db = getDb();
     if (db) {
       try {
-        const res = await db.from('accounts')
-          .select('id, uid, status, role, guild, created_at')
-          .eq('status', 'pending')
-          .eq('role', 'member')
-          .ilike('guild', escapeLike(guild || ''));
+        const res = await queryPendingMemberAccounts(db, guild);
         pending = res.data || [];
       } catch (e) {
         console.warn('[GM] Error loading pending accounts:', e);

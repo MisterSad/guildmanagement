@@ -12,6 +12,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { escapeHTML } from '../../../core/utils/text';
+import { fetchGloryMembers, fetchGloryWeekScores, upsertPlayerGlory } from '../glory.service';
 
 function winAny(): any {
   return (typeof window !== 'undefined' ? window : ({} as any)) as any;
@@ -85,9 +86,9 @@ export class GloryView {
       const currentG = legacy.getActiveGuild();
 
       const [membersRes, currRes, prevRes] = await Promise.all([
-        db.from('guild_members').select('pseudo').eq('guild', currentG).order('pseudo', { ascending: true }),
-        db.from('event_participants').select('pseudo,score').eq('guild', currentG).eq('event_name', 'Glory').eq('week_start', week),
-        db.from('event_participants').select('pseudo,score').eq('guild', currentG).eq('event_name', 'Glory').eq('week_start', prevWeek)
+        fetchGloryMembers(db, currentG),
+        fetchGloryWeekScores(db, currentG, week),
+        fetchGloryWeekScores(db, currentG, prevWeek)
       ]);
 
       const members: string[] = ((membersRes.data || []) as any[]).map((m) => m.pseudo);
@@ -265,12 +266,7 @@ export class GloryView {
     try {
       const currentG = legacy.getActiveGuild();
       const scoreVal = (value === null || value === '') ? 0 : (typeof value === 'number' ? value : (legacy.parseNumber(value) || 0));
-      const rpcRes = await db.rpc('gm_upsert_player_glory', {
-        p_guild: currentG,
-        p_pseudo: pseudo,
-        p_week_start: week,
-        p_glory: scoreVal
-      });
+      const rpcRes = await upsertPlayerGlory(db, currentG, pseudo, week, scoreVal);
       if (rpcRes && rpcRes.error) throw rpcRes.error;
       // The RPC reports logical failures (permission_denied, ...) in its result
       // row rather than as a transport error: surface them.

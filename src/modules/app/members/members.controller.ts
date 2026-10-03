@@ -15,7 +15,13 @@ import { patchAppState } from '../../../core/state/app-state';
 import { getGuildMembers, setGuildMembers, pushGuildMember, filterGuildMembersOut, findGuildMember, getPendingTransfers, setPendingTransfers, transferActionFor } from './members.store';
 import { renderGuildMembers, membersSkeletonHtml } from './members.render';
 import { showToast } from '../dialogs/dialogs.service';
-import { addMember, updateMember } from '../../members/members.service';
+import {
+  addMember, updateMember,
+  listGuildMembers, listPendingTransfers, listPlayerAbsences, fetchLatestGloryScores,
+  resolveGuildTransfer, requestGuildTransfer, checkUidExistsGlobally, findPlayerByUid,
+  findBannedUid, deleteGuildMemberRow, listTransferEligibleGuilds, fetchGuildServerNumber,
+  transferGuildMember, listNameHistory, deleteNameHistoryEntry
+} from '../../members/members.service';
 import { eventsView } from '../../events/views/EventsView';
 import { armsRaceView } from '../../armsrace/views/ArmsRaceView';
 import { shadowfrontView } from '../../shadowfront/views/ShadowfrontView';
@@ -133,12 +139,12 @@ export async function fetchGuildMembers(opts?: { signal?: AbortSignal }): Promis
 
   try {
     const [res, transfersRes, absencesRes, gloryRes] = await Promise.all([
-      applySignal(client.from('guild_members').select('*').eq('guild', currentG).order('pseudo', { ascending: true }), signal),
-      applySignal(client.from('guild_transfers').select('id, uid, pseudo, source_guild, target_guild, requested_by').eq('status', 'pending').order('created_at', { ascending: true }), signal),
-      applySignal(client.from('player_absences').select('*').eq('guild', currentG), signal),
+      applySignal(listGuildMembers(client, currentG), signal),
+      applySignal(listPendingTransfers(client), signal),
+      applySignal(listPlayerAbsences(client, currentG), signal),
       // One row per player, newest first: the full history crossed 1,000 rows
       // for one guild and lost its oldest scores (audit PERF-05).
-      applySignal(client.rpc('gm_latest_glory_scores', { p_guild: currentG }), signal)
+      applySignal(fetchLatestGloryScores(client, currentG), signal)
     ]);
 
     if (res.error) throw res.error;
@@ -248,7 +254,7 @@ export async function resolveTransfer(transferId: string, action: string, dir: s
 
   confirm(title, message, async () => {
     try {
-      const { data, error } = await client.rpc('resolve_guild_transfer', { p_transfer_id: transferId, p_action: action });
+      const { data, error } = await resolveGuildTransfer(client, transferId, action);
       if (error || !data || !data.ok) {
         const errCode = data && data.error ? data.error : null;
         const errStr = (errCode && TRANSFER_ERROR_MESSAGES[errCode]) || (error ? error.message : 'Unknown error.');
@@ -403,7 +409,7 @@ export async function showUidTakenDialog(typedPseudo: string, uid: string, info:
         if (span) span.textContent = 'Requesting...';
         try {
           const client = db();
-          const { data, error } = await client.rpc('gm_admin_request_transfer', { p_uid: uid, p_target_guild: currentG });
+          const { data, error } = await requestGuildTransfer(client, uid, currentG);
           if (error) throw error;
           if (!data || !data.ok) throw new Error((data && data.error) || 'request_failed');
           closeDialog();
@@ -457,10 +463,10 @@ export async function handleAddMember(inputId: string, uidInputId: string, power
   };
 
   try {
-    const uidCheck = await client.rpc('check_uid_exists_globally', { p_uid: uidVal });
+    const uidCheck = await checkUidExistsGlobally(client, uidVal);
     if (uidCheck.error) throw uidCheck.error;
     if (uidCheck.data) {
-      const lookup = await client.rpc('gm_find_player_by_uid', { p_uid: uidVal });
+      const lookup = await findPlayerByUid(client, uidVal);
       if (lookup.error) throw lookup.error;
       const info = lookup.data || {};
       if (!info.ok) throw new Error(info.error || 'lookup_failed');
@@ -482,7 +488,7 @@ export async function handleAddMember(inputId: string, uidInputId: string, power
   }
 
   try {
-    const banCheck = await client.from('banned_players').select('uid').eq('uid', uidVal);
+    const banCheck = await findBannedUid(client, uidVal);
     if (banCheck.error) throw banCheck.error;
     if (banCheck.data && banCheck.data.length > 0) { showToast(t('toast_cannot_add_banned_player'), 'error'); return; }
   } catch (err) { console.error('Ban check failed', err); }
@@ -529,7 +535,7 @@ export async function deleteGuildMember(pseudo: string): Promise<void> {
   if (target && target.role === 'R5') { showToast(R5_DELETE_MESSAGE, 'warning'); return; }
   try {
     const currentG = activeGuild();
-    const res = await client.from('guild_members').delete().eq('pseudo', pseudo).eq('guild', currentG);
+    const res = await deleteGuildMemberRow(client, pseudo, currentG);
     if (res.error) throw res.error;
     filterGuildMembersOut((m) => m.pseudo === pseudo);
     renderGuildMembers();
@@ -591,7 +597,7 @@ export async function renameGuildMember(
   }
   if (uidChanged && newUid) {
     try {
-      const banCheck = await client.from('banned_players').select('uid').eq('uid', newUid);
+      const banCheck = await findBannedUid(client, newUid);
       if (banCheck.error) throw banCheck.error;
       if (banCheck.data && banCheck.data.length > 0) { showToast(t('toast_cannot_rename_banned_player'), 'error'); return false; }
     } catch (err) { console.error('Ban check failed', err); }
@@ -639,8 +645,8 @@ export async function showTransferMemberDialog(member: any): Promise<void> {
   if (existing) existing.remove();
 
   const currentG = activeGuild();
-  const eligPromise = client.rpc('gm_list_transfer_eligible_guilds', { p_guild: currentG });
-  const curPromise = client.from('guilds').select('server_number').eq('id', currentG).maybeSingle();
+  const eligPromise = listTransferEligibleGuilds(client, currentG);
+  const curPromise = fetchGuildServerNumber(client, currentG);
 
   let eligibleGuilds: any[] = [];
   try {
@@ -711,7 +717,7 @@ export async function showTransferMemberDialog(member: any): Promise<void> {
     try {
       // Phase 3: the canonical name. `transfer_guild_member` was a one-line
       // SQL wrapper around exactly this, with the identical signature.
-      const res = await client.rpc('gm_transfer_guild_member', { p_uid: member.uid, p_target_guild: targetGuild, p_pseudo: member.pseudo });
+      const res = await transferGuildMember(client, member.uid, targetGuild, member.pseudo);
       if (res.error) throw res.error;
       if (!res.data || !res.data.ok) throw new Error((res.data && res.data.error) || 'transfer_failed');
       const targetOption = targetSelect!.options[targetSelect!.selectedIndex];
@@ -740,7 +746,7 @@ export async function showEditMemberDialog(member: any): Promise<void> {
   let nameHistory: any[] = [];
   if (member.uid) {
     try {
-      const res = await client.from('player_name_history').select('*').eq('uid', member.uid).order('changed_at', { ascending: false });
+      const res = await listNameHistory(client, member.uid);
       if (!res.error) nameHistory = res.data || [];
     } catch (err) { console.error('Fetch name history failed', err); }
   }
@@ -885,7 +891,7 @@ export async function showEditMemberDialog(member: any): Promise<void> {
   overlay.querySelectorAll('.delete-history-btn').forEach((btn) => {
     btn.addEventListener('click', async () => {
       const id = btn.getAttribute('data-id') || '';
-      const res = await client.from('player_name_history').delete().eq('id', id);
+      const res = await deleteNameHistoryEntry(client, id);
       if (!res.error) { (btn as HTMLElement).closest('div')?.remove(); showToast('History entry removed', 'success'); }
       else showToast('Error removing history entry', 'error');
     });

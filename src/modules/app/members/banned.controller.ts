@@ -19,7 +19,7 @@ import {
 } from './members.store';
 import { renderGuildMembers } from './members.render';
 import { showToast } from '../dialogs/dialogs.service';
-import { banMember } from '../../members/members.service';
+import { banMember, listBannedPlayers, deleteBannedPlayerRow } from '../../members/members.service';
 import { getActiveGuild } from '../../../core/auth/roles';
 
 function g(): any {
@@ -46,7 +46,7 @@ export async function fetchBannedPlayers(): Promise<void> {
   if (!client) return;
   try {
     const currentG = activeGuild();
-    const res = await client.from('banned_players').select('*').eq('guild', currentG).order('created_at', { ascending: false });
+    const res = await listBannedPlayers(client, currentG);
     if (res.error) throw res.error;
     setBannedPlayers(res.data || []);
     renderBannedPlayers();
@@ -200,7 +200,7 @@ export async function deleteBannedPlayer(uid: string): Promise<void> {
   if (!client) return;
   try {
     const currentG = activeGuild();
-    const res = await client.from('banned_players').delete().eq('uid', uid).eq('guild', currentG);
+    const res = await deleteBannedPlayerRow(client, uid, currentG);
     if (res.error) throw res.error;
     removeBannedPlayer(uid);
     showToast(t('toast_player_unbanned_ok'), 'success');

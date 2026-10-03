@@ -10,6 +10,7 @@
 import { APP_VERSION } from '../../core/config/constants';
 import { detectClientEnvironment } from '../../core/auth/roles';
 import { guildWrite } from '../../core/api/guild-rpc';
+import type { DbClient } from '../../core/api/db-client';
 
 const ALLOWED_BULK_ROLES = ['R1', 'R2', 'R3', 'R4'];
 
@@ -111,4 +112,101 @@ export function addMember(member: NewMember): Promise<{ ok: true; member: any; a
  */
 export function updateMember(pseudo: string, update: Record<string, unknown>): Promise<{ ok: true; pseudo: string }> {
   return guildWrite('gm_update_member', { p_pseudo: pseudo, p_update: update });
+}
+
+// ── Roster queries (M4b) ────────────────────────────────────────────────────
+// Each returns the query builder (or promise) unchanged; the caller awaits it
+// and keeps its own error handling. `db` is the guarded client the caller holds.
+
+/** Lists a guild's roster, alphabetically by pseudo. */
+export function listGuildMembers(db: DbClient, guild: string | null) {
+  return db.from('guild_members').select('*').eq('guild', guild).order('pseudo', { ascending: true });
+}
+
+/** Lists every pending guild transfer, oldest first. */
+export function listPendingTransfers(db: DbClient) {
+  return db.from('guild_transfers').select('id, uid, pseudo, source_guild, target_guild, requested_by').eq('status', 'pending').order('created_at', { ascending: true });
+}
+
+/** Lists a guild's player absences. */
+export function listPlayerAbsences(db: DbClient, guild: string | null) {
+  return db.from('player_absences').select('*').eq('guild', guild);
+}
+
+/** Fetches each player's latest Glory score for a guild (one row per player). */
+export function fetchLatestGloryScores(db: DbClient, guild: string | null) {
+  return db.rpc('gm_latest_glory_scores', { p_guild: guild });
+}
+
+/** Approves or rejects a pending guild transfer. */
+export function resolveGuildTransfer(db: DbClient, transferId: string, action: string) {
+  return db.rpc('resolve_guild_transfer', { p_transfer_id: transferId, p_action: action });
+}
+
+/** Asks the player's current guild to release a UID into the target guild. */
+export function requestGuildTransfer(db: DbClient, uid: string, targetGuild: string | null) {
+  return db.rpc('gm_admin_request_transfer', { p_uid: uid, p_target_guild: targetGuild });
+}
+
+/** Tells whether a UID is already on any guild's roster. */
+export function checkUidExistsGlobally(db: DbClient, uid: string) {
+  return db.rpc('check_uid_exists_globally', { p_uid: uid });
+}
+
+/** Looks up the player holding a UID, across guilds. */
+export function findPlayerByUid(db: DbClient, uid: string) {
+  return db.rpc('gm_find_player_by_uid', { p_uid: uid });
+}
+
+/** Lists the ban rows matching a UID. */
+export function findBannedUid(db: DbClient, uid: string) {
+  return db.from('banned_players').select('uid').eq('uid', uid);
+}
+
+/** Removes a member from a guild's roster. */
+export function deleteGuildMemberRow(db: DbClient, pseudo: string, guild: string | null) {
+  return db.from('guild_members').delete().eq('pseudo', pseudo).eq('guild', guild);
+}
+
+/** Lists the guilds a member of this guild may be transferred to. */
+export function listTransferEligibleGuilds(db: DbClient, guild: string | null) {
+  return db.rpc('gm_list_transfer_eligible_guilds', { p_guild: guild });
+}
+
+/** Reads a guild's server number. */
+export function fetchGuildServerNumber(db: DbClient, guild: string | null) {
+  return db.from('guilds').select('server_number').eq('id', guild).maybeSingle();
+}
+
+/** Transfers a member to another guild. */
+export function transferGuildMember(db: DbClient, uid: string, targetGuild: string | null, pseudo: string) {
+  return db.rpc('gm_transfer_guild_member', { p_uid: uid, p_target_guild: targetGuild, p_pseudo: pseudo });
+}
+
+/** Lists a UID's name history, newest first. */
+export function listNameHistory(db: DbClient, uid: string) {
+  return db.from('player_name_history').select('*').eq('uid', uid).order('changed_at', { ascending: false });
+}
+
+/** Deletes one name-history entry. */
+export function deleteNameHistoryEntry(db: DbClient, id: string) {
+  return db.from('player_name_history').delete().eq('id', id);
+}
+
+/** Lists a guild's banned players, newest ban first. */
+export function listBannedPlayers(db: DbClient, guild: string | null) {
+  return db.from('banned_players').select('*').eq('guild', guild).order('created_at', { ascending: false });
+}
+
+/** Lifts a ban in a guild. */
+export function deleteBannedPlayerRow(db: DbClient, uid: string, guild: string | null) {
+  return db.from('banned_players').delete().eq('uid', uid).eq('guild', guild);
+}
+
+/** Sets the same role on several members of a guild. */
+export function bulkSetMemberRole(db: DbClient, guild: string | null, pseudos: string[], targetRole: string) {
+  return db.from('guild_members')
+      .update({ role: targetRole, metrics_updated_at: new Date().toISOString() })
+      .eq('guild', guild)
+      .in('pseudo', pseudos);
 }

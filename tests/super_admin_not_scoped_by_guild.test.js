@@ -27,6 +27,7 @@ const stripComments = (s) =>
   s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '').replace(/\/\/.*$/gm, '');
 
 const authCtrl = stripComments(read('src/modules/app/auth/auth.controller.ts'));
+const authService = stripComments(read('src/modules/app/auth/auth.service.ts'));
 const roles = stripComments(read('src/core/auth/roles.ts'));
 const shell = stripComments(read('src/modules/shell/views/ShellView.ts'));
 
@@ -41,7 +42,11 @@ describe('a super_admin is never scoped by their own accounts.guild', () => {
     // what every loader needs. Setting `currentGuildRestriction` is a LIMIT,
     // and it is what would remove the switcher and pin the owner to one guild.
     // So the rule is about the restriction, not about the read.
-    const lookups = [...authCtrl.matchAll(/from\('accounts'\)\s*\.select\('guild'[^\n]*/g)];
+    // The accounts.guild reads are built in auth.service.ts since M4b; the
+    // controller calls them, and the branching that matters is still here.
+    expect(authService).toMatch(/fetchAccountGuild\([\s\S]*?from\('accounts'\)\s*\.select\('guild'\)/);
+    expect(authService).toMatch(/fetchAccountGuildAndServer\([\s\S]*?from\('accounts'\)\s*\.select\('guild, server_number'\)/);
+    const lookups = [...authCtrl.matchAll(/fetchAccountGuild(?:AndServer)?\(client,[^\n]*/g)];
     expect(lookups.length, 'no account-guild lookup found: the check would be vacuous')
       .toBeGreaterThanOrEqual(2);
 

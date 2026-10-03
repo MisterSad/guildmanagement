@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+- **Data access moves out of the views** (medium-term plan, phase M4b; audit ARC-01, FE-06). No behaviour change.
+  - **Scope.** 23 views, controllers and renderers no longer build queries. 133 query sites moved, covering table reads and writes, RPCs, Edge Function calls and the OCR video storage. Each became a function of its module's service, named by intent.
+    - Each function takes the caller's guarded client (`src/core/api/db-client.ts`) and returns the same query, moved verbatim.
+    - The caller still awaits it and keeps its own error handling.
+  - **Where they went:**
+    - existing services gained them: shadowfront, events, armsrace, history, members, ocr, overview, migration, stats;
+    - new services: glory, sanctions, tickets, shell, `app/admin/admin.service.ts`, `app/auth/auth.service.ts`.
+  - **Why the client is passed in.** It is the same `window.GM.db` the view held, so db-guard's tenant filter still applies, and the fakes tests install still intercept every call. 2,483 tests pass unchanged, apart from source-text assertions that now read the service.
+  - **Guard.** `tests/data_access_in_services.test.js` fails on any `.from('`, `.rpc('`, `functions.invoke(` or `storage.from(` in a view, controller or renderer. Run against the previous `ShadowfrontView.ts` alone, it reports 26.
+
 - **Multi-step guild writes are transactions** (medium-term plan, phase M4a; audit ARC-02, DB-11, DB-12).
   - **What changes.** Seven browser flows used to issue 2 to 6 table writes with no rollback. Each is now one `SECURITY DEFINER` function, called through `src/core/api/guild-rpc.ts` `guildWrite()`, and it does all of its work or none.
     - The guard: `gm_require_guild_write`, the same rule as the RLS write policies, session epoch included. Every statement is filtered on that guild.

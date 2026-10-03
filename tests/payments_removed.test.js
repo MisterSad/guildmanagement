@@ -101,8 +101,12 @@ describe('the guild admin tab kept what was actually live', () => {
 
   it('still assigns server numbers and still deletes guilds', () => {
     expect(ctrl).toContain('guild-server-number');
-    expect(ctrl).toContain("update({ server_number:");
-    expect(ctrl, 'gm_delete_guild has no other caller').toContain('gm_delete_guild');
+    // M4b: the queries live in admin.service; the controller calls them.
+    const svc = read('src/modules/app/admin/admin.service.ts');
+    expect(svc).toContain("update({ server_number:");
+    expect(svc, 'gm_delete_guild has no other caller').toContain('gm_delete_guild');
+    expect(ctrl).toContain('await updateGuildServerNumber(db, guildId, serverNum)');
+    expect(ctrl).toContain('await deleteGuild(db, guildId)');
   });
 
   it('no longer edits a subscription', () => {

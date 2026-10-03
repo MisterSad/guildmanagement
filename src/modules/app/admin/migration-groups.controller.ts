@@ -9,7 +9,7 @@
 
 import { esc, winAny, byId, getDb } from './utils';
 import { showToast } from '../dialogs/dialogs.service';
-import { createMigrationGroup } from '../../migration/migration.service';
+import { createMigrationGroup, queryMigrationGroups, queryMigrationGroupServers, updateMigrationGroup } from '../../migration/migration.service';
 
 let migrationGroupsFormWired = false;
 
@@ -56,8 +56,8 @@ export async function renderMigrationGroupsList(): Promise<void> {
 
   try {
     const [groupsRes, serversRes] = await Promise.all([
-      db.from('server_migration_groups').select('id, name, status').order('created_at', { ascending: false }),
-      db.from('server_migration_group_servers').select('group_id, server_number')
+      queryMigrationGroups(db),
+      queryMigrationGroupServers(db)
     ]);
     if (groupsRes.error) throw groupsRes.error;
 
@@ -114,7 +114,7 @@ export async function renderMigrationGroupsList(): Promise<void> {
           (btn as HTMLButtonElement).disabled = true;
           try {
             const updatePayload = { status: newStatus, closed_at: newStatus === 'closed' ? new Date().toISOString() : null };
-            const res = await db.from('server_migration_groups').update(updatePayload).eq('id', groupId);
+            const res = await updateMigrationGroup(db, groupId, updatePayload);
             if (res.error) throw new Error(res.error.message);
             showToast('Migration group ' + (newStatus === 'closed' ? 'closed' : 'reopened') + '.', 'success');
             await renderMigrationGroupsList();

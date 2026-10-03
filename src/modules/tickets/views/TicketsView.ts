@@ -12,6 +12,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { escapeHTML } from '../../../core/utils/text';
+import { listTickets, updateTicketStatus } from '../tickets.service';
 
 function winAny(): any {
   return (typeof window !== 'undefined' ? window : ({} as any)) as any;
@@ -125,7 +126,7 @@ export class TicketsView {
 
     container.innerHTML = loadingHtml();
     try {
-      const res = await db.functions.invoke('tickets', { body: { action: 'list' } });
+      const res = await listTickets(db);
       const data = res && res.data;
       if (!data || !data.ok) throw new Error((data && data.error) || 'list_failed');
       this.render(container, data.tickets || []);
@@ -247,7 +248,7 @@ export class TicketsView {
     const original = sel.value;
     sel.disabled = true;
     try {
-      const res = await db.functions.invoke('tickets', { body: { action: 'update-status', id: Number(id), status } });
+      const res = await updateTicketStatus(db, id, status);
       const data = res && res.data;
       if (!data || !data.ok) throw new Error((data && data.error) || 'update_failed');
       legacy.showToast('Ticket updated', 'success');

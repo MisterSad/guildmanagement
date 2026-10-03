@@ -8,6 +8,7 @@
 
 import { getTimezoneOffset } from '../../utils/timezone';
 import { webhookChainIsSet } from '../../core/integrations/discord';
+import type { DbClient } from '../../core/api/db-client';
 
 export interface ClockMember {
   name: string;
@@ -134,4 +135,58 @@ export function serializeTimezoneClocks(list: ClockMember[]): string {
  */
 export function hasDiscordWebhook(configured: string[] | null | undefined): boolean {
   return webhookChainIsSet(configured);
+}
+
+// ---------------------------------------------------------------------------
+// Queries (M4b). Each returns the builder; the view awaits it.
+// ---------------------------------------------------------------------------
+
+/** Head-only count of the guild's members (the caller adds the guild filter). */
+export function queryMemberCount(db: DbClient) {
+  return db.from('guild_members').select('id', { count: 'exact', head: true });
+}
+
+/** Event status rows (the caller adds the guild filter). */
+export function queryEventStatus(db: DbClient) {
+  return db.from('event_status').select('event_name, is_active, updated_at, session_id, start_at');
+}
+
+/** Glory scores of one week (the caller adds the guild filter). */
+export function queryGloryScores(db: DbClient, weekStart: string) {
+  return db.from('event_participants').select('pseudo, score').eq('event_name', 'Glory').eq('week_start', weekStart);
+}
+
+/** The five most recent sanctions (the caller adds the guild filter). */
+export function queryRecentSanctions(db: DbClient) {
+  return db.from('sanctions').select('id, pseudo, comment, created_by, created_at').order('created_at', { ascending: false }).limit(5);
+}
+
+/** The five most recently added members (the caller adds the guild filter). */
+export function queryRecentMembers(db: DbClient) {
+  return db.from('guild_members').select('pseudo, created_at').order('created_at', { ascending: false }).limit(5);
+}
+
+/** The five latest approved transfers into or out of the guild. */
+export function queryRecentTransfers(db: DbClient, currentG: string | null) {
+  return db.from('guild_transfers').select('pseudo, source_guild, target_guild, resolved_at').eq('status', 'approved').or('source_guild.eq.' + currentG + ',target_guild.eq.' + currentG).order('resolved_at', { ascending: false }).limit(5);
+}
+
+/** Every member's overall power (the caller adds the guild filter). */
+export function queryMemberPower(db: DbClient) {
+  return db.from('guild_members').select('overall_power');
+}
+
+/** Members' role and timezone, for the officer clocks (the caller adds the guild filter). */
+export function queryOfficerTimezones(db: DbClient) {
+  return db.from('guild_members').select('pseudo, role, timezone, timezone_offset');
+}
+
+/** Members' role and timezone of one guild, for the "sync with officers" button. */
+export function queryGuildOfficerTimezones(db: DbClient, currentG: string | null) {
+  return db.from('guild_members').select('pseudo, role, timezone, timezone_offset').eq('guild', currentG);
+}
+
+/** The webhook keys configured for a guild (never the URLs). */
+export function fetchConfiguredWebhooks(db: DbClient, guild: string) {
+  return db.rpc('gm_configured_webhooks', { p_guild: guild });
 }

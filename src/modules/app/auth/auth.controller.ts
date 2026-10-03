@@ -16,7 +16,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { escapeLike } from '../../../core/utils/text';
+import { fetchAccountGuild, fetchAccountGuildAndServer, fetchGuildServerNumber } from './auth.service';
 import { getAppState, patchAppState, resetAppState } from '../../../core/state/app-state';
 import { showToast } from '../dialogs/dialogs.service';
 import { setVerifiedRole } from '../../../core/auth/roles';
@@ -312,7 +312,7 @@ export async function restoreSession(): Promise<RestoreSessionResult> {
     let guild: string | null = null;
     if (client) {
       try {
-        const { data } = await client.from('accounts').select('guild').ilike('id', escapeLike(info.accountId)).maybeSingle();
+        const { data } = await fetchAccountGuild(client, info.accountId);
         guild = data && data.guild ? data.guild : null;
       } catch (err) {
         console.error('Failed to restore account guild restriction:', err);
@@ -329,11 +329,11 @@ export async function restoreSession(): Promise<RestoreSessionResult> {
     let serverNumber: string | null = null;
     if (client) {
       try {
-        const { data } = await client.from('accounts').select('guild, server_number').ilike('id', escapeLike(info.accountId)).maybeSingle();
+        const { data } = await fetchAccountGuildAndServer(client, info.accountId);
         const sNum = data && data.server_number;
         if (sNum) serverNumber = String(sNum);
         else if (data && data.guild) {
-          const { data: guildRow } = await client.from('guilds').select('server_number').eq('id', data.guild).maybeSingle();
+          const { data: guildRow } = await fetchGuildServerNumber(client, data.guild);
           if (guildRow && guildRow.server_number) serverNumber = String(guildRow.server_number);
         }
       } catch (err) {
@@ -431,7 +431,7 @@ export async function handleSuccessfulLogin(resp: LoginResponse, typedUser?: str
     let guild: string | null = null;
     if (client) {
       try {
-        const { data } = await client.from('accounts').select('guild').ilike('id', escapeLike(canonicalUser)).maybeSingle();
+        const { data } = await fetchAccountGuild(client, canonicalUser);
         guild = data && data.guild ? data.guild : null;
       } catch (err) {
         console.error('Failed to load login guild restriction:', err);
@@ -449,11 +449,11 @@ export async function handleSuccessfulLogin(resp: LoginResponse, typedUser?: str
     let serverNumber: string | null = null;
     if (client) {
       try {
-        const { data } = await client.from('accounts').select('guild, server_number').ilike('id', escapeLike(canonicalUser)).maybeSingle();
+        const { data } = await fetchAccountGuildAndServer(client, canonicalUser);
         const sNum = data && data.server_number;
         if (sNum) serverNumber = String(sNum);
         else if (data && data.guild) {
-          const { data: guildRow } = await client.from('guilds').select('server_number').eq('id', data.guild).maybeSingle();
+          const { data: guildRow } = await fetchGuildServerNumber(client, data.guild);
           if (guildRow && guildRow.server_number) serverNumber = String(guildRow.server_number);
         }
       } catch (err) {
@@ -537,8 +537,7 @@ async function ensureInitialGuildSelection(accountId: string | null): Promise<vo
   const client = db();
   if (client && accountId) {
     try {
-      const { data } = await client
-        .from('accounts').select('guild').ilike('id', escapeLike(accountId)).maybeSingle();
+      const { data } = await fetchAccountGuild(client, accountId);
       if (data && data.guild) guild = String(data.guild);
     } catch (_) { /* fall through to the list */ }
   }
