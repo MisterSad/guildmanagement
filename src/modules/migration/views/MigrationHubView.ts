@@ -78,10 +78,13 @@ const CATEGORY_CHIP_CLASSES: Record<MigrationWikiCategory, string> = {
   blacklist: 'gm-chip-danger'
 };
 
-/** Mirrors the gm_migration_wiki_delete policy: creator or super admin. */
-export function canDeleteWikiPage(page: { created_by_account_id?: string | null }, accountId: string | null, role: string | null): boolean {
+/**
+ * Mirrors the gm_migration_wiki_update / _delete policies: a page belongs to the
+ * guild that wrote it, and only that guild (or a super admin) edits or deletes it.
+ */
+export function canManageWikiPage(page: { owner_guild?: string | null }, guild: string | null, role: string | null): boolean {
   if (role === 'super_admin') return true;
-  return !!accountId && !!page.created_by_account_id && page.created_by_account_id === accountId;
+  return !!guild && !!page.owner_guild && page.owner_guild === guild;
 }
 
 export class MigrationHubView {
@@ -513,11 +516,14 @@ export class MigrationHubView {
     if (viewEmpty) viewEmpty.style.display = 'none';
     if (viewDetail) viewDetail.style.display = 'block';
 
-    // Only the page's creator or a super admin may delete it (policy
-    // gm_migration_wiki_delete). The button used to show for everyone, and a
-    // refused delete looked like a success.
+    // Only the author guild or a super admin may edit or delete the page
+    // (policies gm_migration_wiki_update / _delete). A refused write must not
+    // look like a success, so the buttons only show when it would be accepted.
+    const canManage = canManageWikiPage(activePage, getActiveGuild(), roleFromStorage());
     const delBtn = document.getElementById('migration-hub-delete-btn');
-    if (delBtn) delBtn.style.display = canDeleteWikiPage(activePage, currentAccountId(), roleFromStorage()) ? '' : 'none';
+    if (delBtn) delBtn.style.display = canManage ? '' : 'none';
+    const editBtnEl = document.getElementById('migration-hub-edit-btn');
+    if (editBtnEl) editBtnEl.style.display = canManage ? '' : 'none';
 
     // Reset AI summary box
     const aiBox = document.getElementById('migration-hub-page-ai-box');
@@ -713,7 +719,6 @@ export class MigrationHubView {
     if (!currentG) return;
     const serverNumber = legacy.getServerNumber(currentG);
     const pseudo = getCurrentPseudo() || currentAccountId() || 'Admin';
-    const accId = currentAccountId();
 
     const saveBtn = document.getElementById('migration-hub-form-save-btn') as HTMLButtonElement | null;
     if (saveBtn) saveBtn.disabled = true;
@@ -728,10 +733,7 @@ export class MigrationHubView {
             category,
             content,
             is_pinned: isPinned,
-            attachments: this.pendingAttachments,
-            updated_by_account_id: accId,
-            updated_by_pseudo: pseudo,
-            updated_at: new Date().toISOString()
+            attachments: this.pendingAttachments
           })
           .eq('id', this.editingPageId);
 
@@ -756,9 +758,9 @@ export class MigrationHubView {
             content,
             is_pinned: isPinned,
             attachments: this.pendingAttachments,
-            created_by_account_id: accId,
+            // Authorship and owner guild are stamped by the database from the
+            // session; NOT NULL placeholders only (trg_migration_wiki_pages_stamp).
             created_by_pseudo: pseudo,
-            updated_by_account_id: accId,
             updated_by_pseudo: pseudo
           })
           .select('id')
@@ -984,10 +986,7 @@ export class MigrationHubView {
     const db = legacy.getDb();
     if (!db) return;
 
-    const currentG = getActiveGuild();
     const pseudo = getCurrentPseudo() || currentAccountId() || 'Leader';
-    const accId = currentAccountId();
-    const role = roleFromStorage() || 'guild_admin';
 
     if (submitBtn) submitBtn.disabled = true;
 
@@ -995,10 +994,9 @@ export class MigrationHubView {
       const { error } = await db.from('migration_wiki_comments').insert({
         page_id: activePageId,
         content,
-        author_account_id: accId,
-        author_pseudo: pseudo,
-        author_guild_id: currentG,
-        author_role: role
+        // Author fields are stamped by the database from the session
+        // (trg_migration_wiki_comments_stamp); NOT NULL placeholder only.
+        author_pseudo: pseudo
       });
 
       if (error) {

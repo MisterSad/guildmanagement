@@ -2,6 +2,32 @@
 
 ## [Unreleased]
 
+- **Security: tenant isolation and session revocation** (short-term plan, phase 2; audit SEC-05, SEC-07, SEC-08, DB-05, DB-06, DB-07, BE-B-06, BE-B-07, BE-B-21; migration `20261003113839`). This change is user-facing for officers.
+  - **A revoked session revokes.**
+    - 22 functions resolved their caller inline and never checked `session_version`. Each now does, through a checked rewrite that asserts afterwards that no function or policy resolves its caller without the check.
+    - `gm_can_admin_see_absences` dropped its e-mail match and its `ALPHA` fallback. Its audience is unchanged: super_admin, or the guild's guild_admin.
+    - `bumpSessionVersion` now ends the user's sessions through `gm_revoke_auth_sessions`. Before, re-stamping the token let a stolen refresh token mint a valid JWT at the new epoch.
+  - **The migration wiki belongs to the guild that wrote each page** (owner decision).
+    - New column `owner_guild`, with an ADR-022 foreign key, back-filled for all 10 pages.
+    - Only that guild, or a super_admin, edits or deletes a page. Reading and commenting stay server-wide.
+    - Author, pseudo, role and owner are stamped by triggers from the session. `UPDATE` is granted on content columns only.
+    - The front shows Edit and Delete only when they would be accepted (`canManageWikiPage`).
+  - **A member can no longer move a player to another guild** (`gm_transfer_guild_member`). Players still use `request_guild_transfer`.
+  - **A banned UID cannot be put back on the roster** (owner decision). The new trigger `trg_guild_members_refuse_banned` checks inserts and guild or UID changes, by any path: screen, OCR or bot.
+  - **Deleting a guild no longer deletes the server_admin attached to it.** That account loses the guild and keeps the server the guild gave it.
+  - **A deleted or erased account keeps no session.**
+    - Guild purge and GDPR erasure revoke the account's sessions.
+    - `gm_erase_account` also runs for the service role now.
+    - The 45 orphan sign-in identities lost their 31 live refresh tokens.
+    - Owner decision: no identity is deleted. Each stays unusable, since its sign-in secret lived in the deleted account row.
+  - **Verified on production before applying,** in a rolled-back transaction under DEMO identities:
+    - session: valid gives guild DEMO and 40 sessions; stale gives NULL and 0;
+    - a member's transfer is unauthorized;
+    - wiki: a spoofed author is replaced, rewriting the author is refused, and another guild's page can be read but not updated or deleted (0 rows);
+    - a banned insert and a banned UID change are refused;
+    - the attached server_admin is kept with its server.
+  - Tests: `tests/tenant_isolation_sessions.test.js`. Gate: type-check clean, 2443 unit tests, build, 44 e2e.
+
 - **Fixed: numbers that went wrong past 1,000 rows** (short-term plan, phase 1; audit PERF-02 to PERF-05, PERF-09, DB-16; migration `20261003112152`). PostgREST answers at most 1,000 rows per request and says nothing when it stops there.
   - **Player portal guild averages (PERF-02).**
     - Before: `get-history` read the whole guild's participation history, up to 9,859 rows, to average each session. Members of 14 guilds saw guild averages and maxima of 0, or wrong ones.

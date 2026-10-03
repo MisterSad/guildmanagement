@@ -11,7 +11,7 @@ import path from 'path';
 vi.mock('../src/core/config/guild-config', () => ({ getGuildConfig: vi.fn() }));
 import { getGuildConfig } from '../src/core/config/guild-config';
 import { resolveCoeff, paintEventCoeffLabels } from '../src/core/config/event-coeff-labels';
-import { canDeleteWikiPage } from '../src/modules/migration/views/MigrationHubView';
+import { canManageWikiPage } from '../src/modules/migration/views/MigrationHubView';
 
 const read = (p) => fs.readFileSync(path.resolve(__dirname, '..', p), 'utf-8');
 
@@ -68,11 +68,11 @@ describe('8. Stats speaks English', () => {
 });
 
 describe('9. Migration Hub page deletion', () => {
-  it('only the creator or a super admin sees Delete (mirrors gm_migration_wiki_delete)', () => {
-    expect(canDeleteWikiPage({ created_by_account_id: 'me' }, 'me', 'guild_admin')).toBe(true);
-    expect(canDeleteWikiPage({ created_by_account_id: 'other' }, 'me', 'guild_admin')).toBe(false);
-    expect(canDeleteWikiPage({ created_by_account_id: null }, 'me', 'server_admin')).toBe(false);
-    expect(canDeleteWikiPage({ created_by_account_id: 'other' }, 'me', 'super_admin')).toBe(true);
+  it('only the author guild or a super admin sees Edit and Delete (mirrors the wiki policies)', () => {
+    expect(canManageWikiPage({ owner_guild: 'ALPHA' }, 'ALPHA', 'guild_admin')).toBe(true);
+    expect(canManageWikiPage({ owner_guild: 'BETA' }, 'ALPHA', 'guild_admin')).toBe(false);
+    expect(canManageWikiPage({ owner_guild: null }, 'ALPHA', 'server_admin')).toBe(false);
+    expect(canManageWikiPage({ owner_guild: 'BETA' }, null, 'super_admin')).toBe(true);
   });
   it('a refused delete is reported, not announced as done', () => {
     const src = read('src/modules/migration/views/MigrationHubView.ts');

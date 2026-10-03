@@ -961,6 +961,7 @@ export type Database = {
           guild_id: string | null
           id: string
           is_pinned: boolean
+          owner_guild: string | null
           scope: string
           server_number: string
           title: string
@@ -978,6 +979,7 @@ export type Database = {
           guild_id?: string | null
           id?: string
           is_pinned?: boolean
+          owner_guild?: string | null
           scope: string
           server_number: string
           title: string
@@ -995,6 +997,7 @@ export type Database = {
           guild_id?: string | null
           id?: string
           is_pinned?: boolean
+          owner_guild?: string | null
           scope?: string
           server_number?: string
           title?: string
@@ -1013,6 +1016,13 @@ export type Database = {
           {
             foreignKeyName: "migration_wiki_pages_guild_id_fkey"
             columns: ["guild_id"]
+            isOneToOne: false
+            referencedRelation: "guilds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "migration_wiki_pages_owner_guild_fkey"
+            columns: ["owner_guild"]
             isOneToOne: false
             referencedRelation: "guilds"
             referencedColumns: ["id"]
@@ -1746,6 +1756,7 @@ export type Database = {
         Args: { p_auth_user_id: string; p_id: string; p_secret: string }
         Returns: undefined
       }
+      gm_caller_guild: { Args: never; Returns: string }
       gm_can_access_server_wiki: {
         Args: { p_server_number: string }
         Returns: boolean
@@ -2138,6 +2149,10 @@ export type Database = {
         }[]
       }
       gm_reset_demo_tenant_data: { Args: never; Returns: Json }
+      gm_revoke_auth_sessions: {
+        Args: { p_auth_user_id: string }
+        Returns: number
+      }
       gm_save_chest_tiers: {
         Args: { p_event_name: string; p_guild: string; p_tiers: Json }
         Returns: Json

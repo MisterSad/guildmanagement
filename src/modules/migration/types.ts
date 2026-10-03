@@ -29,6 +29,8 @@ export interface MigrationWikiPage {
   scope: MigrationWikiScope;
   server_number: string;
   guild_id: string | null;
+  /** The guild that wrote the page; only it (or a super admin) edits or deletes it. */
+  owner_guild: string | null;
   category: MigrationWikiCategory;
   title: string;
   content: string;

@@ -44,6 +44,10 @@ export async function bumpSessionVersion(
     await admin.auth.admin.updateUserById(authUserId, {
       app_metadata: { app_role: role, account_id: accountId, session_version: next },
     });
+    // Re-stamping alone did not revoke anything: a stolen refresh token
+    // minted a fresh JWT at the new epoch on its next use (audit SEC-07).
+    // Ending the sessions deletes their refresh tokens.
+    await admin.rpc("gm_revoke_auth_sessions", { p_auth_user_id: authUserId });
   }
   return next;
 }
