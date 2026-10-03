@@ -8,7 +8,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import { showToast } from '../src/core/dom/toast';
 import { formatDiscordRoleMention } from '../src/core/integrations/discord';
-import { loginWithPasskey, applyPasskeySessionData, generateJoinCode } from '../src/core/auth/session';
+import { generateJoinCode } from '../src/core/auth/session';
 import {
   getUidStatus,
   isInvalidOrTempUid,
@@ -61,31 +61,7 @@ describe('Discord formatting', () => {
   });
 });
 
-describe('session — passkey wrappers', () => {
-  it('loginWithPasskey applies the returned session', async () => {
-    const setSession = vi.fn(async () => ({ error: null }));
-    window.GM = {
-      db: { auth: { setSession } },
-      webauthn: { authenticateWithPasskey: vi.fn(async () => ({ ok: true, access_token: 'a', refresh_token: 'r', role: 'guild_admin', id: 'Alpha' })) }
-    };
-    const res = await loginWithPasskey('Alpha');
-    expect(res.ok).toBe(true);
-    expect(res.role).toBe('guild_admin');
-    expect(setSession).toHaveBeenCalledWith({ access_token: 'a', refresh_token: 'r' });
-  });
-
-  it('loginWithPasskey fails cleanly when webauthn is unavailable', async () => {
-    window.GM = { db: {} };
-    const res = await loginWithPasskey('Alpha');
-    expect(res).toEqual({ ok: false, error: 'webauthn_unavailable' });
-  });
-
-  it('applyPasskeySessionData propagates an invalid payload', async () => {
-    window.GM = { db: { auth: { setSession: vi.fn() } } };
-    expect(await applyPasskeySessionData(null)).toEqual({ ok: false, error: 'invalid' });
-    expect(await applyPasskeySessionData({ ok: false, error: 'nope' })).toEqual({ ok: false, error: 'nope' });
-  });
-
+describe('session — join codes (passkeys were removed on 2026-10-03)', () => {
   it('generateJoinCode uses the FGF-XXXX-XXXX shape', () => {
     expect(generateJoinCode()).toMatch(/^FGF-[A-Z2-9]{4}-[A-Z2-9]{4}$/);
     expect(generateJoinCode('ABC')).toMatch(/^ABC-[A-Z2-9]{4}-[A-Z2-9]{4}$/);

@@ -103,10 +103,6 @@ const legacy = {
     const g = gm();
     return g && typeof g.calculateRallyGrade === 'function' ? g.calculateRallyGrade(p, max) : 100;
   },
-  mountPasskeysPanel(opts: unknown): any {
-    const g = gm();
-    return g && g.webauthn && typeof g.webauthn.mountPasskeysPanel === 'function' ? g.webauthn.mountPasskeysPanel(opts) : null;
-  },
   computeBadges(payload: unknown): any {
     // Phase 7: imported. The `window` probe returned null whenever the
     // namespace name drifted, and the portal simply rendered no badges.

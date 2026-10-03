@@ -22,11 +22,6 @@ export const HELP_DB: Record<string, HelpEntry> = {
   // ====================================================
   // ADMIN - Accounts & Access
   // ====================================================
-  'help-my-passkeys': {
-    icon: 'ph-fingerprint',
-    title: 'My Passkeys',
-    body: '<p>A passkey lets you sign in with your device\'s fingerprint, face, or PIN instead of typing your password every time. It never leaves your device.</p><p>You can register a passkey on each device you use (phone, laptop...) and give each one a name so you can tell them apart.</p><p>Your password keeps working exactly as before - a passkey is an extra option, not a replacement.</p><p>The first time you add a passkey, you\'ll also get a set of one-time <strong>backup codes</strong> to download - keep them somewhere safe in case you ever lose access to all your passkeys.</p>'
-  },
   'help-create-account': {
     icon: 'ph-key',
     title: 'New Account',

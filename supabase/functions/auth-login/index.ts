@@ -45,12 +45,8 @@ Deno.serve(async (req: Request) => {
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
 
-  // IP sliding window throttle: 60 attempts per 5 minutes. Shared with
-  // auth-passkey (same login_throttle table, keyed purely by IP) — a
-  // passkey sign-in costs 2 requests (options + verify) instead of 1, and
-  // the conditional/autofill listener adds a background options call on
-  // every page load, so this budget covers both password and passkey
-  // login from the same IP, not just this one endpoint.
+  // IP sliding window throttle: 60 attempts per 5 minutes, on the
+  // login_throttle table auth-discord also counts against (keyed purely by IP).
   const clientIp = extractClientIp(req.headers);
   const throttle = await checkAndRecordIpAttempt(admin, clientIp, { limit: 60, windowMs: 300_000 });
   if (!throttle.allowed) {
@@ -92,20 +88,12 @@ Deno.serve(async (req: Request) => {
     return json({ ok: false, error: shadowResult.error }, shadowResult.status);
   }
 
-  // Surfaced so the client can offer to enroll a passkey right after a
-  // successful password sign-in when the account doesn't have one yet.
-  const { count: passkeyCount } = await admin
-    .from("account_passkeys")
-    .select("id", { count: "exact", head: true })
-    .eq("account_id", canonicalId);
-
   logger.info("User signed in successfully", { canonicalId, role });
 
   return json({
     ok: true,
     role,
     id: canonicalId,
-    has_passkey: (passkeyCount ?? 0) > 0,
     access_token: shadowResult.session.access_token,
     refresh_token: shadowResult.session.refresh_token,
     expires_at: shadowResult.session.expires_at,

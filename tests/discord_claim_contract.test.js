@@ -187,7 +187,7 @@ describe('the dialog offers both ways in, and warns before the irreversible one'
 
   it('says plainly that the password will be removed', () => {
     expect(dialog).toContain('Discord becomes the only way in');
-    expect(dialog).toContain('Your password and any passkeys are removed');
+    expect(dialog).toContain('Your password is removed');
   });
 
   it('shows a super_admin their new backup codes once', () => {

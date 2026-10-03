@@ -70,9 +70,10 @@ describe('bounded inputs (BE-A-15, SEC-13)', () => {
     expect(src).toMatch(/mimeType: z\.string\(\)\.regex\(/);
   });
 
-  it('auth-passkey bounds its envelope before WebAuthn verification', () => {
+  it('auth-passkey is a tombstone: passkeys were removed (owner decision, 2026-10-03)', () => {
     const src = read('supabase/functions/auth-passkey/index.ts');
-    expect(src).toContain('JSON.stringify(payload).length > 32_000');
+    expect(src).toContain('status: 410');
+    expect(src).not.toMatch(/simplewebauthn|createClient/);
   });
 });
 

@@ -2,8 +2,8 @@
  * src/modules/app/auth/auth.controller.ts
  *
  * Sous-lot 6.3 (Strangler) — auth/session UI controller ported from app.js:
- * session restore, post-login routing, logout, the auth tab/form wiring, the
- * passkey nudge, passkey sign-in buttons and the backup-code dialog.
+ * session restore, post-login routing, logout, the auth tab/form wiring and
+ * Discord sign-in. Passkeys were removed entirely (2026-10-03).
  *
  * Runtime notes:
  *  - `app.js` is still the authoritative parser-time wiring; this module is the
@@ -11,8 +11,7 @@
  *    double listeners).
  *  - Restrictions are written through `patchAppState`, so `/src` modules and
  *    `app.js` stay coherent via the window mirror.
- *  - Passkey ceremonies delegate to `window.GM.webauthn` (via core/auth/session),
- *    and user feedback delegates to dialogs.service.
+ *  - User feedback delegates to dialogs.service.
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -29,7 +28,6 @@ export interface LoginResponse {
   ok: boolean;
   role?: string;
   id?: string;
-  hasPasskey?: boolean;
   error?: string;
   [key: string]: any;
 }
@@ -380,10 +378,9 @@ export async function restoreSession(): Promise<RestoreSessionResult> {
 
 // ── Post-login ───────────────────────────────────────────────────────────────
 
-/** Shared post-login path (password, passkey, backup code). */
+/** Shared post-login path (password, backup code, Discord). */
 export async function handleSuccessfulLogin(resp: LoginResponse, typedUser?: string): Promise<void> {
   const x = g();
-  if (x && typeof x.abortConditionalPasskeyLogin === 'function') x.abortConditionalPasskeyLogin();
 
   const canonicalUser = resp.id || typedUser || '';
   const loginError = el('login-error');
@@ -424,7 +421,6 @@ export async function handleSuccessfulLogin(resp: LoginResponse, typedUser?: str
 
     revealPortal();
     showToast(t('toast_welcome') + ' ' + (typedUser || canonicalUser) + ' !', 'success');
-    maybeShowSecureAccountPrompt(resp, role);
     return;
   }
 
@@ -505,8 +501,6 @@ export async function handleSuccessfulLogin(resp: LoginResponse, typedUser?: str
   showToast(role === 'super_admin'
     ? t('toast_login_ok')
     : (t('toast_welcome') + ' ' + (typedUser || canonicalUser) + ' !'), 'success');
-
-  maybeShowSecureAccountPrompt(resp, role);
 }
 
 
@@ -599,18 +593,6 @@ export function showLogin(): void {
   resetDiscordButton();
   const loginView = el('login-view');
   if (loginView) { loginView.classList.remove('hidden'); loginView.classList.add('active'); }
-  startConditionalPasskeyListener();
-}
-
-/** Arms the conditional/autofill passkey listener (silent, normal no-op). */
-export function startConditionalPasskeyListener(): void {
-  const x = g();
-  if (!x || typeof x.startConditionalPasskeyLogin !== 'function') return;
-  x.startConditionalPasskeyLogin()
-    .then((resp: LoginResponse | null) => {
-      if (resp && resp.ok) void handleSuccessfulLogin(resp, resp.id);
-    })
-    .catch(() => { /* silent by design */ });
 }
 
 // ── Discord sign-in ──────────────────────────────────────────────────────────
@@ -1070,7 +1052,7 @@ export function openLinkAccountDialog(
               field('discord-link-id', 'Identifier', 'type="text" autocomplete="username"') +
               field('discord-link-password', 'Password', 'type="password" autocomplete="current-password"') +
               '<div class="terms-callout warning gm-onboard-warning">' +
-                '<i class="ph ph-warning"></i> After this, <strong>Discord becomes the only way in</strong> for this account. Your password and any passkeys are removed.' +
+                '<i class="ph ph-warning"></i> After this, <strong>Discord becomes the only way in</strong> for this account. Your password is removed.' +
               '</div>' +
             '</div>' +
             '<div id="path-code" class="gm-onboard-tabpanel hidden">' +
@@ -1642,204 +1624,4 @@ export function initAuthForms(): void {
   if (legacy && lastSignInMethod() === 'password') legacy.open = true;
 
   wireOnce(el('logout-btn'), '__gmAuthWired', 'click', () => { void doLogout(); });
-}
-
-// ── Passkey nudge ────────────────────────────────────────────────────────────
-
-/** One-time passkey nudge after a plain password login (never after a passkey). */
-export function maybeShowSecureAccountPrompt(resp: LoginResponse, role: string): void {
-  if (typeof document === 'undefined') return;
-  if (resp.hasPasskey !== false) return;
-  const storage = ss();
-  if (storage && storage.getItem('gm_secure_prompt_dismissed') === '1') return;
-  const x = g();
-  if (!x || !x.webauthn || typeof x.webauthn.isSupported !== 'function' || !x.webauthn.isSupported()) return;
-
-  const existing = document.getElementById('secure-account-banner');
-  if (existing) existing.remove();
-
-  const isPortal = role === 'member';
-
-  const banner = document.createElement('div');
-  banner.id = 'secure-account-banner';
-  banner.style.cssText = 'position:fixed; bottom:1rem; right:1rem; z-index:9000; max-width:360px; ' +
-    'background:var(--bg-soft, #1a1a24); border:1px solid rgba(255,255,255,0.1); border-radius:12px; ' +
-    'padding:1rem 1.1rem; box-shadow:0 8px 24px rgba(0,0,0,0.4); display:flex; flex-direction:column; gap:.6rem;';
-  banner.innerHTML =
-    '<div style="display:flex; align-items:flex-start; gap:.6rem;">' +
-      '<i class="ph ph-fingerprint" style="font-size: var(--fs-2xl); color:var(--accent); flex-shrink:0; margin-top:.1rem;"></i>' +
-      '<div>' +
-        '<div style="font-weight:600; margin-bottom:.15rem;">Secure your account</div>' +
-        '<div style="font-size: var(--fs-sm); color:var(--fg-dim);">Add a passkey to sign in faster next time, without typing your password.</div>' +
-      '</div>' +
-    '</div>' +
-    '<div style="display:flex; gap:.5rem; justify-content:flex-end;">' +
-      '<button type="button" id="secure-prompt-later" class="gm-btn gm-btn-ghost gm-btn-sm">Later</button>' +
-      '<button type="button" id="secure-prompt-setup" class="gm-btn gm-btn-primary gm-btn-sm">Set up now</button>' +
-    '</div>';
-
-  document.body.appendChild(banner);
-
-  function dismiss(): void {
-    if (storage) storage.setItem('gm_secure_prompt_dismissed', '1');
-    banner.remove();
-  }
-
-  const later = document.getElementById('secure-prompt-later');
-  if (later) later.addEventListener('click', dismiss);
-  const setup = document.getElementById('secure-prompt-setup');
-  if (setup) setup.addEventListener('click', () => {
-    dismiss();
-    if (isPortal) {
-      const navBtn = document.querySelector('[data-portal-nav="settings"]') as HTMLElement | null;
-      if (navBtn) navBtn.click();
-    } else {
-      shellView.gotoItem('accounts');
-    }
-  });
-}
-
-// ── Passkey sign-in buttons / backup code dialog ─────────────────────────────
-
-/** Wires a passkey sign-in button (id optional → fully discoverable ceremony). */
-export function wirePasskeyLoginButton(
-  btnId: string,
-  idInputId: string,
-  errorElId: string,
-  onSuccess: AuthSuccessHandler
-): void {
-  const btn = el<HTMLButtonElement>(btnId);
-  if (!btn) return;
-  const x = g();
-  if (x && x.webauthn && typeof x.webauthn.isSupported === 'function' && !x.webauthn.isSupported()) {
-    btn.disabled = true;
-    btn.title = 'Passkeys are not supported in this browser.';
-  }
-
-  btn.addEventListener('click', async () => {
-    const idInput = el<HTMLInputElement>(idInputId);
-    const id = idInput ? idInput.value.trim() : '';
-    const errorEl = errorElId ? el(errorElId) : null;
-
-    btn.disabled = true;
-    const icon = btn.querySelector('i');
-    const originalIconClass = icon ? icon.className : '';
-    if (icon) icon.className = 'ph ph-circle-notch ph-spin';
-    try {
-      const client = g();
-      const resp: LoginResponse = client && typeof client.loginWithPasskey === 'function'
-        ? await client.loginWithPasskey(id)
-        : { ok: false, error: 'webauthn_unavailable' };
-
-      if (!resp.ok) {
-        if (resp.error !== 'cancelled' && errorEl) {
-          const msg = resp.error === 'no_passkeys'
-            ? 'No passkey found for this account.'
-            : resp.error === 'account_locked'
-              ? 'This account is temporarily locked.'
-              : 'Passkey sign-in failed.';
-          const span = errorEl.querySelector('span:last-of-type');
-          if (span) span.textContent = msg;
-          errorEl.classList.remove('hidden');
-        }
-        return;
-      }
-      if (errorEl) errorEl.classList.add('hidden');
-      await onSuccess(resp, id);
-    } finally {
-      btn.disabled = false;
-      if (icon) icon.className = originalIconClass;
-    }
-  });
-}
-
-/** Backup-code sign-in dialog (both login screens). */
-export function openBackupCodeDialog(idInputId: string, onSuccess: AuthSuccessHandler): void {
-  if (typeof document === 'undefined') return;
-  const existing = document.getElementById('backup-code-login-overlay');
-  if (existing) existing.remove();
-
-  const prefilledId = (el<HTMLInputElement>(idInputId) || ({} as any)).value || '';
-
-  const html =
-    '<div id="backup-code-login-overlay" class="gm-modal-overlay">' +
-      '<div class="gm-modal-card" style="max-width: 380px; width: 92%;">' +
-        '<div class="gm-modal-header" style="display:flex; align-items:center; gap:.5rem; margin-bottom: .75rem;">' +
-          '<i class="ph ph-key" style="font-size: var(--fs-2xl); color: var(--accent);"></i>' +
-          '<h3 style="margin:0; font-size: var(--fs-xl);">Use a Backup Code</h3>' +
-        '</div>' +
-        '<div class="gm-login-field">' +
-          '<label for="backup-code-login-id">Identifier</label>' +
-          '<input type="text" id="backup-code-login-id" class="gm-input" value="' + String(prefilledId).replace(/"/g, '&quot;') + '" autocomplete="username">' +
-        '</div>' +
-        '<div class="gm-login-field" style="margin-top:.6rem;">' +
-          '<label for="backup-code-login-code">Backup code</label>' +
-          '<input type="text" id="backup-code-login-code" class="gm-input" placeholder="XXXXX-XXXXX" autocomplete="one-time-code">' +
-        '</div>' +
-        '<div id="backup-code-login-error" class="gm-login-error hidden" style="margin-top:.6rem;">' +
-          '<i class="ph ph-warning-circle"></i><span></span>' +
-        '</div>' +
-        '<div class="gm-modal-footer" style="display:flex; justify-content:flex-end; gap:.5rem; margin-top:1rem;">' +
-          '<button type="button" class="gm-btn gm-btn-ghost" id="backup-code-login-cancel">Cancel</button>' +
-          '<button type="button" class="gm-btn gm-btn-primary" id="backup-code-login-submit">Sign in</button>' +
-        '</div>' +
-      '</div>' +
-    '</div>';
-
-  document.body.insertAdjacentHTML('beforeend', html);
-  const overlay = document.getElementById('backup-code-login-overlay');
-  if (!overlay) return;
-  requestAnimationFrame(() => { overlay.classList.add('visible'); });
-
-  const closeModal = (): void => {
-    overlay.classList.remove('visible');
-    setTimeout(() => { overlay.remove(); }, 200);
-  };
-  const cancelBtn = document.getElementById('backup-code-login-cancel');
-  if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
-  overlay.addEventListener('click', (ev) => { if (ev.target === overlay) closeModal(); });
-
-  const submitBtn = document.getElementById('backup-code-login-submit') as HTMLButtonElement | null;
-  if (submitBtn) {
-    submitBtn.addEventListener('click', async () => {
-      const id = (el<HTMLInputElement>('backup-code-login-id') || ({} as any)).value || '';
-      const code = (el<HTMLInputElement>('backup-code-login-code') || ({} as any)).value || '';
-      const errorEl = document.getElementById('backup-code-login-error');
-      const trimmedId = id.trim();
-      const trimmedCode = code.trim();
-      if (!trimmedId || !trimmedCode) {
-        if (errorEl) {
-          const span = errorEl.querySelector('span:last-of-type');
-          if (span) span.textContent = 'Enter both your identifier and a backup code.';
-          errorEl.classList.remove('hidden');
-        }
-        return;
-      }
-
-      submitBtn.disabled = true;
-      try {
-        const client = g();
-        const resp: LoginResponse = client && typeof client.loginWithBackupCode === 'function'
-          ? await client.loginWithBackupCode(trimmedId, trimmedCode)
-          : { ok: false, error: 'webauthn_unavailable' };
-
-        if (!resp.ok) {
-          if (errorEl) {
-            const span = errorEl.querySelector('span:last-of-type');
-            if (span) {
-              span.textContent = resp.error === 'account_locked'
-                ? 'This account is temporarily locked.'
-                : 'Invalid identifier or backup code.';
-            }
-            errorEl.classList.remove('hidden');
-          }
-          return;
-        }
-        closeModal();
-        await onSuccess(resp, trimmedId);
-      } finally {
-        submitBtn.disabled = false;
-      }
-    });
-  }
 }

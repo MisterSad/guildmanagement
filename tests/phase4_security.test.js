@@ -277,7 +277,6 @@ describe('C1 — session revocation is now real, not merely documented', () => {
       '_shared/auth.ts',
       'admin-accounts/index.ts',
       'member-portal/index.ts',
-      'auth-passkey/index.ts',
     ]) {
       const src = read(`supabase/functions/${f}`);
       expect(src, `${f} must consult the epoch`).toContain('isSessionRevoked(jwt,');

@@ -3,8 +3,9 @@
  *
  * Backup codes: generation, normalisation, hashing and single-use redemption.
  *
- * Extracted verbatim from auth-passkey during phase D6 so that function and
- * auth-discord share ONE implementation. The audit's M11 finding was that this
+ * Extracted verbatim from the former auth-passkey during phase D6 so it and
+ * auth-discord shared ONE implementation; auth-discord and admin-accounts are
+ * its users now that passkeys are gone (2026-10-03). The audit's M11 finding was that this
  * codebase had four subtly different HTML-escaping routines; a credential
  * check is a far worse place for the same drift, and during the transition both
  * endpoints must accept exactly the same codes.

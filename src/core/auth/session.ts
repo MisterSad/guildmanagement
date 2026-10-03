@@ -3,8 +3,8 @@
  *
  * Auth/session orchestration ported from gm-utils.js: password login, logout,
  * player registration, guild-request submission, admin account actions, join
- * code generation, and the passkey/backup-code session wrappers (which delegate
- * to the WebAuthn bridge on window.GM.webauthn).
+ * code generation, and the session wrappers. Sign-in is Discord, with ID +
+ * password kept during the transition; passkeys were removed (2026-10-03).
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -59,7 +59,7 @@ export async function login(id: string, password: string): Promise<AuthResult> {
   if (data && !data.ok && data.access_token && data.refresh_token) {
     const legacy = await c.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token });
     if (legacy.error) return { ok: false, error: 'session_set_failed' };
-    return { ok: true, role: data.role, id: data.id, hasPasskey: !!data.has_passkey };
+    return { ok: true, role: data.role, id: data.id };
   }
 
   if (!data || !data.ok) {
@@ -75,14 +75,14 @@ export async function login(id: string, password: string): Promise<AuthResult> {
 
   const s = await c.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token });
   if (s.error) return { ok: false, error: 'session_set_failed' };
-  return { ok: true, role: data.role, id: data.id, hasPasskey: !!data.has_passkey };
+  return { ok: true, role: data.role, id: data.id };
 }
 
 /**
  * Applies a minted `{ ok, access_token, refresh_token, role, id }` payload.
  *
  * Every credential method that ends at `establishShadowSession` server-side --
- * passkey, backup code, Discord -- lands here, so there is one place where a
+ * password, backup code, Discord -- lands here, so there is one place where a
  * session is installed rather than one per method.
  */
 export async function applySessionResponse(data: any, extraFields?: Record<string, unknown>): Promise<AuthResult> {
@@ -96,43 +96,6 @@ export async function applySessionResponse(data: any, extraFields?: Record<strin
     for (const k in extraFields) result[k] = extraFields[k];
   }
   return result;
-}
-
-/** Applies a { ok, access_token, refresh_token, ... } passkey response. */
-export async function applyPasskeySessionData(data: any, extraFields?: Record<string, unknown>): Promise<AuthResult> {
-  return applySessionResponse(data, { hasPasskey: true, ...(extraFields || {}) });
-}
-
-/** Passkey login (delegates the ceremony to window.GM.webauthn). */
-export async function loginWithPasskey(id?: string): Promise<AuthResult> {
-  const w = winAny();
-  if (!w.GM || !w.GM.webauthn) return { ok: false, error: 'webauthn_unavailable' };
-  const data = await w.GM.webauthn.authenticateWithPasskey(id);
-  return applyPasskeySessionData(data);
-}
-
-/** Backup-code login (delegates to window.GM.webauthn.redeemBackupCode). */
-export async function loginWithBackupCode(id: string, code: string): Promise<AuthResult> {
-  const w = winAny();
-  if (!w.GM || !w.GM.webauthn) return { ok: false, error: 'webauthn_unavailable' };
-  const data = await w.GM.webauthn.redeemBackupCode(id, code);
-  return applyPasskeySessionData(data, { backupCodesRemaining: data && data.backup_codes_remaining });
-}
-
-/** Starts the conditional/autofill passkey listener; resolves null if none. */
-export async function startConditionalPasskeyLogin(): Promise<AuthResult | null> {
-  const w = winAny();
-  if (!w.GM || !w.GM.webauthn) return null;
-  const data = await w.GM.webauthn.startConditionalAuth();
-  if (!data) return null;
-  return applyPasskeySessionData(data);
-}
-
-export function abortConditionalPasskeyLogin(): void {
-  const w = winAny();
-  if (w.GM && w.GM.webauthn && w.GM.webauthn.abortConditionalAuth) {
-    w.GM.webauthn.abortConditionalAuth();
-  }
 }
 
 /** Query parameter the auth-discord callback appends on success. */
@@ -300,7 +263,7 @@ export async function redeemLinkCode(ticket: string, code: string): Promise<Auth
  * Claims an existing account for a Discord identity by proving the password.
  *
  * IRREVERSIBLE. On success the server destroys the password, its reversible
- * copy, every passkey and every backup code — Discord becomes the only way in
+ * copy and every backup code — Discord becomes the only way in
  * for that account. A `super_admin` receives a fresh set of backup codes in
  * the response, shown once, because they have no administrator above them to
  * unlink and reissue.

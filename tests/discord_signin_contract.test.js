@@ -185,10 +185,10 @@ describe('client wiring', () => {
   });
 
   it('installs every minted session through one helper', () => {
-    // Passkey, backup code and Discord all converge on applySessionResponse,
-    // so the three cannot drift apart (the M11 lesson on duplicated boundaries).
+    // Backup code and Discord converge on applySessionResponse, so they cannot
+    // drift apart (the M11 lesson on duplicated boundaries). Passkeys are gone.
     expect(session).toContain('export async function applySessionResponse');
-    expect(session).toMatch(/applyPasskeySessionData[\s\S]{0,200}applySessionResponse\(data, \{ hasPasskey: true/);
+    expect(session).not.toMatch(/Passkey/);
     expect(session).toMatch(/return applySessionResponse\(data, \{ state: 'session' \}\)/);
   });
 

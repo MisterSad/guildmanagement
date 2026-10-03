@@ -3,7 +3,7 @@
  *
  * Sous-lot 6.5 (Strangler) — admin account rendering ported from app.js:
  * renderAccounts, renderSuperAdminGroupedAccounts, renderAccountCardsToContainer
- * and wireAccountCardListeners (renew password, reset passkeys, copy, delete,
+ * and wireAccountCardListeners (renew password, copy, Discord unlink, delete,
  * role/guild selects). All dynamic values go through esc().
  */
 
@@ -198,7 +198,6 @@ export function renderAccountCardsToContainer(
         '<span class="gm-pwd-text">••••••••••••</span>' +
         '<button class="gm-mini-btn gm-cred-reset" title="Renew Password"><i class="ph ph-arrows-clockwise"></i></button>' +
         '<button class="gm-mini-btn gm-cred-copy hidden" title="Copy Password"><i class="ph ph-copy"></i></button>' +
-        '<button class="gm-mini-btn gm-cred-reset-passkeys" title="Reset Passkeys (revoke all passkeys + backup codes)"><i class="ph ph-fingerprint"></i></button>' +
         '<button class="gm-mini-btn gm-cred-discord-unlink" title="Unlink Discord and issue a single-use relink code"><i class="ph ph-discord-logo"></i></button>' +
       '</div>';
     } else {
@@ -308,37 +307,6 @@ export function wireAccountCardListeners(container: HTMLElement | null): void {
         (btn as HTMLButtonElement).disabled = false;
         if (icon) icon.className = 'ph ph-arrows-clockwise';
       }
-    });
-  });
-
-  container.querySelectorAll('.gm-cred-reset-passkeys').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const wrap = btn.closest('.gm-cred-pass');
-      const accId = wrap ? wrap.getAttribute('data-acc-id') || '' : '';
-      const w = winAny();
-      if (!w.showConfirm) return;
-      w.showConfirm(
-        'Reset Passkeys',
-        'This revokes <strong>all</strong> passkeys and backup codes for <strong>' + esc(accId) + '</strong>. They will need to sign in with their password and set up passkeys again. Continue?',
-        async () => {
-          const icon = btn.querySelector('i');
-          const originalClass = icon ? icon.className : '';
-          (btn as HTMLButtonElement).disabled = true;
-          if (icon) icon.className = 'ph ph-circle-notch ph-spin';
-          try {
-            const g = gm();
-            const res = await g.webauthn.adminResetPasskeys(accId);
-            if (!res.ok) throw new Error(res.error || 'reset_failed');
-            if (g.showToast) g.showToast('Passkeys reset for ' + accId + '.', 'success');
-          } catch (err: any) {
-            const g = gm();
-            if (g && g.showToast) g.showToast('Could not reset passkeys: ' + err.message, 'error');
-          } finally {
-            (btn as HTMLButtonElement).disabled = false;
-            if (icon) icon.className = originalClass;
-          }
-        }
-      );
     });
   });
 

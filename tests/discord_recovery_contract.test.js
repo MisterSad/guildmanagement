@@ -160,15 +160,13 @@ describe('a relink code alone is not enough', () => {
 });
 
 describe('backup codes: one implementation, one audience', () => {
-  it('lives in _shared and is used by both endpoints', () => {
+  it('lives in _shared, and auth-discord uses it', () => {
     // The audit found four subtly different HTML escapers (M11). A credential
-    // check is a far worse place for that drift, and during the transition
-    // both doors must accept exactly the same codes.
-    expect(passkeyFn).toContain('from "../_shared/backup-codes.ts"');
+    // check is a far worse place for that drift. auth-passkey, the other user,
+    // is a tombstone since passkeys were removed (2026-10-03).
     expect(discordFn).toContain('from "../_shared/backup-codes.ts"');
-    for (const local of ['function randomBackupCode', 'function sha256Hex', 'function issueBackupCodes', 'function normalizeBackupCode']) {
-      expect(passkeyFn, `auth-passkey must not keep a local ${local}`).not.toContain(local);
-    }
+    expect(passkeyFn).toContain('passkeys_removed');
+    expect(passkeyFn).not.toContain('backup-codes');
   });
 
   it('excludes visually ambiguous characters', () => {

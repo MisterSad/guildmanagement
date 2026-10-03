@@ -454,8 +454,6 @@ export function initAccountsUi(): void {
   wire('create-guild-form', (e) => { void onCreateGuildSubmit(e); });
 }
 
-// ── My Passkeys card (admin-home) ─────────────────────────────────────────────
-
 // ── Recovery codes ───────────────────────────────────────────────────────────
 //
 // The super_admin is the only account `auth-discord`'s `backup-login` accepts a
@@ -577,8 +575,7 @@ export function wireRecoveryCodesCard(): void {
   btn.addEventListener('click', () => { void regenerateRecoveryCodes(); });
 }
 
-// The "My Passkeys" card was removed on 2026-09-27: it registered passkeys
-// that could not be used to sign in anywhere. mountMyPasskeysCard() and
-// loadMyPasskeysCard() went with it rather than being left to find nothing,
-// which is the failure mode the audit kept meeting (a loader that silently
-// no-ops is indistinguishable from one that was never called).
+// Passkeys were removed entirely on 2026-10-03 (owner decision): the "My
+// Passkeys" card went on 2026-09-27, and the sign-in path, the admin reset and
+// the server function followed. Recovery codes above are part of the Discord
+// flow and stay.

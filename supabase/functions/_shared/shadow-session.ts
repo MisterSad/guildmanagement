@@ -6,7 +6,7 @@
  * "shadow" GoTrue user (synthetic email, random secret the caller never
  * sees) exists purely so a real GoTrue JWT can be minted after the real
  * credential check succeeds. Extracted from auth-login/index.ts so any new
- * credential-check method (WebAuthn passkey, backup code) can issue an
+ * credential-check method (Discord, backup code) can issue an
  * identical session without duplicating this security-sensitive bridge.
  * Behavior is unchanged from the original — this is a pure extraction.
  */

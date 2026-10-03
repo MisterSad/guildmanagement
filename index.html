@@ -106,7 +106,7 @@
                                             <i class="ph ph-user gm-icon"></i>
                                             <input type="text" id="username" class="gm-input" required
                                                 data-i18n-placeholder="login_placeholder_id"
-                                                placeholder="Your identifier" autocomplete="username webauthn">
+                                                placeholder="Your identifier" autocomplete="username">
                                             <span class="gm-input-focus-line"></span>
                                         </div>
                                     </div>
@@ -314,18 +314,8 @@
                         </div>
                     </div>
 
-                    <!-- The "My Passkeys" card was removed on 2026-09-27.
-                    
-                         It let people REGISTER passkeys that could not be used to sign in
-                         anywhere: `wirePasskeyLoginButton()` and `openBackupCodeDialog()` are
-                         exported onto the window.GM bridge and were never called, so both
-                         sign-in buttons were dead markup and were removed earlier the same day.
-                         Registering more of them only grew a pile of credentials nobody could
-                         spend. 14 accounts hold one; those rows are untouched and inert.
-                    
-                         The server side (auth-passkey, account_passkeys, account_backup_codes)
-                         is deliberately left alone: dismantling it is phase D7, which is gated
-                         on how many accounts have linked Discord. -->
+<!-- Passkeys were removed entirely on 2026-10-03 (owner decision): sign-in is
+                         Discord, with ID + password kept during the transition. -->
 
                     <div class="gm-card gm-card-padded gm-section" id="create-account-card">
                         <div class="gm-section-title" style="margin-bottom: 1rem;">

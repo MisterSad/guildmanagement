@@ -112,7 +112,7 @@ const RECOVERABLE_ERRORS = new Set([
   "invalid_credentials",
 ]);
 
-/** Shared with auth-login and auth-passkey — login_throttle is keyed purely by IP. */
+/** Shared with auth-login — login_throttle is keyed purely by IP. */
 const IP_LIMIT = { limit: 60, windowMs: 300_000 };
 
 /**
@@ -830,7 +830,7 @@ async function handleBackupLogin(req: Request, body: unknown, admin: any, logger
 // ── POST { action: "claim", ticket, id, password } — phase D3 ───────────────
 //
 // IRREVERSIBLE. A successful claim destroys the password, the reversible
-// `password_enc` copy, every passkey and every backup code, in the same
+// `password_enc` copy and every backup code, in the same
 // transaction that creates the link. One sign-in method at any instant.
 //
 // Three things stand between this and a password-guessing oracle: one Discord

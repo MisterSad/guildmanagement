@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+- **Passkeys removed entirely** (owner decision, restated 2026-10-03). Sign-in is Discord, with ID + password kept during the transition. This change is user-facing.
+  - **Why now.** The UI went on 2026-09-27, but the server side never did. `auth-passkey` stayed deployed, so the 10 accounts holding a passkey could still sign in with it by calling the API directly. The front also still wired three things to it:
+    - passkey autofill on the sign-in form (`autocomplete="username webauthn"` plus a conditional listener);
+    - an "Add a passkey" banner after a password sign-in;
+    - the admin "Reset Passkeys" button.
+  - **Front.** Deleted `webauthn.service.ts`, `PasskeysPanel.ts`, the `window.GM.webauthn` bridge, the four passkey session helpers, their `GM_AUTH` and bridge exports, the banner, the dialogs, the admin button and the help entry.
+  - **Server.**
+    - `auth-passkey` is a 410 tombstone. The deployed function cannot be deleted from here: delete it in the dashboard, then remove its directory and `config.toml` block.
+    - `auth-login` no longer reads `account_passkeys` or returns `has_passkey`.
+  - **Database** (migration `20261003170000`, applied after this deploy). It repairs `gm_claim_account_with_discord` and `gm_purge_discord_ephemera`, then drops `account_passkeys` and `webauthn_challenges`. Checked on production in a rolled-back transaction: both tables gone, no function names them, both repaired functions run, and the 110 backup codes are untouched.
+  - **Kept:** the super_admin's recovery codes. They belong to the Discord flow: `auth-discord` `backup-login` and `admin-accounts` `backup-codes-*`.
+  - Tests: `tests/passkeys_removed.test.js`. The three passkey test files went with the code. Gate: type-check clean, 2424 unit tests, build, 44 e2e. Preview: the sign-in page renders with the Discord button and the password field, and no passkey button or bridge.
+
 - **Migrations: the directory now matches production's history** (short-term plan, phase 4a; audit DB-02, INF-02, REC-02). No database change.
   - **40 files renamed to the version production recorded for them.** Their content is unchanged. Production keyed each one on the time it was applied, not on its file name, so `supabase db push` would have tried to replay all 40. Six of the old names also had an impossible hour (24 to 29). Old to new names: `supabase/migrations/README.md`.
   - **6 migrations applied without any file are restored** from `schema_migrations.statements`, byte for byte (md5 checked). They include the `gm_stats_health` that produces `scheduled_ahead`, read by the Stats view, and the cascade-based `gm_erase_player`.

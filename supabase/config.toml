@@ -443,11 +443,9 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 [functions.auth-login]
 verify_jwt = false
 
-# Passkey sign-in (auth-options/auth-verify/backup-login) happens before any
-# session exists, mirroring auth-login; authenticated actions (register-*,
-# list/rename/remove, admin-reset) re-verify the caller's JWT inside the
-# handler. A missing block would silently default to verify_jwt = true and
-# break every passkey login.
+# Tombstone since 2026-10-03: passkeys were removed and the function answers
+# 410 Gone to everything. verify_jwt stays false so that answer is what callers
+# get. Remove this block when the function is deleted from the dashboard.
 [functions.auth-passkey]
 verify_jwt = false
 
@@ -457,7 +455,7 @@ verify_jwt = false
 # single-use state row carrying the PKCE verifier, and the POST redeem by a
 # single-use ticket. A missing block here would silently default to
 # verify_jwt = true and break every Discord sign-in -- the exact regression
-# that already hit auth-passkey and guild-request.
+# that already hit the former passkey endpoint and guild-request.
 [functions.auth-discord]
 verify_jwt = false
 

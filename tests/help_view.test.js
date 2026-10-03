@@ -18,8 +18,9 @@ afterEach(() => {
 });
 
 describe('HelpView', () => {
-  it('keeps the full help catalog (31 entries)', () => {
-    expect(Object.keys(HELP_DB).length).toBe(31);
+  it('keeps the full help catalog (30 entries; the passkey one went with passkeys)', () => {
+    expect(Object.keys(HELP_DB).length).toBe(30);
+    expect(HELP_DB['help-my-passkeys']).toBeUndefined();
     expect(HELP_DB['help-event-svs'].title).toBe('Server vs Server (SvS)');
   });
 

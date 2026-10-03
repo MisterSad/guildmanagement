@@ -50,8 +50,7 @@ import { parseOcrScore } from '../modules/ocr/ocr.service';
 import {
   login, logout, registerPlayer, submitGuildRequest, adminAccounts, generateJoinCode,
   loginWithDiscord, redeemDiscordTicket, chooseDiscordAccount, redeemLinkCode, claimWithDiscord, onboardWithDiscord,
-  loginWithBackupCodeDiscord,
-  loginWithPasskey, loginWithBackupCode, startConditionalPasskeyLogin, abortConditionalPasskeyLogin
+  loginWithBackupCodeDiscord
 } from './auth/session';
 import {
   getUidStatus, isInvalidOrTempUid, categorizeOcrDiff, computeOcrRosterDelta,
@@ -121,7 +120,6 @@ export function installGmBridge(): void {
     login, logout, registerPlayer, submitGuildRequest, adminAccounts, generateJoinCode,
   loginWithDiscord, redeemDiscordTicket, chooseDiscordAccount, redeemLinkCode, claimWithDiscord, onboardWithDiscord,
   loginWithBackupCodeDiscord,
-    loginWithPasskey, loginWithBackupCode, startConditionalPasskeyLogin, abortConditionalPasskeyLogin,
 
     // OCR
     getUidStatus, isInvalidOrTempUid, categorizeOcrDiff, computeOcrRosterDelta,
