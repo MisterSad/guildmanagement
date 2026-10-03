@@ -25,12 +25,14 @@ let tables = {};
 
 function chained(value) {
   const filters = [];
+  let range = null;
   const chain = {
     select: () => chain,
     order: () => chain,
     eq: (field, val) => { filters.push((r) => r[field] === val); return chain; },
     in: (field, list) => { filters.push((r) => list.indexOf(r[field]) !== -1); return chain; },
     limit: () => chain,
+    range: (from, to) => { range = [from, to]; return chain; },
     single: () => chain,
     delete: () => chain,
     maybeSingle: () => ({
@@ -43,6 +45,7 @@ function chained(value) {
     then: (resolve) => {
       let res = (value || []).slice();
       filters.forEach((f) => { res = res.filter(f); });
+      if (range) res = res.slice(range[0], range[1] + 1);
       return Promise.resolve({ data: res, error: null }).then(resolve);
     }
   };

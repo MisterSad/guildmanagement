@@ -1981,6 +1981,13 @@ export type Database = {
           open_codes: number
         }[]
       }
+      gm_latest_glory_scores: {
+        Args: { p_guild: string }
+        Returns: {
+          pseudo: string
+          score: number
+        }[]
+      }
       gm_list_event_sessions: {
         Args: { p_guild?: string }
         Returns: {
@@ -2044,6 +2051,15 @@ export type Database = {
         Returns: string
       }
       gm_personal_kpis: { Args: { p_uid: string }; Returns: Json }
+      gm_player_session_guild_stats: {
+        Args: { p_guild: string; p_pseudo: string }
+        Returns: {
+          counted: number
+          max_score: number
+          session_key: string
+          total_score: number
+        }[]
+      }
       gm_player_stats: {
         Args: { p_guild: string; p_pseudo: string; p_weeks?: number }
         Returns: Json
@@ -2057,6 +2073,7 @@ export type Database = {
         }
         Returns: number
       }
+      gm_purge_cron_history: { Args: never; Returns: number }
       gm_purge_discord_ephemera: { Args: never; Returns: Json }
       gm_purge_guild_data: { Args: { p_guild: string }; Returns: Json }
       gm_redeem_admin_invite: {

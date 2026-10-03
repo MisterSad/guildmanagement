@@ -791,17 +791,17 @@ export async function handleRequest(req: Request): Promise<Response> {
       const member = await getPlayer(admin, uid, identity.guild);
       if (!member) return json({ ok: false, error: "player_not_found" }, 200);
 
-      const [memberRowsRes, guildParticipantsRes, guildAverages] = await Promise.all([
+      // Guild averages are aggregated in SQL, over the player's own sessions
+      // only. Reading the guild's whole history here stopped at PostgREST's
+      // 1,000-row cap, and 14 guilds saw averages of 0 (audit PERF-02).
+      const [memberRowsRes, sessionStatsRes, guildAverages] = await Promise.all([
         admin
           .from("event_participants")
           .select("event_name, session_id, week_start, participated, score, score_prep, score_pvp, late, excused, sub_present, appointed")
           .eq("guild", member.guild)
           .eq("pseudo", member.pseudo)
           .order("week_start", { ascending: false }),
-        admin
-          .from("event_participants")
-          .select("event_name, session_id, week_start, score, score_prep, score_pvp, participated, sub_present")
-          .eq("guild", member.guild),
+        admin.rpc("gm_player_session_guild_stats", { p_guild: member.guild, p_pseudo: member.pseudo }),
         getGuildAverages(admin, member.guild)
       ]);
 
@@ -809,26 +809,22 @@ export async function handleRequest(req: Request): Promise<Response> {
         logger.error("Failed to fetch player history", memberRowsRes.error);
         return json({ ok: false, error: "db_error" }, 200);
       }
+      if (sessionStatsRes.error) {
+        logger.error("Failed to aggregate guild session stats", sessionStatsRes.error);
+        return json({ ok: false, error: "db_error" }, 200);
+      }
 
       const rows = memberRowsRes.data || [];
-      const allGuildParticipants = guildParticipantsRes.data || [];
 
       const guildSessionStats: Record<string, { totalScore: number; count: number; maxScore: number }> = {};
-      allGuildParticipants.forEach((p: any) => {
-        const evKey = (p.event_name || "").toUpperCase();
-        const sKey = `${evKey}|${p.session_id || p.week_start || ""}`;
-        const total = (Number(p.score) || 0) + (Number(p.score_prep) || 0) + (Number(p.score_pvp) || 0);
-        if (!guildSessionStats[sKey]) {
-          guildSessionStats[sKey] = { totalScore: 0, count: 0, maxScore: 0 };
-        }
-        if (total > 0 || p.participated > 0 || p.sub_present) {
-          guildSessionStats[sKey].totalScore += total;
-          guildSessionStats[sKey].count += 1;
-          if (total > guildSessionStats[sKey].maxScore) {
-            guildSessionStats[sKey].maxScore = total;
-          }
-        }
-      });
+      ((sessionStatsRes.data || []) as Array<{ session_key: string; total_score: number; counted: number; max_score: number }>)
+        .forEach((s) => {
+          guildSessionStats[s.session_key] = {
+            totalScore: Number(s.total_score) || 0,
+            count: Number(s.counted) || 0,
+            maxScore: Number(s.max_score) || 0,
+          };
+        });
 
       const byEvent: Record<string, any[]> = {};
       const hasScoreEvent = (name: string): boolean => {

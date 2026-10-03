@@ -195,10 +195,18 @@ export class EventsView {
     if (!db) return;
     const currentG = this.currentGuild();
     const ref = startAt || new Date();
-    // Fetch existing session_ids for this guild+event to resolve same-day collisions.
-    const existingRes = await db.from('event_participants').select('session_id').eq('guild', currentG).eq('event_name', dbEventName);
-    const existingIds = ((existingRes.data || []) as any[]).map((r) => r.session_id);
-    const sessionId = legacy.buildEventSessionId(dbEventName, ref, existingIds);
+    if (!currentG) {
+      legacy.showToast(legacy.t('guild_unresolved'), 'error');
+      return;
+    }
+    // Today's taken session ids, to resolve same-day collisions.
+    const taken = await EventsService.takenSessionIdsToday(currentG, dbEventName, dbEventName, ref);
+    if (!taken.ok) {
+      // Unknown ids could mean a duplicate: refuse rather than merge sessions.
+      legacy.showToast(legacy.t('toast_err_generic') + ' ' + taken.error, 'error');
+      return;
+    }
+    const sessionId = legacy.buildEventSessionId(dbEventName, ref, taken.ids);
     try {
       const statusRes = await db.from('event_status').upsert(
         {

@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+- **Fixed: numbers that went wrong past 1,000 rows** (short-term plan, phase 1; audit PERF-02 to PERF-05, PERF-09, DB-16; migration `20261003112152`). PostgREST answers at most 1,000 rows per request and says nothing when it stops there.
+  - **Player portal guild averages (PERF-02).**
+    - Before: `get-history` read the whole guild's participation history, up to 9,859 rows, to average each session. Members of 14 guilds saw guild averages and maxima of 0, or wrong ones.
+    - Now: `gm_player_session_guild_stats` aggregates in SQL over the player's own sessions only. It runs with the caller's rights, for the service role only.
+    - Checked on production for the busiest guild: all 92 of a player's sessions are covered, with 0 mismatches against a full SQL computation.
+  - **Starting a second daily session (PERF-03).** Arms Race, DTR and Shadowfront picked the next `-n` suffix from a read capped at 1,000 rows. 9 guilds were above that cap (up to 3,036 rows), so a new session could reuse a taken id and merge into it. `EventsService.takenSessionIdsToday` now reads only today's prefix (`sessionIdBase`). If that read fails, the session is not started.
+  - **Shadowfront history (PERF-04).** It is read in full with the new `fetchAllRows` (`src/core/api/paginate.ts`), ordered by id. A failed read no longer renders silently wrong totals. The misleading `.limit(100000)` calls are gone.
+  - **Roster Glory scores (PERF-05).** The roster no longer reads the whole Glory history (1,105 rows for one guild) to keep each player's newest score. `gm_latest_glory_scores` returns one row per player and runs under the caller's RLS.
+  - **Retention (PERF-09, DB-16).**
+    - New daily job `daily-cron-history-purge` (04:50 UTC) keeps 14 days of `cron.job_run_details`. Its first run removes about 204,500 rows, which is 57% of the database.
+    - `gm_purge_discord_ephemera` now also clears expired WebAuthn challenges and Discord throttle windows older than a day.
+  - Tests: `tests/truncation_fixes.test.js`. The Shadowfront test mocks now honour `.range()`. Gate: type-check clean, 2431 unit tests, build, 44 e2e.
+
 - **Security: the retired cron secret is out of the working tree, and its rotation is proven** (audit REC-03, SEC-18).
   - `tests/remediation_audit.test.js` held the plaintext of the cron secret committed in `a85ee6e`, inside the very assertion that it never reappears in the migrations. It now checks a SHA-256 digest over a sliding window, so it guards the same thing without carrying the value.
   - **Rotation verified on production.** Compared by digest, never by value: Vault's `event_reminders_cron_secret` is a different 64-character value. The Edge `CRON_SECRET` matches it, since every pg_cron call to `event-reminders` on 2026-10-03 returned 200. The old value opens nothing.

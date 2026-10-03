@@ -59,6 +59,22 @@ export function sessionDateFromId(sessionId?: string | null): Date | null {
   return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
 }
 
+/**
+ * The prefix shared by every same-day session id of a daily event
+ * (`ARA-20261003` for `ARA-20261003-1`, `-2`…), or null for an event keyed by
+ * week or by a random id. Callers read only the ids under this prefix.
+ */
+export function sessionIdBase(eventName?: string, startAt?: string | Date): string | null {
+  const up = (eventName || '').toUpperCase();
+  const ref = startAt || new Date();
+  if (up === 'ARMS RACE STAGE A') return 'ARA-' + dateKey(ref);
+  if (up === 'ARMS RACE STAGE B') return 'ARB-' + dateKey(ref);
+  if (up === 'DEFEND TRADE ROUTE') return 'DTR-' + dateKey(ref);
+  if (up === 'SHADOWFRONT SQUAD 1') return 'SF1-' + dateKey(ref);
+  if (up === 'SHADOWFRONT SQUAD 2') return 'SF2-' + dateKey(ref);
+  return null;
+}
+
 export function buildEventSessionId(eventName?: string, startAt?: string | Date, existingIds?: string[]): string {
   const up = (eventName || '').toUpperCase();
   const ref = startAt || new Date();
@@ -67,13 +83,8 @@ export function buildEventSessionId(eventName?: string, startAt?: string | Date,
   if (up === 'GVG') return 'GVG-' + isoWeekKey(ref);
   if (up === 'GLORY') return 'GLORY-' + isoWeekKey(ref);
 
-  let base: string;
-  if (up === 'ARMS RACE STAGE A') base = 'ARA-' + dateKey(ref);
-  else if (up === 'ARMS RACE STAGE B') base = 'ARB-' + dateKey(ref);
-  else if (up === 'DEFEND TRADE ROUTE') base = 'DTR-' + dateKey(ref);
-  else if (up === 'SHADOWFRONT SQUAD 1') base = 'SF1-' + dateKey(ref);
-  else if (up === 'SHADOWFRONT SQUAD 2') base = 'SF2-' + dateKey(ref);
-  else return newSessionId();
+  const base = sessionIdBase(eventName, ref);
+  if (!base) return newSessionId();
 
   const ids = existingIds || [];
   let n = 1;

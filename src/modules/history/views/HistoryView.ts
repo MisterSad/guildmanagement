@@ -408,8 +408,7 @@ export class HistoryView {
       .select('pseudo, participated, score, score_prep, score_pvp, appointed, excused, late, sub_present')
       .eq('guild', legacy.getActiveGuild())
       .eq('event_name', eventName)
-      .eq('week_start', weekStart)
-      .limit(100000);
+      .eq('week_start', weekStart);
 
     if (sessionId) query = query.eq('session_id', sessionId);
     else query = query.is('session_id', null);

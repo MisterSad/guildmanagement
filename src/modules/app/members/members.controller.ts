@@ -136,7 +136,9 @@ export async function fetchGuildMembers(opts?: { signal?: AbortSignal }): Promis
       applySignal(client.from('guild_members').select('*').eq('guild', currentG).order('pseudo', { ascending: true }), signal),
       applySignal(client.from('guild_transfers').select('id, uid, pseudo, source_guild, target_guild, requested_by').eq('status', 'pending').order('created_at', { ascending: true }), signal),
       applySignal(client.from('player_absences').select('*').eq('guild', currentG), signal),
-      applySignal(client.from('event_participants').select('pseudo, score, week_start').eq('guild', currentG).eq('event_name', 'Glory').not('score', 'is', null).order('week_start', { ascending: false }), signal)
+      // One row per player, newest first: the full history crossed 1,000 rows
+      // for one guild and lost its oldest scores (audit PERF-05).
+      applySignal(client.rpc('gm_latest_glory_scores', { p_guild: currentG }), signal)
     ]);
 
     if (res.error) throw res.error;

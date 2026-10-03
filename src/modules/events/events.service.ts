@@ -6,7 +6,7 @@
  */
 
 import { getSupabaseClient } from '../../core/api/supabase';
-import { buildEventSessionId } from '../../core/config/events';
+import { buildEventSessionId, sessionIdBase } from '../../core/config/events';
 import { EventStatus, EventParticipant, ChestTier, WarSession, EventDailyScore, WarOpponentKind } from '../../types/database';
 import { logger } from '../../core/logger/logger';
 
@@ -78,6 +78,45 @@ export class EventsService {
     }
 
     return (data || []) as EventStatus[];
+  }
+
+  /**
+   * Session ids already taken today, read under the day's prefix only.
+   *
+   * Starting a daily session picks the first free `-n` suffix. The ids used to
+   * be read as every participant row of the guild for that event, which
+   * PostgREST caps at 1,000 rows with no order. Above that cap (9 guilds, up to
+   * 3,036 rows) today's ids could be missing from the answer, and the new
+   * session would reuse a taken id and merge into it (audit PERF-03).
+   *
+   * `participantEvent` is the event_name the participant rows carry, which
+   * differs from the session's event for Shadowfront squads.
+   */
+  public static async takenSessionIdsToday(
+    guild: string,
+    participantEvent: string,
+    sessionEvent: string,
+    startAt?: string | Date | null
+  ): Promise<{ ok: true; ids: string[] } | { ok: false; error: string }> {
+    const base = sessionIdBase(sessionEvent, startAt || new Date());
+    if (!base) return { ok: true, ids: [] };
+    const supabase = getSupabaseClient();
+    if (!supabase) return { ok: false, error: 'no_client' };
+
+    const { data, error } = await supabase
+      .from('event_participants')
+      .select('session_id')
+      .eq('guild', guild)
+      .eq('event_name', participantEvent)
+      .like('session_id', base + '-%');
+    if (error) {
+      logger.error('Error reading today\'s session ids', error, { guild, participantEvent, base });
+      return { ok: false, error: error.message };
+    }
+    const ids = Array.from(new Set(((data || []) as Array<{ session_id: string | null }>)
+      .map((r) => r.session_id)
+      .filter((id): id is string => !!id)));
+    return { ok: true, ids };
   }
 
   public static async startEventSession(

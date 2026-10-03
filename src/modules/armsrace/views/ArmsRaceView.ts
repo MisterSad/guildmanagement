@@ -33,6 +33,7 @@ import {
 } from '../armsrace.service';
 import { escapeHTML } from '../../../core/utils/text';
 import { pendingApprovalHtml, wirePendingApprovals } from '../../events/pending-approval';
+import { EventsService } from '../../events/events.service';
 
 function winAny(): any {
   return (typeof window !== 'undefined' ? window : ({} as any)) as any;
@@ -215,12 +216,13 @@ export class ArmsRaceView {
     if (stg && stg.active && stg.sessionId) {
       sessionId = stg.sessionId;
     } else {
-      const existingRes = await db.from('event_participants')
-        .select('session_id')
-        .eq('guild', currentG)
-        .eq('event_name', evName);
-      const existingIds = ((existingRes.data || []) as any[]).map((r) => r.session_id);
-      sessionId = legacy.buildEventSessionId(evName, startAt || new Date(), existingIds);
+      const taken = await EventsService.takenSessionIdsToday(currentG, evName, evName, startAt || null);
+      if (!taken.ok) {
+        // Unknown ids could mean a duplicate: refuse rather than merge sessions.
+        legacy.showToast(legacy.t('toast_err_generic') + ' ' + taken.error, 'error');
+        return;
+      }
+      sessionId = legacy.buildEventSessionId(evName, startAt || new Date(), taken.ids);
     }
 
     try {

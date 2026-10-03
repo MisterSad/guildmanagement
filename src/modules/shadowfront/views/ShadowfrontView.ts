@@ -42,6 +42,8 @@ import {
 } from '../shadowfront.service';
 import { escapeHTML } from '../../../core/utils/text';
 import { pendingApprovalHtml, wirePendingApprovals } from '../../events/pending-approval';
+import { EventsService } from '../../events/events.service';
+import { fetchAllRows } from '../../../core/api/paginate';
 
 function winAny(): any {
   return (typeof window !== 'undefined' ? window : ({} as any)) as any;
@@ -258,19 +260,25 @@ export class ShadowfrontView {
 
       let statusQ: any = db.from('event_status').select('event_name, is_active, session_id, start_at').in('event_name', [SHADOWFRONT_SQUAD_EVENT.squad1, SHADOWFRONT_SQUAD_EVENT.squad2]);
       let membersQ: any = db.from('guild_members').select('pseudo, uid, overall_power').order('pseudo', { ascending: true });
-      let squadsQ: any = db.from('shadowfront_squads').select('pseudo, session_id').limit(100000);
-      let partsQ: any = db.from('event_participants').select('pseudo, participated, session_id, excused, late, sub_present').eq('event_name', SHADOWFRONT_EVENT_NAME).limit(100000);
+      // Whole-history reads: paged, since one answer stops at 1,000 rows.
+      const squadsQ = fetchAllRows((from, to) => db.from('shadowfront_squads').select('pseudo, session_id')
+        .eq('guild', currentG).order('id', { ascending: true }).range(from, to));
+      const partsQ = fetchAllRows((from, to) => db.from('event_participants')
+        .select('pseudo, participated, session_id, excused, late, sub_present')
+        .eq('guild', currentG).eq('event_name', SHADOWFRONT_EVENT_NAME)
+        .order('id', { ascending: true }).range(from, to));
       let signupsQ: any = db.from('shadowfront_signups').select('*').eq('week_start', currentWeek);
 
       statusQ = statusQ.eq('guild', currentG);
       membersQ = membersQ.eq('guild', currentG);
-      squadsQ = squadsQ.eq('guild', currentG);
-      partsQ = partsQ.eq('guild', currentG);
       signupsQ = signupsQ.eq('guild', currentG);
 
       const [statusRes, membersRes, histSquads, histParts, signupRes] = await Promise.all([
         statusQ, membersQ, squadsQ, partsQ, signupsQ
       ]);
+      // A partial history would show wrong totals with no sign of it.
+      const loadError = statusRes.error || membersRes.error || histSquads.error || histParts.error || signupRes.error;
+      if (loadError) throw loadError;
 
       const startedSessions: Record<string, boolean> = {};
       ((histParts.data || []) as ShadowfrontParticipantRow[]).forEach((r) => { if (r.session_id) startedSessions[r.session_id] = true; });
@@ -339,12 +347,17 @@ export class ShadowfrontView {
     if (sq && sq.sessionId && !sq.ended) {
       sessionId = sq.sessionId;
     } else {
-      const existingRes = await db.from('event_participants')
-        .select('session_id')
-        .eq('guild', currentG)
-        .eq('event_name', SHADOWFRONT_EVENT_NAME);
-      const existingIds = ((existingRes.data || []) as any[]).map((r) => r.session_id);
-      sessionId = legacy.buildEventSessionId(SHADOWFRONT_SQUAD_EVENT[squad], startAt || new Date(), existingIds);
+      if (!currentG) {
+        legacy.showToast(legacy.t('guild_unresolved'), 'error');
+        return;
+      }
+      const taken = await EventsService.takenSessionIdsToday(currentG, SHADOWFRONT_EVENT_NAME, SHADOWFRONT_SQUAD_EVENT[squad], startAt || null);
+      if (!taken.ok) {
+        // Unknown ids could mean a duplicate: refuse rather than merge sessions.
+        legacy.showToast(legacy.t('toast_err_generic') + ' ' + taken.error, 'error');
+        return;
+      }
+      sessionId = legacy.buildEventSessionId(SHADOWFRONT_SQUAD_EVENT[squad], startAt || new Date(), taken.ids);
     }
     if (sq) sq.ended = false;
     try {
