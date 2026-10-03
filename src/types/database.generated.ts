@@ -96,50 +96,6 @@ export type Database = {
           },
         ]
       }
-      account_passkeys: {
-        Row: {
-          account_id: string
-          created_at: string
-          credential_id: string
-          device_label: string
-          id: string
-          last_used_at: string | null
-          public_key: string
-          sign_count: number
-          transports: string[] | null
-        }
-        Insert: {
-          account_id: string
-          created_at?: string
-          credential_id: string
-          device_label: string
-          id?: string
-          last_used_at?: string | null
-          public_key: string
-          sign_count?: number
-          transports?: string[] | null
-        }
-        Update: {
-          account_id?: string
-          created_at?: string
-          credential_id?: string
-          device_label?: string
-          id?: string
-          last_used_at?: string | null
-          public_key?: string
-          sign_count?: number
-          transports?: string[] | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "account_passkeys_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "accounts"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       accounts: {
         Row: {
           auth_user_id: string | null
@@ -1607,41 +1563,6 @@ export type Database = {
           },
         ]
       }
-      webauthn_challenges: {
-        Row: {
-          account_id: string | null
-          ceremony_type: string
-          challenge: string
-          created_at: string
-          expires_at: string
-          id: string
-        }
-        Insert: {
-          account_id?: string | null
-          ceremony_type: string
-          challenge: string
-          created_at?: string
-          expires_at?: string
-          id?: string
-        }
-        Update: {
-          account_id?: string | null
-          ceremony_type?: string
-          challenge?: string
-          created_at?: string
-          expires_at?: string
-          id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "webauthn_challenges_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "accounts"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       weekly_scores: {
         Row: {
           computed_at: string | null
@@ -1798,6 +1719,18 @@ export type Database = {
           is_locked: boolean
           role: string
           status: string
+        }[]
+      }
+      gm_check_verification_throttle: {
+        Args: {
+          p_bucket: string
+          p_discord_user_id: string
+          p_limit: number
+          p_window_ms: number
+        }
+        Returns: {
+          allowed: boolean
+          remaining: number
         }[]
       }
       gm_chests_for_score: {

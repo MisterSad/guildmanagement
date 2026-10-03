@@ -11,7 +11,7 @@
   - **Server.**
     - `auth-passkey` is a 410 tombstone. The deployed function cannot be deleted from here: delete it in the dashboard, then remove its directory and `config.toml` block.
     - `auth-login` no longer reads `account_passkeys` or returns `has_passkey`.
-  - **Database** (migration `20261003170000`, applied after this deploy). It repairs `gm_claim_account_with_discord` and `gm_purge_discord_ephemera`, then drops `account_passkeys` and `webauthn_challenges`. Checked on production in a rolled-back transaction: both tables gone, no function names them, both repaired functions run, and the 110 backup codes are untouched.
+  - **Database** (migration `20261003165501`, applied after this deploy). It repairs `gm_claim_account_with_discord` and `gm_purge_discord_ephemera`, then drops `account_passkeys` and `webauthn_challenges`. Checked on production in a rolled-back transaction: both tables gone, no function names them, both repaired functions run, and the 110 backup codes are untouched. Applied 2026-10-03, and the same end state confirmed on production afterwards.
   - **Kept:** the super_admin's recovery codes. They belong to the Discord flow: `auth-discord` `backup-login` and `admin-accounts` `backup-codes-*`.
   - Tests: `tests/passkeys_removed.test.js`. The three passkey test files went with the code. Gate: type-check clean, 2424 unit tests, build, 44 e2e. Preview: the sign-in page renders with the Discord button and the password field, and no passkey button or bridge.
 

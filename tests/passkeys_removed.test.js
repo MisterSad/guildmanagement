@@ -61,7 +61,7 @@ describe('no passkey path on the server', () => {
   });
 
   it('the migration drops both tables after repairing their dependents, and keeps backup codes', () => {
-    const sql = read('supabase/migrations/20261003170000_remove_passkeys.sql');
+    const sql = read('supabase/migrations/20261003165501_remove_passkeys.sql');
     expect(sql).toContain('DROP TABLE IF EXISTS public.webauthn_challenges;');
     expect(sql).toContain('DROP TABLE IF EXISTS public.account_passkeys;');
     expect(sql.indexOf('CREATE OR REPLACE FUNCTION public.gm_purge_discord_ephemera()'))
