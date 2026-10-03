@@ -4,6 +4,7 @@ import path from 'path';
 import { logger } from '../src/core/logger/logger';
 import { computeMemberTier, calculateMatchupData, calculateMatchupAsync } from '../src/workers/matchup.worker';
 import crypto from 'node:crypto';
+import { edgeSource } from './helpers/edge-source.js';
 
 // SHA-256 of the cron secret committed in a85ee6e and rotated since (Vault holds
 // a different, 64-character value, verified 2026-10-03). Only the digest lives
@@ -52,13 +53,12 @@ describe('Audit Remediation Verification Suite', () => {
     expect(shadowSessionContent).toContain('findUserByEmail');
     expect(shadowSessionContent).not.toMatch(/admin\.auth\.admin\.listUsers\(\)/);
 
-    const adminAccountsContent = fs.readFileSync(path.resolve(__dirname, '../supabase/functions/admin-accounts/index.ts'), 'utf-8');
+    const adminAccountsContent = edgeSource('admin-accounts');
     expect(adminAccountsContent).toContain('findUserByEmail');
   });
 
   it('SEV-05: verifies member-portal contains defensive score bounding parser', () => {
-    const portalPath = path.resolve(__dirname, '../supabase/functions/member-portal/index.ts');
-    const content = fs.readFileSync(portalPath, 'utf-8');
+    const content = edgeSource('member-portal');
     expect(content).toContain('parseSafeScore(payload.score)');
     expect(content).toContain('parseSafeScore(payload.score_prep)');
     expect(content).toContain('parseSafeScore(payload.score_pvp)');
@@ -158,8 +158,7 @@ describe('Audit Remediation Verification Suite', () => {
   });
 
   it('W5: verifies member-portal security, scope and resilience hardening', () => {
-    const portalPath = path.resolve(__dirname, '../supabase/functions/member-portal/index.ts');
-    const content = fs.readFileSync(portalPath, 'utf-8');
+    const content = edgeSource('member-portal');
 
     // 1. get-personal-kpis resolves member before getGuildAverages
     expect(content).toContain('const member = await getPlayer(admin, uid, identity.guild);');
@@ -221,7 +220,7 @@ describe('Audit Remediation Verification Suite', () => {
     expect(leg2).toContain('__ROTATED__SEE_VAULT__');
 
     // 3. event-reminders has timing-safe compare and masked URLs
-    const remindersContent = fs.readFileSync(path.resolve(__dirname, '../supabase/functions/event-reminders/index.ts'), 'utf-8');
+    const remindersContent = edgeSource('event-reminders');
     expect(remindersContent).toContain('function safeEqual(a: string, b: string): boolean');
     expect(remindersContent).toContain('maskWebhookUrl');
     expect(remindersContent).toContain('safeEqual(authBearer, cronSecret)');

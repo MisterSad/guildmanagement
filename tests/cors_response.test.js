@@ -4,6 +4,7 @@ import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import { getCorsHeaders } from '../supabase/functions/_shared/cors.ts';
+import { edgeSource } from './helpers/edge-source.js';
 
 const CORS_BEARING_FUNCTIONS = [
   'admin-accounts',
@@ -37,8 +38,7 @@ describe('CORS Response Origin Echo & Closure Regression Suite (v125.3)', () => 
     }
 
     it('enforces makeJson(req) closure in event-reminders', () => {
-      const filePath = path.resolve(__dirname, '../supabase/functions/event-reminders/index.ts');
-      const content = fs.readFileSync(filePath, 'utf-8');
+      const content = edgeSource('event-reminders');
       expect(content).toMatch(/function\s+makeJson\s*\(\s*req:\s*Request\s*\)/);
       expect(content).toMatch(/const\s+json\s*=\s*makeJson\s*\(\s*req\s*\)/);
       const threeArgCalls = content.match(/json\([^;]*,\s*req\s*\)/g);

@@ -1,0 +1,2608 @@
+export const snapshot = {};
+
+snapshot[`admin-accounts: refused to a member 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+  ],
+  discord: [],
+  response: {
+    body: {
+      error: "forbidden",
+      ok: false,
+    },
+    status: 403,
+  },
+}
+`;
+
+snapshot[`admin-accounts: refused without a token 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+  ],
+  discord: [],
+  response: {
+    body: {
+      error: "forbidden",
+      ok: false,
+    },
+    status: 403,
+  },
+}
+`;
+
+snapshot[`admin-accounts: backup-codes-status 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "account_id",
+          "eq",
+          "t_super",
+        ],
+        [
+          "used_at",
+          "is",
+          null,
+        ],
+      ],
+      kind: "from",
+      name: "account_backup_codes",
+      op: "select",
+    },
+  ],
+  discord: [],
+  response: {
+    body: {
+      ok: true,
+      remaining: 0,
+      total: 10,
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`admin-accounts: backup-codes-regenerate 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "account_id",
+          "eq",
+          "t_super",
+        ],
+      ],
+      kind: "from",
+      name: "account_backup_codes",
+      op: "delete",
+    },
+    {
+      args: [
+        {
+          account_id: "t_super",
+          code_hash: "45ead647d8793b672be3adcbe169f6f6aa48cc09ab7155f8fba2724d12f2338b",
+        },
+        {
+          account_id: "t_super",
+          code_hash: "11d2ba0f94358ed6bf6b0bad40a9c2fedd4523a2bfaff8027814b66203728eff",
+        },
+        {
+          account_id: "t_super",
+          code_hash: "e7e2f1bbb03fd3f09e1116bc66691b12871026a7d07b5371ae7dbfc9580765fe",
+        },
+        {
+          account_id: "t_super",
+          code_hash: "8f5716bba9c30b1ac13f820cc26d67f9c53ba4cae4c14876faf5a54d80d2ebba",
+        },
+        {
+          account_id: "t_super",
+          code_hash: "ce1f180acd532d130660094ad4cf7a05779333a19a95fff5b26bf655bf26da5a",
+        },
+        {
+          account_id: "t_super",
+          code_hash: "10568e205143e82ea180efee8ea4e7acfefe0ae7716c90c36dc95ed3f92957a0",
+        },
+        {
+          account_id: "t_super",
+          code_hash: "ecbce5f1ec67ce563e49257430c8481b163f5dd21fce5818a6e857ce92ed520d",
+        },
+        {
+          account_id: "t_super",
+          code_hash: "e8cca10c4e6778405c0e185ac8742eda1c31affa906bdc6bee4b609c082589e5",
+        },
+        {
+          account_id: "t_super",
+          code_hash: "6348ea7fd9e8a0b62800f0cbcb74264bf8a057426a4ce23e1fc2ef1c5b2ce64b",
+        },
+        {
+          account_id: "t_super",
+          code_hash: "5bc34c99a49ea5d0b388dfcfb70fcfbdeb40a26974d219624304c4b211a37511",
+        },
+      ],
+      filters: [],
+      kind: "from",
+      name: "account_backup_codes",
+      op: "insert",
+    },
+  ],
+  discord: [],
+  response: {
+    body: {
+      codes: [
+        "WZGAN-G24QC",
+        "BRQ7P-Y5EQB",
+        "ZCY9R-43UAR",
+        "B8HJH-E72F7",
+        "EBCUX-CC8WH",
+        "PUT2Y-DYGWS",
+        "BMDQX-27JNR",
+        "KVA5A-DU6EX",
+        "DKMNC-QMVHA",
+        "VNM9G-FA9MS",
+      ],
+      ok: true,
+      total: 10,
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`admin-accounts: backup codes refused to a guild admin 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+  ],
+  discord: [],
+  response: {
+    body: {
+      error: "forbidden",
+      ok: false,
+    },
+    status: 403,
+  },
+}
+`;
+
+snapshot[`admin-accounts: list as super admin 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: {},
+      kind: "rpc",
+      name: "gm_admin_list",
+    },
+  ],
+  discord: [],
+  response: {
+    body: {
+      accounts: [
+        {
+          guild: null,
+          id: "t_super",
+          role: "super_admin",
+          server_number: null,
+        },
+        {
+          guild: null,
+          id: "t_server",
+          role: "server_admin",
+          server_number: "9001",
+        },
+        {
+          guild: "TA",
+          id: "t_admin_a",
+          role: "guild_admin",
+          server_number: "9001",
+        },
+        {
+          guild: "TA",
+          id: "t_member_a",
+          role: "member",
+          server_number: "9001",
+        },
+        {
+          guild: "TB",
+          id: "t_admin_b",
+          role: "guild_admin",
+          server_number: "9001",
+        },
+        {
+          guild: "TA",
+          id: "t_pending",
+          role: "member",
+          server_number: "9001",
+        },
+      ],
+      ok: true,
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`admin-accounts: list as server admin 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: {},
+      kind: "rpc",
+      name: "gm_admin_list",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "server_number",
+          "eq",
+          "9001",
+        ],
+      ],
+      kind: "from",
+      name: "guilds",
+      op: "select",
+    },
+  ],
+  discord: [],
+  response: {
+    body: {
+      accounts: [
+        {
+          guild: null,
+          id: "t_server",
+          role: "server_admin",
+          server_number: "9001",
+        },
+        {
+          guild: "TA",
+          id: "t_admin_a",
+          role: "guild_admin",
+          server_number: "9001",
+        },
+        {
+          guild: "TA",
+          id: "t_member_a",
+          role: "member",
+          server_number: "9001",
+        },
+        {
+          guild: "TB",
+          id: "t_admin_b",
+          role: "guild_admin",
+          server_number: "9001",
+        },
+        {
+          guild: "TA",
+          id: "t_pending",
+          role: "member",
+          server_number: "9001",
+        },
+      ],
+      ok: true,
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`admin-accounts: list as guild admin 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: {},
+      kind: "rpc",
+      name: "gm_admin_list",
+    },
+  ],
+  discord: [],
+  response: {
+    body: {
+      accounts: [
+        {
+          guild: "TA",
+          id: "t_admin_a",
+          role: "guild_admin",
+          server_number: "9001",
+        },
+        {
+          guild: "TA",
+          id: "t_member_a",
+          role: "member",
+          server_number: "9001",
+        },
+        {
+          guild: "TA",
+          id: "t_pending",
+          role: "member",
+          server_number: "9001",
+        },
+      ],
+      ok: true,
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`admin-accounts: reset-password 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "id",
+          "ilike",
+          "t\\\\_member\\\\_a",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: {
+        p_id: "t_member_a",
+        p_password: "MrGh-Elj8PKJAruK",
+      },
+      kind: "rpc",
+      name: "gm_reset_account_password",
+    },
+    {
+      args: {
+        p_id: "t_member_a",
+      },
+      kind: "rpc",
+      name: "gm_get_shadow",
+    },
+    {
+      args: [
+        "<uuid>",
+        {
+          password: "shadow-secret",
+        },
+      ],
+      kind: "auth",
+      name: "admin.updateUserById",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "id",
+          "eq",
+          "t_member_a",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: {
+        session_version: 1,
+      },
+      filters: [
+        [
+          "id",
+          "eq",
+          "t_member_a",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "update",
+    },
+    {
+      args: [
+        "<uuid>",
+        {
+          app_metadata: {
+            account_id: "t_member_a",
+            app_role: "member",
+            session_version: 1,
+          },
+        },
+      ],
+      kind: "auth",
+      name: "admin.updateUserById",
+    },
+    {
+      args: {
+        p_auth_user_id: "<uuid>",
+      },
+      kind: "rpc",
+      name: "gm_revoke_auth_sessions",
+    },
+  ],
+  discord: [],
+  response: {
+    body: {
+      ok: true,
+      password: "MrGh-Elj8PKJAruK",
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`admin-accounts: reset-password of another guild 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "id",
+          "ilike",
+          "t\\\\_admin\\\\_b",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+  ],
+  discord: [],
+  response: {
+    body: {
+      error: "forbidden",
+      ok: false,
+    },
+    status: 403,
+  },
+}
+`;
+
+snapshot[`admin-accounts: reset-password of nobody 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "id",
+          "ilike",
+          "ghost",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+  ],
+  discord: [],
+  response: {
+    body: {
+      error: "not_found",
+      ok: false,
+    },
+    status: 404,
+  },
+}
+`;
+
+snapshot[`admin-accounts: discord-unlink 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "id",
+          "ilike",
+          "t\\\\_member\\\\_a",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: {
+        p_account_id: "t_member_a",
+        p_actor: "t_admin_a",
+        p_code_hash: "45ead647d8793b672be3adcbe169f6f6aa48cc09ab7155f8fba2724d12f2338b",
+        p_expires_at: "2026-10-14T10:00:00.000Z",
+      },
+      kind: "rpc",
+      name: "gm_discord_unlink",
+    },
+    {
+      args: {
+        action_type: "discord_unlink",
+        guild: "TA",
+        level: "WARN",
+        message: "Discord link removed from t_member_a (was 123456789012345678)",
+        metadata: {
+          actor_role: "guild_admin",
+          previous_discord_user_id: "123456789012345678",
+          relink_code_expires_at: "2026-10-14T10:00:00.000Z",
+          target_account: "t_member_a",
+          target_role: "member",
+        },
+        service: "admin-accounts",
+        user_identifier: "t_admin_a",
+      },
+      filters: [],
+      kind: "from",
+      name: "system_audit_logs",
+      op: "insert",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+        [
+          "key",
+          "in",
+          [
+            "discord_audit_channel_id",
+            "discord_officer_channel_id",
+          ],
+        ],
+      ],
+      kind: "from",
+      name: "guild_config",
+      op: "select",
+    },
+  ],
+  discord: [
+    {
+      body: {
+        allowed_mentions: {
+          parse: [],
+        },
+        content: "🔓 **Discord link removed** — \`t_member_a\` (member) was linked to Discord id \`123456789012345678\`.
+Performed by \`t_admin_a\`. A single-use relink code was issued and expires in 7 days.",
+      },
+      url: "https://discord.com/api/v10/channels/999000999000999000/messages",
+    },
+  ],
+  response: {
+    body: {
+      announced: true,
+      expires_at: "2026-10-14T10:00:00.000Z",
+      id: "t_member_a",
+      ok: true,
+      previous_discord_user_id: "123456789012345678",
+      relink_code: "WZGAN-G24QC",
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`admin-accounts: issue-admin-invite 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "id",
+          "eq",
+          "TA",
+        ],
+      ],
+      kind: "from",
+      name: "guilds",
+      op: "select",
+    },
+    {
+      args: {
+        p_code_hash: "45ead647d8793b672be3adcbe169f6f6aa48cc09ab7155f8fba2724d12f2338b",
+        p_expires_at: "2026-10-14T10:00:00.000Z",
+        p_guild: "TA",
+        p_issued_by: "t_admin_a",
+        p_max_open: 5,
+        p_role: "guild_admin",
+      },
+      kind: "rpc",
+      name: "gm_issue_admin_invite",
+    },
+    {
+      args: {
+        action_type: "admin_invite_issued",
+        guild: "TA",
+        level: "WARN",
+        message: "Admin invitation issued for TA (guild_admin)",
+        metadata: {
+          actor_role: "guild_admin",
+          expires_at: "2026-10-14T10:00:00.000Z",
+          open_codes: 1,
+          target_guild: "TA",
+          target_role: "guild_admin",
+        },
+        service: "admin-accounts",
+        user_identifier: "t_admin_a",
+      },
+      filters: [],
+      kind: "from",
+      name: "system_audit_logs",
+      op: "insert",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+        [
+          "key",
+          "in",
+          [
+            "discord_audit_channel_id",
+            "discord_officer_channel_id",
+          ],
+        ],
+      ],
+      kind: "from",
+      name: "guild_config",
+      op: "select",
+    },
+  ],
+  discord: [
+    {
+      body: {
+        allowed_mentions: {
+          parse: [],
+        },
+        content: "🎟️ **Admin invitation issued** — a single-use code for a new \`guild_admin\` in \`TA\`, created by \`t_admin_a\` and valid for 7 days.",
+      },
+      url: "https://discord.com/api/v10/channels/999000999000999000/messages",
+    },
+  ],
+  response: {
+    body: {
+      expires_at: "2026-10-14T10:00:00.000Z",
+      guild: "TA",
+      invite_code: "WZGAN-G24QC",
+      max_open_codes: 5,
+      ok: true,
+      open_codes: 1,
+      role: "guild_admin",
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`admin-accounts: issue-admin-invite above the ceiling 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+  ],
+  discord: [],
+  response: {
+    body: {
+      error: "forbidden",
+      ok: false,
+    },
+    status: 403,
+  },
+}
+`;
+
+snapshot[`admin-accounts: issue-admin-invite out of scope 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "id",
+          "eq",
+          "TC",
+        ],
+      ],
+      kind: "from",
+      name: "guilds",
+      op: "select",
+    },
+  ],
+  discord: [],
+  response: {
+    body: {
+      error: "forbidden",
+      ok: false,
+    },
+    status: 403,
+  },
+}
+`;
+
+snapshot[`admin-accounts: create as guild admin, asking for more 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: {
+        p_guild: "TA",
+        p_id: "new_officer",
+        p_password: "W2PgKn4cpjS%yfTx",
+        p_role: "guild_admin",
+      },
+      kind: "rpc",
+      name: "gm_admin_upsert",
+    },
+    {
+      args: [
+        {
+          app_metadata: {
+            account_id: "new_officer",
+            app_role: "guild_admin",
+          },
+          email: "gm_c62d5cc3d63f44d86316ca59a3f174b3b77b2d650524eec651de04b1573e0713@no-reply.guildmgmt.app",
+          email_confirm: true,
+          password: "okaDQlpV3rdhXn7LM_rb167BSqwv0e5gFUTsyZyGIg3tF9Zlh2tHzHw5ukERGwRS",
+        },
+      ],
+      kind: "auth",
+      name: "admin.createUser",
+    },
+    {
+      args: {
+        p_auth_user_id: "<uuid>",
+        p_id: "new_officer",
+        p_secret: "okaDQlpV3rdhXn7LM_rb167BSqwv0e5gFUTsyZyGIg3tF9Zlh2tHzHw5ukERGwRS",
+      },
+      kind: "rpc",
+      name: "gm_attach_shadow",
+    },
+    {
+      args: {
+        server_number: "9001",
+      },
+      filters: [
+        [
+          "id",
+          "eq",
+          "new_officer",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "update",
+    },
+  ],
+  discord: [],
+  response: {
+    body: {
+      ok: true,
+      password: "W2PgKn4cpjS%yfTx",
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`admin-accounts: create as server admin, out of scope 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "id",
+          "eq",
+          "TC",
+        ],
+      ],
+      kind: "from",
+      name: "guilds",
+      op: "select",
+    },
+  ],
+  discord: [],
+  response: {
+    body: {
+      error: "forbidden",
+      ok: false,
+    },
+    status: 403,
+  },
+}
+`;
+
+snapshot[`admin-accounts: create as server admin, a member 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "id",
+          "eq",
+          "TB",
+        ],
+      ],
+      kind: "from",
+      name: "guilds",
+      op: "select",
+    },
+    {
+      args: {
+        p_guild: "TB",
+        p_id: "recruit",
+        p_password: "W2PgKn4cpjS%yfTx",
+        p_role: "member",
+      },
+      kind: "rpc",
+      name: "gm_admin_upsert",
+    },
+    {
+      args: [
+        {
+          app_metadata: {
+            account_id: "recruit",
+            app_role: "member",
+          },
+          email: "gm_fde2b189f66a29e29b49bfa148d2e9c5b750f6b09cbcd3967c54f858c6b11991@no-reply.guildmgmt.app",
+          email_confirm: true,
+          password: "okaDQlpV3rdhXn7LM_rb167BSqwv0e5gFUTsyZyGIg3tF9Zlh2tHzHw5ukERGwRS",
+        },
+      ],
+      kind: "auth",
+      name: "admin.createUser",
+    },
+    {
+      args: {
+        p_auth_user_id: "<uuid>",
+        p_id: "recruit",
+        p_secret: "okaDQlpV3rdhXn7LM_rb167BSqwv0e5gFUTsyZyGIg3tF9Zlh2tHzHw5ukERGwRS",
+      },
+      kind: "rpc",
+      name: "gm_attach_shadow",
+    },
+    {
+      args: {
+        server_number: "9001",
+      },
+      filters: [
+        [
+          "id",
+          "eq",
+          "recruit",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "update",
+    },
+  ],
+  discord: [],
+  response: {
+    body: {
+      ok: true,
+      password: "W2PgKn4cpjS%yfTx",
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`admin-accounts: create a server admin as super admin 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "id",
+          "eq",
+          "TC",
+        ],
+      ],
+      kind: "from",
+      name: "guilds",
+      op: "select",
+    },
+    {
+      args: {
+        p_guild: "TC",
+        p_id: "srv2",
+        p_password: "W2PgKn4cpjS%yfTx",
+        p_role: "server_admin",
+      },
+      kind: "rpc",
+      name: "gm_admin_upsert",
+    },
+    {
+      args: [
+        {
+          app_metadata: {
+            account_id: "srv2",
+            app_role: "server_admin",
+          },
+          email: "gm_c3fbb3cf48ef6737cc5cce05c5ed542c30a11bde0a78badcfa9a4b81db6bd557@no-reply.guildmgmt.app",
+          email_confirm: true,
+          password: "okaDQlpV3rdhXn7LM_rb167BSqwv0e5gFUTsyZyGIg3tF9Zlh2tHzHw5ukERGwRS",
+        },
+      ],
+      kind: "auth",
+      name: "admin.createUser",
+    },
+    {
+      args: {
+        p_auth_user_id: "<uuid>",
+        p_id: "srv2",
+        p_secret: "okaDQlpV3rdhXn7LM_rb167BSqwv0e5gFUTsyZyGIg3tF9Zlh2tHzHw5ukERGwRS",
+      },
+      kind: "rpc",
+      name: "gm_attach_shadow",
+    },
+    {
+      args: {
+        server_number: "9002",
+      },
+      filters: [
+        [
+          "id",
+          "eq",
+          "srv2",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "update",
+    },
+  ],
+  discord: [],
+  response: {
+    body: {
+      ok: true,
+      password: "W2PgKn4cpjS%yfTx",
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`admin-accounts: create a taken id 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: {
+        p_guild: "TA",
+        p_id: "t_super",
+        p_password: "W2PgKn4cpjS%yfTx",
+        p_role: "guild_admin",
+      },
+      kind: "rpc",
+      name: "gm_admin_upsert",
+    },
+  ],
+  discord: [],
+  response: {
+    body: {
+      error: "account_exists",
+      ok: false,
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`admin-accounts: update-role 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "id",
+          "ilike",
+          "t\\\\_admin\\\\_b",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "id",
+          "eq",
+          "TB",
+        ],
+      ],
+      kind: "from",
+      name: "guilds",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "id",
+          "eq",
+          "t_admin_b",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: {
+        role: "server_admin",
+        server_number: "9001",
+        session_version: 1,
+      },
+      filters: [
+        [
+          "id",
+          "eq",
+          "t_admin_b",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "update",
+    },
+    {
+      args: [
+        "<uuid>",
+        {
+          app_metadata: {
+            account_id: "t_admin_b",
+            app_role: "server_admin",
+            session_version: 1,
+          },
+        },
+      ],
+      kind: "auth",
+      name: "admin.updateUserById",
+    },
+  ],
+  discord: [],
+  response: {
+    body: {
+      ok: true,
+      role: "server_admin",
+      server_number: "9001",
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`admin-accounts: update-role refused to a guild admin 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+  ],
+  discord: [],
+  response: {
+    body: {
+      error: "forbidden",
+      ok: false,
+    },
+    status: 403,
+  },
+}
+`;
+
+snapshot[`admin-accounts: delete 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "id",
+          "eq",
+          "t_member_a",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: {
+        p_id: "t_member_a",
+      },
+      kind: "rpc",
+      name: "gm_admin_delete",
+    },
+    {
+      args: [
+        "<uuid>",
+      ],
+      kind: "auth",
+      name: "admin.deleteUser",
+    },
+  ],
+  discord: [],
+  response: {
+    body: {
+      ok: true,
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`admin-accounts: delete out of scope 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "id",
+          "eq",
+          "t_admin_b",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+  ],
+  discord: [],
+  response: {
+    body: {
+      error: "forbidden",
+      ok: false,
+    },
+    status: 403,
+  },
+}
+`;
+
+snapshot[`admin-accounts: update-guild 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "id",
+          "eq",
+          "t_member_a",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "id",
+          "eq",
+          "TB",
+        ],
+      ],
+      kind: "from",
+      name: "guilds",
+      op: "select",
+    },
+    {
+      args: {
+        guild: "TB",
+      },
+      filters: [
+        [
+          "id",
+          "eq",
+          "t_member_a",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "update",
+    },
+  ],
+  discord: [],
+  response: {
+    body: {
+      ok: true,
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`admin-accounts: update-guild out of scope 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "id",
+          "eq",
+          "t_member_a",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "id",
+          "eq",
+          "TC",
+        ],
+      ],
+      kind: "from",
+      name: "guilds",
+      op: "select",
+    },
+  ],
+  discord: [],
+  response: {
+    body: {
+      error: "forbidden",
+      ok: false,
+    },
+    status: 403,
+  },
+}
+`;
+
+snapshot[`admin-accounts: set-join-code 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: {
+        p_code: "HELLO",
+        p_guild: "TA",
+      },
+      kind: "rpc",
+      name: "gm_set_join_code",
+    },
+  ],
+  discord: [],
+  response: {
+    body: {
+      ok: true,
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`admin-accounts: get-join-code 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "id",
+          "eq",
+          "TB",
+        ],
+      ],
+      kind: "from",
+      name: "guilds",
+      op: "select",
+    },
+    {
+      args: {
+        p_guild: "TB",
+      },
+      kind: "rpc",
+      name: "gm_get_join_code",
+    },
+  ],
+  discord: [],
+  response: {
+    body: {
+      code: "JOIN-1",
+      ok: true,
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`admin-accounts: get-join-code out of scope 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "id",
+          "eq",
+          "TC",
+        ],
+      ],
+      kind: "from",
+      name: "guilds",
+      op: "select",
+    },
+  ],
+  discord: [],
+  response: {
+    body: {
+      error: "forbidden",
+      ok: false,
+    },
+    status: 403,
+  },
+}
+`;
+
+snapshot[`admin-accounts: reject-registration 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "id",
+          "eq",
+          "t_pending",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "account_id",
+          "eq",
+          "t_pending",
+        ],
+      ],
+      kind: "from",
+      name: "discord_account_links",
+      op: "select",
+    },
+    {
+      args: {
+        p_id: "t_pending",
+      },
+      kind: "rpc",
+      name: "gm_reject_player_account",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "id",
+          "eq",
+          "t_pending",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: {
+        session_version: 1,
+      },
+      filters: [
+        [
+          "id",
+          "eq",
+          "t_pending",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "update",
+    },
+    {
+      args: {
+        action_type: "registration_rejected",
+        guild: "TA",
+        level: "INFO",
+        message: "Registration of t_pending rejected",
+        metadata: {
+          actor_role: "guild_admin",
+          target_account: "t_pending",
+          via: "app",
+        },
+        service: "admin-accounts",
+        user_identifier: "t_admin_a",
+      },
+      filters: [],
+      kind: "from",
+      name: "system_audit_logs",
+      op: "insert",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "account_id",
+          "eq",
+          "t_pending",
+        ],
+      ],
+      kind: "from",
+      name: "discord_account_links",
+      op: "select",
+    },
+  ],
+  discord: [],
+  response: {
+    body: {
+      ok: true,
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`admin-accounts: list-guild-requests 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [],
+      kind: "from",
+      name: "guild_creation_requests",
+      op: "select",
+    },
+  ],
+  discord: [],
+  response: {
+    body: {
+      ok: true,
+      requests: [
+        {
+          created_at: "2026-10-01T00:00:00Z",
+          guild_tag: "NEW",
+          id: "<uuid>",
+          status: "pending",
+        },
+        {
+          created_at: "2026-09-01T00:00:00Z",
+          guild_tag: "OLD",
+          id: "<uuid>",
+          status: "rejected",
+        },
+      ],
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`admin-accounts: list-guild-requests refused 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+  ],
+  discord: [],
+  response: {
+    body: {
+      error: "forbidden",
+      ok: false,
+    },
+    status: 403,
+  },
+}
+`;
+
+snapshot[`admin-accounts: clear-resolved-guild-requests 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "status",
+          "neq",
+          "pending",
+        ],
+      ],
+      kind: "from",
+      name: "guild_creation_requests",
+      op: "delete",
+    },
+  ],
+  discord: [],
+  response: {
+    body: {
+      count: 1,
+      ok: true,
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`admin-accounts: approve-guild-request 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: {
+        p_request_id: "<uuid>",
+      },
+      kind: "rpc",
+      name: "gm_approve_guild_request",
+    },
+    {
+      args: {
+        p_guild: "NEW",
+        p_id: "new_admin",
+        p_password: "W2PgKn4cpjS%",
+        p_role: "guild_admin",
+      },
+      kind: "rpc",
+      name: "gm_admin_upsert",
+    },
+    {
+      args: [
+        {
+          app_metadata: {
+            account_id: "new_admin",
+            app_role: "guild_admin",
+          },
+          email: "gm_b71b8ddc5e77c9912d3eddc3c9af6971c94a50668b9748199be95fb84607a1f1@no-reply.guildmgmt.app",
+          email_confirm: true,
+          password: "51d1MB8tP3qiRoNCWlXet2Fefssz-tvXrsFKrC_R7mAVROzJnIYiDe0X1mWHa0fM",
+        },
+      ],
+      kind: "auth",
+      name: "admin.createUser",
+    },
+    {
+      args: {
+        p_auth_user_id: "<uuid>",
+        p_id: "new_admin",
+        p_secret: "51d1MB8tP3qiRoNCWlXet2Fefssz-tvXrsFKrC_R7mAVROzJnIYiDe0X1mWHa0fM",
+      },
+      kind: "rpc",
+      name: "gm_attach_shadow",
+    },
+    {
+      args: {
+        reviewed_by: "t_super",
+      },
+      filters: [
+        [
+          "id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "guild_creation_requests",
+      op: "update",
+    },
+  ],
+  discord: [],
+  response: {
+    body: {
+      guild: "NEW",
+      id: "new_admin",
+      ok: true,
+      password: "W2PgKn4cpjS%",
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`admin-accounts: reject-guild-request 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: {
+        p_reason: "duplicate",
+        p_request_id: "<uuid>",
+      },
+      kind: "rpc",
+      name: "gm_reject_guild_request",
+    },
+    {
+      args: {
+        reviewed_by: "t_super",
+      },
+      filters: [
+        [
+          "id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "guild_creation_requests",
+      op: "update",
+    },
+  ],
+  discord: [],
+  response: {
+    body: {
+      ok: true,
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`admin-accounts: an unknown action 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+  ],
+  discord: [],
+  response: {
+    body: {
+      error: "unknown_action",
+      ok: false,
+    },
+    status: 400,
+  },
+}
+`;

@@ -6,8 +6,8 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
+import { edgeSource, edgeFunctionBody } from './helpers/edge-source.js';
 
-const portalPath = path.resolve(__dirname, '../supabase/functions/member-portal/index.ts');
 const memberLookupPath = path.resolve(__dirname, '../supabase/functions/_shared/member-lookup.ts');
 
 describe('Player Portal military metrics response (v127.1)', () => {
@@ -21,17 +21,14 @@ describe('Player Portal military metrics response (v127.1)', () => {
   });
 
   it('member-portal imports getPlayer from the shared module instead of redefining it', () => {
-    const content = fs.readFileSync(portalPath, 'utf-8');
-    expect(content).toContain('import { getPlayer } from "../_shared/member-lookup.ts"');
+    const content = edgeSource('member-portal');
+    expect(content).toMatch(/import \{ getPlayer \} from "(?:\.\.\/)+_shared\/member-lookup\.ts"/);
     expect(content).not.toMatch(/async function getPlayer\(/);
   });
 
   it('get-active-sessions response carries every metric field the portal tiles render', () => {
-    const content = fs.readFileSync(portalPath, 'utf-8');
-    const sessionsBlock = content.slice(
-      content.indexOf('action === "get-active-sessions"'),
-      content.indexOf('action ===', content.indexOf('action === "get-active-sessions"') + 10)
-    );
+    const content = edgeSource('member-portal');
+    const sessionsBlock = edgeFunctionBody('member-portal', 'getActiveSessions');
     for (const field of [
       'overall_power', 'tech_power', 'champion_power', 'crew_power',
       'flagship_power', 'fleet_rating', 'glory_score',
@@ -45,7 +42,7 @@ describe('Player Portal military metrics response (v127.1)', () => {
   });
 
   it('getGuildAverages computes per-metric guild averages for every benchmark tile', () => {
-    const content = fs.readFileSync(portalPath, 'utf-8');
+    const content = edgeSource('member-portal');
     const avgBlock = content.slice(
       content.indexOf('async function getGuildAverages'),
       content.indexOf('async function', content.indexOf('async function getGuildAverages') + 10)

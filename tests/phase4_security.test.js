@@ -12,6 +12,7 @@ import { isAllowedOrigin } from '../supabase/functions/_shared/cors.ts';
 import { escapeLike, escapeOrFilterValue } from '../supabase/functions/_shared/like.ts';
 import { escapeLike as clientEscapeLike } from '../src/core/utils/text.ts';
 import { readTokenSessionVersion, isSessionRevoked } from '../supabase/functions/_shared/session-epoch.ts';
+import { edgeSource } from './helpers/edge-source.js';
 
 const rootDir = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(rootDir, p), 'utf8');
@@ -27,7 +28,7 @@ describe('M14 — a suspended account is authorized for nothing', () => {
     }
     // event-reminders no longer authenticates users at all (audit SEC-06):
     // only the cron secret and the service role reach it.
-    expect(read('supabase/functions/event-reminders/index.ts')).not.toContain('validateCallerAuth');
+    expect(edgeSource('event-reminders')).not.toContain('validateCallerAuth');
   });
 });
 

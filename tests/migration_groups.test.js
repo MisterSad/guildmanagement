@@ -6,6 +6,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
+import { edgeSource } from './helpers/edge-source.js';
 
 const migrationPath = path.resolve(__dirname, '../supabase/migrations/20260830072000_cross_server_migration_groups.sql');
 const content = fs.readFileSync(migrationPath, 'utf-8');
@@ -68,7 +69,7 @@ describe('Cross-server migration groups UI wiring', () => {
   const membersCtrl = fs.readFileSync(path.resolve(__dirname, '../src/modules/app/members/members.controller.ts'), 'utf-8');
   const indexHtml = fs.readFileSync(path.resolve(__dirname, '../index.html'), 'utf-8');
   const portalJs = fs.readFileSync(path.resolve(__dirname, '../src/modules/portal/views/PortalView.ts'), 'utf-8');
-  const memberPortalFn = fs.readFileSync(path.resolve(__dirname, '../supabase/functions/member-portal/index.ts'), 'utf-8');
+  const memberPortalFn = edgeSource('member-portal');
 
   it('renders a Super Admin card to create/open/close migration groups', () => {
     expect(indexHtml).toContain('id="migration-groups-card"');

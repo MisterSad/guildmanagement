@@ -19,13 +19,14 @@ import path from 'node:path';
 import { weightedRate, coeffBucketOf } from '../src/core/scoring/reliability';
 import { StatsService } from '../src/modules/stats/stats.service';
 import { DEFAULT_EVENT_COEFFS } from '../src/core/config/event-coeffs';
+import { edgeSource } from './helpers/edge-source.js';
 
 const rootDir = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(rootDir, p), 'utf8');
 const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
 const portal = stripComments(read('src/modules/portal/views/PortalView.ts'));
-const edge = stripComments(read('supabase/functions/member-portal/index.ts'));
+const edge = stripComments(edgeSource('member-portal'));
 const migration = read('supabase/migrations/20260927123150_gm_player_stats.sql');
 
 describe('there is one weighting, in core, and both screens import it', () => {

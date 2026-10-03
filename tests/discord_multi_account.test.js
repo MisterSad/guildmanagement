@@ -14,6 +14,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
+import { edgeSource, edgeFunctionBody } from './helpers/edge-source.js';
 
 const rootDir = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(rootDir, p), 'utf8');
@@ -21,7 +22,7 @@ const stripSql = (s) => s.replace(/^\s*--.*$/gm, '');
 
 const MIGRATION = 'supabase/migrations/20260927001726_discord_multi_account_links.sql';
 const migration = stripSql(read(MIGRATION));
-const fn = read('supabase/functions/auth-discord/index.ts');
+const fn = edgeSource('auth-discord');
 const session = read('src/core/auth/session.ts');
 const ctrl = read('src/modules/app/auth/auth.controller.ts');
 
@@ -81,7 +82,7 @@ describe('the Edge Function resolves several links without erroring', () => {
   it('no longer calls maybeSingle() on the link lookup', () => {
     // `.maybeSingle()` ERRORS on more than one row -- it does not pick one. Left
     // in place, every multi-account sign-in would have failed outright.
-    const redeem = fn.slice(fn.indexOf('async function handleRedeem'));
+    const redeem = edgeFunctionBody('auth-discord', 'handleRedeem');
     const lookup = redeem.slice(redeem.indexOf('discord_account_links'), redeem.indexOf('discord_account_links') + 300);
     expect(lookup).not.toMatch(/maybeSingle/);
     expect(lookup).toMatch(/\.eq\("discord_user_id", discordUserId\)/);
@@ -179,7 +180,7 @@ describe('the client asks instead of guessing', () => {
     // is right for it. A continuation waits on a PERSON reading two options, or
     // typing a password into the claim form, and two minutes expired under the
     // owner mid-decision.
-    const fnSrc = read('supabase/functions/auth-discord/index.ts');
+    const fnSrc = edgeSource('auth-discord');
     expect(fnSrc).toMatch(/const CONTINUATION_TTL_MS = 15 \* 60_000;/);
     expect(fnSrc).toMatch(/issueTicket\(\s*admin, \{ discordUserId, discordUsername, displayName, attempts: 0 \}, logger, TICKET_TTL_MS,?\s*\)/);
   });

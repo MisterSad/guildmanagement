@@ -10,6 +10,7 @@ import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { canManageAccount } from '../supabase/functions/_shared/admin-authz.ts';
+import { edgeSource } from './helpers/edge-source.js';
 
 const rootDir = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(rootDir, p), 'utf8');
@@ -18,7 +19,7 @@ const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
 const edge = read('supabase/functions/discord-bot-interactions/index.ts');
 const handler = strip(edge.slice(edge.indexOf('async function handleJoinRequestButton'), edge.indexOf('Deno.serve(')));
 const worker = read('discord-verification-worker/index.js');
-const authDiscord = read('supabase/functions/auth-discord/index.ts');
+const authDiscord = edgeSource('auth-discord');
 
 describe('the join-request message carries the buttons', () => {
   it('posts Approve / Reject with gmjoin custom ids', () => {

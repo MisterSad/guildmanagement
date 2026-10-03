@@ -26,6 +26,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
+import { edgeSource } from './helpers/edge-source.js';
 
 const root = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.resolve(root, p), 'utf-8');
@@ -131,7 +132,7 @@ describe('gm_admin_upsert never writes a bcrypt hash of an empty password', () =
 });
 
 describe('member-portal no longer decrypts the shadow secret on every request', () => {
-  const portal = read('supabase/functions/member-portal/index.ts');
+  const portal = edgeSource('member-portal');
   const start = portal.indexOf('async function getIdentity(');
   const body = portal.slice(start, portal.indexOf('\n}', start));
   // Comments are stripped before asserting absence: the function documents WHY

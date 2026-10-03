@@ -10,6 +10,7 @@ import path from 'node:path';
 import * as worker from '../discord-verification-worker/officer-scope.js';
 import * as edge from '../supabase/functions/_shared/admin-authz.ts';
 import { escapeLike as edgeEscapeLike } from '../supabase/functions/_shared/like.ts';
+import { edgeSource } from './helpers/edge-source.js';
 
 const root = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.resolve(root, p), 'utf-8');
@@ -135,7 +136,7 @@ describe('worker commands use it', () => {
 });
 
 describe('event-reminders accepts machine callers only', () => {
-  const src = read('supabase/functions/event-reminders/index.ts');
+  const src = edgeSource('event-reminders');
 
   it('no longer authenticates user JWTs', () => {
     expect(src).not.toContain('validateCallerAuth');

@@ -1,0 +1,4345 @@
+export const snapshot = {};
+
+snapshot[`standard events: 30 min, 5 min, start, a disabled toggle, a template, a stale event 1`] = `
+{
+  db: [
+    {
+      args: null,
+      filters: [],
+      op: "select",
+      table: "guilds",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "is_active",
+          "eq",
+          true,
+        ],
+      ],
+      op: "select",
+      table: "event_status",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "in",
+          [
+            "TA",
+            "TB",
+          ],
+        ],
+        [
+          "key",
+          "in",
+          [
+            "discord_webhook_url",
+            "discord_role_id",
+            "discord_role_id_gvg",
+            "discord_role_id_svs",
+            "discord_role_id_calamity",
+            "discord_role_id_shadowfront_squad1",
+            "discord_role_id_shadowfront_squad2",
+            "notify_gvg_daily_tasks",
+            "notify_gvg_pvp",
+            "notify_svs_garrison",
+            "notify_svs_pvp",
+            "notify_svs_won_prep",
+            "notify_calamity_10",
+            "webhook_gvg",
+            "webhook_svs",
+            "webhook_calamity",
+            "webhook_armsrace",
+            "discord_role_id_armsrace",
+            "notify_armsrace_reminder_30",
+            "tpl_armsrace_reminder_30_content",
+            "tpl_armsrace_reminder_30_title",
+            "tpl_armsrace_reminder_30_desc",
+            "notify_armsrace_reminder_5",
+            "tpl_armsrace_reminder_5_content",
+            "tpl_armsrace_reminder_5_title",
+            "tpl_armsrace_reminder_5_desc",
+            "notify_armsrace_start",
+            "tpl_armsrace_start_content",
+            "tpl_armsrace_start_title",
+            "tpl_armsrace_start_desc",
+            "webhook_dtr",
+            "discord_role_id_dtr",
+            "notify_dtr_reminder_30",
+            "tpl_dtr_reminder_30_content",
+            "tpl_dtr_reminder_30_title",
+            "tpl_dtr_reminder_30_desc",
+            "notify_dtr_reminder_5",
+            "tpl_dtr_reminder_5_content",
+            "tpl_dtr_reminder_5_title",
+            "tpl_dtr_reminder_5_desc",
+            "notify_dtr_start",
+            "tpl_dtr_start_content",
+            "tpl_dtr_start_title",
+            "tpl_dtr_start_desc",
+            "webhook_shadowfront",
+            "discord_role_id_shadowfront",
+            "notify_shadowfront_reminder_30",
+            "tpl_shadowfront_reminder_30_content",
+            "tpl_shadowfront_reminder_30_title",
+            "tpl_shadowfront_reminder_30_desc",
+            "notify_shadowfront_reminder_5",
+            "tpl_shadowfront_reminder_5_content",
+            "tpl_shadowfront_reminder_5_title",
+            "tpl_shadowfront_reminder_5_desc",
+            "notify_shadowfront_start",
+            "tpl_shadowfront_start_content",
+            "tpl_shadowfront_start_title",
+            "tpl_shadowfront_start_desc",
+            "tpl_gvg_start_content",
+            "tpl_gvg_start_title",
+            "tpl_gvg_start_desc",
+            "tpl_gvg_reminder_content",
+            "tpl_gvg_reminder_title",
+            "tpl_gvg_reminder_desc",
+            "tpl_svs_garrison_content",
+            "tpl_svs_garrison_title",
+            "tpl_svs_garrison_desc",
+            "tpl_svs_reminder_30_invasion_content",
+            "tpl_svs_reminder_30_invasion_title",
+            "tpl_svs_reminder_30_invasion_desc",
+            "tpl_svs_reminder_30_defense_content",
+            "tpl_svs_reminder_30_defense_title",
+            "tpl_svs_reminder_30_defense_desc",
+            "tpl_svs_reminder_5_invasion_content",
+            "tpl_svs_reminder_5_invasion_title",
+            "tpl_svs_reminder_5_invasion_desc",
+            "tpl_svs_reminder_5_defense_content",
+            "tpl_svs_reminder_5_defense_title",
+            "tpl_svs_reminder_5_defense_desc",
+            "tpl_svs_start_invasion_content",
+            "tpl_svs_start_invasion_title",
+            "tpl_svs_start_invasion_desc",
+            "tpl_svs_start_defense_content",
+            "tpl_svs_start_defense_title",
+            "tpl_svs_start_defense_desc",
+            "tpl_calamity_reminder_10_content",
+            "tpl_calamity_reminder_10_title",
+            "tpl_calamity_reminder_10_desc",
+          ],
+        ],
+      ],
+      op: "select",
+      table: "guild_config",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "in",
+          [
+            "TA",
+            "TB",
+          ],
+        ],
+      ],
+      op: "select",
+      table: "guild_config",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "in",
+          [
+            "TA",
+            "TB",
+          ],
+        ],
+        [
+          "event_name",
+          "eq",
+          "SvS",
+        ],
+      ],
+      op: "select",
+      table: "war_sessions",
+    },
+    {
+      args: {
+        guild: "TA",
+        key: "sent_event_Arms_Race_Stage_A_s1_reminder_30",
+        value: "sending",
+      },
+      filters: [],
+      op: "upsert",
+      table: "guild_config",
+    },
+    {
+      args: {
+        value: "sent",
+      },
+      filters: [
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+        [
+          "key",
+          "eq",
+          "sent_event_Arms_Race_Stage_A_s1_reminder_30",
+        ],
+      ],
+      op: "update",
+      table: "guild_config",
+    },
+    {
+      args: {
+        guild: "TA",
+        key: "sent_event_Shadowfront_Squad_1_s3_start",
+        value: "sending",
+      },
+      filters: [],
+      op: "upsert",
+      table: "guild_config",
+    },
+    {
+      args: {
+        value: "sent",
+      },
+      filters: [
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+        [
+          "key",
+          "eq",
+          "sent_event_Shadowfront_Squad_1_s3_start",
+        ],
+      ],
+      op: "update",
+      table: "guild_config",
+    },
+    {
+      args: {
+        is_active: false,
+      },
+      filters: [
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+        [
+          "event_name",
+          "eq",
+          "Arms Race Stage A",
+        ],
+        [
+          "session_id",
+          "eq",
+          "old",
+        ],
+      ],
+      op: "update",
+      table: "event_status",
+    },
+  ],
+  response: {
+    ok: true,
+    processed: [
+      {
+        event: "Arms Race Stage A",
+        guild: "TA",
+        status: "sent",
+        type: "reminder_30",
+      },
+      {
+        event: "Shadowfront Squad 1",
+        guild: "TA",
+        status: "sent",
+        type: "start",
+      },
+    ],
+  },
+  sent: [
+    {
+      body: {
+        allowed_mentions: {
+          parse: [
+            "roles",
+            "users",
+            "everyone",
+          ],
+        },
+        content: "Go <@&111111111111111111>: Arms Race Stage A at Mon, 10/05, 12:28 UTC",
+        embeds: [
+          {
+            color: 16750848,
+            description: "Custom description",
+            fields: [
+              {
+                inline: true,
+                name: "Start Time (UTC)",
+                value: "Mon, 10/05, 12:28 UTC",
+              },
+            ],
+            footer: {
+              text: "FGF Guild Management Tool",
+            },
+            title: "⏰ Reminder: Arms Race Stage A starts in 30 minutes!",
+          },
+        ],
+      },
+      url: "https://discord.com/api/webhooks/2/tok_2",
+    },
+    {
+      body: {
+        allowed_mentions: {
+          parse: [
+            "roles",
+            "users",
+            "everyone",
+          ],
+        },
+        content: "⚔️ **Event Started:** Shadowfront Squad 1 starts now! <@&333333333333333333>",
+        embeds: [
+          {
+            color: 15548997,
+            description: "Action time! Join your squad now!",
+            fields: [
+              {
+                inline: true,
+                name: "Start Time (UTC)",
+                value: "Mon, 10/05, 11:58 UTC",
+              },
+              {
+                inline: false,
+                name: "Guild Agenda",
+                value: "Battle starts now! Join your squad!",
+              },
+            ],
+            footer: {
+              text: "FGF Guild Management Tool",
+            },
+            title: "⚔️ Event Started: Shadowfront Squad 1 is active!",
+          },
+        ],
+      },
+      url: "https://discord.com/api/webhooks/1/tok_1",
+    },
+  ],
+  status: 200,
+}
+`;
+
+snapshot[`locks: a sent slot is skipped, a fresh one too, a stale one is retried 1`] = `
+{
+  db: [
+    {
+      args: null,
+      filters: [],
+      op: "select",
+      table: "guilds",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "is_active",
+          "eq",
+          true,
+        ],
+      ],
+      op: "select",
+      table: "event_status",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "in",
+          [
+            "TA",
+            "TB",
+          ],
+        ],
+        [
+          "key",
+          "in",
+          [
+            "discord_webhook_url",
+            "discord_role_id",
+            "discord_role_id_gvg",
+            "discord_role_id_svs",
+            "discord_role_id_calamity",
+            "discord_role_id_shadowfront_squad1",
+            "discord_role_id_shadowfront_squad2",
+            "notify_gvg_daily_tasks",
+            "notify_gvg_pvp",
+            "notify_svs_garrison",
+            "notify_svs_pvp",
+            "notify_svs_won_prep",
+            "notify_calamity_10",
+            "webhook_gvg",
+            "webhook_svs",
+            "webhook_calamity",
+            "webhook_armsrace",
+            "discord_role_id_armsrace",
+            "notify_armsrace_reminder_30",
+            "tpl_armsrace_reminder_30_content",
+            "tpl_armsrace_reminder_30_title",
+            "tpl_armsrace_reminder_30_desc",
+            "notify_armsrace_reminder_5",
+            "tpl_armsrace_reminder_5_content",
+            "tpl_armsrace_reminder_5_title",
+            "tpl_armsrace_reminder_5_desc",
+            "notify_armsrace_start",
+            "tpl_armsrace_start_content",
+            "tpl_armsrace_start_title",
+            "tpl_armsrace_start_desc",
+            "webhook_dtr",
+            "discord_role_id_dtr",
+            "notify_dtr_reminder_30",
+            "tpl_dtr_reminder_30_content",
+            "tpl_dtr_reminder_30_title",
+            "tpl_dtr_reminder_30_desc",
+            "notify_dtr_reminder_5",
+            "tpl_dtr_reminder_5_content",
+            "tpl_dtr_reminder_5_title",
+            "tpl_dtr_reminder_5_desc",
+            "notify_dtr_start",
+            "tpl_dtr_start_content",
+            "tpl_dtr_start_title",
+            "tpl_dtr_start_desc",
+            "webhook_shadowfront",
+            "discord_role_id_shadowfront",
+            "notify_shadowfront_reminder_30",
+            "tpl_shadowfront_reminder_30_content",
+            "tpl_shadowfront_reminder_30_title",
+            "tpl_shadowfront_reminder_30_desc",
+            "notify_shadowfront_reminder_5",
+            "tpl_shadowfront_reminder_5_content",
+            "tpl_shadowfront_reminder_5_title",
+            "tpl_shadowfront_reminder_5_desc",
+            "notify_shadowfront_start",
+            "tpl_shadowfront_start_content",
+            "tpl_shadowfront_start_title",
+            "tpl_shadowfront_start_desc",
+            "tpl_gvg_start_content",
+            "tpl_gvg_start_title",
+            "tpl_gvg_start_desc",
+            "tpl_gvg_reminder_content",
+            "tpl_gvg_reminder_title",
+            "tpl_gvg_reminder_desc",
+            "tpl_svs_garrison_content",
+            "tpl_svs_garrison_title",
+            "tpl_svs_garrison_desc",
+            "tpl_svs_reminder_30_invasion_content",
+            "tpl_svs_reminder_30_invasion_title",
+            "tpl_svs_reminder_30_invasion_desc",
+            "tpl_svs_reminder_30_defense_content",
+            "tpl_svs_reminder_30_defense_title",
+            "tpl_svs_reminder_30_defense_desc",
+            "tpl_svs_reminder_5_invasion_content",
+            "tpl_svs_reminder_5_invasion_title",
+            "tpl_svs_reminder_5_invasion_desc",
+            "tpl_svs_reminder_5_defense_content",
+            "tpl_svs_reminder_5_defense_title",
+            "tpl_svs_reminder_5_defense_desc",
+            "tpl_svs_start_invasion_content",
+            "tpl_svs_start_invasion_title",
+            "tpl_svs_start_invasion_desc",
+            "tpl_svs_start_defense_content",
+            "tpl_svs_start_defense_title",
+            "tpl_svs_start_defense_desc",
+            "tpl_calamity_reminder_10_content",
+            "tpl_calamity_reminder_10_title",
+            "tpl_calamity_reminder_10_desc",
+          ],
+        ],
+      ],
+      op: "select",
+      table: "guild_config",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "in",
+          [
+            "TA",
+            "TB",
+          ],
+        ],
+      ],
+      op: "select",
+      table: "guild_config",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "in",
+          [
+            "TA",
+            "TB",
+          ],
+        ],
+        [
+          "event_name",
+          "eq",
+          "SvS",
+        ],
+      ],
+      op: "select",
+      table: "war_sessions",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+        [
+          "key",
+          "eq",
+          "sent_event_Arms_Race_Stage_A_c_reminder_30",
+        ],
+      ],
+      op: "delete",
+      table: "guild_config",
+    },
+    {
+      args: {
+        guild: "TA",
+        key: "sent_event_Arms_Race_Stage_A_c_reminder_30",
+        value: "sending",
+      },
+      filters: [],
+      op: "upsert",
+      table: "guild_config",
+    },
+    {
+      args: {
+        value: "sent",
+      },
+      filters: [
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+        [
+          "key",
+          "eq",
+          "sent_event_Arms_Race_Stage_A_c_reminder_30",
+        ],
+      ],
+      op: "update",
+      table: "guild_config",
+    },
+  ],
+  response: {
+    ok: true,
+    processed: [
+      {
+        event: "Arms Race Stage A",
+        guild: "TA",
+        status: "sent",
+        type: "reminder_30",
+      },
+    ],
+  },
+  sent: [
+    {
+      body: {
+        allowed_mentions: {
+          parse: [
+            "roles",
+            "users",
+            "everyone",
+          ],
+        },
+        content: "⏰ **Reminder:** Arms Race Stage A starts in **30 minutes**! <@&111111111111111111>",
+        embeds: [
+          {
+            color: 16750848,
+            description: "Get ready, soldiers! Please log in and prepare for the event.",
+            fields: [
+              {
+                inline: true,
+                name: "Start Time (UTC)",
+                value: "Mon, 10/05, 12:28 UTC",
+              },
+              {
+                inline: false,
+                name: "Guild Agenda",
+                value: "Please connect and get ready soon.",
+              },
+            ],
+            footer: {
+              text: "FGF Guild Management Tool",
+            },
+            title: "⏰ Reminder: Arms Race Stage A starts in 30 minutes!",
+          },
+        ],
+      },
+      url: "https://discord.com/api/webhooks/2/tok_2",
+    },
+  ],
+  status: 200,
+}
+`;
+
+snapshot[`a Discord refusal releases the lock 1`] = `
+{
+  db: [
+    {
+      args: null,
+      filters: [],
+      op: "select",
+      table: "guilds",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "is_active",
+          "eq",
+          true,
+        ],
+      ],
+      op: "select",
+      table: "event_status",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "in",
+          [
+            "TA",
+            "TB",
+          ],
+        ],
+        [
+          "key",
+          "in",
+          [
+            "discord_webhook_url",
+            "discord_role_id",
+            "discord_role_id_gvg",
+            "discord_role_id_svs",
+            "discord_role_id_calamity",
+            "discord_role_id_shadowfront_squad1",
+            "discord_role_id_shadowfront_squad2",
+            "notify_gvg_daily_tasks",
+            "notify_gvg_pvp",
+            "notify_svs_garrison",
+            "notify_svs_pvp",
+            "notify_svs_won_prep",
+            "notify_calamity_10",
+            "webhook_gvg",
+            "webhook_svs",
+            "webhook_calamity",
+            "webhook_armsrace",
+            "discord_role_id_armsrace",
+            "notify_armsrace_reminder_30",
+            "tpl_armsrace_reminder_30_content",
+            "tpl_armsrace_reminder_30_title",
+            "tpl_armsrace_reminder_30_desc",
+            "notify_armsrace_reminder_5",
+            "tpl_armsrace_reminder_5_content",
+            "tpl_armsrace_reminder_5_title",
+            "tpl_armsrace_reminder_5_desc",
+            "notify_armsrace_start",
+            "tpl_armsrace_start_content",
+            "tpl_armsrace_start_title",
+            "tpl_armsrace_start_desc",
+            "webhook_dtr",
+            "discord_role_id_dtr",
+            "notify_dtr_reminder_30",
+            "tpl_dtr_reminder_30_content",
+            "tpl_dtr_reminder_30_title",
+            "tpl_dtr_reminder_30_desc",
+            "notify_dtr_reminder_5",
+            "tpl_dtr_reminder_5_content",
+            "tpl_dtr_reminder_5_title",
+            "tpl_dtr_reminder_5_desc",
+            "notify_dtr_start",
+            "tpl_dtr_start_content",
+            "tpl_dtr_start_title",
+            "tpl_dtr_start_desc",
+            "webhook_shadowfront",
+            "discord_role_id_shadowfront",
+            "notify_shadowfront_reminder_30",
+            "tpl_shadowfront_reminder_30_content",
+            "tpl_shadowfront_reminder_30_title",
+            "tpl_shadowfront_reminder_30_desc",
+            "notify_shadowfront_reminder_5",
+            "tpl_shadowfront_reminder_5_content",
+            "tpl_shadowfront_reminder_5_title",
+            "tpl_shadowfront_reminder_5_desc",
+            "notify_shadowfront_start",
+            "tpl_shadowfront_start_content",
+            "tpl_shadowfront_start_title",
+            "tpl_shadowfront_start_desc",
+            "tpl_gvg_start_content",
+            "tpl_gvg_start_title",
+            "tpl_gvg_start_desc",
+            "tpl_gvg_reminder_content",
+            "tpl_gvg_reminder_title",
+            "tpl_gvg_reminder_desc",
+            "tpl_svs_garrison_content",
+            "tpl_svs_garrison_title",
+            "tpl_svs_garrison_desc",
+            "tpl_svs_reminder_30_invasion_content",
+            "tpl_svs_reminder_30_invasion_title",
+            "tpl_svs_reminder_30_invasion_desc",
+            "tpl_svs_reminder_30_defense_content",
+            "tpl_svs_reminder_30_defense_title",
+            "tpl_svs_reminder_30_defense_desc",
+            "tpl_svs_reminder_5_invasion_content",
+            "tpl_svs_reminder_5_invasion_title",
+            "tpl_svs_reminder_5_invasion_desc",
+            "tpl_svs_reminder_5_defense_content",
+            "tpl_svs_reminder_5_defense_title",
+            "tpl_svs_reminder_5_defense_desc",
+            "tpl_svs_start_invasion_content",
+            "tpl_svs_start_invasion_title",
+            "tpl_svs_start_invasion_desc",
+            "tpl_svs_start_defense_content",
+            "tpl_svs_start_defense_title",
+            "tpl_svs_start_defense_desc",
+            "tpl_calamity_reminder_10_content",
+            "tpl_calamity_reminder_10_title",
+            "tpl_calamity_reminder_10_desc",
+          ],
+        ],
+      ],
+      op: "select",
+      table: "guild_config",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "in",
+          [
+            "TA",
+            "TB",
+          ],
+        ],
+      ],
+      op: "select",
+      table: "guild_config",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "in",
+          [
+            "TA",
+            "TB",
+          ],
+        ],
+        [
+          "event_name",
+          "eq",
+          "SvS",
+        ],
+      ],
+      op: "select",
+      table: "war_sessions",
+    },
+    {
+      args: {
+        guild: "TA",
+        key: "sent_event_Arms_Race_Stage_A_s1_reminder_30",
+        value: "sending",
+      },
+      filters: [],
+      op: "upsert",
+      table: "guild_config",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+        [
+          "key",
+          "eq",
+          "sent_event_Arms_Race_Stage_A_s1_reminder_30",
+        ],
+      ],
+      op: "delete",
+      table: "guild_config",
+    },
+  ],
+  response: {
+    ok: true,
+    processed: [],
+  },
+  sent: [
+    {
+      body: {
+        allowed_mentions: {
+          parse: [
+            "roles",
+            "users",
+            "everyone",
+          ],
+        },
+        content: "⏰ **Reminder:** Arms Race Stage A starts in **30 minutes**! <@&111111111111111111>",
+        embeds: [
+          {
+            color: 16750848,
+            description: "Get ready, soldiers! Please log in and prepare for the event.",
+            fields: [
+              {
+                inline: true,
+                name: "Start Time (UTC)",
+                value: "Mon, 10/05, 12:28 UTC",
+              },
+              {
+                inline: false,
+                name: "Guild Agenda",
+                value: "Please connect and get ready soon.",
+              },
+            ],
+            footer: {
+              text: "FGF Guild Management Tool",
+            },
+            title: "⏰ Reminder: Arms Race Stage A starts in 30 minutes!",
+          },
+        ],
+      },
+      url: "https://discord.com/api/webhooks/2/tok_2",
+    },
+  ],
+  status: 200,
+}
+`;
+
+snapshot[`GvG daily tasks at Monday 00:03 1`] = `
+{
+  db: [
+    {
+      args: null,
+      filters: [],
+      op: "select",
+      table: "guilds",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "is_active",
+          "eq",
+          true,
+        ],
+      ],
+      op: "select",
+      table: "event_status",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "in",
+          [
+            "TA",
+            "TB",
+          ],
+        ],
+        [
+          "key",
+          "in",
+          [
+            "discord_webhook_url",
+            "discord_role_id",
+            "discord_role_id_gvg",
+            "discord_role_id_svs",
+            "discord_role_id_calamity",
+            "discord_role_id_shadowfront_squad1",
+            "discord_role_id_shadowfront_squad2",
+            "notify_gvg_daily_tasks",
+            "notify_gvg_pvp",
+            "notify_svs_garrison",
+            "notify_svs_pvp",
+            "notify_svs_won_prep",
+            "notify_calamity_10",
+            "webhook_gvg",
+            "webhook_svs",
+            "webhook_calamity",
+            "webhook_armsrace",
+            "discord_role_id_armsrace",
+            "notify_armsrace_reminder_30",
+            "tpl_armsrace_reminder_30_content",
+            "tpl_armsrace_reminder_30_title",
+            "tpl_armsrace_reminder_30_desc",
+            "notify_armsrace_reminder_5",
+            "tpl_armsrace_reminder_5_content",
+            "tpl_armsrace_reminder_5_title",
+            "tpl_armsrace_reminder_5_desc",
+            "notify_armsrace_start",
+            "tpl_armsrace_start_content",
+            "tpl_armsrace_start_title",
+            "tpl_armsrace_start_desc",
+            "webhook_dtr",
+            "discord_role_id_dtr",
+            "notify_dtr_reminder_30",
+            "tpl_dtr_reminder_30_content",
+            "tpl_dtr_reminder_30_title",
+            "tpl_dtr_reminder_30_desc",
+            "notify_dtr_reminder_5",
+            "tpl_dtr_reminder_5_content",
+            "tpl_dtr_reminder_5_title",
+            "tpl_dtr_reminder_5_desc",
+            "notify_dtr_start",
+            "tpl_dtr_start_content",
+            "tpl_dtr_start_title",
+            "tpl_dtr_start_desc",
+            "webhook_shadowfront",
+            "discord_role_id_shadowfront",
+            "notify_shadowfront_reminder_30",
+            "tpl_shadowfront_reminder_30_content",
+            "tpl_shadowfront_reminder_30_title",
+            "tpl_shadowfront_reminder_30_desc",
+            "notify_shadowfront_reminder_5",
+            "tpl_shadowfront_reminder_5_content",
+            "tpl_shadowfront_reminder_5_title",
+            "tpl_shadowfront_reminder_5_desc",
+            "notify_shadowfront_start",
+            "tpl_shadowfront_start_content",
+            "tpl_shadowfront_start_title",
+            "tpl_shadowfront_start_desc",
+            "tpl_gvg_start_content",
+            "tpl_gvg_start_title",
+            "tpl_gvg_start_desc",
+            "tpl_gvg_reminder_content",
+            "tpl_gvg_reminder_title",
+            "tpl_gvg_reminder_desc",
+            "tpl_svs_garrison_content",
+            "tpl_svs_garrison_title",
+            "tpl_svs_garrison_desc",
+            "tpl_svs_reminder_30_invasion_content",
+            "tpl_svs_reminder_30_invasion_title",
+            "tpl_svs_reminder_30_invasion_desc",
+            "tpl_svs_reminder_30_defense_content",
+            "tpl_svs_reminder_30_defense_title",
+            "tpl_svs_reminder_30_defense_desc",
+            "tpl_svs_reminder_5_invasion_content",
+            "tpl_svs_reminder_5_invasion_title",
+            "tpl_svs_reminder_5_invasion_desc",
+            "tpl_svs_reminder_5_defense_content",
+            "tpl_svs_reminder_5_defense_title",
+            "tpl_svs_reminder_5_defense_desc",
+            "tpl_svs_start_invasion_content",
+            "tpl_svs_start_invasion_title",
+            "tpl_svs_start_invasion_desc",
+            "tpl_svs_start_defense_content",
+            "tpl_svs_start_defense_title",
+            "tpl_svs_start_defense_desc",
+            "tpl_calamity_reminder_10_content",
+            "tpl_calamity_reminder_10_title",
+            "tpl_calamity_reminder_10_desc",
+          ],
+        ],
+      ],
+      op: "select",
+      table: "guild_config",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "in",
+          [
+            "TA",
+            "TB",
+          ],
+        ],
+      ],
+      op: "select",
+      table: "guild_config",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "in",
+          [
+            "TA",
+            "TB",
+          ],
+        ],
+        [
+          "event_name",
+          "eq",
+          "SvS",
+        ],
+      ],
+      op: "select",
+      table: "war_sessions",
+    },
+    {
+      args: {
+        guild: "TA",
+        key: "sent_gvg_daily_tasks_day_1_2026-10-05_00:01",
+        value: "sending",
+      },
+      filters: [],
+      op: "upsert",
+      table: "guild_config",
+    },
+    {
+      args: {
+        value: "sent",
+      },
+      filters: [
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+        [
+          "key",
+          "eq",
+          "sent_gvg_daily_tasks_day_1_2026-10-05_00:01",
+        ],
+      ],
+      op: "update",
+      table: "guild_config",
+    },
+  ],
+  response: {
+    ok: true,
+    processed: [
+      {
+        event: "GvG Daily Tasks - Day 1 (Monday)",
+        guild: "TA",
+        status: "sent",
+        type: "gvg_daily_tasks",
+      },
+    ],
+  },
+  sent: [
+    {
+      body: {
+        allowed_mentions: {
+          parse: [
+            "roles",
+            "users",
+            "everyone",
+          ],
+        },
+        content: "📢 **GvG Day 1 Tasks are Live!** (Monday · 00:01 UTC) <@&222222222222222222>",
+        embeds: [
+          {
+            color: 436900,
+            description: "Daily point breakdown & scoring priorities for **Guild vs Guild — Day 1 (Monday)**.
+Coordinate with your guild members and maximize points!",
+            fields: [
+              {
+                inline: false,
+                name: "⚡ Speedups & Trade",
+                value: "• Every 1m Build Speedups consumed: **\`+48 pts\`**
+• Consume 1 min(s) of Shipbuilding Speedup: **\`+48 pts\`**
+• Complete trade shipping 3 time(s): **\`+1,000 pts\`**",
+              },
+              {
+                inline: false,
+                name: "🎯 Rallies",
+                value: "• Launch a rally and defeat 1 Deliverer Ark: **\`+18,000 pts\`**
+• Launch a rally and earn Tribute Vessel rewards 1 time(s) by defeating Lvl 1-60 Tribute Vessels: **\`+18,000 pts\`**
+• Launch a rally and defeat the Sacred Tribute Vessel once: **\`+6,000 pts\`**",
+              },
+              {
+                inline: false,
+                name: "👾 Ascendancy Minions",
+                value: "• Defeat 1 Lvl 1-10 Ascendancy Minion(s): **\`+3,000 pts\`**
+• Defeat 1 Lvl 11-20 Ascendancy Minion(s): **\`+3,600 pts\`**
+• Defeat 1 Lvl 21-30 Ascendancy Minion(s): **\`+4,200 pts\`**
+• Defeat 1 Lvl 31-40 Ascendancy Minion(s): **\`+4,800 pts\`**
+• Defeat 1 Lvl 41-50 Ascendancy Minion(s): **\`+5,400 pts\`**
+• Defeat 1 Lvl 51-60 Ascendancy Minion(s): **\`+6,000 pts\`**",
+              },
+              {
+                inline: false,
+                name: "💎 Packs",
+                value: "• Earn 1 Credit(s) through packs: **\`+4 pts\`**",
+              },
+            ],
+            footer: {
+              text: "FGF Guild Management Tool • GvG Daily Reminders (00:01 UTC)",
+            },
+            title: "⚔️ GvG Day 1 Tasks: Speedups, Trade, Rallies & Ascendancy Minions",
+          },
+        ],
+      },
+      url: "https://discord.com/api/webhooks/3/tok_3",
+    },
+  ],
+  status: 200,
+}
+`;
+
+snapshot[`GvG daily tasks forced outside their slot 1`] = `
+{
+  db: [
+    {
+      args: null,
+      filters: [],
+      op: "select",
+      table: "guilds",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "is_active",
+          "eq",
+          true,
+        ],
+      ],
+      op: "select",
+      table: "event_status",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "in",
+          [
+            "TA",
+          ],
+        ],
+        [
+          "key",
+          "in",
+          [
+            "discord_webhook_url",
+            "discord_role_id",
+            "discord_role_id_gvg",
+            "discord_role_id_svs",
+            "discord_role_id_calamity",
+            "discord_role_id_shadowfront_squad1",
+            "discord_role_id_shadowfront_squad2",
+            "notify_gvg_daily_tasks",
+            "notify_gvg_pvp",
+            "notify_svs_garrison",
+            "notify_svs_pvp",
+            "notify_svs_won_prep",
+            "notify_calamity_10",
+            "webhook_gvg",
+            "webhook_svs",
+            "webhook_calamity",
+            "webhook_armsrace",
+            "discord_role_id_armsrace",
+            "notify_armsrace_reminder_30",
+            "tpl_armsrace_reminder_30_content",
+            "tpl_armsrace_reminder_30_title",
+            "tpl_armsrace_reminder_30_desc",
+            "notify_armsrace_reminder_5",
+            "tpl_armsrace_reminder_5_content",
+            "tpl_armsrace_reminder_5_title",
+            "tpl_armsrace_reminder_5_desc",
+            "notify_armsrace_start",
+            "tpl_armsrace_start_content",
+            "tpl_armsrace_start_title",
+            "tpl_armsrace_start_desc",
+            "webhook_dtr",
+            "discord_role_id_dtr",
+            "notify_dtr_reminder_30",
+            "tpl_dtr_reminder_30_content",
+            "tpl_dtr_reminder_30_title",
+            "tpl_dtr_reminder_30_desc",
+            "notify_dtr_reminder_5",
+            "tpl_dtr_reminder_5_content",
+            "tpl_dtr_reminder_5_title",
+            "tpl_dtr_reminder_5_desc",
+            "notify_dtr_start",
+            "tpl_dtr_start_content",
+            "tpl_dtr_start_title",
+            "tpl_dtr_start_desc",
+            "webhook_shadowfront",
+            "discord_role_id_shadowfront",
+            "notify_shadowfront_reminder_30",
+            "tpl_shadowfront_reminder_30_content",
+            "tpl_shadowfront_reminder_30_title",
+            "tpl_shadowfront_reminder_30_desc",
+            "notify_shadowfront_reminder_5",
+            "tpl_shadowfront_reminder_5_content",
+            "tpl_shadowfront_reminder_5_title",
+            "tpl_shadowfront_reminder_5_desc",
+            "notify_shadowfront_start",
+            "tpl_shadowfront_start_content",
+            "tpl_shadowfront_start_title",
+            "tpl_shadowfront_start_desc",
+            "tpl_gvg_start_content",
+            "tpl_gvg_start_title",
+            "tpl_gvg_start_desc",
+            "tpl_gvg_reminder_content",
+            "tpl_gvg_reminder_title",
+            "tpl_gvg_reminder_desc",
+            "tpl_svs_garrison_content",
+            "tpl_svs_garrison_title",
+            "tpl_svs_garrison_desc",
+            "tpl_svs_reminder_30_invasion_content",
+            "tpl_svs_reminder_30_invasion_title",
+            "tpl_svs_reminder_30_invasion_desc",
+            "tpl_svs_reminder_30_defense_content",
+            "tpl_svs_reminder_30_defense_title",
+            "tpl_svs_reminder_30_defense_desc",
+            "tpl_svs_reminder_5_invasion_content",
+            "tpl_svs_reminder_5_invasion_title",
+            "tpl_svs_reminder_5_invasion_desc",
+            "tpl_svs_reminder_5_defense_content",
+            "tpl_svs_reminder_5_defense_title",
+            "tpl_svs_reminder_5_defense_desc",
+            "tpl_svs_start_invasion_content",
+            "tpl_svs_start_invasion_title",
+            "tpl_svs_start_invasion_desc",
+            "tpl_svs_start_defense_content",
+            "tpl_svs_start_defense_title",
+            "tpl_svs_start_defense_desc",
+            "tpl_calamity_reminder_10_content",
+            "tpl_calamity_reminder_10_title",
+            "tpl_calamity_reminder_10_desc",
+          ],
+        ],
+      ],
+      op: "select",
+      table: "guild_config",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "in",
+          [
+            "TA",
+          ],
+        ],
+      ],
+      op: "select",
+      table: "guild_config",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "in",
+          [
+            "TA",
+          ],
+        ],
+        [
+          "event_name",
+          "eq",
+          "SvS",
+        ],
+      ],
+      op: "select",
+      table: "war_sessions",
+    },
+    {
+      args: {
+        guild: "TA",
+        key: "sent_gvg_daily_tasks_day_3_2026-10-07_00:01",
+        value: "sending",
+      },
+      filters: [],
+      op: "upsert",
+      table: "guild_config",
+    },
+    {
+      args: {
+        value: "sent",
+      },
+      filters: [
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+        [
+          "key",
+          "eq",
+          "sent_gvg_daily_tasks_day_3_2026-10-07_00:01",
+        ],
+      ],
+      op: "update",
+      table: "guild_config",
+    },
+    {
+      args: {
+        guild: "TA",
+        key: "sent_calamity_round_14_2026-10-07",
+        value: "sending",
+      },
+      filters: [],
+      op: "upsert",
+      table: "guild_config",
+    },
+    {
+      args: {
+        value: "sent",
+      },
+      filters: [
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+        [
+          "key",
+          "eq",
+          "sent_calamity_round_14_2026-10-07",
+        ],
+      ],
+      op: "update",
+      table: "guild_config",
+    },
+  ],
+  response: {
+    ok: true,
+    processed: [
+      {
+        event: "GvG Daily Tasks - Day 3 (Wednesday)",
+        guild: "TA",
+        status: "sent",
+        type: "gvg_daily_tasks",
+      },
+      {
+        event: "Calamity Befalls - Round 14",
+        guild: "TA",
+        status: "sent",
+        type: "calamity_befalls",
+      },
+    ],
+  },
+  sent: [
+    {
+      body: {
+        allowed_mentions: {
+          parse: [
+            "roles",
+            "users",
+            "everyone",
+          ],
+        },
+        content: "📢 **GvG Day 3 Tasks are Live!** (Wednesday · 00:01 UTC) <@&222222222222222222>",
+        embeds: [
+          {
+            color: 3899894,
+            description: "Daily point breakdown & scoring priorities for **Guild vs Guild — Day 3 (Wednesday)**.
+Coordinate with your guild members and maximize points!",
+            fields: [
+              {
+                inline: false,
+                name: "🔬 Technology & Research",
+                value: "• Every 1m Technology Speedups consumed: **\`+48 pts\`**
+• Spend Computational Component × 1 during the event: **\`+400 pts\`**
+• Spend Deep Space Beacon × 1 during the event: **\`+800 pts\`**
+• Spend Echo Module × 1 during the event: **\`+80 pts\`**
+• Spend Echoes of Deep Space × 1 during the event: **\`+16,000 pts\`**",
+              },
+              {
+                inline: false,
+                name: "🌌 Ruins & Exploration",
+                value: "• Excavate a Ruin of Legendary quality once: **\`+30,000 pts\`**
+• Successfully plunder a Ruin 1 time(s): **\`+50,000 pts\`**
+• Perform 1 Map Search(es): **\`+360,000 pts\`**",
+              },
+              {
+                inline: false,
+                name: "💎 Packs",
+                value: "• Earn 1 Credit(s) through packs: **\`+4 pts\`**",
+              },
+            ],
+            footer: {
+              text: "FGF Guild Management Tool • GvG Daily Reminders (00:01 UTC)",
+            },
+            title: "⚔️ GvG Day 3 Tasks: Technology, Research, Ruins & Exploration",
+          },
+        ],
+      },
+      url: "https://discord.com/api/webhooks/3/tok_3",
+    },
+    {
+      body: {
+        allowed_mentions: {
+          parse: [
+            "roles",
+            "users",
+            "everyone",
+          ],
+        },
+        content: "⏰ **Calamity Befalls: Round 14 starts in 10 minutes!**",
+        embeds: [
+          {
+            color: 16750848,
+            description: "Prepare your squads! Calamity Befalls Round 14 starts in 10 minutes.",
+            fields: [
+              {
+                inline: true,
+                name: "Round",
+                value: "14 / 16",
+              },
+              {
+                inline: true,
+                name: "Start Time (UTC)",
+                value: "Wednesday · 15:00 UTC",
+              },
+              {
+                inline: false,
+                name: "Guild Agenda",
+                value: "Log in and prepare for the battle.",
+              },
+            ],
+            footer: {
+              text: "FGF Guild Management Tool",
+            },
+            title: "⏰ Calamity Befalls - Round 14 (Reminder)",
+          },
+        ],
+      },
+      url: "https://discord.com/api/webhooks/5/tok_5",
+    },
+  ],
+  status: 200,
+}
+`;
+
+snapshot[`Saturday 00:02: GvG daily, War Prism and the SvS portal of an active week 1`] = `
+{
+  db: [
+    {
+      args: null,
+      filters: [],
+      op: "select",
+      table: "guilds",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "is_active",
+          "eq",
+          true,
+        ],
+      ],
+      op: "select",
+      table: "event_status",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "in",
+          [
+            "TA",
+            "TB",
+          ],
+        ],
+        [
+          "key",
+          "in",
+          [
+            "discord_webhook_url",
+            "discord_role_id",
+            "discord_role_id_gvg",
+            "discord_role_id_svs",
+            "discord_role_id_calamity",
+            "discord_role_id_shadowfront_squad1",
+            "discord_role_id_shadowfront_squad2",
+            "notify_gvg_daily_tasks",
+            "notify_gvg_pvp",
+            "notify_svs_garrison",
+            "notify_svs_pvp",
+            "notify_svs_won_prep",
+            "notify_calamity_10",
+            "webhook_gvg",
+            "webhook_svs",
+            "webhook_calamity",
+            "webhook_armsrace",
+            "discord_role_id_armsrace",
+            "notify_armsrace_reminder_30",
+            "tpl_armsrace_reminder_30_content",
+            "tpl_armsrace_reminder_30_title",
+            "tpl_armsrace_reminder_30_desc",
+            "notify_armsrace_reminder_5",
+            "tpl_armsrace_reminder_5_content",
+            "tpl_armsrace_reminder_5_title",
+            "tpl_armsrace_reminder_5_desc",
+            "notify_armsrace_start",
+            "tpl_armsrace_start_content",
+            "tpl_armsrace_start_title",
+            "tpl_armsrace_start_desc",
+            "webhook_dtr",
+            "discord_role_id_dtr",
+            "notify_dtr_reminder_30",
+            "tpl_dtr_reminder_30_content",
+            "tpl_dtr_reminder_30_title",
+            "tpl_dtr_reminder_30_desc",
+            "notify_dtr_reminder_5",
+            "tpl_dtr_reminder_5_content",
+            "tpl_dtr_reminder_5_title",
+            "tpl_dtr_reminder_5_desc",
+            "notify_dtr_start",
+            "tpl_dtr_start_content",
+            "tpl_dtr_start_title",
+            "tpl_dtr_start_desc",
+            "webhook_shadowfront",
+            "discord_role_id_shadowfront",
+            "notify_shadowfront_reminder_30",
+            "tpl_shadowfront_reminder_30_content",
+            "tpl_shadowfront_reminder_30_title",
+            "tpl_shadowfront_reminder_30_desc",
+            "notify_shadowfront_reminder_5",
+            "tpl_shadowfront_reminder_5_content",
+            "tpl_shadowfront_reminder_5_title",
+            "tpl_shadowfront_reminder_5_desc",
+            "notify_shadowfront_start",
+            "tpl_shadowfront_start_content",
+            "tpl_shadowfront_start_title",
+            "tpl_shadowfront_start_desc",
+            "tpl_gvg_start_content",
+            "tpl_gvg_start_title",
+            "tpl_gvg_start_desc",
+            "tpl_gvg_reminder_content",
+            "tpl_gvg_reminder_title",
+            "tpl_gvg_reminder_desc",
+            "tpl_svs_garrison_content",
+            "tpl_svs_garrison_title",
+            "tpl_svs_garrison_desc",
+            "tpl_svs_reminder_30_invasion_content",
+            "tpl_svs_reminder_30_invasion_title",
+            "tpl_svs_reminder_30_invasion_desc",
+            "tpl_svs_reminder_30_defense_content",
+            "tpl_svs_reminder_30_defense_title",
+            "tpl_svs_reminder_30_defense_desc",
+            "tpl_svs_reminder_5_invasion_content",
+            "tpl_svs_reminder_5_invasion_title",
+            "tpl_svs_reminder_5_invasion_desc",
+            "tpl_svs_reminder_5_defense_content",
+            "tpl_svs_reminder_5_defense_title",
+            "tpl_svs_reminder_5_defense_desc",
+            "tpl_svs_start_invasion_content",
+            "tpl_svs_start_invasion_title",
+            "tpl_svs_start_invasion_desc",
+            "tpl_svs_start_defense_content",
+            "tpl_svs_start_defense_title",
+            "tpl_svs_start_defense_desc",
+            "tpl_calamity_reminder_10_content",
+            "tpl_calamity_reminder_10_title",
+            "tpl_calamity_reminder_10_desc",
+          ],
+        ],
+      ],
+      op: "select",
+      table: "guild_config",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "in",
+          [
+            "TA",
+            "TB",
+          ],
+        ],
+      ],
+      op: "select",
+      table: "guild_config",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "in",
+          [
+            "TA",
+            "TB",
+          ],
+        ],
+        [
+          "event_name",
+          "eq",
+          "SvS",
+        ],
+      ],
+      op: "select",
+      table: "war_sessions",
+    },
+    {
+      args: {
+        guild: "TA",
+        key: "sent_gvg_daily_tasks_day_6_2026-10-10_00:01",
+        value: "sending",
+      },
+      filters: [],
+      op: "upsert",
+      table: "guild_config",
+    },
+    {
+      args: {
+        value: "sent",
+      },
+      filters: [
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+        [
+          "key",
+          "eq",
+          "sent_gvg_daily_tasks_day_6_2026-10-10_00:01",
+        ],
+      ],
+      op: "update",
+      table: "guild_config",
+    },
+    {
+      args: {
+        guild: "TA",
+        key: "sent_gvg_War_Prism_now_2026-10-10_00:00",
+        value: "sending",
+      },
+      filters: [],
+      op: "upsert",
+      table: "guild_config",
+    },
+    {
+      args: {
+        value: "sent",
+      },
+      filters: [
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+        [
+          "key",
+          "eq",
+          "sent_gvg_War_Prism_now_2026-10-10_00:00",
+        ],
+      ],
+      op: "update",
+      table: "guild_config",
+    },
+    {
+      args: {
+        guild: "TA",
+        key: "sent_gvg_War_Prism_reminder_2026-10-09_23:55",
+        value: "sending",
+      },
+      filters: [],
+      op: "upsert",
+      table: "guild_config",
+    },
+    {
+      args: {
+        value: "sent",
+      },
+      filters: [
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+        [
+          "key",
+          "eq",
+          "sent_gvg_War_Prism_reminder_2026-10-09_23:55",
+        ],
+      ],
+      op: "update",
+      table: "guild_config",
+    },
+    {
+      args: {
+        guild: "TA",
+        key: "sent_svs_Portal_Reminder_5m_portal_5_2026-10-09_23:55",
+        value: "sending",
+      },
+      filters: [],
+      op: "upsert",
+      table: "guild_config",
+    },
+    {
+      args: {
+        value: "sent",
+      },
+      filters: [
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+        [
+          "key",
+          "eq",
+          "sent_svs_Portal_Reminder_5m_portal_5_2026-10-09_23:55",
+        ],
+      ],
+      op: "update",
+      table: "guild_config",
+    },
+    {
+      args: {
+        guild: "TA",
+        key: "sent_svs_Portal_Open_portal_open_2026-10-10_00:00",
+        value: "sending",
+      },
+      filters: [],
+      op: "upsert",
+      table: "guild_config",
+    },
+    {
+      args: {
+        value: "sent",
+      },
+      filters: [
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+        [
+          "key",
+          "eq",
+          "sent_svs_Portal_Open_portal_open_2026-10-10_00:00",
+        ],
+      ],
+      op: "update",
+      table: "guild_config",
+    },
+  ],
+  response: {
+    ok: true,
+    processed: [
+      {
+        event: "GvG Daily Tasks - Day 6 (Saturday)",
+        guild: "TA",
+        status: "sent",
+        type: "gvg_daily_tasks",
+      },
+      {
+        event: "GvG Saturday - War Prism (now)",
+        guild: "TA",
+        status: "sent",
+        type: "gvg_saturday",
+      },
+      {
+        event: "GvG Saturday - War Prism (reminder)",
+        guild: "TA",
+        status: "sent",
+        type: "gvg_saturday",
+      },
+      {
+        event: "SvS - Portal Reminder 5m",
+        guild: "TA",
+        status: "sent",
+        type: "svs_portal_5",
+      },
+      {
+        event: "SvS - Portal Open",
+        guild: "TA",
+        status: "sent",
+        type: "svs_portal_open",
+      },
+    ],
+  },
+  sent: [
+    {
+      body: {
+        allowed_mentions: {
+          parse: [
+            "roles",
+            "users",
+            "everyone",
+          ],
+        },
+        content: "📢 **GvG Day 6 Tasks are Live!** (Saturday · 00:01 UTC) <@&222222222222222222>",
+        embeds: [
+          {
+            color: 15680580,
+            description: "Daily point breakdown & scoring priorities for **Guild vs Guild — Day 6 (Saturday)**.
+Coordinate with your guild members and maximize points!",
+            fields: [
+              {
+                inline: false,
+                name: "🏰 War Prism, Shrine & Fortresses",
+                value: "• Every 100 damage dealt to the War Prism: **\`+10 pts\`**
+• Deliver the last hit to the War Prism: **\`+1,000,000 pts\`**
+• Seize 1 Legendary quality Flagship Component Fragment(s) by defeating the Ascendancy Shrine: **\`+60,000 pts\`**
+• Station 2 min in War Fortresses to earn points: **\`+50,000 pts\`**",
+              },
+              {
+                inline: false,
+                name: "🚢 Shipbuilding & Glory",
+                value: "• Consume 1 min(s) of Shipbuilding Speedup: **\`+48 pts\`**
+• For every 1 Glory earned from the opposing Commerce Guild: **\`+3 pts\`**",
+              },
+              {
+                inline: false,
+                name: "💥 Defeating Enemy Craft (PvP)",
+                value: "• T1: +1,500 pts | T2: +9,000 pts | T3: +24,000 pts | T4: +45,000 pts: **\`Tier 1-4\`**
+• T5: +75,000 pts | T6: +120,000 pts | T7: +180,000 pts: **\`Tier 5-7\`**",
+              },
+              {
+                inline: false,
+                name: "🛡️ Losing Craft in Battle (PvP)",
+                value: "• T1: +1,500 pts | T2: +9,000 pts | T3: +24,000 pts | T4: +45,000 pts: **\`Tier 1-4\`**
+• T5: +75,000 pts | T6: +120,000 pts | T7: +180,000 pts: **\`Tier 5-7\`**",
+              },
+            ],
+            footer: {
+              text: "FGF Guild Management Tool • GvG Daily Reminders (00:01 UTC)",
+            },
+            title: "⚔️ GvG Day 6 Tasks: Total War: War Prism, Fortresses, Glory & PvP Fleet Battles",
+          },
+        ],
+      },
+      url: "https://discord.com/api/webhooks/3/tok_3",
+    },
+    {
+      body: {
+        allowed_mentions: {
+          parse: [
+            "roles",
+            "users",
+            "everyone",
+          ],
+        },
+        content: "⚔️ **GvG: War Prism** starts now! @everyone",
+        embeds: [
+          {
+            color: 9807270,
+            description: "The War Prism event is active. Join the battle now!",
+            fields: [
+              {
+                inline: true,
+                name: "Start Time (UTC)",
+                value: "00:00 UTC",
+              },
+              {
+                inline: false,
+                name: "Guild Agenda",
+                value: "Secure the War Prism now.",
+              },
+            ],
+            footer: {
+              text: "FGF Guild Management Tool",
+            },
+            title: "⚔️ GvG - War Prism",
+          },
+        ],
+      },
+      url: "https://discord.com/api/webhooks/3/tok_3",
+    },
+    {
+      body: {
+        allowed_mentions: {
+          parse: [
+            "roles",
+            "users",
+            "everyone",
+          ],
+        },
+        content: "⏰ **GvG: War Prism** starts in **5 minutes**! @everyone",
+        embeds: [
+          {
+            color: 16750848,
+            description: "Get ready! The War Prism event starts in 5 minutes.",
+            fields: [
+              {
+                inline: true,
+                name: "Start Time (UTC)",
+                value: "00:00 UTC",
+              },
+              {
+                inline: false,
+                name: "Guild Agenda",
+                value: "Log in and prepare for the War Prism.",
+              },
+            ],
+            footer: {
+              text: "FGF Guild Management Tool",
+            },
+            title: "⏰ GvG - War Prism (Reminder)",
+          },
+        ],
+      },
+      url: "https://discord.com/api/webhooks/3/tok_3",
+    },
+    {
+      body: {
+        allowed_mentions: {
+          parse: [
+            "roles",
+            "users",
+            "everyone",
+          ],
+        },
+        content: "⏰ **SvS: Invasion Portal opens in 5 minutes! Prepare to cross!** @everyone",
+        embeds: [
+          {
+            color: 16750848,
+            description: "The portal to the enemy server will open in 5 minutes. Get ready to jump!",
+            fields: [
+              {
+                inline: true,
+                name: "Start Time (UTC)",
+                value: "00:00 UTC",
+              },
+              {
+                inline: false,
+                name: "Guild Agenda",
+                value: "Prepare your fleets. Reminder: cargo attacks are forbidden!",
+              },
+            ],
+            footer: {
+              text: "FGF Guild Management Tool",
+            },
+            title: "⏰ SvS: Invasion Portal (5m Reminder)",
+          },
+        ],
+      },
+      url: "https://discord.com/api/webhooks/4/tok_4",
+    },
+    {
+      body: {
+        allowed_mentions: {
+          parse: [
+            "roles",
+            "users",
+            "everyone",
+          ],
+        },
+        content: "⚔️ **SvS: Invasion Portal is Open! Attack!** @everyone",
+        embeds: [
+          {
+            color: 15548997,
+            description: "The portal to the enemy server is now open. Time to jump and attack target players! Reminder: cargo ships are strictly off-limits!",
+            fields: [
+              {
+                inline: true,
+                name: "Start Time (UTC)",
+                value: "00:00 UTC",
+              },
+              {
+                inline: false,
+                name: "Guild Agenda",
+                value: "Jump to the enemy server and conquer!",
+              },
+            ],
+            footer: {
+              text: "FGF Guild Management Tool",
+            },
+            title: "⚔️ SvS: Invasion Portal Open!",
+          },
+        ],
+      },
+      url: "https://discord.com/api/webhooks/4/tok_4",
+    },
+  ],
+  status: 200,
+}
+`;
+
+snapshot[`Friday 23:56: GvG and SvS 5-minute reminders, with a GvG template 1`] = `
+{
+  db: [
+    {
+      args: null,
+      filters: [],
+      op: "select",
+      table: "guilds",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "is_active",
+          "eq",
+          true,
+        ],
+      ],
+      op: "select",
+      table: "event_status",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "in",
+          [
+            "TA",
+            "TB",
+          ],
+        ],
+        [
+          "key",
+          "in",
+          [
+            "discord_webhook_url",
+            "discord_role_id",
+            "discord_role_id_gvg",
+            "discord_role_id_svs",
+            "discord_role_id_calamity",
+            "discord_role_id_shadowfront_squad1",
+            "discord_role_id_shadowfront_squad2",
+            "notify_gvg_daily_tasks",
+            "notify_gvg_pvp",
+            "notify_svs_garrison",
+            "notify_svs_pvp",
+            "notify_svs_won_prep",
+            "notify_calamity_10",
+            "webhook_gvg",
+            "webhook_svs",
+            "webhook_calamity",
+            "webhook_armsrace",
+            "discord_role_id_armsrace",
+            "notify_armsrace_reminder_30",
+            "tpl_armsrace_reminder_30_content",
+            "tpl_armsrace_reminder_30_title",
+            "tpl_armsrace_reminder_30_desc",
+            "notify_armsrace_reminder_5",
+            "tpl_armsrace_reminder_5_content",
+            "tpl_armsrace_reminder_5_title",
+            "tpl_armsrace_reminder_5_desc",
+            "notify_armsrace_start",
+            "tpl_armsrace_start_content",
+            "tpl_armsrace_start_title",
+            "tpl_armsrace_start_desc",
+            "webhook_dtr",
+            "discord_role_id_dtr",
+            "notify_dtr_reminder_30",
+            "tpl_dtr_reminder_30_content",
+            "tpl_dtr_reminder_30_title",
+            "tpl_dtr_reminder_30_desc",
+            "notify_dtr_reminder_5",
+            "tpl_dtr_reminder_5_content",
+            "tpl_dtr_reminder_5_title",
+            "tpl_dtr_reminder_5_desc",
+            "notify_dtr_start",
+            "tpl_dtr_start_content",
+            "tpl_dtr_start_title",
+            "tpl_dtr_start_desc",
+            "webhook_shadowfront",
+            "discord_role_id_shadowfront",
+            "notify_shadowfront_reminder_30",
+            "tpl_shadowfront_reminder_30_content",
+            "tpl_shadowfront_reminder_30_title",
+            "tpl_shadowfront_reminder_30_desc",
+            "notify_shadowfront_reminder_5",
+            "tpl_shadowfront_reminder_5_content",
+            "tpl_shadowfront_reminder_5_title",
+            "tpl_shadowfront_reminder_5_desc",
+            "notify_shadowfront_start",
+            "tpl_shadowfront_start_content",
+            "tpl_shadowfront_start_title",
+            "tpl_shadowfront_start_desc",
+            "tpl_gvg_start_content",
+            "tpl_gvg_start_title",
+            "tpl_gvg_start_desc",
+            "tpl_gvg_reminder_content",
+            "tpl_gvg_reminder_title",
+            "tpl_gvg_reminder_desc",
+            "tpl_svs_garrison_content",
+            "tpl_svs_garrison_title",
+            "tpl_svs_garrison_desc",
+            "tpl_svs_reminder_30_invasion_content",
+            "tpl_svs_reminder_30_invasion_title",
+            "tpl_svs_reminder_30_invasion_desc",
+            "tpl_svs_reminder_30_defense_content",
+            "tpl_svs_reminder_30_defense_title",
+            "tpl_svs_reminder_30_defense_desc",
+            "tpl_svs_reminder_5_invasion_content",
+            "tpl_svs_reminder_5_invasion_title",
+            "tpl_svs_reminder_5_invasion_desc",
+            "tpl_svs_reminder_5_defense_content",
+            "tpl_svs_reminder_5_defense_title",
+            "tpl_svs_reminder_5_defense_desc",
+            "tpl_svs_start_invasion_content",
+            "tpl_svs_start_invasion_title",
+            "tpl_svs_start_invasion_desc",
+            "tpl_svs_start_defense_content",
+            "tpl_svs_start_defense_title",
+            "tpl_svs_start_defense_desc",
+            "tpl_calamity_reminder_10_content",
+            "tpl_calamity_reminder_10_title",
+            "tpl_calamity_reminder_10_desc",
+          ],
+        ],
+      ],
+      op: "select",
+      table: "guild_config",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "in",
+          [
+            "TA",
+            "TB",
+          ],
+        ],
+      ],
+      op: "select",
+      table: "guild_config",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "in",
+          [
+            "TA",
+            "TB",
+          ],
+        ],
+        [
+          "event_name",
+          "eq",
+          "SvS",
+        ],
+      ],
+      op: "select",
+      table: "war_sessions",
+    },
+    {
+      args: {
+        guild: "TA",
+        key: "sent_gvg_War_Prism_reminder_2026-10-09_23:55",
+        value: "sending",
+      },
+      filters: [],
+      op: "upsert",
+      table: "guild_config",
+    },
+    {
+      args: {
+        value: "sent",
+      },
+      filters: [
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+        [
+          "key",
+          "eq",
+          "sent_gvg_War_Prism_reminder_2026-10-09_23:55",
+        ],
+      ],
+      op: "update",
+      table: "guild_config",
+    },
+    {
+      args: {
+        guild: "TA",
+        key: "sent_svs_Portal_Reminder_5m_portal_5_2026-10-09_23:55",
+        value: "sending",
+      },
+      filters: [],
+      op: "upsert",
+      table: "guild_config",
+    },
+    {
+      args: {
+        value: "sent",
+      },
+      filters: [
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+        [
+          "key",
+          "eq",
+          "sent_svs_Portal_Reminder_5m_portal_5_2026-10-09_23:55",
+        ],
+      ],
+      op: "update",
+      table: "guild_config",
+    },
+  ],
+  response: {
+    ok: true,
+    processed: [
+      {
+        event: "GvG Saturday - War Prism (reminder)",
+        guild: "TA",
+        status: "sent",
+        type: "gvg_saturday",
+      },
+      {
+        event: "SvS - Portal Reminder 5m",
+        guild: "TA",
+        status: "sent",
+        type: "svs_portal_5",
+      },
+    ],
+  },
+  sent: [
+    {
+      body: {
+        allowed_mentions: {
+          parse: [
+            "roles",
+            "users",
+            "everyone",
+          ],
+        },
+        content: "⏰ **GvG: War Prism** starts in **5 minutes**! @everyone",
+        embeds: [
+          {
+            color: 16750848,
+            description: "Get ready! The War Prism event starts in 5 minutes.",
+            fields: [
+              {
+                inline: true,
+                name: "Start Time (UTC)",
+                value: "00:00 UTC",
+              },
+              {
+                inline: false,
+                name: "Guild Agenda",
+                value: "Log in and prepare for the War Prism.",
+              },
+            ],
+            footer: {
+              text: "FGF Guild Management Tool",
+            },
+            title: "War Prism at 00:00 UTC <@&222222222222222222>",
+          },
+        ],
+      },
+      url: "https://discord.com/api/webhooks/3/tok_3",
+    },
+    {
+      body: {
+        allowed_mentions: {
+          parse: [
+            "roles",
+            "users",
+            "everyone",
+          ],
+        },
+        content: "⏰ **SvS: Invasion Portal opens in 5 minutes! Prepare to cross!** @everyone",
+        embeds: [
+          {
+            color: 16750848,
+            description: "The portal to the enemy server will open in 5 minutes. Get ready to jump!",
+            fields: [
+              {
+                inline: true,
+                name: "Start Time (UTC)",
+                value: "00:00 UTC",
+              },
+              {
+                inline: false,
+                name: "Guild Agenda",
+                value: "Prepare your fleets. Reminder: cargo attacks are forbidden!",
+              },
+            ],
+            footer: {
+              text: "FGF Guild Management Tool",
+            },
+            title: "⏰ SvS: Invasion Portal (5m Reminder)",
+          },
+        ],
+      },
+      url: "https://discord.com/api/webhooks/4/tok_4",
+    },
+  ],
+  status: 200,
+}
+`;
+
+snapshot[`SvS garrison on Friday 20:01, and nothing when the week has no SvS 1`] = `
+{
+  db: [
+    {
+      args: null,
+      filters: [],
+      op: "select",
+      table: "guilds",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "is_active",
+          "eq",
+          true,
+        ],
+      ],
+      op: "select",
+      table: "event_status",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "in",
+          [
+            "TA",
+            "TB",
+          ],
+        ],
+        [
+          "key",
+          "in",
+          [
+            "discord_webhook_url",
+            "discord_role_id",
+            "discord_role_id_gvg",
+            "discord_role_id_svs",
+            "discord_role_id_calamity",
+            "discord_role_id_shadowfront_squad1",
+            "discord_role_id_shadowfront_squad2",
+            "notify_gvg_daily_tasks",
+            "notify_gvg_pvp",
+            "notify_svs_garrison",
+            "notify_svs_pvp",
+            "notify_svs_won_prep",
+            "notify_calamity_10",
+            "webhook_gvg",
+            "webhook_svs",
+            "webhook_calamity",
+            "webhook_armsrace",
+            "discord_role_id_armsrace",
+            "notify_armsrace_reminder_30",
+            "tpl_armsrace_reminder_30_content",
+            "tpl_armsrace_reminder_30_title",
+            "tpl_armsrace_reminder_30_desc",
+            "notify_armsrace_reminder_5",
+            "tpl_armsrace_reminder_5_content",
+            "tpl_armsrace_reminder_5_title",
+            "tpl_armsrace_reminder_5_desc",
+            "notify_armsrace_start",
+            "tpl_armsrace_start_content",
+            "tpl_armsrace_start_title",
+            "tpl_armsrace_start_desc",
+            "webhook_dtr",
+            "discord_role_id_dtr",
+            "notify_dtr_reminder_30",
+            "tpl_dtr_reminder_30_content",
+            "tpl_dtr_reminder_30_title",
+            "tpl_dtr_reminder_30_desc",
+            "notify_dtr_reminder_5",
+            "tpl_dtr_reminder_5_content",
+            "tpl_dtr_reminder_5_title",
+            "tpl_dtr_reminder_5_desc",
+            "notify_dtr_start",
+            "tpl_dtr_start_content",
+            "tpl_dtr_start_title",
+            "tpl_dtr_start_desc",
+            "webhook_shadowfront",
+            "discord_role_id_shadowfront",
+            "notify_shadowfront_reminder_30",
+            "tpl_shadowfront_reminder_30_content",
+            "tpl_shadowfront_reminder_30_title",
+            "tpl_shadowfront_reminder_30_desc",
+            "notify_shadowfront_reminder_5",
+            "tpl_shadowfront_reminder_5_content",
+            "tpl_shadowfront_reminder_5_title",
+            "tpl_shadowfront_reminder_5_desc",
+            "notify_shadowfront_start",
+            "tpl_shadowfront_start_content",
+            "tpl_shadowfront_start_title",
+            "tpl_shadowfront_start_desc",
+            "tpl_gvg_start_content",
+            "tpl_gvg_start_title",
+            "tpl_gvg_start_desc",
+            "tpl_gvg_reminder_content",
+            "tpl_gvg_reminder_title",
+            "tpl_gvg_reminder_desc",
+            "tpl_svs_garrison_content",
+            "tpl_svs_garrison_title",
+            "tpl_svs_garrison_desc",
+            "tpl_svs_reminder_30_invasion_content",
+            "tpl_svs_reminder_30_invasion_title",
+            "tpl_svs_reminder_30_invasion_desc",
+            "tpl_svs_reminder_30_defense_content",
+            "tpl_svs_reminder_30_defense_title",
+            "tpl_svs_reminder_30_defense_desc",
+            "tpl_svs_reminder_5_invasion_content",
+            "tpl_svs_reminder_5_invasion_title",
+            "tpl_svs_reminder_5_invasion_desc",
+            "tpl_svs_reminder_5_defense_content",
+            "tpl_svs_reminder_5_defense_title",
+            "tpl_svs_reminder_5_defense_desc",
+            "tpl_svs_start_invasion_content",
+            "tpl_svs_start_invasion_title",
+            "tpl_svs_start_invasion_desc",
+            "tpl_svs_start_defense_content",
+            "tpl_svs_start_defense_title",
+            "tpl_svs_start_defense_desc",
+            "tpl_calamity_reminder_10_content",
+            "tpl_calamity_reminder_10_title",
+            "tpl_calamity_reminder_10_desc",
+          ],
+        ],
+      ],
+      op: "select",
+      table: "guild_config",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "in",
+          [
+            "TA",
+            "TB",
+          ],
+        ],
+      ],
+      op: "select",
+      table: "guild_config",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "in",
+          [
+            "TA",
+            "TB",
+          ],
+        ],
+        [
+          "event_name",
+          "eq",
+          "SvS",
+        ],
+      ],
+      op: "select",
+      table: "war_sessions",
+    },
+    {
+      args: {
+        guild: "TA",
+        key: "sent_svs_Garrison_Reminder_garrison_2026-10-09_20:00",
+        value: "sending",
+      },
+      filters: [],
+      op: "upsert",
+      table: "guild_config",
+    },
+    {
+      args: {
+        value: "sent",
+      },
+      filters: [
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+        [
+          "key",
+          "eq",
+          "sent_svs_Garrison_Reminder_garrison_2026-10-09_20:00",
+        ],
+      ],
+      op: "update",
+      table: "guild_config",
+    },
+  ],
+  response: {
+    ok: true,
+    processed: [
+      {
+        event: "SvS - Garrison Reminder",
+        guild: "TA",
+        status: "sent",
+        type: "svs_garrison",
+      },
+    ],
+  },
+  sent: [
+    {
+      body: {
+        allowed_mentions: {
+          parse: [
+            "roles",
+            "users",
+            "everyone",
+          ],
+        },
+        content: "🛡️ **SvS: Garrison Reminder** - Don't forget to put your ships in garrison to avoid being attacked while offline! <@&111111111111111111>",
+        embeds: [
+          {
+            color: 3447003,
+            description: "Protect your ships before going offline.",
+            fields: [
+              {
+                inline: true,
+                name: "Time (UTC)",
+                value: "20:00 UTC",
+              },
+              {
+                inline: false,
+                name: "Guild Agenda",
+                value: "Put your ships in garrison.",
+              },
+            ],
+            footer: {
+              text: "FGF Guild Management Tool",
+            },
+            title: "🛡️ SvS: Garrison Reminder",
+          },
+        ],
+      },
+      url: "https://discord.com/api/webhooks/4/tok_4",
+    },
+  ],
+  status: 200,
+}
+`;
+
+snapshot[`SvS garrison on Friday 20:01, and nothing when the week has no SvS 2`] = `
+{
+  db: [
+    {
+      args: null,
+      filters: [],
+      op: "select",
+      table: "guilds",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "is_active",
+          "eq",
+          true,
+        ],
+      ],
+      op: "select",
+      table: "event_status",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "in",
+          [
+            "TA",
+            "TB",
+          ],
+        ],
+        [
+          "key",
+          "in",
+          [
+            "discord_webhook_url",
+            "discord_role_id",
+            "discord_role_id_gvg",
+            "discord_role_id_svs",
+            "discord_role_id_calamity",
+            "discord_role_id_shadowfront_squad1",
+            "discord_role_id_shadowfront_squad2",
+            "notify_gvg_daily_tasks",
+            "notify_gvg_pvp",
+            "notify_svs_garrison",
+            "notify_svs_pvp",
+            "notify_svs_won_prep",
+            "notify_calamity_10",
+            "webhook_gvg",
+            "webhook_svs",
+            "webhook_calamity",
+            "webhook_armsrace",
+            "discord_role_id_armsrace",
+            "notify_armsrace_reminder_30",
+            "tpl_armsrace_reminder_30_content",
+            "tpl_armsrace_reminder_30_title",
+            "tpl_armsrace_reminder_30_desc",
+            "notify_armsrace_reminder_5",
+            "tpl_armsrace_reminder_5_content",
+            "tpl_armsrace_reminder_5_title",
+            "tpl_armsrace_reminder_5_desc",
+            "notify_armsrace_start",
+            "tpl_armsrace_start_content",
+            "tpl_armsrace_start_title",
+            "tpl_armsrace_start_desc",
+            "webhook_dtr",
+            "discord_role_id_dtr",
+            "notify_dtr_reminder_30",
+            "tpl_dtr_reminder_30_content",
+            "tpl_dtr_reminder_30_title",
+            "tpl_dtr_reminder_30_desc",
+            "notify_dtr_reminder_5",
+            "tpl_dtr_reminder_5_content",
+            "tpl_dtr_reminder_5_title",
+            "tpl_dtr_reminder_5_desc",
+            "notify_dtr_start",
+            "tpl_dtr_start_content",
+            "tpl_dtr_start_title",
+            "tpl_dtr_start_desc",
+            "webhook_shadowfront",
+            "discord_role_id_shadowfront",
+            "notify_shadowfront_reminder_30",
+            "tpl_shadowfront_reminder_30_content",
+            "tpl_shadowfront_reminder_30_title",
+            "tpl_shadowfront_reminder_30_desc",
+            "notify_shadowfront_reminder_5",
+            "tpl_shadowfront_reminder_5_content",
+            "tpl_shadowfront_reminder_5_title",
+            "tpl_shadowfront_reminder_5_desc",
+            "notify_shadowfront_start",
+            "tpl_shadowfront_start_content",
+            "tpl_shadowfront_start_title",
+            "tpl_shadowfront_start_desc",
+            "tpl_gvg_start_content",
+            "tpl_gvg_start_title",
+            "tpl_gvg_start_desc",
+            "tpl_gvg_reminder_content",
+            "tpl_gvg_reminder_title",
+            "tpl_gvg_reminder_desc",
+            "tpl_svs_garrison_content",
+            "tpl_svs_garrison_title",
+            "tpl_svs_garrison_desc",
+            "tpl_svs_reminder_30_invasion_content",
+            "tpl_svs_reminder_30_invasion_title",
+            "tpl_svs_reminder_30_invasion_desc",
+            "tpl_svs_reminder_30_defense_content",
+            "tpl_svs_reminder_30_defense_title",
+            "tpl_svs_reminder_30_defense_desc",
+            "tpl_svs_reminder_5_invasion_content",
+            "tpl_svs_reminder_5_invasion_title",
+            "tpl_svs_reminder_5_invasion_desc",
+            "tpl_svs_reminder_5_defense_content",
+            "tpl_svs_reminder_5_defense_title",
+            "tpl_svs_reminder_5_defense_desc",
+            "tpl_svs_start_invasion_content",
+            "tpl_svs_start_invasion_title",
+            "tpl_svs_start_invasion_desc",
+            "tpl_svs_start_defense_content",
+            "tpl_svs_start_defense_title",
+            "tpl_svs_start_defense_desc",
+            "tpl_calamity_reminder_10_content",
+            "tpl_calamity_reminder_10_title",
+            "tpl_calamity_reminder_10_desc",
+          ],
+        ],
+      ],
+      op: "select",
+      table: "guild_config",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "in",
+          [
+            "TA",
+            "TB",
+          ],
+        ],
+      ],
+      op: "select",
+      table: "guild_config",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "in",
+          [
+            "TA",
+            "TB",
+          ],
+        ],
+        [
+          "event_name",
+          "eq",
+          "SvS",
+        ],
+      ],
+      op: "select",
+      table: "war_sessions",
+    },
+  ],
+  response: {
+    ok: true,
+    processed: [],
+  },
+  sent: [],
+  status: 200,
+}
+`;
+
+snapshot[`SvS battle reminders, invasion with a template and defense 1`] = `
+{
+  db: [
+    {
+      args: null,
+      filters: [],
+      op: "select",
+      table: "guilds",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "is_active",
+          "eq",
+          true,
+        ],
+      ],
+      op: "select",
+      table: "event_status",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "in",
+          [
+            "TA",
+            "TB",
+          ],
+        ],
+        [
+          "key",
+          "in",
+          [
+            "discord_webhook_url",
+            "discord_role_id",
+            "discord_role_id_gvg",
+            "discord_role_id_svs",
+            "discord_role_id_calamity",
+            "discord_role_id_shadowfront_squad1",
+            "discord_role_id_shadowfront_squad2",
+            "notify_gvg_daily_tasks",
+            "notify_gvg_pvp",
+            "notify_svs_garrison",
+            "notify_svs_pvp",
+            "notify_svs_won_prep",
+            "notify_calamity_10",
+            "webhook_gvg",
+            "webhook_svs",
+            "webhook_calamity",
+            "webhook_armsrace",
+            "discord_role_id_armsrace",
+            "notify_armsrace_reminder_30",
+            "tpl_armsrace_reminder_30_content",
+            "tpl_armsrace_reminder_30_title",
+            "tpl_armsrace_reminder_30_desc",
+            "notify_armsrace_reminder_5",
+            "tpl_armsrace_reminder_5_content",
+            "tpl_armsrace_reminder_5_title",
+            "tpl_armsrace_reminder_5_desc",
+            "notify_armsrace_start",
+            "tpl_armsrace_start_content",
+            "tpl_armsrace_start_title",
+            "tpl_armsrace_start_desc",
+            "webhook_dtr",
+            "discord_role_id_dtr",
+            "notify_dtr_reminder_30",
+            "tpl_dtr_reminder_30_content",
+            "tpl_dtr_reminder_30_title",
+            "tpl_dtr_reminder_30_desc",
+            "notify_dtr_reminder_5",
+            "tpl_dtr_reminder_5_content",
+            "tpl_dtr_reminder_5_title",
+            "tpl_dtr_reminder_5_desc",
+            "notify_dtr_start",
+            "tpl_dtr_start_content",
+            "tpl_dtr_start_title",
+            "tpl_dtr_start_desc",
+            "webhook_shadowfront",
+            "discord_role_id_shadowfront",
+            "notify_shadowfront_reminder_30",
+            "tpl_shadowfront_reminder_30_content",
+            "tpl_shadowfront_reminder_30_title",
+            "tpl_shadowfront_reminder_30_desc",
+            "notify_shadowfront_reminder_5",
+            "tpl_shadowfront_reminder_5_content",
+            "tpl_shadowfront_reminder_5_title",
+            "tpl_shadowfront_reminder_5_desc",
+            "notify_shadowfront_start",
+            "tpl_shadowfront_start_content",
+            "tpl_shadowfront_start_title",
+            "tpl_shadowfront_start_desc",
+            "tpl_gvg_start_content",
+            "tpl_gvg_start_title",
+            "tpl_gvg_start_desc",
+            "tpl_gvg_reminder_content",
+            "tpl_gvg_reminder_title",
+            "tpl_gvg_reminder_desc",
+            "tpl_svs_garrison_content",
+            "tpl_svs_garrison_title",
+            "tpl_svs_garrison_desc",
+            "tpl_svs_reminder_30_invasion_content",
+            "tpl_svs_reminder_30_invasion_title",
+            "tpl_svs_reminder_30_invasion_desc",
+            "tpl_svs_reminder_30_defense_content",
+            "tpl_svs_reminder_30_defense_title",
+            "tpl_svs_reminder_30_defense_desc",
+            "tpl_svs_reminder_5_invasion_content",
+            "tpl_svs_reminder_5_invasion_title",
+            "tpl_svs_reminder_5_invasion_desc",
+            "tpl_svs_reminder_5_defense_content",
+            "tpl_svs_reminder_5_defense_title",
+            "tpl_svs_reminder_5_defense_desc",
+            "tpl_svs_start_invasion_content",
+            "tpl_svs_start_invasion_title",
+            "tpl_svs_start_invasion_desc",
+            "tpl_svs_start_defense_content",
+            "tpl_svs_start_defense_title",
+            "tpl_svs_start_defense_desc",
+            "tpl_calamity_reminder_10_content",
+            "tpl_calamity_reminder_10_title",
+            "tpl_calamity_reminder_10_desc",
+          ],
+        ],
+      ],
+      op: "select",
+      table: "guild_config",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "in",
+          [
+            "TA",
+            "TB",
+          ],
+        ],
+      ],
+      op: "select",
+      table: "guild_config",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "in",
+          [
+            "TA",
+            "TB",
+          ],
+        ],
+        [
+          "event_name",
+          "eq",
+          "SvS",
+        ],
+      ],
+      op: "select",
+      table: "war_sessions",
+    },
+    {
+      args: {
+        guild: "TA",
+        key: "sent_svs_Battle_Reminder_30m_reminder_30_2026-10-10_13:30",
+        value: "sending",
+      },
+      filters: [],
+      op: "upsert",
+      table: "guild_config",
+    },
+    {
+      args: {
+        value: "sent",
+      },
+      filters: [
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+        [
+          "key",
+          "eq",
+          "sent_svs_Battle_Reminder_30m_reminder_30_2026-10-10_13:30",
+        ],
+      ],
+      op: "update",
+      table: "guild_config",
+    },
+  ],
+  response: {
+    ok: true,
+    processed: [
+      {
+        event: "SvS - Battle Reminder 30m",
+        guild: "TA",
+        status: "sent",
+        type: "svs_reminder_30",
+      },
+    ],
+  },
+  sent: [
+    {
+      body: {
+        allowed_mentions: {
+          parse: [
+            "roles",
+            "users",
+            "everyone",
+          ],
+        },
+        content: "⏰ **SvS: Invasion starts in 30 minutes! Prepare to attack!** @everyone",
+        embeds: [
+          {
+            color: 16750848,
+            description: "SvS 14:00 UTC <@&111111111111111111>",
+            fields: [
+              {
+                inline: true,
+                name: "Time (UTC)",
+                value: "14:00 UTC",
+              },
+            ],
+            footer: {
+              text: "FGF Guild Management Tool",
+            },
+            title: "⏰ SvS: Invasion starts in 30 minutes",
+          },
+        ],
+      },
+      url: "https://discord.com/api/webhooks/4/tok_4",
+    },
+  ],
+  status: 200,
+}
+`;
+
+snapshot[`SvS battle reminders, invasion with a template and defense 2`] = `
+{
+  db: [
+    {
+      args: null,
+      filters: [],
+      op: "select",
+      table: "guilds",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "is_active",
+          "eq",
+          true,
+        ],
+      ],
+      op: "select",
+      table: "event_status",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "in",
+          [
+            "TA",
+            "TB",
+          ],
+        ],
+        [
+          "key",
+          "in",
+          [
+            "discord_webhook_url",
+            "discord_role_id",
+            "discord_role_id_gvg",
+            "discord_role_id_svs",
+            "discord_role_id_calamity",
+            "discord_role_id_shadowfront_squad1",
+            "discord_role_id_shadowfront_squad2",
+            "notify_gvg_daily_tasks",
+            "notify_gvg_pvp",
+            "notify_svs_garrison",
+            "notify_svs_pvp",
+            "notify_svs_won_prep",
+            "notify_calamity_10",
+            "webhook_gvg",
+            "webhook_svs",
+            "webhook_calamity",
+            "webhook_armsrace",
+            "discord_role_id_armsrace",
+            "notify_armsrace_reminder_30",
+            "tpl_armsrace_reminder_30_content",
+            "tpl_armsrace_reminder_30_title",
+            "tpl_armsrace_reminder_30_desc",
+            "notify_armsrace_reminder_5",
+            "tpl_armsrace_reminder_5_content",
+            "tpl_armsrace_reminder_5_title",
+            "tpl_armsrace_reminder_5_desc",
+            "notify_armsrace_start",
+            "tpl_armsrace_start_content",
+            "tpl_armsrace_start_title",
+            "tpl_armsrace_start_desc",
+            "webhook_dtr",
+            "discord_role_id_dtr",
+            "notify_dtr_reminder_30",
+            "tpl_dtr_reminder_30_content",
+            "tpl_dtr_reminder_30_title",
+            "tpl_dtr_reminder_30_desc",
+            "notify_dtr_reminder_5",
+            "tpl_dtr_reminder_5_content",
+            "tpl_dtr_reminder_5_title",
+            "tpl_dtr_reminder_5_desc",
+            "notify_dtr_start",
+            "tpl_dtr_start_content",
+            "tpl_dtr_start_title",
+            "tpl_dtr_start_desc",
+            "webhook_shadowfront",
+            "discord_role_id_shadowfront",
+            "notify_shadowfront_reminder_30",
+            "tpl_shadowfront_reminder_30_content",
+            "tpl_shadowfront_reminder_30_title",
+            "tpl_shadowfront_reminder_30_desc",
+            "notify_shadowfront_reminder_5",
+            "tpl_shadowfront_reminder_5_content",
+            "tpl_shadowfront_reminder_5_title",
+            "tpl_shadowfront_reminder_5_desc",
+            "notify_shadowfront_start",
+            "tpl_shadowfront_start_content",
+            "tpl_shadowfront_start_title",
+            "tpl_shadowfront_start_desc",
+            "tpl_gvg_start_content",
+            "tpl_gvg_start_title",
+            "tpl_gvg_start_desc",
+            "tpl_gvg_reminder_content",
+            "tpl_gvg_reminder_title",
+            "tpl_gvg_reminder_desc",
+            "tpl_svs_garrison_content",
+            "tpl_svs_garrison_title",
+            "tpl_svs_garrison_desc",
+            "tpl_svs_reminder_30_invasion_content",
+            "tpl_svs_reminder_30_invasion_title",
+            "tpl_svs_reminder_30_invasion_desc",
+            "tpl_svs_reminder_30_defense_content",
+            "tpl_svs_reminder_30_defense_title",
+            "tpl_svs_reminder_30_defense_desc",
+            "tpl_svs_reminder_5_invasion_content",
+            "tpl_svs_reminder_5_invasion_title",
+            "tpl_svs_reminder_5_invasion_desc",
+            "tpl_svs_reminder_5_defense_content",
+            "tpl_svs_reminder_5_defense_title",
+            "tpl_svs_reminder_5_defense_desc",
+            "tpl_svs_start_invasion_content",
+            "tpl_svs_start_invasion_title",
+            "tpl_svs_start_invasion_desc",
+            "tpl_svs_start_defense_content",
+            "tpl_svs_start_defense_title",
+            "tpl_svs_start_defense_desc",
+            "tpl_calamity_reminder_10_content",
+            "tpl_calamity_reminder_10_title",
+            "tpl_calamity_reminder_10_desc",
+          ],
+        ],
+      ],
+      op: "select",
+      table: "guild_config",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "in",
+          [
+            "TA",
+            "TB",
+          ],
+        ],
+      ],
+      op: "select",
+      table: "guild_config",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "in",
+          [
+            "TA",
+            "TB",
+          ],
+        ],
+        [
+          "event_name",
+          "eq",
+          "SvS",
+        ],
+      ],
+      op: "select",
+      table: "war_sessions",
+    },
+    {
+      args: {
+        guild: "TA",
+        key: "sent_gvg_War_Prism_now_2026-10-10_14:00",
+        value: "sending",
+      },
+      filters: [],
+      op: "upsert",
+      table: "guild_config",
+    },
+    {
+      args: {
+        value: "sent",
+      },
+      filters: [
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+        [
+          "key",
+          "eq",
+          "sent_gvg_War_Prism_now_2026-10-10_14:00",
+        ],
+      ],
+      op: "update",
+      table: "guild_config",
+    },
+    {
+      args: {
+        guild: "TA",
+        key: "sent_gvg_War_Prism_reminder_2026-10-10_13:55",
+        value: "sending",
+      },
+      filters: [],
+      op: "upsert",
+      table: "guild_config",
+    },
+    {
+      args: {
+        value: "sent",
+      },
+      filters: [
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+        [
+          "key",
+          "eq",
+          "sent_gvg_War_Prism_reminder_2026-10-10_13:55",
+        ],
+      ],
+      op: "update",
+      table: "guild_config",
+    },
+    {
+      args: {
+        guild: "TA",
+        key: "sent_svs_Battle_Reminder_5m_reminder_5_2026-10-10_13:55",
+        value: "sending",
+      },
+      filters: [],
+      op: "upsert",
+      table: "guild_config",
+    },
+    {
+      args: {
+        value: "sent",
+      },
+      filters: [
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+        [
+          "key",
+          "eq",
+          "sent_svs_Battle_Reminder_5m_reminder_5_2026-10-10_13:55",
+        ],
+      ],
+      op: "update",
+      table: "guild_config",
+    },
+    {
+      args: {
+        guild: "TA",
+        key: "sent_svs_Battle_Start_battle_start_2026-10-10_14:00",
+        value: "sending",
+      },
+      filters: [],
+      op: "upsert",
+      table: "guild_config",
+    },
+    {
+      args: {
+        value: "sent",
+      },
+      filters: [
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+        [
+          "key",
+          "eq",
+          "sent_svs_Battle_Start_battle_start_2026-10-10_14:00",
+        ],
+      ],
+      op: "update",
+      table: "guild_config",
+    },
+  ],
+  response: {
+    ok: true,
+    processed: [
+      {
+        event: "GvG Saturday - War Prism (now)",
+        guild: "TA",
+        status: "sent",
+        type: "gvg_saturday",
+      },
+      {
+        event: "GvG Saturday - War Prism (reminder)",
+        guild: "TA",
+        status: "sent",
+        type: "gvg_saturday",
+      },
+      {
+        event: "SvS - Battle Reminder 5m",
+        guild: "TA",
+        status: "sent",
+        type: "svs_reminder_5",
+      },
+      {
+        event: "SvS - Battle Start",
+        guild: "TA",
+        status: "sent",
+        type: "svs_battle_start",
+      },
+    ],
+  },
+  sent: [
+    {
+      body: {
+        allowed_mentions: {
+          parse: [
+            "roles",
+            "users",
+            "everyone",
+          ],
+        },
+        content: "⚔️ **GvG: War Prism** starts now! @everyone",
+        embeds: [
+          {
+            color: 9807270,
+            description: "The War Prism event is active. Join the battle now!",
+            fields: [
+              {
+                inline: true,
+                name: "Start Time (UTC)",
+                value: "14:00 UTC",
+              },
+              {
+                inline: false,
+                name: "Guild Agenda",
+                value: "Secure the War Prism now.",
+              },
+            ],
+            footer: {
+              text: "FGF Guild Management Tool",
+            },
+            title: "⚔️ GvG - War Prism",
+          },
+        ],
+      },
+      url: "https://discord.com/api/webhooks/3/tok_3",
+    },
+    {
+      body: {
+        allowed_mentions: {
+          parse: [
+            "roles",
+            "users",
+            "everyone",
+          ],
+        },
+        content: "⏰ **GvG: War Prism** starts in **5 minutes**! @everyone",
+        embeds: [
+          {
+            color: 16750848,
+            description: "Get ready! The War Prism event starts in 5 minutes.",
+            fields: [
+              {
+                inline: true,
+                name: "Start Time (UTC)",
+                value: "14:00 UTC",
+              },
+              {
+                inline: false,
+                name: "Guild Agenda",
+                value: "Log in and prepare for the War Prism.",
+              },
+            ],
+            footer: {
+              text: "FGF Guild Management Tool",
+            },
+            title: "⏰ GvG - War Prism (Reminder)",
+          },
+        ],
+      },
+      url: "https://discord.com/api/webhooks/3/tok_3",
+    },
+    {
+      body: {
+        allowed_mentions: {
+          parse: [
+            "roles",
+            "users",
+            "everyone",
+          ],
+        },
+        content: "🚨 **SvS: Defense starts in 5 minutes! Ready your squads!** @everyone",
+        embeds: [
+          {
+            color: 15548997,
+            description: "Invasion is imminent. Make sure your home assets are safe (garrison/unequip drones) and join defense squads!",
+            fields: [
+              {
+                inline: true,
+                name: "Start Time (UTC)",
+                value: "14:00 UTC",
+              },
+              {
+                inline: false,
+                name: "Guild Agenda",
+                value: "Join defense squads now. Guard the Blackhole!",
+              },
+            ],
+            footer: {
+              text: "FGF Guild Management Tool",
+            },
+            title: "🚨 SvS: Defense starts in 5 minutes!",
+          },
+        ],
+      },
+      url: "https://discord.com/api/webhooks/4/tok_4",
+    },
+    {
+      body: {
+        allowed_mentions: {
+          parse: [
+            "roles",
+            "users",
+            "everyone",
+          ],
+        },
+        content: "⚔️ **SvS: Blackhole Defense has started! Protect the server!** @everyone",
+        embeds: [
+          {
+            color: 15548997,
+            description: "Enemy forces are entering our server! Defend the Blackhole at all costs. Ensure no ships are exposed without garrison unless actively fighting.",
+            fields: [
+              {
+                inline: true,
+                name: "Start Time (UTC)",
+                value: "14:00 UTC",
+              },
+              {
+                inline: false,
+                name: "Guild Agenda",
+                value: "Defend the Blackhole! Repel the invaders!",
+              },
+            ],
+            footer: {
+              text: "FGF Guild Management Tool",
+            },
+            title: "⚔️ SvS: Defense has started!",
+          },
+        ],
+      },
+      url: "https://discord.com/api/webhooks/4/tok_4",
+    },
+  ],
+  status: 200,
+}
+`;
+
+snapshot[`SvS battle reminders, invasion with a template and defense 3`] = `
+{
+  db: [
+    {
+      args: null,
+      filters: [],
+      op: "select",
+      table: "guilds",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "is_active",
+          "eq",
+          true,
+        ],
+      ],
+      op: "select",
+      table: "event_status",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "in",
+          [
+            "TA",
+            "TB",
+          ],
+        ],
+        [
+          "key",
+          "in",
+          [
+            "discord_webhook_url",
+            "discord_role_id",
+            "discord_role_id_gvg",
+            "discord_role_id_svs",
+            "discord_role_id_calamity",
+            "discord_role_id_shadowfront_squad1",
+            "discord_role_id_shadowfront_squad2",
+            "notify_gvg_daily_tasks",
+            "notify_gvg_pvp",
+            "notify_svs_garrison",
+            "notify_svs_pvp",
+            "notify_svs_won_prep",
+            "notify_calamity_10",
+            "webhook_gvg",
+            "webhook_svs",
+            "webhook_calamity",
+            "webhook_armsrace",
+            "discord_role_id_armsrace",
+            "notify_armsrace_reminder_30",
+            "tpl_armsrace_reminder_30_content",
+            "tpl_armsrace_reminder_30_title",
+            "tpl_armsrace_reminder_30_desc",
+            "notify_armsrace_reminder_5",
+            "tpl_armsrace_reminder_5_content",
+            "tpl_armsrace_reminder_5_title",
+            "tpl_armsrace_reminder_5_desc",
+            "notify_armsrace_start",
+            "tpl_armsrace_start_content",
+            "tpl_armsrace_start_title",
+            "tpl_armsrace_start_desc",
+            "webhook_dtr",
+            "discord_role_id_dtr",
+            "notify_dtr_reminder_30",
+            "tpl_dtr_reminder_30_content",
+            "tpl_dtr_reminder_30_title",
+            "tpl_dtr_reminder_30_desc",
+            "notify_dtr_reminder_5",
+            "tpl_dtr_reminder_5_content",
+            "tpl_dtr_reminder_5_title",
+            "tpl_dtr_reminder_5_desc",
+            "notify_dtr_start",
+            "tpl_dtr_start_content",
+            "tpl_dtr_start_title",
+            "tpl_dtr_start_desc",
+            "webhook_shadowfront",
+            "discord_role_id_shadowfront",
+            "notify_shadowfront_reminder_30",
+            "tpl_shadowfront_reminder_30_content",
+            "tpl_shadowfront_reminder_30_title",
+            "tpl_shadowfront_reminder_30_desc",
+            "notify_shadowfront_reminder_5",
+            "tpl_shadowfront_reminder_5_content",
+            "tpl_shadowfront_reminder_5_title",
+            "tpl_shadowfront_reminder_5_desc",
+            "notify_shadowfront_start",
+            "tpl_shadowfront_start_content",
+            "tpl_shadowfront_start_title",
+            "tpl_shadowfront_start_desc",
+            "tpl_gvg_start_content",
+            "tpl_gvg_start_title",
+            "tpl_gvg_start_desc",
+            "tpl_gvg_reminder_content",
+            "tpl_gvg_reminder_title",
+            "tpl_gvg_reminder_desc",
+            "tpl_svs_garrison_content",
+            "tpl_svs_garrison_title",
+            "tpl_svs_garrison_desc",
+            "tpl_svs_reminder_30_invasion_content",
+            "tpl_svs_reminder_30_invasion_title",
+            "tpl_svs_reminder_30_invasion_desc",
+            "tpl_svs_reminder_30_defense_content",
+            "tpl_svs_reminder_30_defense_title",
+            "tpl_svs_reminder_30_defense_desc",
+            "tpl_svs_reminder_5_invasion_content",
+            "tpl_svs_reminder_5_invasion_title",
+            "tpl_svs_reminder_5_invasion_desc",
+            "tpl_svs_reminder_5_defense_content",
+            "tpl_svs_reminder_5_defense_title",
+            "tpl_svs_reminder_5_defense_desc",
+            "tpl_svs_start_invasion_content",
+            "tpl_svs_start_invasion_title",
+            "tpl_svs_start_invasion_desc",
+            "tpl_svs_start_defense_content",
+            "tpl_svs_start_defense_title",
+            "tpl_svs_start_defense_desc",
+            "tpl_calamity_reminder_10_content",
+            "tpl_calamity_reminder_10_title",
+            "tpl_calamity_reminder_10_desc",
+          ],
+        ],
+      ],
+      op: "select",
+      table: "guild_config",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "in",
+          [
+            "TA",
+            "TB",
+          ],
+        ],
+      ],
+      op: "select",
+      table: "guild_config",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "in",
+          [
+            "TA",
+            "TB",
+          ],
+        ],
+        [
+          "event_name",
+          "eq",
+          "SvS",
+        ],
+      ],
+      op: "select",
+      table: "war_sessions",
+    },
+    {
+      args: {
+        guild: "TA",
+        key: "sent_gvg_War_Prism_reminder_2026-10-10_13:55",
+        value: "sending",
+      },
+      filters: [],
+      op: "upsert",
+      table: "guild_config",
+    },
+    {
+      args: {
+        value: "sent",
+      },
+      filters: [
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+        [
+          "key",
+          "eq",
+          "sent_gvg_War_Prism_reminder_2026-10-10_13:55",
+        ],
+      ],
+      op: "update",
+      table: "guild_config",
+    },
+  ],
+  response: {
+    ok: true,
+    processed: [
+      {
+        event: "GvG Saturday - War Prism (reminder)",
+        guild: "TA",
+        status: "sent",
+        type: "gvg_saturday",
+      },
+    ],
+  },
+  sent: [
+    {
+      body: {
+        allowed_mentions: {
+          parse: [
+            "roles",
+            "users",
+            "everyone",
+          ],
+        },
+        content: "⏰ **GvG: War Prism** starts in **5 minutes**! @everyone",
+        embeds: [
+          {
+            color: 16750848,
+            description: "Get ready! The War Prism event starts in 5 minutes.",
+            fields: [
+              {
+                inline: true,
+                name: "Start Time (UTC)",
+                value: "14:00 UTC",
+              },
+              {
+                inline: false,
+                name: "Guild Agenda",
+                value: "Log in and prepare for the War Prism.",
+              },
+            ],
+            footer: {
+              text: "FGF Guild Management Tool",
+            },
+            title: "⏰ GvG - War Prism (Reminder)",
+          },
+        ],
+      },
+      url: "https://discord.com/api/webhooks/3/tok_3",
+    },
+  ],
+  status: 200,
+}
+`;
+
+snapshot[`Calamity rounds, and the toggle that stops them 1`] = `
+{
+  db: [
+    {
+      args: null,
+      filters: [],
+      op: "select",
+      table: "guilds",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "is_active",
+          "eq",
+          true,
+        ],
+      ],
+      op: "select",
+      table: "event_status",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "in",
+          [
+            "TA",
+            "TB",
+          ],
+        ],
+        [
+          "key",
+          "in",
+          [
+            "discord_webhook_url",
+            "discord_role_id",
+            "discord_role_id_gvg",
+            "discord_role_id_svs",
+            "discord_role_id_calamity",
+            "discord_role_id_shadowfront_squad1",
+            "discord_role_id_shadowfront_squad2",
+            "notify_gvg_daily_tasks",
+            "notify_gvg_pvp",
+            "notify_svs_garrison",
+            "notify_svs_pvp",
+            "notify_svs_won_prep",
+            "notify_calamity_10",
+            "webhook_gvg",
+            "webhook_svs",
+            "webhook_calamity",
+            "webhook_armsrace",
+            "discord_role_id_armsrace",
+            "notify_armsrace_reminder_30",
+            "tpl_armsrace_reminder_30_content",
+            "tpl_armsrace_reminder_30_title",
+            "tpl_armsrace_reminder_30_desc",
+            "notify_armsrace_reminder_5",
+            "tpl_armsrace_reminder_5_content",
+            "tpl_armsrace_reminder_5_title",
+            "tpl_armsrace_reminder_5_desc",
+            "notify_armsrace_start",
+            "tpl_armsrace_start_content",
+            "tpl_armsrace_start_title",
+            "tpl_armsrace_start_desc",
+            "webhook_dtr",
+            "discord_role_id_dtr",
+            "notify_dtr_reminder_30",
+            "tpl_dtr_reminder_30_content",
+            "tpl_dtr_reminder_30_title",
+            "tpl_dtr_reminder_30_desc",
+            "notify_dtr_reminder_5",
+            "tpl_dtr_reminder_5_content",
+            "tpl_dtr_reminder_5_title",
+            "tpl_dtr_reminder_5_desc",
+            "notify_dtr_start",
+            "tpl_dtr_start_content",
+            "tpl_dtr_start_title",
+            "tpl_dtr_start_desc",
+            "webhook_shadowfront",
+            "discord_role_id_shadowfront",
+            "notify_shadowfront_reminder_30",
+            "tpl_shadowfront_reminder_30_content",
+            "tpl_shadowfront_reminder_30_title",
+            "tpl_shadowfront_reminder_30_desc",
+            "notify_shadowfront_reminder_5",
+            "tpl_shadowfront_reminder_5_content",
+            "tpl_shadowfront_reminder_5_title",
+            "tpl_shadowfront_reminder_5_desc",
+            "notify_shadowfront_start",
+            "tpl_shadowfront_start_content",
+            "tpl_shadowfront_start_title",
+            "tpl_shadowfront_start_desc",
+            "tpl_gvg_start_content",
+            "tpl_gvg_start_title",
+            "tpl_gvg_start_desc",
+            "tpl_gvg_reminder_content",
+            "tpl_gvg_reminder_title",
+            "tpl_gvg_reminder_desc",
+            "tpl_svs_garrison_content",
+            "tpl_svs_garrison_title",
+            "tpl_svs_garrison_desc",
+            "tpl_svs_reminder_30_invasion_content",
+            "tpl_svs_reminder_30_invasion_title",
+            "tpl_svs_reminder_30_invasion_desc",
+            "tpl_svs_reminder_30_defense_content",
+            "tpl_svs_reminder_30_defense_title",
+            "tpl_svs_reminder_30_defense_desc",
+            "tpl_svs_reminder_5_invasion_content",
+            "tpl_svs_reminder_5_invasion_title",
+            "tpl_svs_reminder_5_invasion_desc",
+            "tpl_svs_reminder_5_defense_content",
+            "tpl_svs_reminder_5_defense_title",
+            "tpl_svs_reminder_5_defense_desc",
+            "tpl_svs_start_invasion_content",
+            "tpl_svs_start_invasion_title",
+            "tpl_svs_start_invasion_desc",
+            "tpl_svs_start_defense_content",
+            "tpl_svs_start_defense_title",
+            "tpl_svs_start_defense_desc",
+            "tpl_calamity_reminder_10_content",
+            "tpl_calamity_reminder_10_title",
+            "tpl_calamity_reminder_10_desc",
+          ],
+        ],
+      ],
+      op: "select",
+      table: "guild_config",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "in",
+          [
+            "TA",
+            "TB",
+          ],
+        ],
+      ],
+      op: "select",
+      table: "guild_config",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "in",
+          [
+            "TA",
+            "TB",
+          ],
+        ],
+        [
+          "event_name",
+          "eq",
+          "SvS",
+        ],
+      ],
+      op: "select",
+      table: "war_sessions",
+    },
+    {
+      args: {
+        guild: "TA",
+        key: "sent_calamity_round_2_2026-10-06",
+        value: "sending",
+      },
+      filters: [],
+      op: "upsert",
+      table: "guild_config",
+    },
+    {
+      args: {
+        value: "sent",
+      },
+      filters: [
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+        [
+          "key",
+          "eq",
+          "sent_calamity_round_2_2026-10-06",
+        ],
+      ],
+      op: "update",
+      table: "guild_config",
+    },
+  ],
+  response: {
+    ok: true,
+    processed: [
+      {
+        event: "Calamity Befalls - Round 2",
+        guild: "TA",
+        status: "sent",
+        type: "calamity_befalls",
+      },
+    ],
+  },
+  sent: [
+    {
+      body: {
+        allowed_mentions: {
+          parse: [
+            "roles",
+            "users",
+            "everyone",
+          ],
+        },
+        content: "Round 2 Tuesday · 03:00 UTC <@&111111111111111111>",
+        embeds: [
+          {
+            color: 16750848,
+            description: "Prepare your squads! Calamity Befalls Round 2 starts in 10 minutes.",
+            fields: [
+              {
+                inline: true,
+                name: "Round",
+                value: "2 / 16",
+              },
+              {
+                inline: true,
+                name: "Start Time (UTC)",
+                value: "Tuesday · 03:00 UTC",
+              },
+              {
+                inline: false,
+                name: "Guild Agenda",
+                value: "Log in and prepare for the battle.",
+              },
+            ],
+            footer: {
+              text: "FGF Guild Management Tool",
+            },
+            title: "⏰ Calamity Befalls - Round 2 (Reminder)",
+          },
+        ],
+      },
+      url: "https://discord.com/api/webhooks/5/tok_5",
+    },
+  ],
+  status: 200,
+}
+`;
+
+snapshot[`Calamity rounds, and the toggle that stops them 2`] = `
+{
+  db: [
+    {
+      args: null,
+      filters: [],
+      op: "select",
+      table: "guilds",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "is_active",
+          "eq",
+          true,
+        ],
+      ],
+      op: "select",
+      table: "event_status",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "in",
+          [
+            "TA",
+            "TB",
+          ],
+        ],
+        [
+          "key",
+          "in",
+          [
+            "discord_webhook_url",
+            "discord_role_id",
+            "discord_role_id_gvg",
+            "discord_role_id_svs",
+            "discord_role_id_calamity",
+            "discord_role_id_shadowfront_squad1",
+            "discord_role_id_shadowfront_squad2",
+            "notify_gvg_daily_tasks",
+            "notify_gvg_pvp",
+            "notify_svs_garrison",
+            "notify_svs_pvp",
+            "notify_svs_won_prep",
+            "notify_calamity_10",
+            "webhook_gvg",
+            "webhook_svs",
+            "webhook_calamity",
+            "webhook_armsrace",
+            "discord_role_id_armsrace",
+            "notify_armsrace_reminder_30",
+            "tpl_armsrace_reminder_30_content",
+            "tpl_armsrace_reminder_30_title",
+            "tpl_armsrace_reminder_30_desc",
+            "notify_armsrace_reminder_5",
+            "tpl_armsrace_reminder_5_content",
+            "tpl_armsrace_reminder_5_title",
+            "tpl_armsrace_reminder_5_desc",
+            "notify_armsrace_start",
+            "tpl_armsrace_start_content",
+            "tpl_armsrace_start_title",
+            "tpl_armsrace_start_desc",
+            "webhook_dtr",
+            "discord_role_id_dtr",
+            "notify_dtr_reminder_30",
+            "tpl_dtr_reminder_30_content",
+            "tpl_dtr_reminder_30_title",
+            "tpl_dtr_reminder_30_desc",
+            "notify_dtr_reminder_5",
+            "tpl_dtr_reminder_5_content",
+            "tpl_dtr_reminder_5_title",
+            "tpl_dtr_reminder_5_desc",
+            "notify_dtr_start",
+            "tpl_dtr_start_content",
+            "tpl_dtr_start_title",
+            "tpl_dtr_start_desc",
+            "webhook_shadowfront",
+            "discord_role_id_shadowfront",
+            "notify_shadowfront_reminder_30",
+            "tpl_shadowfront_reminder_30_content",
+            "tpl_shadowfront_reminder_30_title",
+            "tpl_shadowfront_reminder_30_desc",
+            "notify_shadowfront_reminder_5",
+            "tpl_shadowfront_reminder_5_content",
+            "tpl_shadowfront_reminder_5_title",
+            "tpl_shadowfront_reminder_5_desc",
+            "notify_shadowfront_start",
+            "tpl_shadowfront_start_content",
+            "tpl_shadowfront_start_title",
+            "tpl_shadowfront_start_desc",
+            "tpl_gvg_start_content",
+            "tpl_gvg_start_title",
+            "tpl_gvg_start_desc",
+            "tpl_gvg_reminder_content",
+            "tpl_gvg_reminder_title",
+            "tpl_gvg_reminder_desc",
+            "tpl_svs_garrison_content",
+            "tpl_svs_garrison_title",
+            "tpl_svs_garrison_desc",
+            "tpl_svs_reminder_30_invasion_content",
+            "tpl_svs_reminder_30_invasion_title",
+            "tpl_svs_reminder_30_invasion_desc",
+            "tpl_svs_reminder_30_defense_content",
+            "tpl_svs_reminder_30_defense_title",
+            "tpl_svs_reminder_30_defense_desc",
+            "tpl_svs_reminder_5_invasion_content",
+            "tpl_svs_reminder_5_invasion_title",
+            "tpl_svs_reminder_5_invasion_desc",
+            "tpl_svs_reminder_5_defense_content",
+            "tpl_svs_reminder_5_defense_title",
+            "tpl_svs_reminder_5_defense_desc",
+            "tpl_svs_start_invasion_content",
+            "tpl_svs_start_invasion_title",
+            "tpl_svs_start_invasion_desc",
+            "tpl_svs_start_defense_content",
+            "tpl_svs_start_defense_title",
+            "tpl_svs_start_defense_desc",
+            "tpl_calamity_reminder_10_content",
+            "tpl_calamity_reminder_10_title",
+            "tpl_calamity_reminder_10_desc",
+          ],
+        ],
+      ],
+      op: "select",
+      table: "guild_config",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "in",
+          [
+            "TA",
+            "TB",
+          ],
+        ],
+      ],
+      op: "select",
+      table: "guild_config",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "in",
+          [
+            "TA",
+            "TB",
+          ],
+        ],
+        [
+          "event_name",
+          "eq",
+          "SvS",
+        ],
+      ],
+      op: "select",
+      table: "war_sessions",
+    },
+    {
+      args: {
+        guild: "TA",
+        key: "sent_calamity_round_1_2026-10-05",
+        value: "sending",
+      },
+      filters: [],
+      op: "upsert",
+      table: "guild_config",
+    },
+    {
+      args: {
+        value: "sent",
+      },
+      filters: [
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+        [
+          "key",
+          "eq",
+          "sent_calamity_round_1_2026-10-05",
+        ],
+      ],
+      op: "update",
+      table: "guild_config",
+    },
+  ],
+  response: {
+    ok: true,
+    processed: [
+      {
+        event: "Calamity Befalls - Round 1",
+        guild: "TA",
+        status: "sent",
+        type: "calamity_befalls",
+      },
+    ],
+  },
+  sent: [
+    {
+      body: {
+        allowed_mentions: {
+          parse: [
+            "roles",
+            "users",
+            "everyone",
+          ],
+        },
+        content: "⏰ **Calamity Befalls: Round 1 starts in 10 minutes!**",
+        embeds: [
+          {
+            color: 16750848,
+            description: "Prepare your squads! Calamity Befalls Round 1 starts in 10 minutes.",
+            fields: [
+              {
+                inline: true,
+                name: "Round",
+                value: "1 / 16",
+              },
+              {
+                inline: true,
+                name: "Start Time (UTC)",
+                value: "Tuesday · 00:00 UTC",
+              },
+              {
+                inline: false,
+                name: "Guild Agenda",
+                value: "Log in and prepare for the battle.",
+              },
+            ],
+            footer: {
+              text: "FGF Guild Management Tool",
+            },
+            title: "⏰ Calamity Befalls - Round 1 (Reminder)",
+          },
+        ],
+      },
+      url: "https://discord.com/api/webhooks/5/tok_5",
+    },
+  ],
+  status: 200,
+}
+`;
+
+snapshot[`Calamity rounds, and the toggle that stops them 3`] = `
+{
+  db: [
+    {
+      args: null,
+      filters: [],
+      op: "select",
+      table: "guilds",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "is_active",
+          "eq",
+          true,
+        ],
+      ],
+      op: "select",
+      table: "event_status",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "in",
+          [
+            "TA",
+            "TB",
+          ],
+        ],
+        [
+          "key",
+          "in",
+          [
+            "discord_webhook_url",
+            "discord_role_id",
+            "discord_role_id_gvg",
+            "discord_role_id_svs",
+            "discord_role_id_calamity",
+            "discord_role_id_shadowfront_squad1",
+            "discord_role_id_shadowfront_squad2",
+            "notify_gvg_daily_tasks",
+            "notify_gvg_pvp",
+            "notify_svs_garrison",
+            "notify_svs_pvp",
+            "notify_svs_won_prep",
+            "notify_calamity_10",
+            "webhook_gvg",
+            "webhook_svs",
+            "webhook_calamity",
+            "webhook_armsrace",
+            "discord_role_id_armsrace",
+            "notify_armsrace_reminder_30",
+            "tpl_armsrace_reminder_30_content",
+            "tpl_armsrace_reminder_30_title",
+            "tpl_armsrace_reminder_30_desc",
+            "notify_armsrace_reminder_5",
+            "tpl_armsrace_reminder_5_content",
+            "tpl_armsrace_reminder_5_title",
+            "tpl_armsrace_reminder_5_desc",
+            "notify_armsrace_start",
+            "tpl_armsrace_start_content",
+            "tpl_armsrace_start_title",
+            "tpl_armsrace_start_desc",
+            "webhook_dtr",
+            "discord_role_id_dtr",
+            "notify_dtr_reminder_30",
+            "tpl_dtr_reminder_30_content",
+            "tpl_dtr_reminder_30_title",
+            "tpl_dtr_reminder_30_desc",
+            "notify_dtr_reminder_5",
+            "tpl_dtr_reminder_5_content",
+            "tpl_dtr_reminder_5_title",
+            "tpl_dtr_reminder_5_desc",
+            "notify_dtr_start",
+            "tpl_dtr_start_content",
+            "tpl_dtr_start_title",
+            "tpl_dtr_start_desc",
+            "webhook_shadowfront",
+            "discord_role_id_shadowfront",
+            "notify_shadowfront_reminder_30",
+            "tpl_shadowfront_reminder_30_content",
+            "tpl_shadowfront_reminder_30_title",
+            "tpl_shadowfront_reminder_30_desc",
+            "notify_shadowfront_reminder_5",
+            "tpl_shadowfront_reminder_5_content",
+            "tpl_shadowfront_reminder_5_title",
+            "tpl_shadowfront_reminder_5_desc",
+            "notify_shadowfront_start",
+            "tpl_shadowfront_start_content",
+            "tpl_shadowfront_start_title",
+            "tpl_shadowfront_start_desc",
+            "tpl_gvg_start_content",
+            "tpl_gvg_start_title",
+            "tpl_gvg_start_desc",
+            "tpl_gvg_reminder_content",
+            "tpl_gvg_reminder_title",
+            "tpl_gvg_reminder_desc",
+            "tpl_svs_garrison_content",
+            "tpl_svs_garrison_title",
+            "tpl_svs_garrison_desc",
+            "tpl_svs_reminder_30_invasion_content",
+            "tpl_svs_reminder_30_invasion_title",
+            "tpl_svs_reminder_30_invasion_desc",
+            "tpl_svs_reminder_30_defense_content",
+            "tpl_svs_reminder_30_defense_title",
+            "tpl_svs_reminder_30_defense_desc",
+            "tpl_svs_reminder_5_invasion_content",
+            "tpl_svs_reminder_5_invasion_title",
+            "tpl_svs_reminder_5_invasion_desc",
+            "tpl_svs_reminder_5_defense_content",
+            "tpl_svs_reminder_5_defense_title",
+            "tpl_svs_reminder_5_defense_desc",
+            "tpl_svs_start_invasion_content",
+            "tpl_svs_start_invasion_title",
+            "tpl_svs_start_invasion_desc",
+            "tpl_svs_start_defense_content",
+            "tpl_svs_start_defense_title",
+            "tpl_svs_start_defense_desc",
+            "tpl_calamity_reminder_10_content",
+            "tpl_calamity_reminder_10_title",
+            "tpl_calamity_reminder_10_desc",
+          ],
+        ],
+      ],
+      op: "select",
+      table: "guild_config",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "in",
+          [
+            "TA",
+            "TB",
+          ],
+        ],
+      ],
+      op: "select",
+      table: "guild_config",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "in",
+          [
+            "TA",
+            "TB",
+          ],
+        ],
+        [
+          "event_name",
+          "eq",
+          "SvS",
+        ],
+      ],
+      op: "select",
+      table: "war_sessions",
+    },
+  ],
+  response: {
+    ok: true,
+    processed: [],
+  },
+  sent: [],
+  status: 200,
+}
+`;

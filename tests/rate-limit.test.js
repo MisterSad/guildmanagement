@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { edgeSource } from './helpers/edge-source.js';
 import fs from 'fs';
 import path from 'path';
 import {
@@ -101,10 +102,10 @@ describe('Sliding Window IP Rate Limiter (GAP 3)', () => {
     expect(authLoginContent).toContain('checkAndRecordIpAttempt');
     expect(authLoginContent).toContain('extractClientIp');
 
-    const adminAccountsContent = fs.readFileSync(path.resolve(__dirname, '../supabase/functions/admin-accounts/index.ts'), 'utf-8');
+    const adminAccountsContent = edgeSource('admin-accounts');
     expect(adminAccountsContent).toContain('checkAndRecordIpAttempt');
 
-    const memberPortalContent = fs.readFileSync(path.resolve(__dirname, '../supabase/functions/member-portal/index.ts'), 'utf-8');
+    const memberPortalContent = edgeSource('member-portal');
     expect(memberPortalContent).toContain('checkAndRecordIpAttempt');
   });
 });

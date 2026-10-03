@@ -2,6 +2,26 @@
 
 ## [Unreleased]
 
+- **The four largest Edge Functions are split by action** (medium-term plan, phase M3; audit BE-A-20, ARC-09, QA-09). No behaviour change, proven as follows.
+  - **Characterization first.** Before any code moved, each handler was run against the in-memory Supabase with a frozen clock and frozen randomness, and everything it did was recorded with `assertSnapshot`: the response, every read, write, RPC and GoTrue call, and every request to Discord.
+    - 108 scenarios: `event-reminders` 15, `member-portal` 26, `admin-accounts` 36, `auth-discord` 22.
+    - They cover every action, every reminder block, and the refusal paths.
+    - The split reproduces all of them unchanged.
+    - Checked: changing the stale-lock threshold makes a scenario fail.
+  - **Structure.** Each `index.ts` now only authenticates and routes.
+    - `event-reminders` (1,261 lines) became a 188-line router plus `standard.ts`, `gvg.ts`, `svs.ts`, `calamity.ts`, and `shared.ts`, which holds one claim/settle path for the `sent_*` slot lock where five copies existed before.
+    - `member-portal` (1,021 lines) became a 147-line router plus `schemas.ts`, `context.ts` and five `actions/` modules.
+    - `admin-accounts` (920 lines) became a 103-line router plus `schemas.ts`, `context.ts`, `provision.ts` and six `actions/` modules.
+    - `auth-discord` (1,113 lines) became a 111-line router plus `config.ts`, `http.ts`, `tickets.ts`, `oauth.ts` and five `actions/` modules.
+    - Action bodies were moved verbatim.
+  - **Test tooling.**
+    - `_test/characterize.ts` provides `freezeClock`, `freezeRandom`, `stubFetch` and the call recorder. It leaves out EdgeLogger rows and keeps deliberate audit rows.
+    - The fake client now interprets LIKE escapes, so `ilike(escapeLike(id))` finds its row as in production, and it answers `signInWithPassword`.
+    - `tests/helpers/edge-source.js` reads a function's whole directory. 35 source-reading tests use it instead of `index.ts`, and `edgeFunctionBody()` replaces the slices that went from one `if (action === …)` to the next.
+    - `tests/edge_handler_split.test.js` keeps the routers small and the snapshots present.
+  - AGENTS.md states the rule: a refactor keeps the snapshots green, and they are regenerated only for an intended behaviour change.
+  - **Deployment.** These four functions redeploy with a new layout; nothing they answer changes.
+
 - **One authorization decision point, and webhook URLs out of the browser** (medium-term plan, phase M2; audit ARC-03 outside the worker, BE-A-19, ARC-04).
   - **One caller resolver.**
     - `_shared/auth.ts` `resolveCaller(req)` replaces the four implementations: `validateCallerAuth`, `admin-accounts`' `getCallerInfo`, `member-portal`'s `getIdentity`, and the officer lookup of `discord-bot-interactions`, now `officerAccountsForDiscord`.

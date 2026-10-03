@@ -1,0 +1,2396 @@
+export const snapshot = {};
+
+snapshot[`member-portal: get-active-sessions 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "uid",
+          "eq",
+          "U1",
+        ],
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+      ],
+      kind: "from",
+      name: "guild_members",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+      ],
+      kind: "from",
+      name: "guild_members",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+        [
+          "is_active",
+          "eq",
+          true,
+        ],
+      ],
+      kind: "from",
+      name: "event_status",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+        [
+          "event_name",
+          "eq",
+          "Glory",
+        ],
+        [
+          "week_start",
+          "eq",
+          "2026-10-05",
+        ],
+        [
+          "pseudo",
+          "eq",
+          "Ace",
+        ],
+      ],
+      kind: "from",
+      name: "event_participants",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "account_id",
+          "eq",
+          "p_ace",
+        ],
+      ],
+      kind: "from",
+      name: "discord_account_links",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+        [
+          "pseudo",
+          "eq",
+          "Ace",
+        ],
+        [
+          "session_id",
+          "in",
+          [
+            "s1",
+            "w1",
+            "s2",
+          ],
+        ],
+      ],
+      kind: "from",
+      name: "event_participants",
+      op: "select",
+    },
+  ],
+  response: {
+    body: {
+      champion_power: 20,
+      crew_power: 30,
+      discord_linked: false,
+      flagship_power: 40,
+      fleet_rating: 50,
+      glory: {
+        score: 4000,
+        week_start: "2026-10-05",
+      },
+      glory_score: 5,
+      guild: "TA",
+      guild_averages: {
+        avg_power: 2000,
+        champion_power: 10,
+        crew_power: 15,
+        flagship_power: 20,
+        fleet_rating: 60,
+        glory_score: 7,
+        member_count: 2,
+        overall_power: 2000,
+        tech_power: 20,
+      },
+      metrics_updated_at: null,
+      ok: true,
+      overall_power: 1000,
+      power_updated_at: null,
+      pseudo: "Ace",
+      role: "R2",
+      sessions: [
+        {
+          event_name: "Arms Race Stage A",
+          in_session: true,
+          is_pending: false,
+          participated: false,
+          score: 0,
+          score_prep: 0,
+          score_pvp: 0,
+          session_id: "s1",
+          start_at: "2026-10-05T12:00:00Z",
+          validated: false,
+        },
+        {
+          event_name: "GvG",
+          in_session: true,
+          is_pending: false,
+          participated: false,
+          score: 0,
+          score_prep: 0,
+          score_pvp: 0,
+          session_id: "w1",
+          start_at: "2026-10-05T00:00:00Z",
+          validated: false,
+        },
+        {
+          event_name: "Defend Trade Route",
+          excused: false,
+          in_session: false,
+          is_pending: false,
+          late: false,
+          participated: false,
+          score: 0,
+          score_prep: 0,
+          score_pvp: 0,
+          session_id: "s2",
+          start_at: null,
+          sub_present: false,
+          validated: false,
+        },
+      ],
+      tech_power: 10,
+      timezone: "Europe/Paris",
+      timezone_offset: 1,
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`member-portal: get-active-sessions without a player 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "uid",
+          "eq",
+          "p_none",
+        ],
+        [
+          "guild",
+          "eq",
+          "TB",
+        ],
+      ],
+      kind: "from",
+      name: "guild_members",
+      op: "select",
+    },
+  ],
+  response: {
+    body: {
+      error: "player_not_found",
+      ok: false,
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`member-portal: submit-scores 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "uid",
+          "eq",
+          "U1",
+        ],
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+      ],
+      kind: "from",
+      name: "guild_members",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+        [
+          "event_name",
+          "eq",
+          "Arms Race Stage A",
+        ],
+        [
+          "session_id",
+          "eq",
+          "s1",
+        ],
+      ],
+      kind: "from",
+      name: "event_status",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+        [
+          "event_name",
+          "eq",
+          "Arms Race Stage A",
+        ],
+        [
+          "session_id",
+          "eq",
+          "s1",
+        ],
+        [
+          "pseudo",
+          "eq",
+          "Ace",
+        ],
+      ],
+      kind: "from",
+      name: "event_participants",
+      op: "select",
+    },
+    {
+      args: {
+        is_pending: true,
+        late: true,
+        participated: 1,
+        score: 1234,
+      },
+      filters: [
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+        [
+          "event_name",
+          "eq",
+          "Arms Race Stage A",
+        ],
+        [
+          "session_id",
+          "eq",
+          "s1",
+        ],
+        [
+          "pseudo",
+          "eq",
+          "Ace",
+        ],
+      ],
+      kind: "from",
+      name: "event_participants",
+      op: "update",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "id",
+          "eq",
+          "TA",
+        ],
+      ],
+      kind: "from",
+      name: "guilds",
+      op: "select",
+    },
+    {
+      args: {
+        p_action_type: "score_submission",
+        p_guild: "TA",
+        p_message: "Submitted scores for Arms Race Stage A [s1]: Score: 1,234, Late",
+        p_metadata: {
+          event_name: "Arms Race Stage A",
+          previous_is_pending: true,
+          session_id: "s1",
+          submitted_values: {
+            is_pending: true,
+            late: true,
+            participated: 1,
+            score: 1234,
+          },
+        },
+        p_pseudo: "Ace",
+        p_server_number: "9001",
+        p_uid: "U1",
+      },
+      kind: "rpc",
+      name: "gm_log_player_audit",
+    },
+  ],
+  response: {
+    body: {
+      ok: true,
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`member-portal: submit-scores on a war session 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "uid",
+          "eq",
+          "U1",
+        ],
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+      ],
+      kind: "from",
+      name: "guild_members",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+        [
+          "event_name",
+          "eq",
+          "GvG",
+        ],
+        [
+          "session_id",
+          "eq",
+          "w1",
+        ],
+      ],
+      kind: "from",
+      name: "event_status",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+        [
+          "event_name",
+          "eq",
+          "GvG",
+        ],
+        [
+          "session_id",
+          "eq",
+          "w1",
+        ],
+        [
+          "pseudo",
+          "eq",
+          "Ace",
+        ],
+      ],
+      kind: "from",
+      name: "event_participants",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+        [
+          "event_name",
+          "eq",
+          "GvG",
+        ],
+        [
+          "session_id",
+          "eq",
+          "w1",
+        ],
+      ],
+      kind: "from",
+      name: "war_sessions",
+      op: "select",
+    },
+    {
+      args: {
+        p_event_name: "GvG",
+        p_guild: "TA",
+        p_rows: [
+          {
+            day: 0,
+            pseudo: "Ace",
+            score: 100,
+          },
+          {
+            day: 6,
+            pseudo: "Ace",
+            score: 200,
+          },
+        ],
+        p_session_id: "w1",
+      },
+      kind: "rpc",
+      name: "gm_upsert_daily_scores",
+    },
+    {
+      args: {
+        is_pending: true,
+        participated: 1,
+      },
+      filters: [
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+        [
+          "event_name",
+          "eq",
+          "GvG",
+        ],
+        [
+          "session_id",
+          "eq",
+          "w1",
+        ],
+        [
+          "pseudo",
+          "eq",
+          "Ace",
+        ],
+      ],
+      kind: "from",
+      name: "event_participants",
+      op: "update",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "id",
+          "eq",
+          "TA",
+        ],
+      ],
+      kind: "from",
+      name: "guilds",
+      op: "select",
+    },
+    {
+      args: {
+        p_action_type: "score_submission",
+        p_guild: "TA",
+        p_message: "Submitted scores for GvG [w1]: Prep: 100, PvP: 200",
+        p_metadata: {
+          event_name: "GvG",
+          previous_is_pending: true,
+          session_id: "w1",
+          submitted_values: {
+            is_pending: true,
+            participated: 1,
+            score_prep: 100,
+            score_pvp: 200,
+          },
+        },
+        p_pseudo: "Ace",
+        p_server_number: "9001",
+        p_uid: "U1",
+      },
+      kind: "rpc",
+      name: "gm_log_player_audit",
+    },
+  ],
+  response: {
+    body: {
+      ok: true,
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`member-portal: submit-scores on an inactive session 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "uid",
+          "eq",
+          "U1",
+        ],
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+      ],
+      kind: "from",
+      name: "guild_members",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+        [
+          "event_name",
+          "eq",
+          "Arms Race Stage B",
+        ],
+        [
+          "session_id",
+          "eq",
+          "old",
+        ],
+      ],
+      kind: "from",
+      name: "event_status",
+      op: "select",
+    },
+  ],
+  response: {
+    body: {
+      error: "session_inactive",
+      ok: false,
+    },
+    status: 400,
+  },
+}
+`;
+
+snapshot[`member-portal: submit-scores outside the session 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "uid",
+          "eq",
+          "U1",
+        ],
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+      ],
+      kind: "from",
+      name: "guild_members",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+        [
+          "event_name",
+          "eq",
+          "Defend Trade Route",
+        ],
+        [
+          "session_id",
+          "eq",
+          "s2",
+        ],
+      ],
+      kind: "from",
+      name: "event_status",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+        [
+          "event_name",
+          "eq",
+          "Defend Trade Route",
+        ],
+        [
+          "session_id",
+          "eq",
+          "s2",
+        ],
+        [
+          "pseudo",
+          "eq",
+          "Ace",
+        ],
+      ],
+      kind: "from",
+      name: "event_participants",
+      op: "select",
+    },
+  ],
+  response: {
+    body: {
+      error: "not_in_session",
+      ok: false,
+    },
+    status: 400,
+  },
+}
+`;
+
+snapshot[`member-portal: submit-scores with an invalid score 1`] = `
+{
+  calls: [],
+  response: {
+    body: {
+      error: "invalid_payload",
+      issues: [
+        {
+          code: "invalid_string",
+          message: "Invalid",
+          path: [
+            "score",
+          ],
+          validation: "regex",
+        },
+        {
+          code: "custom",
+          message: "Score must be between 0 and 9999999999",
+          path: [
+            "score",
+          ],
+        },
+      ],
+      ok: false,
+    },
+    status: 422,
+  },
+}
+`;
+
+snapshot[`member-portal: update-power 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "uid",
+          "eq",
+          "U1",
+        ],
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+      ],
+      kind: "from",
+      name: "guild_members",
+      op: "select",
+    },
+    {
+      args: {
+        p_guild: "TA",
+        p_pseudo: "Ace",
+        p_total_power: 5000,
+      },
+      kind: "rpc",
+      name: "gm_upsert_player_metrics",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "id",
+          "eq",
+          "TA",
+        ],
+      ],
+      kind: "from",
+      name: "guilds",
+      op: "select",
+    },
+    {
+      args: {
+        p_action_type: "power_update",
+        p_guild: "TA",
+        p_message: "Updated overall power: 1,000 -> 5,000",
+        p_metadata: {
+          new_power: 5000,
+          previous_power: 1000,
+          rpc_result: [
+            {
+              ok: true,
+            },
+          ],
+        },
+        p_pseudo: "Ace",
+        p_server_number: "9001",
+        p_uid: "U1",
+      },
+      kind: "rpc",
+      name: "gm_log_player_audit",
+    },
+  ],
+  response: {
+    body: {
+      ok: true,
+      power: 5000,
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`member-portal: update-power out of range 1`] = `
+{
+  calls: [],
+  response: {
+    body: {
+      error: "invalid_payload",
+      issues: [
+        {
+          code: "too_small",
+          exact: false,
+          inclusive: true,
+          message: "Number must be greater than or equal to 0",
+          minimum: 0,
+          path: [
+            "power",
+          ],
+          type: "number",
+        },
+        {
+          code: "custom",
+          message: "Power must be between 0 and 5000000000",
+          path: [
+            "power",
+          ],
+        },
+      ],
+      ok: false,
+    },
+    status: 422,
+  },
+}
+`;
+
+snapshot[`member-portal: update-metrics 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "uid",
+          "eq",
+          "U1",
+        ],
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+      ],
+      kind: "from",
+      name: "guild_members",
+      op: "select",
+    },
+    {
+      args: {
+        p_champion_power: 20,
+        p_crew_power: 30,
+        p_flagship_power: 40,
+        p_fleet_rating: 50,
+        p_glory_score: 50,
+        p_guild: "TA",
+        p_pseudo: "Ace",
+        p_tech_power: 15,
+        p_total_power: 2000,
+      },
+      kind: "rpc",
+      name: "gm_upsert_player_metrics",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "uid",
+          "eq",
+          "U1",
+        ],
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+      ],
+      kind: "from",
+      name: "guild_members",
+      op: "select",
+    },
+    {
+      args: {
+        p_glory: 50,
+        p_guild: "TA",
+        p_pseudo: "Ace",
+        p_week_start: "2026-10-05",
+      },
+      kind: "rpc",
+      name: "gm_upsert_player_glory",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "id",
+          "eq",
+          "TA",
+        ],
+      ],
+      kind: "from",
+      name: "guilds",
+      op: "select",
+    },
+    {
+      args: {
+        p_action_type: "metrics_update",
+        p_guild: "TA",
+        p_message: "Updated military metrics: Power 2,000, Tech 15, Champ 20, Fleet 50, Glory 50",
+        p_metadata: {
+          previous: {
+            champion_power: 20,
+            crew_power: 30,
+            flagship_power: 40,
+            fleet_rating: 50,
+            glory_score: 5,
+            overall_power: 1000,
+            tech_power: 10,
+          },
+          updated: {
+            champion_power: 20,
+            crew_power: 30,
+            flagship_power: 40,
+            fleet_rating: 50,
+            glory_score: 50,
+            overall_power: 2000,
+            tech_power: 15,
+          },
+        },
+        p_pseudo: "Ace",
+        p_server_number: "9001",
+        p_uid: "U1",
+      },
+      kind: "rpc",
+      name: "gm_log_player_audit",
+    },
+  ],
+  response: {
+    body: {
+      champion_power: 20,
+      crew_power: 30,
+      flagship_power: 40,
+      fleet_rating: 50,
+      glory_score: 50,
+      glory_week: null,
+      ok: true,
+      tech_power: 15,
+      total_power: 2000,
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`member-portal: get-metrics-history 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: {
+        p_limit: 5,
+        p_uid: "U1",
+      },
+      kind: "rpc",
+      name: "gm_get_player_metrics_history",
+    },
+  ],
+  response: {
+    body: {
+      history: [
+        {
+          power: 900,
+          week: "2026-09-28",
+        },
+      ],
+      ok: true,
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`member-portal: update-glory 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "uid",
+          "eq",
+          "U1",
+        ],
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+      ],
+      kind: "from",
+      name: "guild_members",
+      op: "select",
+    },
+    {
+      args: {
+        p_glory: 300,
+        p_guild: "TA",
+        p_pseudo: "Ace",
+        p_week_start: "2026-10-05",
+      },
+      kind: "rpc",
+      name: "gm_upsert_player_glory",
+    },
+  ],
+  response: {
+    body: {
+      error: "save_failed",
+      ok: false,
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`member-portal: get-transfer-guilds 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "uid",
+          "eq",
+          "U1",
+        ],
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+      ],
+      kind: "from",
+      name: "guild_members",
+      op: "select",
+    },
+    {
+      args: {
+        p_guild: "TA",
+      },
+      kind: "rpc",
+      name: "gm_list_transfer_eligible_guilds",
+    },
+  ],
+  response: {
+    body: {
+      guilds: [
+        {
+          id: "TB",
+          name: "Beta",
+        },
+      ],
+      ok: true,
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`member-portal: submit-transfer-request 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "uid",
+          "eq",
+          "U1",
+        ],
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+      ],
+      kind: "from",
+      name: "guild_members",
+      op: "select",
+    },
+    {
+      args: {
+        p_target_guild: "TB",
+        p_uid: "U1",
+      },
+      kind: "rpc",
+      name: "request_guild_transfer",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "id",
+          "eq",
+          "TA",
+        ],
+      ],
+      kind: "from",
+      name: "guilds",
+      op: "select",
+    },
+    {
+      args: {
+        p_action_type: "transfer_request",
+        p_guild: "TA",
+        p_message: "Requested guild transfer from TA to TB",
+        p_metadata: {
+          result: {
+            ok: true,
+            request_id: 7,
+          },
+          source_guild: "TA",
+          target_guild: "TB",
+        },
+        p_pseudo: "Ace",
+        p_server_number: "9001",
+        p_uid: "U1",
+      },
+      kind: "rpc",
+      name: "gm_log_player_audit",
+    },
+  ],
+  response: {
+    body: {
+      ok: true,
+      request_id: 7,
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`member-portal: get-history 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "uid",
+          "eq",
+          "U1",
+        ],
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+      ],
+      kind: "from",
+      name: "guild_members",
+      op: "select",
+    },
+    {
+      args: {
+        p_guild: "TA",
+        p_pseudo: "Ace",
+      },
+      kind: "rpc",
+      name: "gm_player_session_guild_stats",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+      ],
+      kind: "from",
+      name: "guild_members",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+        [
+          "pseudo",
+          "eq",
+          "Ace",
+        ],
+      ],
+      kind: "from",
+      name: "event_participants",
+      op: "select",
+    },
+  ],
+  response: {
+    body: {
+      events: {
+        "ARMS RACE STAGE A": {
+          attended: 0,
+          count: 1,
+          has_score: false,
+          history: [
+            {
+              appointed: false,
+              excused: false,
+              guild_avg_score: 0,
+              guild_max_score: 0,
+              late: false,
+              participated: false,
+              score: 0,
+              session_id: "s1",
+              sub_present: false,
+              week_start: "2026-10-05",
+            },
+          ],
+          rate: 0,
+        },
+        "ARMS RACE STAGE B": {
+          attended: 1,
+          count: 1,
+          has_score: false,
+          history: [
+            {
+              appointed: false,
+              excused: false,
+              guild_avg_score: 900,
+              guild_max_score: 900,
+              late: false,
+              participated: true,
+              score: 900,
+              session_id: "old",
+              sub_present: false,
+              week_start: "2026-09-28",
+            },
+          ],
+          rate: 100,
+        },
+        GLORY: {
+          attended: 1,
+          count: 1,
+          has_score: true,
+          history: [
+            {
+              appointed: false,
+              excused: false,
+              guild_avg_score: 0,
+              guild_max_score: 0,
+              late: false,
+              participated: true,
+              score: 4000,
+              session_id: null,
+              sub_present: false,
+              week_start: "2026-10-05",
+            },
+          ],
+          rate: 100,
+        },
+        GVG: {
+          attended: 0,
+          count: 1,
+          has_score: true,
+          history: [
+            {
+              appointed: false,
+              excused: false,
+              guild_avg_score: 0,
+              guild_max_score: 0,
+              late: false,
+              participated: false,
+              score: 0,
+              session_id: "w1",
+              sub_present: false,
+              week_start: "2026-10-05",
+            },
+          ],
+          rate: 0,
+        },
+      },
+      guild_averages: {
+        avg_power: 2000,
+        champion_power: 10,
+        crew_power: 15,
+        flagship_power: 20,
+        fleet_rating: 60,
+        glory_score: 7,
+        member_count: 2,
+        overall_power: 2000,
+        tech_power: 20,
+      },
+      ok: true,
+      overall: 4,
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`member-portal: get-absences 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: {
+        p_uid: "U1",
+      },
+      kind: "rpc",
+      name: "gm_get_player_absences",
+    },
+  ],
+  response: {
+    body: {
+      absences: [],
+      ok: true,
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`member-portal: set-absence 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+  ],
+  response: {
+    body: {
+      error: "invalid_kind",
+      ok: false,
+    },
+    status: 400,
+  },
+}
+`;
+
+snapshot[`member-portal: delete-absence 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "uid",
+          "eq",
+          "U1",
+        ],
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+      ],
+      kind: "from",
+      name: "guild_members",
+      op: "select",
+    },
+    {
+      args: {
+        p_id: "a1",
+        p_uid: "U1",
+      },
+      kind: "rpc",
+      name: "gm_delete_player_absence",
+    },
+  ],
+  response: {
+    body: {
+      error: "delete_failed",
+      ok: false,
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`member-portal: get-badges 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "uid",
+          "eq",
+          "U1",
+        ],
+      ],
+      kind: "from",
+      name: "guild_members",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+        [
+          "pseudo",
+          "eq",
+          "Ace",
+        ],
+      ],
+      kind: "from",
+      name: "event_participants",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+        [
+          "pseudo",
+          "eq",
+          "Ace",
+        ],
+        [
+          "event_name",
+          "eq",
+          "Glory",
+        ],
+        [
+          "score",
+          "gt",
+          0,
+        ],
+      ],
+      kind: "from",
+      name: "event_participants",
+      op: "select",
+    },
+  ],
+  response: {
+    body: {
+      attended: 4,
+      created_at: "2026-01-01T00:00:00Z",
+      glory_best: 4000,
+      ok: true,
+      overall_power: 1000,
+      role: "R2",
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`member-portal: get-weekly-challenges 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "uid",
+          "eq",
+          "U1",
+        ],
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+      ],
+      kind: "from",
+      name: "guild_members",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+        [
+          "pseudo",
+          "eq",
+          "Ace",
+        ],
+        [
+          "event_name",
+          "neq",
+          "Glory",
+        ],
+      ],
+      kind: "from",
+      name: "event_participants",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+        [
+          "pseudo",
+          "eq",
+          "Ace",
+        ],
+        [
+          "event_name",
+          "eq",
+          "Glory",
+        ],
+        [
+          "week_start",
+          "eq",
+          "2026-10-05",
+        ],
+        [
+          "score",
+          "gt",
+          0,
+        ],
+      ],
+      kind: "from",
+      name: "event_participants",
+      op: "select",
+    },
+  ],
+  response: {
+    body: {
+      challenges: [
+        {
+          done: true,
+          icon: "ph-calendar-check",
+          id: "events1",
+          label: "Attend 1 event this week",
+          progress: 1,
+          target: 1,
+        },
+        {
+          done: false,
+          icon: "ph-lightning",
+          id: "events3",
+          label: "Attend 3 events this week",
+          progress: 2,
+          target: 3,
+        },
+        {
+          done: false,
+          icon: "ph-star",
+          id: "events5",
+          label: "Attend 5 events this week",
+          progress: 2,
+          target: 5,
+        },
+        {
+          done: true,
+          icon: "ph-trophy",
+          id: "glory",
+          label: "Submit your Glory score",
+          progress: 1,
+          target: 1,
+        },
+        {
+          done: false,
+          icon: "ph-gauge",
+          id: "power",
+          label: "Refresh your power",
+          progress: 0,
+          target: 1,
+        },
+      ],
+      completed: 2,
+      ok: true,
+      season: {
+        events: 3,
+        level: "Bronze",
+      },
+      total: 5,
+      week: "2026-10-05",
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`member-portal: get-personal-kpis 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "uid",
+          "eq",
+          "U1",
+        ],
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+      ],
+      kind: "from",
+      name: "guild_members",
+      op: "select",
+    },
+    {
+      args: {
+        p_uid: "U1",
+      },
+      kind: "rpc",
+      name: "gm_personal_kpis",
+    },
+    {
+      args: {
+        p_guild: "TA",
+        p_pseudo: "Ace",
+        p_weeks: 4,
+      },
+      kind: "rpc",
+      name: "gm_player_stats",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+      ],
+      kind: "from",
+      name: "guild_members",
+      op: "select",
+    },
+  ],
+  response: {
+    body: {
+      combativity: 2,
+      density: 0.5,
+      glory_history: [
+        4000,
+      ],
+      guild_averages: {
+        avg_power: 2000,
+        champion_power: 10,
+        crew_power: 15,
+        flagship_power: 20,
+        fleet_rating: 60,
+        glory_score: 7,
+        member_count: 2,
+        overall_power: 2000,
+        tech_power: 20,
+      },
+      ok: true,
+      reliability: {
+        guild_totals: {
+          rate: 40,
+        },
+        player: {
+          rate: 50,
+        },
+        weeks: 4,
+      },
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`member-portal: update-timezone 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "uid",
+          "eq",
+          "U1",
+        ],
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+      ],
+      kind: "from",
+      name: "guild_members",
+      op: "select",
+    },
+    {
+      args: {
+        p_offset: 5.75,
+        p_timezone: "Asia/Kathmandu",
+        p_uid: "U1",
+      },
+      kind: "rpc",
+      name: "gm_update_player_timezone",
+    },
+  ],
+  response: {
+    body: {
+      error: "update_failed",
+      ok: false,
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`member-portal: update-timezone off the quarter hour 1`] = `
+{
+  calls: [],
+  response: {
+    body: {
+      error: "invalid_payload",
+      issues: [
+        {
+          code: "custom",
+          message: "Offset must be between -12 and 14, in quarter hours",
+          path: [
+            "offset",
+          ],
+        },
+      ],
+      ok: false,
+    },
+    status: 422,
+  },
+}
+`;
+
+snapshot[`member-portal: an unknown action 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      kind: "auth",
+      name: "getUser",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "auth_user_id",
+          "eq",
+          "<uuid>",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+  ],
+  response: {
+    body: {
+      error: "unknown_action",
+      ok: false,
+    },
+    status: 400,
+  },
+}
+`;
+
+snapshot[`member-portal: no token 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+  ],
+  response: {
+    body: {
+      error: "unauthorized",
+      ok: false,
+    },
+    status: 401,
+  },
+}
+`;
+
+snapshot[`member-portal: no action 1`] = `
+{
+  calls: [],
+  response: {
+    body: {
+      error: "missing_action",
+      issues: [
+        {
+          code: "invalid_type",
+          expected: "string",
+          message: "Required",
+          path: [
+            "action",
+          ],
+          received: "undefined",
+        },
+      ],
+      ok: false,
+    },
+    status: 400,
+  },
+}
+`;

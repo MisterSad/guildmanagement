@@ -23,9 +23,9 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
+import { edgeSource, edgeFunctionBody } from './helpers/edge-source.js';
 
-const filePath = path.resolve(__dirname, '../supabase/functions/event-reminders/index.ts');
-const content = fs.readFileSync(filePath, 'utf-8');
+const content = edgeSource('event-reminders');
 
 describe('event-reminders: Web Push decommissioning', () => {
   it('confirms Web Push has been decommissioned in favor of Discord notifications', () => {
@@ -47,24 +47,29 @@ describe('event-reminders: reminder locks are atomic (ON CONFLICT DO NOTHING)', 
   });
 
   it('every lock-acquisition site goes through acquireReminderLock', () => {
-    const matches = content.match(/const lockAcquired = await acquireReminderLock\(supabase, guild, lockKey\)/g) || [];
+    // M3: one claim path, claimSlot(), is the only caller of
+    // acquireReminderLock, and every block claims through it.
+    expect(content.match(/await acquireReminderLock\(/g) || []).toHaveLength(1);
+    expect(edgeFunctionBody('event-reminders', 'claimSlot')).toContain('await acquireReminderLock(run, lockKey)');
     // Standard events, GvG daily tasks, GvG Saturday, SvS, Calamity -- 5 sites.
-    expect(matches.length).toBe(5);
+    expect(content.match(/await claimSlot\(run, lockKey/g) || []).toHaveLength(5);
   });
 
   it('the GvG daily task lock treats an already-held lock as "already sent" and skips, rather than silently doing nothing', () => {
-    const idx = content.indexOf('Lock already exists for GvG Daily Tasks Day');
-    expect(idx).toBeGreaterThan(-1);
-    const before = content.slice(Math.max(0, idx - 200), idx);
-    expect(before).toContain('if (!lockAcquired) {');
+    const claim = edgeFunctionBody('event-reminders', 'claimSlot');
+    expect(claim).toMatch(/if \(!await acquireReminderLock\(run, lockKey\)\) \{\n\s+run\.logger\.info\(`\[\$\{run\.guild\}\] Lock already exists for \$\{what\}, skipping`\);\n\s+return false;/);
+    expect(edgeFunctionBody('event-reminders', 'runGvgDailyTasks')).toContain('if (!await claimSlot(run, lockKey, what, forceGvg)) return;');
   });
 });
 
 describe('event-reminders: Discord webhook allowed_mentions and role handling', () => {
   it('includes allowed_mentions: { parse: [\'roles\', \'users\', \'everyone\'] } on all webhook payloads in event-reminders', () => {
-    const allowedMentionsMatches = content.match(/allowed_mentions:\s*\{\s*parse:\s*\[\s*['"]roles['"],\s*['"]users['"],\s*['"]everyone['"]\s*\]\s*\}/g) || [];
-    // Standard events, GvG daily tasks, GvG Saturday War, SvS, Calamity (5 payloads)
-    expect(allowedMentionsMatches.length).toBe(5);
+    const everyone = /allowed_mentions:\s*\{\s*parse:\s*\[\s*['"]roles['"],\s*['"]users['"],\s*['"]everyone['"]\s*\]\s*\}/;
+    // M3: four blocks build their payload with reminderBody(); the GvG daily
+    // task list spreads its own embed and adds the same allowed_mentions.
+    expect(edgeFunctionBody('event-reminders', 'reminderBody')).toMatch(everyone);
+    expect(content.match(/return reminderBody\(/g) || []).toHaveLength(4);
+    expect(edgeFunctionBody('event-reminders', 'runGvgDailyTasks')).toMatch(everyone);
   });
 
   it('supports dedicated role IDs for Shadowfront Squad 1 and Squad 2 with fallback', () => {
@@ -79,7 +84,8 @@ describe('event-reminders: Discord webhook allowed_mentions and role handling', 
   });
 
   it('auto-expires stale events older than 24 hours in event-reminders', () => {
-    expect(content).toContain('(now - startMs) > 24 * 60 * 60 * 1000');
+    expect(content).toContain('const DAY_MS = 24 * 60 * 60 * 1000;');
+    expect(content).toContain('(now - startMs) > DAY_MS');
     expect(content).toContain("is_active: false");
   });
 });

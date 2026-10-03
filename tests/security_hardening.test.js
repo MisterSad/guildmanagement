@@ -1,20 +1,19 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import fs from 'fs';
 import path from 'path';
+import { edgeSource } from './helpers/edge-source.js';
 
 describe('Security Hardening & Module Audits', () => {
     it('verifies admin-accounts index.ts contains strict role guards', () => {
-        const filePath = path.resolve(__dirname, '../supabase/functions/admin-accounts/index.ts');
-        const content = fs.readFileSync(filePath, 'utf-8');
+        const content = edgeSource('admin-accounts');
         expect(content).toContain('if (!info.role || !isAdminRole(info.role))');
-        expect(content).not.toContain('action === "get-password"');
-        expect(content).toContain('action === "reset-password"');
-        expect(content).toContain('action === "update-role"');
+        expect(content).not.toContain('"get-password"');
+        expect(content).toContain('"reset-password": resetPassword,');
+        expect(content).toContain('"update-role": updateRole,');
     });
 
     it('verifies event-reminders index.ts contains isValidDiscordWebhook SSRF check and zero raw console calls', () => {
-        const filePath = path.resolve(__dirname, '../supabase/functions/event-reminders/index.ts');
-        const content = fs.readFileSync(filePath, 'utf-8');
+        const content = edgeSource('event-reminders');
         expect(content).toContain('function isValidDiscordWebhook');
         expect(content).toContain('SECURITY: Invalid or untrusted Discord Webhook URL blocked');
         expect(content).toContain('new EdgeLogger');

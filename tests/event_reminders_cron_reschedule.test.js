@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
+import { edgeSource } from './helpers/edge-source.js';
 
 const migrationPath = path.resolve(
   __dirname,
@@ -43,7 +44,7 @@ describe('TICKET-06 [PERF-01]: Event Reminders Cron Reschedule to 5 Minutes', ()
 
   it('validates that Edge Function trigger windows are calibrated for 5-minute cron ticks', () => {
     expect(fs.existsSync(edgePath)).toBe(true);
-    const code = fs.readFileSync(edgePath, 'utf8');
+    const code = edgeSource('event-reminders');
 
     // Standard event windows: 6m for 30m, 5m for 5m, 6m for start
     expect(code).toContain('roundedMins <= 30 && roundedMins >= 25');
@@ -56,7 +57,7 @@ describe('TICKET-06 [PERF-01]: Event Reminders Cron Reschedule to 5 Minutes', ()
 
   it('verifies all Edge schedule slots are covered by the SQL VALUES table in the new migration', () => {
     const sql = fs.readFileSync(migrationPath, 'utf8');
-    const edge = fs.readFileSync(edgePath, 'utf8');
+    const edge = edgeSource('event-reminders');
 
     // Extract SQL slots
     const sqlSlots = new Set();

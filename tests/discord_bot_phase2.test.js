@@ -6,6 +6,7 @@
 // a minimal fake Supabase client, not just regex assertions on source text.
 
 import { describe, it, expect } from 'vitest';
+import { edgeSource, edgeFunctionBody } from './helpers/edge-source.js';
 import fs from 'fs';
 import path from 'path';
 import {
@@ -257,10 +258,7 @@ describe('getPlayerChallenges', () => {
 });
 
 describe('Regression: member-portal reuses _shared/player-actions.ts instead of redefining the logic', () => {
-  const memberPortalSrc = fs.readFileSync(
-    path.resolve(__dirname, '../supabase/functions/member-portal/index.ts'),
-    'utf-8'
-  );
+  const memberPortalSrc = edgeSource('member-portal');
 
   it('imports every relocated helper instead of defining it locally', () => {
     for (const name of [
@@ -268,9 +266,10 @@ describe('Regression: member-portal reuses _shared/player-actions.ts instead of 
       'updatePlayerPower', 'updatePlayerGlory', 'updatePlayerTimezone',
       'getPlayerChallenges', 'listPlayerAbsences', 'setPlayerAbsence', 'deletePlayerAbsence',
     ]) {
-      expect(memberPortalSrc).toContain(`  ${name},`);
+      // Imported from the shared module by whichever action module uses it.
+      expect(memberPortalSrc, name).toMatch(new RegExp(`import \\{[^}]*\\b${name}\\b[^}]*\\} from "(?:\\.\\./)+_shared/player-actions\\.ts"`));
     }
-    expect(memberPortalSrc).toContain('} from "../_shared/player-actions.ts"');
+    expect(memberPortalSrc).toMatch(/\} from "(?:\.\.\/)+_shared\/player-actions\.ts"/);
     expect(memberPortalSrc).not.toMatch(/^async function logPlayerAction\(/m);
     expect(memberPortalSrc).not.toMatch(/^function getWeekStartIso\(/m);
     expect(memberPortalSrc).not.toMatch(/^function eventScoringKey\(/m);

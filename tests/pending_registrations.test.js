@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import { canManageAccount } from '../supabase/functions/_shared/admin-authz';
+import { edgeSource } from './helpers/edge-source.js';
 
 const root = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.resolve(root, p), 'utf-8');
@@ -34,7 +35,7 @@ describe('Pending Player Registration Visibility & Validation', () => {
   });
 
   describe('Edge Function (admin-accounts/index.ts)', () => {
-    const edgeCode = read('supabase/functions/admin-accounts/index.ts');
+    const edgeCode = edgeSource('admin-accounts');
 
     it('performs case-insensitive guild comparison when filtering list for guild_admin', () => {
       expect(edgeCode).toMatch(/const callerGuildNorm = callerGuild \? String\(callerGuild\)\.trim\(\)\.toUpperCase\(\) : "";/);

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
+import { edgeSource, edgeFunctionBody } from './helpers/edge-source.js';
 
 describe('Guild Requests admin panel: discord_handle/note must always be HTML-escaped', () => {
     // guild_creation_requests.discord_handle and .note are the first fully
@@ -47,12 +48,11 @@ describe('Guild Requests: clearing history never touches pending requests', () =
     // The whole point of "Clear History" is to sweep away resolved rows an
     // admin no longer needs to see -- it must never be able to silently
     // delete a request someone hasn't reviewed yet.
-    const src = fs.readFileSync(path.resolve(__dirname, '../supabase/functions/admin-accounts/index.ts'), 'utf-8');
+    const src = edgeSource('admin-accounts');
 
     it('clear-resolved-guild-requests is gated to super_admin and filters out pending rows', () => {
-        const idx = src.indexOf('"clear-resolved-guild-requests"');
-        expect(idx).toBeGreaterThan(-1);
-        const block = src.slice(idx, idx + 800);
+        expect(src).toContain('"clear-resolved-guild-requests": clearResolvedGuildRequests,');
+        const block = edgeFunctionBody('admin-accounts', 'clearResolvedGuildRequests');
         expect(block).toContain('!isSuperAdmin(info.role)');
         expect(block).toMatch(/\.neq\(\s*["']status["'],\s*["']pending["']\s*\)/);
     });

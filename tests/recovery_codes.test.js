@@ -19,11 +19,12 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
+import { edgeSource } from './helpers/edge-source.js';
 
 const rootDir = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(rootDir, p), 'utf8');
 const ctrl = read('src/modules/app/auth/auth.controller.ts');
-const fn = read('supabase/functions/auth-discord/index.ts');
+const fn = edgeSource('auth-discord');
 
 describe('the recovery code is reachable from the login page', () => {
   it('has a link, and the link is actually wired', () => {

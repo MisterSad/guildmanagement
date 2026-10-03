@@ -1,0 +1,1445 @@
+export const snapshot = {};
+
+snapshot[`auth-discord: start from the app 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      args: {
+        code_verifier: "fssz-tvXrsFKrC_R7mAVROzJnIYiDe0X1mWHa0fMfDk",
+        expires_at: "2026-10-07T10:10:00.000Z",
+        origin: "https://guildmanagement.vercel.app",
+        state: "u4pL9WmwWL5q-ZKdz1znV3UwHy0_eqJGg0JaVd63YV4",
+      },
+      filters: [],
+      kind: "from",
+      name: "discord_oauth_states",
+      op: "insert",
+    },
+  ],
+  discord: [],
+  location: "https://discord.com/api/oauth2/authorize?client_id=client-test&redirect_uri=https%3A%2F%2Ffake.supabase.test%2Ffunctions%2Fv1%2Fauth-discord%2Fcallback&response_type=code&scope=identify&state=u4pL9WmwWL5q-ZKdz1znV3UwHy0_eqJGg0JaVd63YV4&code_challenge=0omq-HJzNz0RRGHUlrU5r5O5HnP_92Fbz7me41_GHYM&code_challenge_method=S256",
+  response: {
+    body: "",
+    status: 302,
+  },
+}
+`;
+
+snapshot[`auth-discord: start from an untrusted origin 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      args: {
+        code_verifier: "fssz-tvXrsFKrC_R7mAVROzJnIYiDe0X1mWHa0fMfDk",
+        expires_at: "2026-10-07T10:10:00.000Z",
+        origin: "https://guildmanagement.vercel.app",
+        state: "u4pL9WmwWL5q-ZKdz1znV3UwHy0_eqJGg0JaVd63YV4",
+      },
+      filters: [],
+      kind: "from",
+      name: "discord_oauth_states",
+      op: "insert",
+    },
+  ],
+  discord: [],
+  location: "https://discord.com/api/oauth2/authorize?client_id=client-test&redirect_uri=https%3A%2F%2Ffake.supabase.test%2Ffunctions%2Fv1%2Fauth-discord%2Fcallback&response_type=code&scope=identify&state=u4pL9WmwWL5q-ZKdz1znV3UwHy0_eqJGg0JaVd63YV4&code_challenge=0omq-HJzNz0RRGHUlrU5r5O5HnP_92Fbz7me41_GHYM&code_challenge_method=S256",
+  response: {
+    body: "",
+    status: 302,
+  },
+}
+`;
+
+snapshot[`auth-discord: callback with an unknown state 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_state: "forged",
+      },
+      kind: "rpc",
+      name: "gm_consume_discord_oauth_state",
+    },
+  ],
+  discord: [],
+  location: "https://guildmanagement.vercel.app/?gm_auth_error=state_invalid",
+  response: {
+    body: "",
+    status: 302,
+  },
+}
+`;
+
+snapshot[`auth-discord: callback declined by the user 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_state: "good-state",
+      },
+      kind: "rpc",
+      name: "gm_consume_discord_oauth_state",
+    },
+  ],
+  discord: [],
+  location: "https://guildmanagement.vercel.app/?gm_auth_error=cancelled",
+  response: {
+    body: "",
+    status: 302,
+  },
+}
+`;
+
+snapshot[`auth-discord: callback that completes 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_state: "good-state",
+      },
+      kind: "rpc",
+      name: "gm_consume_discord_oauth_state",
+    },
+    {
+      args: {
+        attempts: 0,
+        discord_user_id: "100000000000000001",
+        discord_username: "ace",
+        display_name: "Ace",
+        expires_at: "2026-10-07T10:02:00.000Z",
+        ticket: "u4pL9WmwWL5q-ZKdz1znV3UwHy0_eqJGg0JaVd63YV4",
+      },
+      filters: [],
+      kind: "from",
+      name: "discord_auth_tickets",
+      op: "insert",
+    },
+  ],
+  discord: [
+    {
+      body: {
+        client_id: "client-test",
+        client_secret: "client-secret-test",
+        code: "discord-code",
+        code_verifier: "verifier-test",
+        grant_type: "authorization_code",
+        redirect_uri: "https://fake.supabase.test/functions/v1/auth-discord/callback",
+      },
+      url: "https://discord.com/api/oauth2/token",
+    },
+    {
+      body: null,
+      url: "https://discord.com/api/users/@me",
+    },
+    {
+      body: {
+        client_id: "client-test",
+        client_secret: "client-secret-test",
+        token: "discord-access",
+        token_type_hint: "access_token",
+      },
+      url: "https://discord.com/api/oauth2/token/revoke",
+    },
+  ],
+  location: "https://guildmanagement.vercel.app/?gm_auth=u4pL9WmwWL5q-ZKdz1znV3UwHy0_eqJGg0JaVd63YV4",
+  response: {
+    body: "",
+    status: 302,
+  },
+}
+`;
+
+snapshot[`auth-discord: redeem with one linked account 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      args: {
+        p_ticket: "ticket-one-0123456789abcdef",
+      },
+      kind: "rpc",
+      name: "gm_consume_discord_auth_ticket",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "discord_user_id",
+          "eq",
+          "100000000000000001",
+        ],
+      ],
+      kind: "from",
+      name: "discord_account_links",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "id",
+          "eq",
+          "t_member_a",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "id",
+          "eq",
+          "t_member_a",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: {
+        p_id: "t_member_a",
+      },
+      kind: "rpc",
+      name: "gm_get_shadow",
+    },
+    {
+      args: [
+        "<uuid>",
+        {
+          app_metadata: {
+            account_id: "t_member_a",
+            app_role: "member",
+            session_version: 0,
+          },
+        },
+      ],
+      kind: "auth",
+      name: "admin.updateUserById",
+    },
+    {
+      args: {
+        email: "gm_f4331b49076e4bb19721c9734ad575cce7bf63c7973485d3edea06950ab9cd7d@no-reply.guildmgmt.app",
+      },
+      kind: "auth",
+      name: "signInWithPassword",
+    },
+  ],
+  discord: [],
+  location: null,
+  response: {
+    body: {
+      access_token: "access-test",
+      expires_at: 1790000000,
+      id: "t_member_a",
+      ok: true,
+      refresh_token: "refresh-test",
+      role: "member",
+      state: "session",
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`auth-discord: redeem with two linked accounts 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      args: {
+        p_ticket: "ticket-two-0123456789abcdef",
+      },
+      kind: "rpc",
+      name: "gm_consume_discord_auth_ticket",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "discord_user_id",
+          "eq",
+          "100000000000000002",
+        ],
+      ],
+      kind: "from",
+      name: "discord_account_links",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "id",
+          "in",
+          [
+            "t_admin_a",
+            "t_member_a",
+          ],
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: {
+        attempts: 0,
+        discord_user_id: "100000000000000002",
+        discord_username: "ace",
+        display_name: "Ace",
+        expires_at: "2026-10-07T10:15:00.000Z",
+        ticket: "u4pL9WmwWL5q-ZKdz1znV3UwHy0_eqJGg0JaVd63YV4",
+      },
+      filters: [],
+      kind: "from",
+      name: "discord_auth_tickets",
+      op: "insert",
+    },
+  ],
+  discord: [],
+  location: null,
+  response: {
+    body: {
+      accounts: [
+        {
+          guild: "TA",
+          id: "t_admin_a",
+          role: "guild_admin",
+        },
+        {
+          guild: "TA",
+          id: "t_member_a",
+          role: "member",
+        },
+      ],
+      discord_username: "ace",
+      display_name: "Ace",
+      ok: true,
+      state: "choose",
+      ticket: "u4pL9WmwWL5q-ZKdz1znV3UwHy0_eqJGg0JaVd63YV4",
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`auth-discord: redeem with no account 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      args: {
+        p_ticket: "ticket-none-0123456789abcdef",
+      },
+      kind: "rpc",
+      name: "gm_consume_discord_auth_ticket",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "discord_user_id",
+          "eq",
+          "100000000000000003",
+        ],
+      ],
+      kind: "from",
+      name: "discord_account_links",
+      op: "select",
+    },
+    {
+      args: {
+        attempts: 0,
+        discord_user_id: "100000000000000003",
+        discord_username: "ace",
+        display_name: "Ace",
+        expires_at: "2026-10-07T10:15:00.000Z",
+        ticket: "u4pL9WmwWL5q-ZKdz1znV3UwHy0_eqJGg0JaVd63YV4",
+      },
+      filters: [],
+      kind: "from",
+      name: "discord_auth_tickets",
+      op: "insert",
+    },
+  ],
+  discord: [],
+  location: null,
+  response: {
+    body: {
+      discord_username: "ace",
+      display_name: "Ace",
+      ok: true,
+      state: "unlinked",
+      ticket: "u4pL9WmwWL5q-ZKdz1znV3UwHy0_eqJGg0JaVd63YV4",
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`auth-discord: redeem a spent ticket 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      args: {
+        p_ticket: "ticket-spent-0123456789abcdef",
+      },
+      kind: "rpc",
+      name: "gm_consume_discord_auth_ticket",
+    },
+  ],
+  discord: [],
+  location: null,
+  response: {
+    body: {
+      error: "ticket_invalid",
+      ok: false,
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`auth-discord: choose a linked account 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      args: {
+        p_ticket: "ticket-two-0123456789abcdef",
+      },
+      kind: "rpc",
+      name: "gm_consume_discord_auth_ticket",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "discord_user_id",
+          "eq",
+          "100000000000000002",
+        ],
+        [
+          "account_id",
+          "eq",
+          "t_admin_a",
+        ],
+      ],
+      kind: "from",
+      name: "discord_account_links",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "id",
+          "eq",
+          "t_admin_a",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "id",
+          "eq",
+          "t_admin_a",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: {
+        p_id: "t_admin_a",
+      },
+      kind: "rpc",
+      name: "gm_get_shadow",
+    },
+    {
+      args: [
+        "<uuid>",
+        {
+          app_metadata: {
+            account_id: "t_admin_a",
+            app_role: "guild_admin",
+            session_version: 0,
+          },
+        },
+      ],
+      kind: "auth",
+      name: "admin.updateUserById",
+    },
+    {
+      args: {
+        email: "gm_68fcda5eae09e6a40cfa975f3b9fa7080dbfa444a880e7e3f527ebb7fcbafc1a@no-reply.guildmgmt.app",
+      },
+      kind: "auth",
+      name: "signInWithPassword",
+    },
+  ],
+  discord: [],
+  location: null,
+  response: {
+    body: {
+      access_token: "access-test",
+      expires_at: 1790000000,
+      id: "t_admin_a",
+      ok: true,
+      refresh_token: "refresh-test",
+      role: "guild_admin",
+      state: "session",
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`auth-discord: choose an account that is not linked 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      args: {
+        p_ticket: "ticket-two-0123456789abcdef",
+      },
+      kind: "rpc",
+      name: "gm_consume_discord_auth_ticket",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "discord_user_id",
+          "eq",
+          "100000000000000002",
+        ],
+        [
+          "account_id",
+          "eq",
+          "t_super",
+        ],
+      ],
+      kind: "from",
+      name: "discord_account_links",
+      op: "select",
+    },
+  ],
+  discord: [],
+  location: null,
+  response: {
+    body: {
+      error: "account_not_linked",
+      ok: false,
+    },
+    status: 403,
+  },
+}
+`;
+
+snapshot[`auth-discord: claim as the super admin 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 20,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      args: {
+        p_ticket: "ticket-none-0123456789abcdef",
+      },
+      kind: "rpc",
+      name: "gm_consume_discord_auth_ticket",
+    },
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_discord_user_id: "100000000000000003",
+        p_limit: 10,
+        p_window_ms: 3600000,
+      },
+      kind: "rpc",
+      name: "gm_check_discord_throttle",
+    },
+    {
+      args: {
+        p_discord_user_id: "100000000000000003",
+        p_id: "t_super",
+        p_password: "pw",
+      },
+      kind: "rpc",
+      name: "gm_claim_account_with_discord",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "account_id",
+          "eq",
+          "t_super",
+        ],
+      ],
+      kind: "from",
+      name: "account_backup_codes",
+      op: "delete",
+    },
+    {
+      args: [
+        {
+          account_id: "t_super",
+          code_hash: "11d2ba0f94358ed6bf6b0bad40a9c2fedd4523a2bfaff8027814b66203728eff",
+        },
+        {
+          account_id: "t_super",
+          code_hash: "e7e2f1bbb03fd3f09e1116bc66691b12871026a7d07b5371ae7dbfc9580765fe",
+        },
+        {
+          account_id: "t_super",
+          code_hash: "8f5716bba9c30b1ac13f820cc26d67f9c53ba4cae4c14876faf5a54d80d2ebba",
+        },
+        {
+          account_id: "t_super",
+          code_hash: "ce1f180acd532d130660094ad4cf7a05779333a19a95fff5b26bf655bf26da5a",
+        },
+        {
+          account_id: "t_super",
+          code_hash: "10568e205143e82ea180efee8ea4e7acfefe0ae7716c90c36dc95ed3f92957a0",
+        },
+        {
+          account_id: "t_super",
+          code_hash: "ecbce5f1ec67ce563e49257430c8481b163f5dd21fce5818a6e857ce92ed520d",
+        },
+        {
+          account_id: "t_super",
+          code_hash: "e8cca10c4e6778405c0e185ac8742eda1c31affa906bdc6bee4b609c082589e5",
+        },
+        {
+          account_id: "t_super",
+          code_hash: "6348ea7fd9e8a0b62800f0cbcb74264bf8a057426a4ce23e1fc2ef1c5b2ce64b",
+        },
+        {
+          account_id: "t_super",
+          code_hash: "5bc34c99a49ea5d0b388dfcfb70fcfbdeb40a26974d219624304c4b211a37511",
+        },
+        {
+          account_id: "t_super",
+          code_hash: "221ec24c7bc1212e80fe9c608462ee40f6bce590a2a6fba736700735fcd82972",
+        },
+      ],
+      filters: [],
+      kind: "from",
+      name: "account_backup_codes",
+      op: "insert",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "id",
+          "eq",
+          "t_super",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: {
+        p_id: "t_super",
+      },
+      kind: "rpc",
+      name: "gm_get_shadow",
+    },
+    {
+      args: [
+        "<uuid>",
+        {
+          app_metadata: {
+            account_id: "t_super",
+            app_role: "super_admin",
+            session_version: 0,
+          },
+        },
+      ],
+      kind: "auth",
+      name: "admin.updateUserById",
+    },
+    {
+      args: {
+        email: "gm_d1516c878789f9bdbb0a1883859e7dbc9f2e55fe3777ad114ba213c02a279d00@no-reply.guildmgmt.app",
+      },
+      kind: "auth",
+      name: "signInWithPassword",
+    },
+  ],
+  discord: [],
+  location: null,
+  response: {
+    body: {
+      access_token: "access-test",
+      backup_codes: [
+        "BRQ7P-Y5EQB",
+        "ZCY9R-43UAR",
+        "B8HJH-E72F7",
+        "EBCUX-CC8WH",
+        "PUT2Y-DYGWS",
+        "BMDQX-27JNR",
+        "KVA5A-DU6EX",
+        "DKMNC-QMVHA",
+        "VNM9G-FA9MS",
+        "P4FTJ-6X82U",
+      ],
+      claimed: true,
+      expires_at: 1790000000,
+      id: "t_super",
+      ok: true,
+      refresh_token: "refresh-test",
+      role: "super_admin",
+      state: "session",
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`auth-discord: claim with a wrong password 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 20,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      args: {
+        p_ticket: "ticket-none-0123456789abcdef",
+      },
+      kind: "rpc",
+      name: "gm_consume_discord_auth_ticket",
+    },
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_discord_user_id: "100000000000000003",
+        p_limit: 10,
+        p_window_ms: 3600000,
+      },
+      kind: "rpc",
+      name: "gm_check_discord_throttle",
+    },
+    {
+      args: {
+        p_discord_user_id: "100000000000000003",
+        p_id: "t_member_a",
+        p_password: "nope",
+      },
+      kind: "rpc",
+      name: "gm_claim_account_with_discord",
+    },
+    {
+      args: {
+        attempts: 2,
+        discord_user_id: "100000000000000003",
+        discord_username: "ace",
+        display_name: "Ace",
+        expires_at: "2026-10-07T10:15:00.000Z",
+        ticket: "u4pL9WmwWL5q-ZKdz1znV3UwHy0_eqJGg0JaVd63YV4",
+      },
+      filters: [],
+      kind: "from",
+      name: "discord_auth_tickets",
+      op: "insert",
+    },
+  ],
+  discord: [],
+  location: null,
+  response: {
+    body: {
+      attempts_left: 4,
+      error: "invalid_credentials",
+      ok: false,
+      ticket: "u4pL9WmwWL5q-ZKdz1znV3UwHy0_eqJGg0JaVd63YV4",
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`auth-discord: onboard by join code 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      args: {
+        p_ticket: "ticket-none-0123456789abcdef",
+      },
+      kind: "rpc",
+      name: "gm_consume_discord_auth_ticket",
+    },
+    {
+      args: {
+        p_discord_user_id: "100000000000000003",
+        p_discord_username: "ace",
+        p_join_code: "HELLO",
+        p_uid: "424242",
+      },
+      kind: "rpc",
+      name: "gm_discord_join_guild",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "guild",
+          "eq",
+          "TA",
+        ],
+        [
+          "key",
+          "in",
+          [
+            "discord_audit_channel_id",
+            "discord_officer_channel_id",
+          ],
+        ],
+      ],
+      kind: "from",
+      name: "guild_config",
+      op: "select",
+    },
+  ],
+  discord: [
+    {
+      body: {
+        allowed_mentions: {
+          parse: [],
+        },
+        components: [
+          {
+            components: [
+              {
+                custom_id: "gmjoin:approve:newbie",
+                label: "Approve",
+                style: 3,
+                type: 2,
+              },
+              {
+                custom_id: "gmjoin:reject:newbie",
+                label: "Reject",
+                style: 4,
+                type: 2,
+              },
+            ],
+            type: 1,
+          },
+        ],
+        content: "🆕 **Join request** — \`newbie\` (UID \`424242\`) asked to join **TA** with Discord.
+Approve or reject it here, or in Guild Management → Accounts → Pending.",
+      },
+      url: "https://discord.com/api/v10/channels/999000999000999000/messages",
+    },
+  ],
+  location: null,
+  response: {
+    body: {
+      guild: "TA",
+      id: "newbie",
+      ok: true,
+      state: "pending_approval",
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`auth-discord: onboard by creating a taken tag 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      args: {
+        p_ticket: "ticket-none-0123456789abcdef",
+      },
+      kind: "rpc",
+      name: "gm_consume_discord_auth_ticket",
+    },
+    {
+      args: {
+        p_discord_user_id: "100000000000000003",
+        p_discord_username: "ace",
+        p_guild_tag: "TA",
+        p_server_number: "9001",
+      },
+      kind: "rpc",
+      name: "gm_discord_create_guild",
+    },
+    {
+      args: {
+        attempts: 2,
+        discord_user_id: "100000000000000003",
+        discord_username: "ace",
+        display_name: "Ace",
+        expires_at: "2026-10-07T10:15:00.000Z",
+        ticket: "u4pL9WmwWL5q-ZKdz1znV3UwHy0_eqJGg0JaVd63YV4",
+      },
+      filters: [],
+      kind: "from",
+      name: "discord_auth_tickets",
+      op: "insert",
+    },
+  ],
+  discord: [],
+  location: null,
+  response: {
+    body: {
+      attempts_left: 4,
+      error: "tag_taken",
+      ok: false,
+      ticket: "u4pL9WmwWL5q-ZKdz1znV3UwHy0_eqJGg0JaVd63YV4",
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`auth-discord: redeem-code with a relink code 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      args: {
+        p_ticket: "ticket-none-0123456789abcdef",
+      },
+      kind: "rpc",
+      name: "gm_consume_discord_auth_ticket",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "code_hash",
+          "eq",
+          "38c054c1824034726ab749b2bf609918651c73d323b2ba50bef23e724782c82f",
+        ],
+        [
+          "used_at",
+          "is",
+          null,
+        ],
+        [
+          "expires_at",
+          "gt",
+          "2026-10-07T10:00:00.000Z",
+        ],
+      ],
+      kind: "from",
+      name: "account_link_codes",
+      op: "select",
+    },
+    {
+      args: {
+        p_code_hash: "38c054c1824034726ab749b2bf609918651c73d323b2ba50bef23e724782c82f",
+        p_discord_user_id: "100000000000000003",
+      },
+      kind: "rpc",
+      name: "gm_redeem_relink_code",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "id",
+          "eq",
+          "t_admin_a",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: {
+        p_id: "t_admin_a",
+      },
+      kind: "rpc",
+      name: "gm_get_shadow",
+    },
+    {
+      args: [
+        "<uuid>",
+        {
+          app_metadata: {
+            account_id: "t_admin_a",
+            app_role: "guild_admin",
+            session_version: 0,
+          },
+        },
+      ],
+      kind: "auth",
+      name: "admin.updateUserById",
+    },
+    {
+      args: {
+        email: "gm_68fcda5eae09e6a40cfa975f3b9fa7080dbfa444a880e7e3f527ebb7fcbafc1a@no-reply.guildmgmt.app",
+      },
+      kind: "auth",
+      name: "signInWithPassword",
+    },
+  ],
+  discord: [],
+  location: null,
+  response: {
+    body: {
+      access_token: "access-test",
+      expires_at: 1790000000,
+      guild: "TA",
+      id: "t_admin_a",
+      kind: "relink",
+      ok: true,
+      refresh_token: "refresh-test",
+      role: "guild_admin",
+      state: "session",
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`auth-discord: redeem-code with an unknown code 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      args: {
+        p_ticket: "ticket-none-0123456789abcdef",
+      },
+      kind: "rpc",
+      name: "gm_consume_discord_auth_ticket",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "code_hash",
+          "eq",
+          "956ef4d6494808ee159de8b6768de8683d0acff9de69e4604758f7bf98a63f76",
+        ],
+        [
+          "used_at",
+          "is",
+          null,
+        ],
+        [
+          "expires_at",
+          "gt",
+          "2026-10-07T10:00:00.000Z",
+        ],
+      ],
+      kind: "from",
+      name: "account_link_codes",
+      op: "select",
+    },
+    {
+      args: {
+        attempts: 2,
+        discord_user_id: "100000000000000003",
+        discord_username: "ace",
+        display_name: "Ace",
+        expires_at: "2026-10-07T10:15:00.000Z",
+        ticket: "u4pL9WmwWL5q-ZKdz1znV3UwHy0_eqJGg0JaVd63YV4",
+      },
+      filters: [],
+      kind: "from",
+      name: "discord_auth_tickets",
+      op: "insert",
+    },
+  ],
+  discord: [],
+  location: null,
+  response: {
+    body: {
+      attempts_left: 4,
+      error: "code_invalid",
+      ok: false,
+      ticket: "u4pL9WmwWL5q-ZKdz1znV3UwHy0_eqJGg0JaVd63YV4",
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`auth-discord: backup-login 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "id",
+          "ilike",
+          "t\\\\_super",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "account_id",
+          "eq",
+          "t_super",
+        ],
+        [
+          "code_hash",
+          "eq",
+          "45ead647d8793b672be3adcbe169f6f6aa48cc09ab7155f8fba2724d12f2338b",
+        ],
+        [
+          "used_at",
+          "is",
+          null,
+        ],
+      ],
+      kind: "from",
+      name: "account_backup_codes",
+      op: "select",
+    },
+    {
+      args: {
+        used_at: "2026-10-07T10:00:00.000Z",
+      },
+      filters: [
+        [
+          "id",
+          "eq",
+          null,
+        ],
+      ],
+      kind: "from",
+      name: "account_backup_codes",
+      op: "update",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "account_id",
+          "eq",
+          "t_super",
+        ],
+        [
+          "used_at",
+          "is",
+          null,
+        ],
+      ],
+      kind: "from",
+      name: "account_backup_codes",
+      op: "select",
+    },
+    {
+      args: {
+        failed_login_count: 0,
+        last_login_at: "2026-10-07T10:00:00.000Z",
+        locked_until: null,
+      },
+      filters: [
+        [
+          "id",
+          "eq",
+          "t_super",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "update",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "id",
+          "eq",
+          "t_super",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+    {
+      args: {
+        p_id: "t_super",
+      },
+      kind: "rpc",
+      name: "gm_get_shadow",
+    },
+    {
+      args: [
+        "<uuid>",
+        {
+          app_metadata: {
+            account_id: "t_super",
+            app_role: "super_admin",
+            session_version: 0,
+          },
+        },
+      ],
+      kind: "auth",
+      name: "admin.updateUserById",
+    },
+    {
+      args: {
+        email: "gm_d1516c878789f9bdbb0a1883859e7dbc9f2e55fe3777ad114ba213c02a279d00@no-reply.guildmgmt.app",
+      },
+      kind: "auth",
+      name: "signInWithPassword",
+    },
+  ],
+  discord: [],
+  location: null,
+  response: {
+    body: {
+      access_token: "access-test",
+      backup_codes_remaining: 0,
+      expires_at: 1790000000,
+      id: "t_super",
+      ok: true,
+      refresh_token: "refresh-test",
+      role: "super_admin",
+      state: "session",
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`auth-discord: backup-login for a guild admin 1`] = `
+{
+  calls: [
+    {
+      args: {
+        p_bucket: "2026-10-07T10:00:00.000Z",
+        p_ip: "127.0.0.1",
+        p_limit: 60,
+        p_window_ms: 300000,
+      },
+      kind: "rpc",
+      name: "gm_check_ip_throttle",
+    },
+    {
+      args: null,
+      filters: [
+        [
+          "id",
+          "ilike",
+          "t\\\\_admin\\\\_a",
+        ],
+      ],
+      kind: "from",
+      name: "accounts",
+      op: "select",
+    },
+  ],
+  discord: [],
+  location: null,
+  response: {
+    body: {
+      error: "invalid_code",
+      ok: false,
+    },
+    status: 200,
+  },
+}
+`;
+
+snapshot[`auth-discord: an unknown action 1`] = `
+{
+  calls: [],
+  discord: [],
+  location: null,
+  response: {
+    body: {
+      error: "bad_request",
+      ok: false,
+    },
+    status: 400,
+  },
+}
+`;
+
+snapshot[`auth-discord: a body that is not JSON 1`] = `
+{
+  calls: [],
+  discord: [],
+  location: null,
+  response: {
+    body: {
+      error: "bad_request",
+      ok: false,
+    },
+    status: 400,
+  },
+}
+`;
+
+snapshot[`auth-discord: an unknown route 1`] = `
+{
+  calls: [],
+  discord: [],
+  location: null,
+  response: {
+    body: {
+      error: "not_found",
+      ok: false,
+    },
+    status: 404,
+  },
+}
+`;

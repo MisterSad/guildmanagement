@@ -9,6 +9,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
+import { edgeSource, edgeFunctionBody } from './helpers/edge-source.js';
 
 const root = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.resolve(root, p), 'utf-8');
@@ -118,9 +119,8 @@ describe('whole-history reads', () => {
   });
 
   it('member-portal aggregates guild session stats in SQL', () => {
-    const src = read('supabase/functions/member-portal/index.ts');
-    const start = src.indexOf('if (action === "get-history")');
-    const block = src.slice(start, src.indexOf('if (action === "get-absences")'));
+    const src = edgeSource('member-portal');
+    const block = edgeFunctionBody('member-portal', 'getHistory');
     expect(block).toContain('admin.rpc("gm_player_session_guild_stats", { p_guild: member.guild, p_pseudo: member.pseudo })');
     expect(block).not.toContain('allGuildParticipants');
     expect(block).toContain('if (sessionStatsRes.error)');

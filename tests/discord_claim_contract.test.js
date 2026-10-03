@@ -10,6 +10,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
+import { edgeSource } from './helpers/edge-source.js';
 
 const rootDir = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(rootDir, p), 'utf8');
@@ -20,7 +21,7 @@ const claimFn = migration.slice(
   migration.indexOf('FUNCTION public.gm_claim_account_with_discord'),
   migration.indexOf('REVOKE ALL ON FUNCTION public.gm_check_discord_throttle')
 );
-const discordFn = stripComments(read('supabase/functions/auth-discord/index.ts'));
+const discordFn = stripComments(edgeSource('auth-discord'));
 const controller = stripComments(read('src/modules/app/auth/auth.controller.ts'));
 const session = stripComments(read('src/core/auth/session.ts'));
 

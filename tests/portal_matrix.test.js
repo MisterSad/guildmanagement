@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { edgeSource } from './helpers/edge-source.js';
 import fs from 'fs';
 import path from 'path';
 import { z } from 'zod';
@@ -8,8 +9,7 @@ import {
   parseSafeScore,
 } from '../supabase/functions/_shared/player-actions.ts';
 
-const portalPath = path.resolve(__dirname, '../supabase/functions/member-portal/index.ts');
-const portalContent = fs.readFileSync(portalPath, 'utf-8');
+const portalContent = edgeSource('member-portal');
 
 // Schemas matching the definitions in supabase/functions/member-portal/index.ts
 export const RequestBodySchema = z.object({

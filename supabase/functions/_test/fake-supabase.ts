@@ -32,6 +32,8 @@ export class FakeSupabase {
   /** jwt -> GoTrue user */
   users: Record<string, { id: string; email?: string; app_metadata?: Row }> = {};
   calls: Call[] = [];
+  /** When set, signInWithPassword fails with this message. */
+  signInError: string | null = null;
 
   constructor() {
     // Rate limits allow by default; a test that wants a 429 overrides it.
@@ -61,6 +63,12 @@ export class FakeSupabase {
           fake.calls.push({ kind: "auth", name: "getUser" });
           const user = fake.users[jwt];
           return user ? { data: { user }, error: null } : { data: { user: null }, error: { message: "invalid JWT" } };
+        },
+        // A shadow-session sign-in always succeeds unless a test scripts otherwise.
+        signInWithPassword: async (creds: { email: string }) => {
+          fake.calls.push({ kind: "auth", name: "signInWithPassword", args: { email: creds.email } });
+          if (fake.signInError) return { data: { session: null }, error: { message: fake.signInError } };
+          return { data: { session: { access_token: "access-test", refresh_token: "refresh-test", expires_at: 1790000000 } }, error: null };
         },
         admin: new Proxy({}, {
           get: (_t, method: string) => async (...args: unknown[]) => {
@@ -96,6 +104,19 @@ function thenable(run: () => Promise<Result>) {
     select: () => t,
   };
   return t;
+}
+
+/** A SQL LIKE pattern as PostgreSQL reads it: `%`, `_`, and `\` escaping either. */
+function likeToRegExp(pattern: string): RegExp {
+  let re = "";
+  for (let i = 0; i < pattern.length; i++) {
+    const c = pattern[i];
+    if (c === "\\" && i + 1 < pattern.length) re += pattern[++i].replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    else if (c === "%") re += ".*";
+    else if (c === "_") re += ".";
+    else re += c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+  return new RegExp("^" + re + "$", "is");
 }
 
 class Query {
@@ -145,10 +166,7 @@ class Query {
         case "neq": return x !== v;
         case "in": return (v as unknown[]).includes(x);
         case "is": return x === v || (v === null && x === undefined);
-        case "ilike": {
-          const re = new RegExp("^" + String(v).replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/%/g, ".*") + "$", "i");
-          return re.test(String(x ?? ""));
-        }
+        case "ilike": return likeToRegExp(String(v)).test(String(x ?? ""));
         case "gt": return (x as number) > (v as number);
         case "gte": return (x as number) >= (v as number);
         case "lt": return (x as number) < (v as number);

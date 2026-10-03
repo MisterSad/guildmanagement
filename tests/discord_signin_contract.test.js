@@ -8,12 +8,13 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
+import { edgeSource, edgeFunctionBody } from './helpers/edge-source.js';
 
 const rootDir = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(rootDir, p), 'utf8');
 const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
 
-const fn = read('supabase/functions/auth-discord/index.ts');
+const fn = edgeSource('auth-discord');
 const fnCode = stripComments(fn);
 const migration = read('supabase/migrations/20260926173028_discord_oauth_state.sql');
 
@@ -25,7 +26,7 @@ describe('auth-discord is reachable without a session', () => {
   });
 
   it('is deployed: the CI deploy enumerates every function directory', () => {
-    expect(read('supabase/functions/auth-discord/index.ts').length).toBeGreaterThan(0);
+    expect(edgeSource('auth-discord').length).toBeGreaterThan(0);
     expect(read('scripts/deploy-edge-functions.sh')).toContain('find "${FUNCTIONS_DIR}" -mindepth 1 -maxdepth 1 -type d');
   });
 
@@ -72,7 +73,7 @@ describe('the code exchange cannot be replayed or hijacked', () => {
 
 describe('the callback cannot become an open redirect', () => {
   it('trusts the origin stored at /start, never one supplied to the callback', () => {
-    const cb = fnCode.slice(fnCode.indexOf('async function handleCallback'), fnCode.indexOf('async function handleRedeem'));
+    const cb = edgeFunctionBody('auth-discord', 'handleCallback');
     expect(cb).toContain('isAllowedOrigin(stateRow.origin)');
     // The callback must not read an origin out of its own query string.
     expect(cb).not.toMatch(/searchParams\.get\("origin"\)/);

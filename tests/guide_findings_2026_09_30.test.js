@@ -12,13 +12,14 @@ vi.mock('../src/core/config/guild-config', () => ({ getGuildConfig: vi.fn() }));
 import { getGuildConfig } from '../src/core/config/guild-config';
 import { resolveCoeff, paintEventCoeffLabels } from '../src/core/config/event-coeff-labels';
 import { canManageWikiPage } from '../src/modules/migration/views/MigrationHubView';
+import { edgeSource, edgeFunctionBody } from './helpers/edge-source.js';
 
 const read = (p) => fs.readFileSync(path.resolve(__dirname, '..', p), 'utf-8');
 
 describe('5. a Glory typed outside the Glory page reaches the Glory Tracker', () => {
   it('Player Portal: a CHANGED Glory is filed for the week through updatePlayerGlory', () => {
-    const src = read('supabase/functions/member-portal/index.ts');
-    const handler = src.slice(src.indexOf('if (action === "update-metrics")'), src.indexOf('if (action === "update-glory")'));
+    const src = edgeSource('member-portal');
+    const handler = edgeFunctionBody('member-portal', 'updateMetrics');
     expect(handler).toMatch(/if \(payload\?\.glory_score !== undefined && gloryScore !== \(Number\(member\.glory_score\) \|\| 0\)\)/);
     expect(handler).toContain('await updatePlayerGlory(admin, uid, identity.guild, gloryScore)');
     // and it now reads the RPC's own verdict, not only the transport error

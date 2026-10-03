@@ -6,6 +6,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
+import { edgeSource, edgeFunctionBody } from './helpers/edge-source.js';
 
 const rootDir = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(rootDir, p), 'utf8');
@@ -13,7 +14,7 @@ const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
 
 const worker = read('discord-verification-worker/index.js');
 const interactions = read('supabase/functions/discord-bot-interactions/index.ts');
-const memberPortal = strip(read('supabase/functions/member-portal/index.ts'));
+const memberPortal = strip(edgeSource('member-portal'));
 const portal = strip(read('src/modules/portal/views/PortalView.ts'));
 const help = read('src/modules/help/HelpView.ts');
 
@@ -44,7 +45,7 @@ describe('the bot stops sending people to /link', () => {
 
 describe('the Portal card replaces the code box', () => {
   it('reports whether the account is linked, never the Discord id', () => {
-    const block = memberPortal.slice(memberPortal.indexOf('if (action === "get-active-sessions")'));
+    const block = strip(edgeFunctionBody('member-portal', 'getActiveSessions'));
     expect(block).toContain('.from("discord_account_links")');
     expect(block).toContain('{ count: "exact", head: true }');
     expect(block).toContain('.eq("account_id", identity.accountId)');

@@ -7,13 +7,14 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
+import { edgeSource } from './helpers/edge-source.js';
 
 const rootDir = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(rootDir, p), 'utf8');
 const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
 
 const migration = read('supabase/migrations/20260926182332_discord_onboarding.sql');
-const discordFn = stripComments(read('supabase/functions/auth-discord/index.ts'));
+const discordFn = stripComments(edgeSource('auth-discord'));
 const fnBody = (name, next) => migration.slice(
   migration.indexOf(`FUNCTION public.${name}`),
   next ? migration.indexOf(`FUNCTION public.${next}`) : undefined

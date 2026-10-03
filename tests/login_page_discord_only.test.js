@@ -12,6 +12,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
+import { edgeSource } from './helpers/edge-source.js';
 
 const rootDir = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(rootDir, p), 'utf8');
@@ -104,7 +105,7 @@ describe('a new player still has a way in', () => {
     // Removing the tab would strand every new player if this path were not
     // live. It resolves the guild from the join code and requires the in-game
     // UID, exactly as the old form did, minus the password.
-    const fn = stripJs(read('supabase/functions/auth-discord/index.ts'));
+    const fn = stripJs(edgeSource('auth-discord'));
     expect(fn).toContain('gm_discord_join_guild');
     expect(fn).toContain('p_join_code: parsed.data.join_code');
     expect(fn).toContain('p_uid: parsed.data.uid');

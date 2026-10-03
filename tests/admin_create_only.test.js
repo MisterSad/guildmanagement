@@ -9,6 +9,7 @@
 // the RPC at all.
 
 import { describe, it, expect } from 'vitest';
+import { edgeSource, edgeFunctionBody } from './helpers/edge-source.js';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -16,7 +17,6 @@ const root = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.resolve(root, p), 'utf-8');
 
 const MIGRATION = 'supabase/migrations/20261003090434_admin_create_only_and_demo_credentials.sql';
-const EDGE = 'supabase/functions/admin-accounts/index.ts';
 
 function fnBody(sql, name) {
   const start = sql.indexOf(`CREATE OR REPLACE FUNCTION public.${name}(`);
@@ -52,10 +52,10 @@ describe('gm_admin_upsert is create-only', () => {
 });
 
 describe('admin-accounts claims the id before touching the shadow user', () => {
-  const src = read(EDGE);
-  const helperStart = src.indexOf('async function provisionNewAccount(');
-  const helperEnd = src.indexOf('export async function handler(');
-  const helper = src.slice(helperStart, helperEnd);
+  const src = edgeSource('admin-accounts');
+  const helper = edgeFunctionBody('admin-accounts', 'provisionNewAccount');
+  const helperStart = src.indexOf(helper);
+  const helperEnd = helperStart + helper.length;
 
   it('creates the account row first, then the shadow user, then attaches it', () => {
     expect(helperStart).toBeGreaterThan(-1);

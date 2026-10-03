@@ -5,9 +5,9 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
+import { edgeSource } from './helpers/edge-source.js';
 
 const migrationPath = path.resolve(__dirname, '../supabase/migrations/20260913130000_roles_rls_session_hardening.sql');
-const adminAccountsPath = path.resolve(__dirname, '../supabase/functions/admin-accounts/index.ts');
 const shadowSessionPath = path.resolve(__dirname, '../supabase/functions/_shared/shadow-session.ts');
 const adminAuthzPath = path.resolve(__dirname, '../supabase/functions/_shared/admin-authz.ts');
 
@@ -19,7 +19,7 @@ const strippedMigration = migrationRaw
   .filter((l) => !l.startsWith('--'))
   .join('\n');
 
-const adminAccountsContent = fs.readFileSync(adminAccountsPath, 'utf-8');
+const adminAccountsContent = edgeSource('admin-accounts');
 const shadowSessionContent = fs.readFileSync(shadowSessionPath, 'utf-8');
 const adminAuthzContent = fs.readFileSync(adminAuthzPath, 'utf-8');
 
@@ -75,7 +75,10 @@ describe('admin-authz strict normalizeRole (H1)', () => {
 
 describe('admin-accounts Edge (H1/H2/H3, M4)', () => {
   it('imports the strict normalizeRole instead of an inline elevating mapping', () => {
-    expect(adminAccountsContent).toContain('normalizeRole');
+    // Since M2 the role is normalised once, by the shared resolver the
+    // function calls; admin-accounts decides on the normalised role only.
+    expect(adminAccountsContent).toContain('await resolveCaller(req, admin)');
+    expect(fs.readFileSync(path.resolve(__dirname, '../supabase/functions/_shared/auth.ts'), 'utf-8')).toContain('role: normalizeRole(acc.role)');
     expect(adminAccountsContent).toContain('from "../_shared/admin-authz.ts"');
     expect(adminAccountsContent).not.toMatch(/s === "super_admin" \|\| s === "r5" \|\| s === "admin"/);
     expect(adminAccountsContent).not.toMatch(/s === "guild_admin" \|\| s === "r4"/);

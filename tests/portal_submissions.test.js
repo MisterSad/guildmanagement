@@ -17,6 +17,7 @@ import {
   warSubmissionRows,
 } from '../supabase/functions/_shared/player-actions.ts';
 import { pendingApprovalHtml, wirePendingApprovals } from '../src/modules/events/pending-approval';
+import { edgeSource, edgeFunctionBody } from './helpers/edge-source.js';
 
 describe('participantEventName', () => {
   it('maps both Shadowfront squads to the name their rows are stored under', () => {
@@ -59,8 +60,8 @@ describe('warSubmissionRows', () => {
 });
 
 describe('member-portal submit-scores', () => {
-  const src = fs.readFileSync(path.resolve(__dirname, '../supabase/functions/member-portal/index.ts'), 'utf-8');
-  const handler = src.slice(src.indexOf('if (action === "submit-scores")'), src.indexOf('if (action === "update-power")'));
+  const src = edgeSource('member-portal');
+  const handler = edgeFunctionBody('member-portal', 'submitScores');
 
   it('refuses loudly when the player has no row, instead of updating zero rows', () => {
     expect(handler).toContain('error: "not_in_session"');

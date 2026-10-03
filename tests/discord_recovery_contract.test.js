@@ -9,14 +9,15 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
+import { edgeSource, edgeFunctionBody } from './helpers/edge-source.js';
 
 const rootDir = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(rootDir, p), 'utf8');
 const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
 
 const migration = read('supabase/migrations/20260926174708_account_link_codes.sql');
-const adminFn = stripComments(read('supabase/functions/admin-accounts/index.ts'));
-const discordFn = stripComments(read('supabase/functions/auth-discord/index.ts'));
+const adminFn = stripComments(edgeSource('admin-accounts'));
+const discordFn = stripComments(edgeSource('auth-discord'));
 const shared = stripComments(read('supabase/functions/_shared/backup-codes.ts'));
 
 describe('an unlink can never strand an account', () => {
@@ -47,7 +48,7 @@ describe('an unlink can never strand an account', () => {
   });
 
   it('never lets the server see the plaintext code', () => {
-    const block = adminFn.slice(adminFn.indexOf('if (action === "discord-unlink")'));
+    const block = stripComments(edgeFunctionBody('admin-accounts', 'discordUnlink'));
     expect(block).toContain('p_code_hash: await sha256Hex(relinkCode)');
     // The RPC takes a hash, and the column is named for one.
     expect(migration).toContain('p_code_hash  text');
@@ -62,13 +63,13 @@ describe('an unlink can never strand an account', () => {
   });
 
   it('returns the plaintext exactly once, in the response', () => {
-    const block = adminFn.slice(adminFn.indexOf('if (action === "discord-unlink")'));
+    const block = stripComments(edgeFunctionBody('admin-accounts', 'discordUnlink'));
     expect(block).toContain('relink_code: relinkCode');
   });
 });
 
 describe('peer unlink is permitted but never quiet', () => {
-  const block = adminFn.slice(adminFn.indexOf('if (action === "discord-unlink")'), adminFn.indexOf('if (action === "create")'));
+  const block = stripComments(edgeFunctionBody('admin-accounts', 'discordUnlink'));
 
   it('uses the same authorization matrix as every other admin action', () => {
     expect(block).toContain('canManageAccount(info, targetCtx)');
@@ -163,7 +164,7 @@ describe('backup codes: one implementation, one audience', () => {
     // The audit found four subtly different HTML escapers (M11). A credential
     // check is a far worse place for that drift. auth-passkey, the other user,
     // was deleted with the passkeys (2026-10-03).
-    expect(discordFn).toContain('from "../_shared/backup-codes.ts"');
+    expect(discordFn).toMatch(/from "(?:\.\.\/)+_shared\/backup-codes\.ts"/);
     expect(fs.existsSync(path.join(rootDir, 'supabase/functions/auth-passkey'))).toBe(false);
   });
 

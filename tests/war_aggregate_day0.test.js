@@ -11,6 +11,7 @@
  *   - member-portal rejects direct score_prep writes on war sessions.
  */
 import { describe, it, expect } from 'vitest';
+import { edgeSource } from './helpers/edge-source.js';
 import fs from 'fs';
 import path from 'path';
 import {
@@ -80,7 +81,7 @@ describe('member-portal integrity guard', () => {
   // truth, and score_prep is never written directly on a war session -- but
   // the scores now go THROUGH the grid instead of being refused.
   it('routes war-session scores through gm_upsert_daily_scores, never a direct score_prep write', () => {
-    const portal = read('supabase/functions/member-portal/index.ts');
+    const portal = edgeSource('member-portal');
     expect(portal).toContain('.from("war_sessions")');
     expect(portal).toContain('admin.rpc("gm_upsert_daily_scores"');
     expect(portal).toContain('warSubmissionRows(member.pseudo, prep, pvp)');

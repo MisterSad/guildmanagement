@@ -9,14 +9,15 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
+import { edgeSource, edgeFunctionBody } from './helpers/edge-source.js';
 
 const rootDir = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(rootDir, p), 'utf8');
 const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
 
 const migration = read('supabase/migrations/20261002120000_discord_signin_retry.sql');
-const fn = stripComments(read('supabase/functions/auth-discord/index.ts'));
-const adminFn = stripComments(read('supabase/functions/admin-accounts/index.ts'));
+const fn = stripComments(edgeSource('auth-discord'));
+const adminFn = stripComments(edgeSource('admin-accounts'));
 // The approve/reject decision moved here on 2026-10-03, shared with the
 // Discord join-request buttons.
 const decisionFn = stripComments(read('supabase/functions/_shared/registration-decision.ts'));
@@ -158,7 +159,7 @@ describe('the player hears the outcome by DM', () => {
 
 describe('one decision path for the app and for Discord', () => {
   it('admin-accounts delegates both actions to decideRegistration', () => {
-    const block = slice(adminFn, 'if (action === "approve-registration" || action === "reject-registration")', 'Self-service guild creation');
+    const block = edgeFunctionBody('admin-accounts', 'decideRegistrationAction');
     expect(block).toContain('decideRegistration(');
     expect(block).toContain('via: "app"');
     expect(adminFn).not.toContain('gm_approve_player_account');

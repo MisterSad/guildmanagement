@@ -9,18 +9,16 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
+import { edgeSource, edgeFunctionBody } from './helpers/edge-source.js';
 
 const rootDir = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(rootDir, p), 'utf8');
 const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
 
 const migration = read('supabase/migrations/20260926181134_admin_invite_codes.sql');
-const adminFn = stripComments(read('supabase/functions/admin-accounts/index.ts'));
-const discordFn = stripComments(read('supabase/functions/auth-discord/index.ts'));
-const inviteBlock = adminFn.slice(
-  adminFn.indexOf('if (action === "issue-admin-invite")'),
-  adminFn.indexOf('if (action === "create")')
-);
+const adminFn = stripComments(edgeSource('admin-accounts'));
+const discordFn = stripComments(edgeSource('auth-discord'));
+const inviteBlock = stripComments(edgeFunctionBody('admin-accounts', 'issueAdminInvite'));
 // Bounded at the REVOKE block: running to end-of-file would swallow the
 // migration's own DO $verify$ assertions, which mention the very column
 // names this test checks are absent.

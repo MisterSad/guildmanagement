@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
+import { edgeSource } from './helpers/edge-source.js';
 
 describe('Discord Webhook & Reminders Regression Guard', () => {
-  const eventRemindersPath = path.resolve(__dirname, '../supabase/functions/event-reminders/index.ts');
-  const eventRemindersContent = fs.readFileSync(eventRemindersPath, 'utf-8');
+    const eventRemindersContent = edgeSource('event-reminders');
 
   const discordPath = path.resolve(__dirname, '../src/core/integrations/discord.ts');
   const discordContent = fs.readFileSync(discordPath, 'utf-8');

@@ -14,6 +14,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
+import { edgeSource } from './helpers/edge-source.js';
 import fs from 'fs';
 import path from 'path';
 import {
@@ -28,8 +29,7 @@ import {
 
 const migrationPath = path.resolve(__dirname, '../supabase/migrations/20260914110000_fix_event_reminders_trigger_and_tz.sql');
 const migrationContent = fs.readFileSync(migrationPath, 'utf-8');
-const edgePath = path.resolve(__dirname, '../supabase/functions/event-reminders/index.ts');
-const edgeContent = fs.readFileSync(edgePath, 'utf-8');
+const edgeContent = edgeSource('event-reminders');
 
 /* ---------------------------------------------------------------------------
  * RC4 — guarded cron wrapper is timezone-independent

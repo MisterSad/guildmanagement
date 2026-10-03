@@ -11,6 +11,7 @@ import fs from 'fs';
 import path from 'path';
 import { webcrypto } from 'crypto';
 import { verifyDiscordSignature } from '../supabase/functions/_shared/discord.ts';
+import { edgeSource } from './helpers/edge-source.js';
 
 function toHex(bytes) {
     return Buffer.from(bytes).toString('hex');
@@ -65,10 +66,7 @@ describe('Regression: nothing outside the guarded RPCs writes discord_account_li
     // good, and a Discord identity could attach a second account without the
     // admin relink code. Both were removed on 2026-10-03. A link is now created
     // only by the SECURITY DEFINER RPCs behind auth-discord.
-    const memberPortalSrc = fs.readFileSync(
-        path.resolve(__dirname, '../supabase/functions/member-portal/index.ts'),
-        'utf-8'
-    );
+    const memberPortalSrc = edgeSource('member-portal');
     const workerSrc = fs.readFileSync(
         path.resolve(__dirname, '../discord-verification-worker/index.js'),
         'utf-8'
