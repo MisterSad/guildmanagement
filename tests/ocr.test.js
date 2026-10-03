@@ -201,29 +201,7 @@ describe('9 Dedicated AI Event OCR Schemas & Evaluation Logic', () => {
     });
 });
 
-describe('Video OCR frame selection (ocrGridDiffRatio / ocrDownsampleEvenly)', () => {
-    it('reports zero difference for identical grids and full difference for opposite ones', () => {
-        const a = [0.1, 0.2, 0.3, 0.4];
-        expect(GM.ocrGridDiffRatio(a, a.slice())).toBe(0);
-
-        const opposite = [0.9, 0.8, 0.7, 0.6];
-        expect(GM.ocrGridDiffRatio(a, opposite)).toBe(1);
-    });
-
-    it('reports a partial ratio when only some cells changed enough to matter', () => {
-        // 4 cells, 2 changed by more than the 0.08 threshold, 2 unchanged.
-        const before = [0.10, 0.50, 0.90, 0.20];
-        const after = [0.30, 0.50, 0.55, 0.21]; // cell 0 and 2 cross the threshold, cell 3 barely doesn't
-        expect(GM.ocrGridDiffRatio(before, after)).toBe(0.5);
-    });
-
-    it('treats mismatched, empty, or missing grids as fully different (always keep the frame)', () => {
-        expect(GM.ocrGridDiffRatio([0.1, 0.2], [0.1])).toBe(1);
-        expect(GM.ocrGridDiffRatio([], [])).toBe(1);
-        expect(GM.ocrGridDiffRatio(null, [0.1])).toBe(1);
-        expect(GM.ocrGridDiffRatio([0.1], undefined)).toBe(1);
-    });
-
+describe('Screenshot cap (ocrDownsampleEvenly)', () => {
     it('leaves a list under or at the cap untouched (as a copy, not the same reference)', () => {
         const items = ['a', 'b', 'c'];
         const result = GM.ocrDownsampleEvenly(items, 5);
@@ -232,16 +210,16 @@ describe('Video OCR frame selection (ocrGridDiffRatio / ocrDownsampleEvenly)', (
     });
 
     it('evenly downsamples an over-cap list instead of truncating the tail', () => {
-        const items = Array.from({ length: 100 }, (_, i) => i); // 0..99, simulating 100 kept video frames
+        const items = Array.from({ length: 100 }, (_, i) => i); // 0..99, simulating 100 screenshots
         const result = GM.ocrDownsampleEvenly(items, 25);
 
         expect(result.length).toBe(25);
-        // Must always keep the very first and very last frame of the scroll.
+        // Must always keep the very first and very last screenshot.
         expect(result[0]).toBe(0);
         expect(result[result.length - 1]).toBe(99);
-        // Must span the whole recording, not just its beginning (unlike slice(0, 25)).
+        // Must span the whole set, not just its beginning (unlike slice(0, 25)).
         expect(Math.max(...result)).toBeGreaterThan(50);
-        // Strictly increasing (no reordering) and no duplicate frames.
+        // Strictly increasing (no reordering) and no duplicates.
         for (let i = 1; i < result.length; i++) {
             expect(result[i]).toBeGreaterThan(result[i - 1]);
         }
@@ -372,26 +350,6 @@ describe('2026 OCR Modernization: Sharpness, Fusion & Exhaustive Prompting', () 
     it('contains exhaustive scanning and Unicode gamer symbol guidelines in system prompt', () => {
         expect(fnContent).toContain('Exhaustiveness: Scan each image completely from top to bottom');
         expect(fnContent).toContain('Preserve exact case, numbers, and gamer symbols');
-    });
-
-    it('measures frame sharpness: high for contrasting edges and zero for uniform data', () => {
-        // Uniform data (zero gradient)
-        const uniformData = new Uint8ClampedArray(16 * 16 * 4).fill(128);
-        const zeroSharpness = GM.ocrMeasureFrameSharpness(uniformData, 16, 16);
-        expect(zeroSharpness).toBe(0);
-
-        // High contrast alternating pixel grid (sharp edges)
-        const sharpData = new Uint8ClampedArray(16 * 16 * 4);
-        for (let i = 0; i < sharpData.length; i += 4) {
-            const pixelIndex = i / 4;
-            const isWhite = (pixelIndex % 2 === 0);
-            sharpData[i] = isWhite ? 255 : 0;
-            sharpData[i + 1] = isWhite ? 255 : 0;
-            sharpData[i + 2] = isWhite ? 255 : 0;
-            sharpData[i + 3] = 255;
-        }
-        const highSharpness = GM.ocrMeasureFrameSharpness(sharpData, 16, 16);
-        expect(highSharpness).toBeGreaterThan(50);
     });
 
     it('fuses cross-frame extracted players resolving slight OCR typos against roster', () => {

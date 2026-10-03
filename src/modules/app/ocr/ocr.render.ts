@@ -17,7 +17,8 @@ import {
   OCR_METRICS_META,
   getCurrentOcrMetric,
   getOcrMeta,
-  getOcrExtractedPlayers
+  getOcrExtractedPlayers,
+  type OcrVideoCoverage
 } from './ocr.meta';
 
 function gm(): any {
@@ -38,6 +39,42 @@ function cleanPlayerPseudo(pseudo: string, tag: string | null): string {
 function activeTag(): string {
   const input = byId<HTMLInputElement>('ocr-guild-tag-input');
   return input && input.value.trim() ? input.value.trim() : '';
+}
+
+/**
+ * The video scan's own account of what it read (ADR-021). A gap in the rank
+ * positions is a player Gemini did not read, even after its second pass; it is
+ * named here so the admin re-scans or adds it by hand rather than committing a
+ * roster with a silent hole in it. Hidden for screenshot-only scans.
+ */
+export function renderOcrCoverage(coverage: OcrVideoCoverage | null): void {
+  const banner = byId('ocr-coverage-banner');
+  if (!banner) return;
+  if (!coverage) { banner.style.display = 'none'; banner.innerHTML = ''; return; }
+
+  const missing = Array.isArray(coverage.missingPositions) ? coverage.missingPositions : [];
+  const expected = typeof coverage.expected === 'number' ? coverage.expected : null;
+  const complete = missing.length === 0 && (expected === null || coverage.found >= expected);
+  const total = expected !== null ? String(coverage.found) + ' / ' + String(expected) : String(coverage.found);
+
+  let text: string;
+  if (complete) {
+    text = expected !== null
+      ? 'Video read in full: ' + total + ' rows, no rank position missing.'
+      : 'Video read: ' + total + ' rows. Nothing on screen gave a total to check them against.';
+  } else if (missing.length > 0) {
+    const shown = missing.slice(0, 20).join(', ') + (missing.length > 20 ? ' (+' + (missing.length - 20) + ' more)' : '');
+    text = 'Incomplete reading: ' + total + ' rows. Missing rank positions: ' + shown + '. Scroll more slowly over them and scan again, or add them by hand.';
+  } else {
+    text = 'Incomplete reading: ' + total + ' rows. Scroll more slowly and scan again, or add the missing players by hand.';
+  }
+
+  const tone = complete
+    ? 'background:rgba(34,197,94,0.12); border:1px solid rgba(34,197,94,0.3); color:#4ade80;'
+    : 'background:rgba(245,158,11,0.12); border:1px solid rgba(245,158,11,0.3); color:#fbbf24;';
+  const icon = complete ? 'ph-check-circle' : 'ph-warning';
+  banner.innerHTML = '<div style="' + tone + ' padding:0.5rem 0.75rem; border-radius:6px; font-size: var(--fs-sm); display:flex; align-items:center; gap:0.4rem;"><i class="ph ' + icon + '" style="font-size: var(--fs-xl); flex-shrink:0;"></i><span>' + esc(text) + '</span></div>';
+  banner.style.display = 'block';
 }
 
 export function renderOcrRankCell(idx: number, detectedRank: string | null | undefined, currentRole?: string | null): string {

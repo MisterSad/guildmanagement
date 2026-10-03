@@ -55,8 +55,8 @@ import {
 } from './auth/session';
 import {
   getUidStatus, isInvalidOrTempUid, categorizeOcrDiff, computeOcrRosterDelta,
-  ocrGridDiffRatio, ocrDownsampleEvenly, upsertPlayerMetrics, compressImageForUpload, exportGuildData,
-  fuseOcrPlayers, ocrMeasureFrameSharpness
+  ocrDownsampleEvenly, upsertPlayerMetrics, compressImageForUpload, exportGuildData,
+  fuseOcrPlayers
 } from '../modules/ocr/ocr.service';
 import {
   getAllowedBulkRoles, isRoleAllowedForBulk, filterBulkEligibleMembers,
@@ -124,9 +124,9 @@ export function installGmBridge(): void {
     loginWithPasskey, loginWithBackupCode, startConditionalPasskeyLogin, abortConditionalPasskeyLogin,
 
     // OCR
-    getUidStatus, isInvalidOrTempUid, categorizeOcrDiff, computeOcrRosterDelta, ocrGridDiffRatio,
+    getUidStatus, isInvalidOrTempUid, categorizeOcrDiff, computeOcrRosterDelta,
     ocrDownsampleEvenly, upsertPlayerMetrics, compressImageForUpload, exportGuildData,
-    fuseOcrPlayers, ocrMeasureFrameSharpness,
+    fuseOcrPlayers,
 
     // Members / tickets
     getAllowedBulkRoles, isRoleAllowedForBulk, filterBulkEligibleMembers,

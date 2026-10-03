@@ -2,7 +2,7 @@
  * src/modules/app/ocr/ocr.controller.ts
  *
  * Sous-lot 6.7 (Strangler) — OCR modal lifecycle, dropdown/timezone collapsible,
- * video frame extraction, file handling, the ocr-guild-members Edge call, and
+ * video upload (ADR-021), file handling, the ocr-guild-members Edge call, and
  * the roster/event commit flow ported from app.js. Reuses the pure helpers in
  * src/modules/ocr/ocr.service.ts. All feedback via dialogs.service; removal
  * confirmation via window.showConfirm; extracted values escaped by the renderer.
@@ -20,11 +20,9 @@ import {
   categorizeOcrDiff,
   parseOcrScore,
   compressImageForUpload,
-  fuseOcrPlayers,
-  ocrProfileFromRoi,
-  ocrEstimateProfileShift,
-  ocrMeasureVerticalSharpness
+  fuseOcrPlayers
 } from '../../ocr/ocr.service';
+import { getActiveGuild } from '../../../core/auth/roles';
 import { fetchGuildMembers } from '../members/members.controller';
 import {
   OCR_METRICS_META,
@@ -35,9 +33,12 @@ import {
   getOcrMeta,
   getOcrModel,
   getOcrScanDay,
-  setOcrScanDay
+  setOcrScanDay,
+  setOcrVideoCoverage,
+  getOcrVideoCoverage,
+  type OcrVideoCoverage
 } from './ocr.meta';
-import { renderOcrResults, toggleAllCheckboxes } from './ocr.render';
+import { renderOcrResults, renderOcrCoverage, toggleAllCheckboxes } from './ocr.render';
 import { EventsService } from '../../events/events.service';
 import { eventsView } from '../../events/views/EventsView';
 import { armsRaceView } from '../../armsrace/views/ArmsRaceView';
@@ -166,6 +167,8 @@ export async function setOcrMetric(metric: string): Promise<void> {
 
 export function resetOcrModalState(): void {
   setOcrExtractedPlayers([]);
+  setOcrVideoCoverage(null);
+  renderOcrCoverage(null);
   const dropzone = byId('ocr-dropzone');
   const loading = byId('ocr-loading');
   const resultsContainer = byId('ocr-results-container');
@@ -347,262 +350,102 @@ export function initOcrGeminiModule(): void {
   if (btnCommit) btnCommit.addEventListener('click', () => { void commitOcrUpdates(); });
 }
 
-// ── Video → frames ───────────────────────────────────────────────────────────
+// ── Video → Gemini (ADR-021) ─────────────────────────────────────────────────
+//
+// The recording is no longer cut into frames here. Which frames the browser kept
+// decided which players were found, and on some recordings that was 3 or 4 out
+// of 40. The file goes to a private, per-guild staging bucket, and
+// ocr-guild-members hands it to Gemini whole, checks the rank positions it read
+// for gaps, and re-reads the gaps once.
 
-// The ROI is sampled into a 64 x 256 canvas: wide enough to average away
-// per-pixel noise, tall enough to locate a scroll to under two source pixels.
-const OCR_ROI_SAMPLE_W = 64;
-const OCR_ROI_SAMPLE_H = 256;
+/** Mirrors the bucket (migration 20261001200000) and the Edge Function. */
+const OCR_VIDEO_BUCKET = 'ocr-videos';
+const OCR_VIDEO_MAX_BYTES = 64 * 1024 * 1024;
+const OCR_VIDEO_MAX_DURATION_SEC = 300;
+const OCR_VIDEO_EXTENSIONS: Record<string, string> = {
+  'video/mp4': 'mp4',
+  'video/quicktime': 'mov',
+  'video/webm': 'webm',
+};
 
 /**
- * Fraction of a frame height that must scroll past before another frame is
- * kept. The remainder is the guaranteed overlap between two consecutive kept
- * frames, so no row can fall between them unread.
- *
- * Swept against an 88 s, 147-row roster recording, scoring every row for
- * whether some kept frame showed it whole:
- *
- *     0.76 -> 60 frames, 145 whole, 1 never seen
- *     0.70 -> 64 frames, 146 whole, 0 never seen   <- chosen
- *     0.58 -> 74 frames, 146 whole, 0 never seen
- *
- * It is not perfectly monotonic -- 0.64 lands a commit badly and loses a row --
- * so this is a measured choice on real footage, not a derived constant. The
- * value has to absorb the fact that ocrEstimateProfileShift under-reports
- * travel on a periodic list rather than risk an alias, so the true overlap is
- * larger than 1 - 0.70 suggests.
- *
- * For scale: the old time-based selection kept 35 frames and read 131 of the
- * 147 rows. This keeps 64 and reads 146. Frame count was never the lever --
- * which frames were kept was.
+ * Reads only the metadata, to refuse an over-long recording before uploading
+ * it. Resolves null when this browser cannot decode the file (HEVC on some
+ * desktops): Gemini can still read it, and the server measures the duration
+ * itself either way.
  */
-const OCR_VIDEO_ADVANCE_FRACTION = 0.70;
-/** Below this, the window may still commit its sharpest candidate. */
-const OCR_VIDEO_EARLY_COMMIT = 0.65;
-/** A correlation this poor means the view changed, not scrolled. */
-const OCR_VIDEO_SCENE_CUT_SCORE = 0.5;
-
-interface OcrRoiSample {
-  profile: number[];
-  sharpness: number;
-}
-
-/** Samples the central scrollable ROI: its row profile and its vertical detail. */
-function ocrSampleRoi(roiCtx: CanvasRenderingContext2D, video: HTMLVideoElement): OcrRoiSample {
-  const vw = video.videoWidth || 1;
-  const vh = video.videoHeight || 1;
-  // Region of Interest: middle 72% height (skipping top 16% banner and bottom 12% footer/chat)
-  const sx = Math.round(vw * 0.05);
-  const sy = Math.round(vh * 0.16);
-  const sw = Math.max(1, Math.round(vw * 0.90));
-  const sh = Math.max(1, Math.round(vh * 0.72));
-
-  roiCtx.drawImage(video, sx, sy, sw, sh, 0, 0, OCR_ROI_SAMPLE_W, OCR_ROI_SAMPLE_H);
-  const data = roiCtx.getImageData(0, 0, OCR_ROI_SAMPLE_W, OCR_ROI_SAMPLE_H).data;
-  return {
-    profile: ocrProfileFromRoi(data, OCR_ROI_SAMPLE_W, OCR_ROI_SAMPLE_H),
-    sharpness: ocrMeasureVerticalSharpness(data, OCR_ROI_SAMPLE_W, OCR_ROI_SAMPLE_H),
-  };
-}
-
-export function extractFramesFromVideo(
-  file: Blob,
-  opts?: { stepMs?: number; maxDurationSec?: number; maxOutputWidth?: number; maxFrames?: number }
-): Promise<Blob[]> {
-  const o = opts || {};
-  const stepMs = o.stepMs || 150;
-  const maxDurationSec = o.maxDurationSec || 480;
-  const maxOutputWidth = o.maxOutputWidth || 1600;
-  // Was 35, which is below what a normal scan produces: measured on an 88 s,
-  // 147-row roster recording, the detector kept 86 frames and the cap threw 51
-  // of them away by even decimation, leaving 16 of the 147 rows impossible to
-  // read (5 never shown at all, 11 only ever cut across a frame edge). The
-  // detector itself covered 145 of 147. The cap was the defect, not the
-  // detection. This is now a safety ceiling against a pathological recording,
-  // not a budget: nothing about a normal scan should ever reach it.
-  const maxFrames = o.maxFrames || 600;
-
-  return new Promise((resolve, reject) => {
+function readVideoDuration(file: Blob): Promise<number | null> {
+  if (typeof URL === 'undefined' || typeof URL.createObjectURL !== 'function') return Promise.resolve(null);
+  return new Promise((resolve) => {
     const video = document.createElement('video');
-    video.muted = true;
-    video.playsInline = true;
-    video.preload = 'metadata';
-    video.style.cssText = 'position:fixed; left:-9999px; top:0; width:2px; height:2px; opacity:0.01; pointer-events:none;';
-    video.setAttribute('aria-hidden', 'true');
-    document.body.appendChild(video);
     const url = URL.createObjectURL(file);
-    let settled = false;
-
-    const cleanup = (): void => {
+    let done = false;
+    const finish = (d: number | null): void => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
       URL.revokeObjectURL(url);
       video.removeAttribute('src');
-      video.load();
-      if (video.parentNode) video.parentNode.removeChild(video);
+      resolve(d);
     };
-    const fail = (err: any): void => { if (settled) return; settled = true; cleanup(); reject(err); };
-
-    video.addEventListener('error', () => {
-      const mediaErr = video.error;
-      const err: any = new Error('video_unsupported');
-      err.mediaErrorCode = mediaErr ? mediaErr.code : null;
-      err.mediaErrorMessage = mediaErr ? mediaErr.message : null;
-      err.fileType = file.type || null;
-      fail(err);
-    });
-
-    video.addEventListener('loadedmetadata', () => {
-      const duration = video.duration;
-      if (!isFinite(duration) || duration <= 0) { fail(new Error('video_invalid')); return; }
-      if (duration > maxDurationSec) { fail(new Error('video_too_long')); return; }
-      const vw = video.videoWidth, vh = video.videoHeight;
-      if (!vw || !vh) { fail(new Error('video_invalid')); return; }
-
-      const scale = Math.min(1, maxOutputWidth / vw);
-      const outW = Math.max(1, Math.round(vw * scale));
-      const outH = Math.max(1, Math.round(vh * scale));
-      const canvas = document.createElement('canvas');
-      canvas.width = outW; canvas.height = outH;
-      const ctx = canvas.getContext('2d');
-      const roiCanvas = document.createElement('canvas');
-      roiCanvas.width = OCR_ROI_SAMPLE_W; roiCanvas.height = OCR_ROI_SAMPLE_H;
-      const roiCtx = roiCanvas.getContext('2d', { willReadFrequently: true });
-      if (!ctx || !roiCtx) { fail(new Error('video_invalid')); return; }
-
-      // A seek that never fires `seeked` used to leave this promise pending for
-      // good, and the modal with it: seeking to exactly `duration`, or to a
-      // timestamp the browser clamps to the one it is already at, emits no
-      // event at all. The timeout resolves the step instead of stalling the
-      // whole scan -- a frame drawn twice costs one duplicate row, which
-      // fuseOcrPlayers already collapses.
-      const SEEK_TIMEOUT_MS = 3000;
-      const seekTo = (t: number): Promise<void> => new Promise((res) => {
-        let done = false;
-        const finish = (): void => {
-          if (done) return;
-          done = true;
-          clearTimeout(timer);
-          video.removeEventListener('seeked', onSeeked);
-          // Allow GPU video decoding buffer to settle before canvas draw
-          if (typeof requestAnimationFrame === 'function') {
-            requestAnimationFrame(() => res());
-          } else {
-            setTimeout(res, 10);
-          }
-        };
-        const onSeeked = (): void => { finish(); };
-        const timer = setTimeout(finish, SEEK_TIMEOUT_MS);
-        video.addEventListener('seeked', onSeeked);
-        video.currentTime = t;
-      });
-
-      const captureFrameBlob = async (): Promise<Blob | null> => {
-        ctx.drawImage(video, 0, 0, outW, outH);
-        return new Promise<Blob | null>((res) => canvas.toBlob(res, 'image/jpeg', 0.85));
-      };
-
-      void (async () => {
-        try {
-          const kept: Blob[] = [];
-
-          // How far the content has scrolled, in ROI sample rows, since the
-          // frame that was last kept. Displacement is what decides when to keep
-          // another frame, because it is the only quantity that answers the
-          // question that matters: could a row have passed by unseen?
-          const advanceTarget = OCR_ROI_SAMPLE_H * OCR_VIDEO_ADVANCE_FRACTION;
-          const earlyCommit = advanceTarget * OCR_VIDEO_EARLY_COMMIT;
-          // One step may not move the content more than the ROI, or the
-          // correlation would be free to lock onto the wrong row of a roster
-          // that repeats every row pitch.
-          const maxStepShift = Math.round(OCR_ROI_SAMPLE_H * 0.45);
-
-          let prevProfile: number[] | null = null;
-          let travelled = 0;
-          let bestBlob: Blob | null = null;
-          let bestSharpness = -1;
-          let bestTravelled = 0;
-
-          const commit = async (blob: Blob | null, consumed: number): Promise<void> => {
-            const b = blob || await captureFrameBlob();
-            if (b) kept.push(b);
-            travelled = Math.max(0, travelled - consumed);
-            bestBlob = null;
-            bestSharpness = -1;
-            bestTravelled = 0;
-          };
-
-          const steps = Math.max(1, Math.ceil((duration * 1000) / stepMs));
-
-          for (let s = 0; s <= steps; s++) {
-            const t = Math.min(duration, (s * stepMs) / 1000);
-            await seekTo(t);
-
-            const sample = ocrSampleRoi(roiCtx, video);
-            const isStart = (s === 0);
-            const isEnd = (t >= duration - 0.08);
-
-            if (isStart) {
-              // Always capture the very first frame (top of leaderboard)
-              const blob = await captureFrameBlob();
-              if (blob) kept.push(blob);
-            } else {
-              const { shift, score } = ocrEstimateProfileShift(prevProfile, sample.profile, maxStepShift);
-
-              if (score < OCR_VIDEO_SCENE_CUT_SCORE) {
-                // Not a scroll: the view itself changed (a tab switch, a dialog,
-                // a jump to another list). Nothing carries over, so keep this
-                // frame outright and start measuring again from here.
-                await commit(null, travelled);
-              } else {
-                travelled += Math.abs(shift);
-
-                // Past the early-commit mark every frame is a legitimate
-                // candidate, so keep the crispest one rather than whichever
-                // happens to land on the threshold.
-                if (travelled >= earlyCommit && sample.sharpness > bestSharpness) {
-                  const candidate = await captureFrameBlob();
-                  if (candidate) {
-                    bestBlob = candidate;
-                    bestSharpness = sample.sharpness;
-                    bestTravelled = travelled;
-                  }
-                }
-
-                if (travelled >= advanceTarget) {
-                  await commit(bestBlob, bestTravelled || travelled);
-                }
-              }
-            }
-
-            if (isEnd) {
-              // The tail of the list lives only on the last frame, and it has
-              // not necessarily scrolled a full advance since the previous one.
-              if (travelled > 0 || kept.length === 0) {
-                const blob = await captureFrameBlob();
-                if (blob) kept.push(blob);
-              }
-              break;
-            }
-
-            prevProfile = sample.profile;
-            if (t >= duration) break;
-          }
-
-          if (settled) return;
-          settled = true;
-          cleanup();
-
-          if (kept.length === 0) { reject(new Error('video_no_frames')); return; }
-
-          // Cap cleanly if recording was unusually long without blind drop
-          const finalKept = kept.length > maxFrames ? ocrDownsampleEvenly(kept, maxFrames) : kept;
-          resolve(finalKept);
-        } catch (err) { fail(err); }
-      })();
-    });
-
+    const timer = setTimeout(() => finish(null), 5000);
+    video.preload = 'metadata';
+    video.muted = true;
+    video.addEventListener('loadedmetadata', () => finish(isFinite(video.duration) ? video.duration : null));
+    video.addEventListener('error', () => finish(null));
     video.src = url;
-    video.load();
   });
+}
+
+export async function callGeminiOcrVideoApi(
+  file: Blob, metricType: string, guildTag: string, rankHint: string | null, updateStatusCallback?: (s: string) => void
+): Promise<{ players: any[]; endingRank: string | null; coverage: OcrVideoCoverage | null }> {
+  const client = db();
+  if (!client || !client.functions || !client.storage) throw new Error('OCR service unavailable. Please sign in and try again.');
+
+  const mimeType = String((file as File).type || '').toLowerCase();
+  const ext = OCR_VIDEO_EXTENSIONS[mimeType];
+  if (!ext) throw new Error('video_unsupported_type');
+  if (file.size > OCR_VIDEO_MAX_BYTES) throw new Error('video_too_large');
+  const duration = await readVideoDuration(file);
+  if (duration !== null && duration > OCR_VIDEO_MAX_DURATION_SEC) throw new Error('video_too_long');
+
+  // An unresolved tenant fails visibly; it never falls back to a guild.
+  const guild = getActiveGuild();
+  if (!guild) throw new Error('no_active_guild');
+  const path = guild + '/' + crypto.randomUUID() + '.' + ext;
+
+  if (updateStatusCallback) updateStatusCallback('Uploading the video…');
+  const up = await client.storage.from(OCR_VIDEO_BUCKET).upload(path, file, { contentType: mimeType, upsert: false });
+  if (up && up.error) {
+    console.error('OCR video upload failed:', up.error);
+    throw new Error('video_upload_failed');
+  }
+
+  if (updateStatusCallback) updateStatusCallback('Gemini is reading the whole video — this takes up to a minute…');
+  let metadata: { scanDay: number } | undefined;
+  if (metricType === 'svs_day' || metricType === 'gvg_day') metadata = { scanDay: getOcrScanDay() };
+  let res: any;
+  try {
+    res = await client.functions.invoke('ocr-guild-members', {
+      body: { video: { path, mimeType }, metricType, guildTag, rankHint: rankHint || null, metadata },
+    });
+  } finally {
+    // The function deletes the object itself; this covers a call that never
+    // reached it. Removing an object that is already gone is a no-op.
+    client.storage.from(OCR_VIDEO_BUCKET).remove([path]).catch(() => {});
+  }
+
+  if (res && res.data && res.data.ok && Array.isArray(res.data.players)) {
+    const players = res.data.players.map((p: any) => ({
+      ...p,
+      score: parseOcrScore(p.score, p.raw_score),
+      overall_power: parseOcrScore(p.overall_power != null ? p.overall_power : p.score, p.raw_score),
+    }));
+    return { players, endingRank: res.data.endingRank || null, coverage: res.data.coverage || null };
+  }
+  const errMsg = (res && res.data && res.data.error) || (res && res.error && res.error.message) || 'ocr_processing_failed';
+  throw new Error(errMsg);
 }
 
 // ── Files → OCR ──────────────────────────────────────────────────────────────
@@ -634,40 +477,15 @@ export async function handleOcrFiles(files: File[] | Blob[]): Promise<void> {
   if (loading) loading.style.display = 'block';
   if (resultsContainer) resultsContainer.style.display = 'none';
 
-  if (videoFiles.length > 0) {
-    if (loadingH4) loadingH4.textContent = 'Scanning video for new content...';
-    for (let v = 0; v < videoFiles.length; v++) {
-      if (loadingP) loadingP.textContent = videoFiles.length > 1 ? 'Extracting frames from video ' + (v + 1) + ' of ' + videoFiles.length + '...' : 'Extracting frames from your video — this can take a moment...';
-      try {
-        const frameBlobs = await extractFramesFromVideo(videoFiles[v]);
-        imageFiles = imageFiles.concat(frameBlobs);
-      } catch (err: any) {
-        console.error('Video frame extraction failed:', err);
-        let msg = 'Could not process the video. Try an MP4/MOV recording, or use screenshots instead.';
-        if (err && err.message === 'video_too_long') msg = 'Video is too long (max 8 minutes) — trim it or use screenshots instead.';
-        else if (err && err.message === 'video_unsupported') {
-          const isDecodeFailure = (err.mediaErrorCode === 3 || err.mediaErrorCode === 4);
-          msg = isDecodeFailure ? "This browser couldn't decode the video — either its codec (e.g. HEVC/H.265) isn't supported, or it's too large/high-resolution to process. Try a shorter recording, re-export as H.264, or use screenshots instead." : 'This video format could not be read. Try MP4, or use screenshots instead.';
-        } else if (err && err.message === 'video_no_frames') msg = 'No distinct frames were found in that video.';
-        showToast(msg, 'error');
-        if (loading) loading.style.display = 'none';
-        if (dropzone) dropzone.style.display = 'block';
-        return;
-      }
-    }
-  }
-
-  // Safety ceiling, not a budget. ocrDownsampleEvenly drops frames blindly, and
-  // every frame it drops is a screenful of players that no longer reaches the
-  // OCR -- measured at the old cap of 60 (and the extractor's own 35), a single
-  // 88 s roster recording lost 16 of its 147 rows. Images are compressed one
-  // batch at a time below, so a long scan costs requests and time, never a
-  // decimated roster.
+  // Safety ceiling, not a budget: ocrDownsampleEvenly drops screenshots blindly,
+  // and every one it drops is a screenful of players that never reaches the OCR.
+  // Images are compressed one batch at a time below, so a large set costs
+  // requests and time, never a decimated roster.
   const MAX_OCR_IMAGES = 500;
   if (imageFiles.length > MAX_OCR_IMAGES) {
     showToast(
       'That is ' + imageFiles.length + ' images — scanning the first ' + MAX_OCR_IMAGES +
-      ' evenly spread across the set. Split the recording in two to scan all of it.',
+      ' evenly spread across the set. Split them in two to scan all of them.',
       'warning'
     );
     imageFiles = ocrDownsampleEvenly(imageFiles, MAX_OCR_IMAGES);
@@ -692,10 +510,39 @@ export async function handleOcrFiles(files: File[] | Blob[]): Promise<void> {
     } catch (_) { /* best-effort — OCR proceeds even without roster */ }
   }
 
-  if (loadingH4) loadingH4.textContent = 'Analyzing screenshots with AI OCR (' + meta.header + ')...';
-
   let allPlayers: any[] = [];
+  setOcrVideoCoverage(null);
   try {
+    // Videos first, one call each: the server reads the whole recording.
+    const videoErrors: string[] = [];
+    let videoCoverage: OcrVideoCoverage | null = null;
+    for (let v = 0; v < videoFiles.length; v++) {
+      if (loadingH4) loadingH4.textContent = 'Reading video' + (videoFiles.length > 1 ? ' ' + (v + 1) + ' of ' + videoFiles.length : '') + ' with AI OCR (' + meta.header + ')...';
+      try {
+        const res = await callGeminiOcrVideoApi(videoFiles[v], metric, activeGuildTag, null, (statusMsg: string) => {
+          if (loadingP) loadingP.textContent = statusMsg;
+        });
+        allPlayers = allPlayers.concat(res.players);
+        videoCoverage = res.coverage;
+      } catch (videoErr: any) {
+        console.error('OCR video ' + (v + 1) + ' of ' + videoFiles.length + ' failed:', videoErr);
+        videoErrors.push(videoErr && videoErr.message ? videoErr.message : 'unknown_error');
+      }
+    }
+    // A coverage figure describes one recording. With several videos, or with
+    // screenshots fused in, it no longer describes the table below.
+    if (videoFiles.length === 1 && imageFiles.length === 0) setOcrVideoCoverage(videoCoverage);
+    if (videoErrors.length > 0 && imageFiles.length === 0 && allPlayers.length === 0) {
+      throw new Error(ocrBatchErrorMessage(videoErrors[0]));
+    }
+    if (videoErrors.length > 0) {
+      showToast(
+        videoErrors.length + ' of ' + videoFiles.length + ' videos could not be read: ' + ocrBatchErrorMessage(videoErrors[0]),
+        'warning'
+      );
+    }
+    if (imageFiles.length > 0 && loadingH4) loadingH4.textContent = 'Analyzing screenshots with AI OCR (' + meta.header + ')...';
+
     // The ~900-token system instruction is re-sent with every call, and at two
     // images per call it cost MORE than the images themselves: measured on a
     // 64-frame scan, 34,272 tokens of repeated prompt against 16,512 of image.
@@ -839,6 +686,7 @@ export async function handleOcrFiles(files: File[] | Blob[]): Promise<void> {
 
     setOcrExtractedPlayers(fused);
     renderOcrResults(getOcrExtractedPlayers());
+    renderOcrCoverage(getOcrVideoCoverage());
   } catch (err: any) {
     console.error('OCR processing error:', err);
     showToast(err.message || 'OCR Analysis failed', 'error');
@@ -858,6 +706,20 @@ function ocrBatchErrorMessage(code: string): string {
       return 'Those images are too large. Try a shorter recording or fewer screenshots.';
     case 'too_many_attempts':
       return 'Too many scans in a short time. Wait a minute and try again.';
+    case 'video_unsupported_type':
+      return 'This video format is not supported. Record as MP4 (or MOV / WebM), or use screenshots.';
+    case 'video_too_large':
+      return 'That video is over 64 MB. Record a shorter scroll, or lower the recording resolution.';
+    case 'video_too_long':
+      return 'That video is over 5 minutes. Trim it to the part where the list scrolls.';
+    case 'video_upload_failed':
+      return 'The video could not be uploaded. Check your connection and try again.';
+    case 'video_not_found':
+      return 'The uploaded video could not be read back. Try again.';
+    case 'video_processing_failed':
+      return 'The AI could not process that video. Re-export it as H.264 MP4, or use screenshots.';
+    case 'no_active_guild':
+      return 'No guild is selected. Reload the page and pick your guild before scanning.';
     default:
       return code || 'OCR analysis failed. Please try again.';
   }

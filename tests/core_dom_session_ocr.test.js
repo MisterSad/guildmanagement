@@ -14,7 +14,6 @@ import {
   isInvalidOrTempUid,
   categorizeOcrDiff,
   computeOcrRosterDelta,
-  ocrGridDiffRatio,
   ocrDownsampleEvenly
 } from '../src/modules/ocr/ocr.service';
 import { filterBulkEligibleMembers, getAllowedBulkRoles, isRoleAllowedForBulk, formatTicketDescription } from '../src/modules/members/members.service';
@@ -125,12 +124,6 @@ describe('OCR helpers', () => {
   it('computeOcrRosterDelta projects roster counts', () => {
     expect(computeOcrRosterDelta(100, 5, 3)).toEqual({ before: 100, after: 102, added: 5, removed: 3 });
     expect(computeOcrRosterDelta('x', '2', '9')).toEqual({ before: 0, after: 0, added: 2, removed: 9 });
-  });
-
-  it('ocrGridDiffRatio computes changed-cell fraction', () => {
-    expect(ocrGridDiffRatio([0, 0, 0, 0], [0, 1, 0, 0])).toBe(0.25);
-    expect(ocrGridDiffRatio([0], [0])).toBe(0);
-    expect(ocrGridDiffRatio([0], [0, 1])).toBe(1);
   });
 
   it('ocrDownsampleEvenly keeps first/last and covers the range', () => {

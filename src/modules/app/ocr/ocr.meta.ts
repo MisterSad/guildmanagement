@@ -87,6 +87,21 @@ export function getOcrExtractedPlayers(): any[] {
 export function setOcrExtractedPlayers(players: any[]): void {
   ocrExtractedPlayers = Array.isArray(players) ? players : [];
 }
+/** What a video scan's reading covered, as the Edge Function measured it (ADR-021). */
+export interface OcrVideoCoverage {
+  expected: number | null;
+  found: number;
+  missingPositions: number[];
+}
+
+let ocrVideoCoverage: OcrVideoCoverage | null = null;
+
+export function getOcrVideoCoverage(): OcrVideoCoverage | null {
+  return ocrVideoCoverage;
+}
+export function setOcrVideoCoverage(coverage: OcrVideoCoverage | null): void {
+  ocrVideoCoverage = coverage;
+}
 export function getOcrMeta(metric?: string): OcrMetricMeta {
   return OCR_METRICS_META[metric || currentOcrMetric] || OCR_METRICS_META.power;
 }

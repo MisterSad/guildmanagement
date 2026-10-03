@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+- **Video OCR, phase 2 of 4: the browser sends the whole recording to the server** (ADR-021 to come). This change is user-facing: every video scan now takes this path.
+  - **The in-browser frame extractor is removed:** `extractFramesFromVideo`, the sharpness and scroll-displacement estimators, and their bridge exports. Which frames it kept decided which players were found, and on some recordings that was 3 or 4 out of 40.
+  - **A video is checked before upload, then staged.**
+    - Checks: MP4, MOV or WebM; at most 64 MB; at most 5 minutes when the browser can read the duration. A file the browser cannot decode, such as HEVC on some desktops, is still sent.
+    - It is uploaded to the private `ocr-videos` bucket under `<guild>/<uuid>.<ext>`. `ocr-guild-members` then receives only that path.
+    - The staged object is removed even when the call fails. An unresolved guild fails visibly.
+  - **A coverage banner under the results** reports what the server measured.
+    - A complete reading says so.
+    - An incomplete one names the missing rank positions, up to 20, and asks for a slower scroll or a manual add.
+    - Screenshot scans hide the banner.
+  - **Ground truth:** `tests/fixtures/ocr/leaderboard-2026-10-01.json` (41 rows, still to be spot-checked by the owner) and `scripts/ocr-eval.mjs`, which scores a saved `ocr-guild-members` response against it.
+  - **Not yet verified end to end in production.** No video scan had reached the server in the 24 hours before the merge (function logs). Merged on the owner's decision; the first real scans are the check, and `scripts/ocr-eval.mjs` is how to measure them.
+  - **Tests:** `tests/ocr_video_client.test.js` (staging, refusals, scan flow, coverage banner, extractor gone). Gate on `main` + this change: type-check clean, 2373 unit tests, build, 44 e2e.
+
 - **V3.34.2: the chest-tiers and guild-deletion fixes, announced.** The app version is bumped. `DISCORD_CHANGELOG.md` opens with a V3.34.2 note for guild leaders. It covers chest tiers saving again, guild deletion removing everything, and the privacy-policy clarification. The V3.34.1 and V3.34.0 notes stay below it, after `---8<---` markers.
 
 - **Fixed: deleting a guild left part of it behind** (migration `20261003080433`).
