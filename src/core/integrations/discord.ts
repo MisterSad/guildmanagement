@@ -2,8 +2,9 @@
  * src/core/integrations/discord.ts
  *
  * Discord webhook dispatch ported from gm-utils.js: role-mention formatting,
- * webhook resolution (per-event → default → fallback keys), the Edge Function
- * proxy -- the only path to Discord -- and event notifications/reminders.
+ * which webhooks are set (never their URLs), the Edge Function proxy -- the
+ * only path to Discord, and the only writer of webhook URLs -- and event
+ * notifications/reminders.
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -30,44 +31,69 @@ export function formatDiscordRoleMention(input?: string | null): string {
   return str;
 }
 
-/** Resolves the webhook URL for an event prefix (explicit → configured → fallback). */
-export async function resolveDiscordWebhook(eventPrefix?: string, explicitUrl?: string): Promise<string | null> {
-  if (explicitUrl && typeof explicitUrl === 'string' && explicitUrl.trim() !== '') return explicitUrl.trim();
-  if (eventPrefix && typeof eventPrefix === 'string' && eventPrefix.trim().indexOf('http') === 0) return eventPrefix.trim();
+/**
+ * The webhook keys whose fallback chain the proxy and the reminder cron walk:
+ * the event's own, then the default, then any other event's.
+ */
+export const DISCORD_WEBHOOK_KEYS = [
+  'discord_webhook_url',
+  'webhook_armsrace', 'webhook_svs', 'webhook_gvg', 'webhook_dtr', 'webhook_calamity', 'webhook_shadowfront'
+];
 
-  let webhookUrl = eventPrefix ? await getGuildConfig('webhook_' + eventPrefix) : null;
-  if (!webhookUrl || webhookUrl.trim() === '') webhookUrl = await getGuildConfig('discord_webhook_url');
-  if (!webhookUrl || webhookUrl.trim() === '') {
-    const fallbackKeys = ['webhook_armsrace', 'webhook_svs', 'webhook_gvg', 'webhook_dtr', 'webhook_calamity', 'webhook_shadowfront'];
-    for (let k = 0; k < fallbackKeys.length; k++) {
-      const fb = await getGuildConfig(fallbackKeys[k]);
-      if (fb && fb.trim() !== '') { webhookUrl = fb; break; }
-    }
+/**
+ * Which webhook keys of the guild are set -- never their URLs (ARC-04). Null
+ * when it cannot be told (no client, no guild, refused), so a caller can tell
+ * "none" from "unknown".
+ */
+export async function configuredWebhooks(guild?: string | null): Promise<string[] | null> {
+  const g = guild || getActiveGuild();
+  const client = getClient();
+  if (!g || !client) return null;
+  try {
+    const res = await client.rpc('gm_configured_webhooks', { p_guild: g });
+    if (res.error || !Array.isArray(res.data)) return null;
+    return res.data as string[];
+  } catch (_) {
+    return null;
   }
-  return (webhookUrl && webhookUrl.trim() !== '') ? webhookUrl : null;
 }
 
-function normalizeWebhookUrl(url: string | null): string | null {
-  if (!url) return url;
-  let u = url.trim().replace(/^[<"'\s]+|[>'"\s]+$/g, '');
-  if (u.indexOf('http') !== 0) u = 'https://' + u;
-  return u;
+/** Whether the proxy would find a webhook for this event (same chain as the proxy). */
+export function webhookChainIsSet(configured: string[] | null | undefined, eventPrefix?: string): boolean {
+  if (!configured || configured.length === 0) return false;
+  if (eventPrefix && configured.indexOf('webhook_' + eventPrefix) !== -1) return true;
+  return DISCORD_WEBHOOK_KEYS.some((k) => configured.indexOf(k) !== -1);
 }
 
-/** Sends a webhook body via the Edge proxy, falling back to a direct POST. */
-export async function sendDiscordWebhookDetailed(eventPrefix: string, body: any, explicitUrl?: string): Promise<{ ok: boolean; error?: any }> {
+/** Sets (or, with an empty URL, removes) one webhook through the proxy. */
+export async function setDiscordWebhook(key: string, url: string, guild?: string | null): Promise<{ ok: boolean; error?: string }> {
+  const g = guild || getActiveGuild();
+  const client = getClient();
+  if (!g || !client) return { ok: false, error: 'no_guild' };
+  try { await ensureAuthSession(); } catch (_) { /* best-effort */ }
+  try {
+    const res = await client.functions.invoke('discord-webhook-proxy', {
+      body: { action: 'set-webhook', guild: g, key, url: String(url || '').trim() }
+    });
+    if (res.data && res.data.ok) return { ok: true };
+    const err = (res.data && res.data.error) || (res.error && (res.error.message || String(res.error))) || 'save_failed';
+    return { ok: false, error: String(err) };
+  } catch (e: any) {
+    return { ok: false, error: e?.message || String(e) };
+  }
+}
+
+/**
+ * Sends a webhook body via the Edge proxy, which resolves the guild's webhook
+ * server-side. The browser never names a URL (ARC-04).
+ */
+export async function sendDiscordWebhookDetailed(eventPrefix: string, body: any): Promise<{ ok: boolean; error?: any }> {
   try { await ensureAuthSession(); } catch (_) { /* best-effort */ }
   const currentG = getActiveGuild();
-
-  let targetPrefix = eventPrefix;
-  let directUrl = explicitUrl;
   if (typeof eventPrefix === 'string' && eventPrefix.indexOf('http') === 0) {
-    directUrl = eventPrefix;
-    targetPrefix = 'custom';
+    return { ok: false, error: 'client_webhook_url_not_allowed' };
   }
-
-  const webhookUrl = normalizeWebhookUrl(await resolveDiscordWebhook(targetPrefix, directUrl));
-  if (!webhookUrl) return { ok: false, error: 'No webhook URL found' };
+  const targetPrefix = eventPrefix;
 
   body.allowed_mentions = body.allowed_mentions || { parse: ['roles', 'users', 'everyone'] };
 
@@ -134,8 +160,8 @@ export async function sendDiscordWebhookDetailed(eventPrefix: string, body: any,
 }
 
 /** Boolean convenience wrapper. */
-export async function sendDiscordWebhook(eventPrefix: string, body: any, explicitUrl?: string): Promise<boolean> {
-  const res = await sendDiscordWebhookDetailed(eventPrefix, body, explicitUrl);
+export async function sendDiscordWebhook(eventPrefix: string, body: any): Promise<boolean> {
+  const res = await sendDiscordWebhookDetailed(eventPrefix, body);
   return res.ok;
 }
 
@@ -152,7 +178,7 @@ export async function notifyDiscordEvent(eventName: string, eventStart: string, 
   else if (nameUpper.indexOf('GVG') !== -1) eventPrefix = 'gvg';
   else if (nameUpper.indexOf('SVS') !== -1) eventPrefix = 'svs';
 
-  if (!await resolveDiscordWebhook(eventPrefix)) return;
+  if (!webhookChainIsSet(await configuredWebhooks(), eventPrefix)) return;
 
   if ((action === 'start' || action === 'edit') && eventPrefix) {
     const creationEnabled = await getGuildConfig('notify_' + eventPrefix + '_creation');

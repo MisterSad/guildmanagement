@@ -169,7 +169,7 @@ describe('one decision path for the app and for Discord', () => {
     const decide = slice(decisionFn, 'export async function decideRegistration', 'async function auditDecision');
     expect(decide.indexOf('canManageAccount(actor, targetCtx)')).toBeLessThan(decide.indexOf('gm_approve_player_account'));
     expect(decide.indexOf('canManageAccount(actor, targetCtx)')).toBeLessThan(decide.indexOf('gm_reject_player_account'));
-    expect(decide).toContain('target.status !== "pending" || target.role !== "member"');
+    expect(decide).toContain('target.status !== "pending" || !isMember(target.role)');
   });
 
   it('writes an audit row naming the decider and where they decided', () => {

@@ -65,6 +65,7 @@ import {
 } from "../_shared/discord-oauth.ts";
 import { serviceClient, anonClient } from "../_shared/clients.ts";
 import { serveUnlessTest } from "../_shared/serve.ts";
+import { isSuperAdmin } from "../_shared/admin-authz.ts";
 
 const env = getValidatedEnv();
 const SUPABASE_URL = env.SUPABASE_URL;
@@ -790,8 +791,8 @@ async function handleBackupLogin(req: Request, body: unknown, admin: any, logger
     logger.error("Failed to load account for backup sign-in", aErr);
     return json({ ok: false, error: "server_error" }, 500);
   }
-  if (!acc || acc.status !== "active" || acc.role !== "super_admin") {
-    logger.warn("Backup sign-in refused", { id: parsed.data.id, reason: !acc ? "unknown" : acc.role !== "super_admin" ? "not_super_admin" : "not_active" });
+  if (!acc || acc.status !== "active" || !isSuperAdmin(acc.role)) {
+    logger.warn("Backup sign-in refused", { id: parsed.data.id, reason: !acc ? "unknown" : !isSuperAdmin(acc.role) ? "not_super_admin" : "not_active" });
     return json({ ok: false, error: "invalid_code" }, 200);
   }
   if (acc.locked_until && new Date(acc.locked_until).getTime() > Date.now()) {
@@ -900,7 +901,7 @@ async function handleClaim(req: Request, body: unknown, admin: any, logger: Edge
   // request holding a fresh set — it is their only recovery path once the
   // password is gone. Everyone else is covered by D6's relink code.
   let backupCodes: string[] | undefined;
-  if (role === "super_admin") {
+  if (isSuperAdmin(role)) {
     try {
       backupCodes = await issueBackupCodes(admin, accountId);
     } catch (err) {

@@ -1,21 +1,17 @@
 import { z } from "https://esm.sh/zod@3.23.8";
 import { EdgeLogger } from "../_shared/logger.ts";
 import { findUserByEmail } from "../_shared/pagination.ts";
-import { canManageAccount, maxAssignableRole, isGuildInScope, normalizeRole, Role } from "../_shared/admin-authz.ts";
+import { Role, canManageAccount, isAdminRole, isGuildAdmin, isGuildInScope, isMember, isServerAdmin, isSuperAdmin, maxAssignableRole, normalizeRole } from "../_shared/admin-authz.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { escapeLike } from "../_shared/like.ts";
 import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.ts";
 import { resolveAuditChannelId, postAuditMessage } from "../_shared/discord-verification.ts";
-import {
-  bumpSessionVersion,
-  decideRegistration,
-  emailFor,
-  getTargetCtx,
-  randomSecret,
-} from "../_shared/registration-decision.ts";
+import { bumpSessionVersion, decideRegistration, getTargetCtx } from "../_shared/registration-decision.ts";
+import { emailFor, randomSecret } from "../_shared/shadow-session.ts";
 import { randomBackupCode, sha256Hex, issueBackupCodes, BACKUP_CODE_COUNT } from "../_shared/backup-codes.ts";
 import { isSessionRevoked } from "../_shared/session-epoch.ts";
 import type { AdminClient } from "../_shared/db.ts";
+import { resolveCaller } from "../_shared/auth.ts";
 import { serviceClient, anonClient } from "../_shared/clients.ts";
 import { serveUnlessTest } from "../_shared/serve.ts";
 
@@ -72,63 +68,6 @@ function makeJson(req: Request) {
       status,
       headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
     });
-}
-
-// Strict normalization, imported from _shared/admin-authz.ts. Legacy ranks
-// ('R5'/'R4') and the historical 'admin' alias now normalize to 'member'.
-
-async function getCallerInfo(
-  req: Request,
-  admin: AdminClient
-): Promise<{ role: Role | null; accountId: string | null; guild: string | null; serverNumber: string | null }> {
-  const authHeader = req.headers.get("Authorization") || "";
-  const match = authHeader.match(/^Bearer (.+)$/i);
-  if (!match) return { role: null, accountId: null, guild: null, serverNumber: null };
-
-  const jwt = match[1].trim();
-  const authClient = anonClient();
-  const { data: { user }, error } = await authClient.auth.getUser(jwt);
-  if (error || !user) return { role: null, accountId: null, guild: null, serverNumber: null };
-
-  const { data: acc } = await admin
-    .from("accounts")
-    .select("id, role, guild, server_number, status, session_version")
-    .eq("auth_user_id", user.id)
-    .maybeSingle();
-
-  if (!acc || acc.status !== "active") {
-    return { role: null, accountId: null, guild: null, serverNumber: null };
-  }
-
-  // C1: refuse a token minted before the account's session_version was bumped.
-  // Same absent-tolerant rule as gm_session_is_valid(); see
-  // 20260926185133_real_session_revocation.sql. The epoch is read from the
-  // token's own payload because getUser() answers from the live auth.users row,
-  // whose value is always the freshly bumped one.
-  if (isSessionRevoked(jwt, acc.session_version as number | null)) {
-    return { role: null, accountId: null, guild: null, serverNumber: null };
-  }
-
-  const normalizedRole = normalizeRole(acc.role);
-
-  let serverNumber = acc.server_number ?? null;
-  if (!serverNumber && acc.guild) {
-    const { data: g } = await admin
-      .from("guilds")
-      .select("server_number")
-      .eq("id", acc.guild)
-      .maybeSingle();
-    if (g && g.server_number) {
-      serverNumber = g.server_number;
-    }
-  }
-
-  return {
-    role: normalizedRole,
-    accountId: acc.id ?? null,
-    guild: acc.guild ?? null,
-    serverNumber,
-  };
 }
 
 // Readable alphabet (no 0/O, 1/l/I) with rejection sampling. Every password
@@ -221,9 +160,11 @@ export async function handler(req: Request): Promise<Response> {
     return json({ ok: false, error: "too_many_attempts" }, 429);
   }
 
-  const info = await getCallerInfo(req, admin);
+  // One resolver for every function (_shared/auth.ts): JWT, active account,
+  // session epoch, normalised role, server.
+  const info = await resolveCaller(req, admin);
 
-  if (!info.role || (info.role !== "guild_admin" && info.role !== "server_admin" && info.role !== "super_admin")) {
+  if (!info.role || !isAdminRole(info.role)) {
     logger.warn("Unauthorized admin-accounts call", { role: info.role });
     return json({ ok: false, error: "forbidden" }, 403);
   }
@@ -249,7 +190,7 @@ export async function handler(req: Request): Promise<Response> {
   // Always the CALLER's own account, never a target id. An admin action that
   // mints someone else's recovery codes is an account-takeover primitive.
   if (action === "backup-codes-status" || action === "backup-codes-regenerate") {
-    if (info.role !== "super_admin" || !info.accountId) {
+    if (!isSuperAdmin(info.role) || !info.accountId) {
       logger.warn("Recovery-code action refused", { role: info.role });
       return json({ ok: false, error: "forbidden" }, 403);
     }
@@ -287,12 +228,12 @@ export async function handler(req: Request): Promise<Response> {
     }
 
     let accountsList = data ?? [];
-    if (info.role === "guild_admin") {
+    if (isGuildAdmin(info.role)) {
       const callerGuildNorm = callerGuild ? String(callerGuild).trim().toUpperCase() : "";
       accountsList = accountsList.filter((acc: any) =>
         acc.guild && callerGuildNorm && String(acc.guild).trim().toUpperCase() === callerGuildNorm
       );
-    } else if (info.role === "server_admin") {
+    } else if (isServerAdmin(info.role)) {
       const { data: guildsOnServer } = await admin
         .from("guilds")
         .select("id")
@@ -581,15 +522,15 @@ export async function handler(req: Request): Promise<Response> {
     let accGuild = createParsed.data.guild ?? null;
     let accServerNum = serverNumber;
 
-    if (info.role === "guild_admin") {
+    if (isGuildAdmin(info.role)) {
       accRole = "guild_admin";
       if (!callerGuild) return json({ ok: false, error: "forbidden" }, 403);
       accGuild = callerGuild;
       accServerNum = info.serverNumber;
-    } else if (info.role === "server_admin") {
+    } else if (isServerAdmin(info.role)) {
       // Clamped strictly to maxAssignableRole (guild_admin / member)
       const requestedRole = createParsed.data.role ?? "guild_admin";
-      accRole = (requestedRole === "member") ? "member" : "guild_admin";
+      accRole = isMember(requestedRole) ? "member" : "guild_admin";
       if (requestedRole !== accRole) {
         logger.warn("Server admin attempted role elevation in account create; clamped to guild_admin", { requestedRole, clampedTo: accRole });
       }
@@ -607,10 +548,10 @@ export async function handler(req: Request): Promise<Response> {
       // Super admin
       accRole = createParsed.data.role ?? "guild_admin";
       accGuild = accGuild === "ALL" ? null : accGuild;
-      if (accRole === "guild_admin" && (!accGuild || accGuild === "ALL")) {
+      if (isGuildAdmin(accRole) && (!accGuild || accGuild === "ALL")) {
         return json({ ok: false, error: "guild_admin_must_have_guild" }, 200);
       }
-      if (accRole === "server_admin" && !accServerNum && accGuild) {
+      if (isServerAdmin(accRole) && !accServerNum && accGuild) {
         const { data: g } = await admin.from("guilds").select("server_number").eq("id", accGuild).maybeSingle();
         if (g && g.server_number) accServerNum = g.server_number;
       }
@@ -641,7 +582,7 @@ export async function handler(req: Request): Promise<Response> {
     const guild = updateRoleParsed.data.guild;
 
     // Only Super Admin can change account roles
-    if (info.role !== "super_admin") {
+    if (!isSuperAdmin(info.role)) {
       return json({ ok: false, error: "forbidden" }, 403);
     }
 
@@ -654,7 +595,7 @@ export async function handler(req: Request): Promise<Response> {
     if (!targetAcc) return json({ ok: false, error: "not_found" }, 404);
 
     let targetServerNumber = serverNumber;
-    if (newRole === "server_admin" && !targetServerNumber) {
+    if (isServerAdmin(newRole) && !targetServerNumber) {
       const gId = (guild !== undefined ? guild : targetAcc.guild);
       if (gId && gId !== "ALL") {
         const { data: g } = await admin.from("guilds").select("server_number").eq("id", gId).maybeSingle();
@@ -759,7 +700,7 @@ export async function handler(req: Request): Promise<Response> {
 
     const targetGuild = guild === "ALL" ? null : guild;
     if (targetGuild === null) {
-      if (info.role !== "super_admin") {
+      if (!isSuperAdmin(info.role)) {
         return json({ ok: false, error: "forbidden" }, 403);
       }
     } else {
@@ -770,7 +711,7 @@ export async function handler(req: Request): Promise<Response> {
       }
     }
 
-    if (targetAcc.role === "guild_admin" && !targetGuild) {
+    if (isGuildAdmin(targetAcc.role) && !targetGuild) {
       return json({ ok: false, error: "guild_admin_must_have_guild" }, 200);
     }
 
@@ -794,12 +735,12 @@ export async function handler(req: Request): Promise<Response> {
     const code = setJoinParsed.data.code;
 
     let targetGuild = guild;
-    if (info.role === "guild_admin") {
+    if (isGuildAdmin(info.role)) {
       if (!callerGuild) return json({ ok: false, error: "forbidden" }, 403);
       targetGuild = callerGuild;
     } else if (!targetGuild) {
       return json({ ok: false, error: "missing_fields" }, 400);
-    } else if (info.role === "server_admin") {
+    } else if (isServerAdmin(info.role)) {
       const { data: g } = await admin.from("guilds").select("server_number").eq("id", targetGuild).maybeSingle();
       if (!isGuildInScope(info, targetGuild, g?.server_number ?? null)) {
         return json({ ok: false, error: "forbidden" }, 403);
@@ -822,12 +763,12 @@ export async function handler(req: Request): Promise<Response> {
     if (!getJoinParsed.success) return json({ ok: false, error: "missing_fields" }, 400);
     const guild = getJoinParsed.data.guild ?? null;
     let targetGuild = guild;
-    if (info.role === "guild_admin") {
+    if (isGuildAdmin(info.role)) {
       if (!callerGuild) return json({ ok: false, error: "forbidden" }, 403);
       targetGuild = callerGuild;
     } else if (!targetGuild) {
       return json({ ok: false, error: "missing_fields" }, 400);
-    } else if (info.role === "server_admin") {
+    } else if (isServerAdmin(info.role)) {
       const { data: g } = await admin.from("guilds").select("server_number").eq("id", targetGuild).maybeSingle();
       if (!isGuildInScope(info, targetGuild, g?.server_number ?? null)) {
         return json({ ok: false, error: "forbidden" }, 403);
@@ -870,7 +811,7 @@ export async function handler(req: Request): Promise<Response> {
   // ==========================================================================
 
   if (action === "list-guild-requests") {
-    if (info.role !== "super_admin") return json({ ok: false, error: "forbidden" }, 403);
+    if (!isSuperAdmin(info.role)) return json({ ok: false, error: "forbidden" }, 403);
 
     const { data, error } = await admin
       .from("guild_creation_requests")
@@ -886,7 +827,7 @@ export async function handler(req: Request): Promise<Response> {
   }
 
   if (action === "clear-resolved-guild-requests") {
-    if (info.role !== "super_admin") return json({ ok: false, error: "forbidden" }, 403);
+    if (!isSuperAdmin(info.role)) return json({ ok: false, error: "forbidden" }, 403);
 
     // Only ever removes already-resolved rows (approved/rejected/expired) --
     // pending requests are never touched by this, so nothing awaiting review
@@ -907,7 +848,7 @@ export async function handler(req: Request): Promise<Response> {
   }
 
   if (action === "approve-guild-request") {
-    if (info.role !== "super_admin") return json({ ok: false, error: "forbidden" }, 403);
+    if (!isSuperAdmin(info.role)) return json({ ok: false, error: "forbidden" }, 403);
 
     const parsed = GuildRequestIdSchema.safeParse(body);
     if (!parsed.success) return json({ ok: false, error: "missing_fields" }, 400);
@@ -950,7 +891,7 @@ export async function handler(req: Request): Promise<Response> {
   }
 
   if (action === "reject-guild-request") {
-    if (info.role !== "super_admin") return json({ ok: false, error: "forbidden" }, 403);
+    if (!isSuperAdmin(info.role)) return json({ ok: false, error: "forbidden" }, 403);
 
     const parsed = RejectGuildRequestSchema.safeParse(body);
     if (!parsed.success) return json({ ok: false, error: "missing_fields" }, 400);

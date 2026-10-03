@@ -23,6 +23,7 @@ import {
   deletePlayerAbsence,
 } from "../_shared/player-actions.ts";
 import type { AdminClient } from "../_shared/db.ts";
+import { resolveCaller } from "../_shared/auth.ts";
 import { serviceClient, anonClient } from "../_shared/clients.ts";
 import { serveUnlessTest } from "../_shared/serve.ts";
 
@@ -182,52 +183,16 @@ async function getIdentity(
   req: Request,
   admin: AdminClient
 ): Promise<PlayerIdentity | null> {
-  const authHeader = req.headers.get("Authorization") || "";
-  const match = authHeader.match(/^Bearer (.+)$/i);
-  if (!match) return null;
-
-  const jwt = match[1].trim();
-  const authClient = anonClient();
-  const { data: { user }, error } = await authClient.auth.getUser(jwt);
-  if (error || !user) return null;
-
-  const { data: acc } = await admin
-    .from("accounts")
-    .select("id, role, guild, status, uid, session_version")
-    .eq("auth_user_id", user.id)
-    .maybeSingle();
-
-  if (!acc || acc.status !== "active") return null;
-
-  // C1: refuse a token minted before the account's session_version was bumped.
-  // Same absent-tolerant rule as gm_session_is_valid(); see
-  // 20260926185133_real_session_revocation.sql. The epoch is read from the
-  // token's own payload because getUser() answers from the live auth.users row,
-  // whose value is always the freshly bumped one.
-  if (isSessionRevoked(jwt, acc.session_version as number | null)) {
-    return null;
-  }
-
-  const accountId = acc.id as string;
-  const role = (acc.role || "member") as string;
-  const guild = (acc.guild || null) as string | null;
-
-  // The player UID comes straight from the `accounts` row selected above.
-  //
-  // This used to call `gm_get_shadow(accountId)` first and prefer
-  // `row?.player_uid`. That RPC returns only `(auth_user_id, gotrue_secret)` --
-  // there is no `player_uid` column in its return type -- so the value was
-  // always `undefined` and resolution always fell through to exactly the
-  // expression below. The call was therefore pure overhead: one extra round
-  // trip AND one `pgp_sym_decrypt` of the shadow GoTrue secret on every single
-  // portal request, decrypting a credential for a value that was discarded.
-  const playerUid = (acc.uid || accountId) as string;
-
+  // One resolver for every function (_shared/auth.ts): JWT, active account,
+  // session epoch (C1), normalised role.
+  const caller = await resolveCaller(req, admin);
+  if (!caller.role || !caller.accountId) return null;
   return {
-    accountId,
-    role,
-    guild,
-    uid: playerUid,
+    accountId: caller.accountId,
+    role: caller.role,
+    guild: caller.guild,
+    // An account that never claimed a player is keyed by its own id.
+    uid: caller.uid || caller.accountId,
   };
 }
 

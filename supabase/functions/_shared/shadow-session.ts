@@ -14,6 +14,11 @@
 import { findUserByEmail } from "./pagination.ts";
 import type { EdgeLogger } from "./logger.ts";
 
+/**
+ * The shadow GoTrue user's synthetic e-mail, derived one-way from the account
+ * id, and the random secret it signs in with. The only copies: every function
+ * that provisions or signs in a shadow user imports them from here.
+ */
 export async function emailFor(id: string): Promise<string> {
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(id));
   const hex = [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");

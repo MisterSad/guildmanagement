@@ -51,6 +51,10 @@ function chained(value) {
 
 function installDb() {
   window.GM.db = {
+    // ARC-04: the webhook keys that are set, never their values.
+    rpc: (name, args) => Promise.resolve(name === 'gm_configured_webhooks'
+      ? { data: TABLES.guild_config.filter((r) => r.guild === args.p_guild && String(r.value || '').trim() !== '').map((r) => r.key), error: null }
+      : { data: null, error: { message: 'unknown rpc' } }),
     from: (table) => {
       if (table === 'guild_members') {
         return {
@@ -207,10 +211,11 @@ describe('Overview: "Discord reminders are not set up" callout', () => {
 });
 
 describe('hasDiscordWebhook', () => {
-  it('treats blank values and unrelated keys as absent', () => {
-    expect(hasDiscordWebhook([{ key: 'discord_webhook_url', value: '   ' }])).toBe(false);
-    expect(hasDiscordWebhook([{ key: 'discord_role_id', value: '123' }])).toBe(false);
+  it('is true only when a key of the fallback chain is set', () => {
+    expect(hasDiscordWebhook([])).toBe(false);
+    expect(hasDiscordWebhook(['discord_role_id'])).toBe(false);
     expect(hasDiscordWebhook(null)).toBe(false);
-    expect(hasDiscordWebhook([{ key: 'discord_webhook_url', value: 'https://discord.com/api/webhooks/1/x' }])).toBe(true);
+    expect(hasDiscordWebhook(['discord_webhook_url'])).toBe(true);
+    expect(hasDiscordWebhook(['webhook_gvg'])).toBe(true);
   });
 });

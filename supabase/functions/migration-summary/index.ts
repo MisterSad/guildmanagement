@@ -1,6 +1,6 @@
 import { z } from "https://esm.sh/zod@3.23.8";
 import { EdgeLogger } from "../_shared/logger.ts";
-import { validateCallerAuth } from "../_shared/auth.ts";
+import { resolveCaller } from "../_shared/auth.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { getValidatedEnv } from "../_shared/env.ts";
 import { GEMINI_MODEL_FALLBACKS, geminiGenerateContentUrl } from "../_shared/gemini.ts";
@@ -8,6 +8,7 @@ import { canReadIntel } from "../_shared/intel-access.ts";
 import { checkAndRecordIpAttempt } from "../_shared/rate-limit.ts";
 import { serviceClient } from "../_shared/clients.ts";
 import { serveUnlessTest } from "../_shared/serve.ts";
+import { isAdminRole } from "../_shared/admin-authz.ts";
 
 function makeJson(req: Request) {
   return (body: unknown, status = 200): Response =>
@@ -23,7 +24,6 @@ const SUPABASE_URL = env.SUPABASE_URL;
 const SERVICE_ROLE = env.SUPABASE_SERVICE_ROLE_KEY;
 const ANON_KEY = env.SUPABASE_ANON_KEY;
 
-const ADMIN_ROLES = ["super_admin", "server_admin", "guild_admin"];
 
 const RequestSchema = z
   .object({
@@ -56,8 +56,8 @@ export async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response("ok", { headers: getCorsHeaders(req) });
   if (req.method !== "POST") return json({ ok: false, error: "method_not_allowed" }, 405);
 
-  const caller = await validateCallerAuth(req, SUPABASE_URL, ANON_KEY, SERVICE_ROLE);
-  if (!caller.authenticated || !caller.role || !ADMIN_ROLES.includes(caller.role)) {
+  const caller = await resolveCaller(req);
+  if (!caller.authenticated || !caller.role || !isAdminRole(caller.role)) {
     logger.warn("Forbidden migration-summary call", { role: caller.role, authenticated: caller.authenticated });
     return json({ ok: false, error: "forbidden" }, 403);
   }

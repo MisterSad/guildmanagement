@@ -1818,6 +1818,7 @@ export type Database = {
       }
       gm_cleanup_expired_ocr_cache: { Args: never; Returns: undefined }
       gm_cleanup_stale_reminder_locks: { Args: never; Returns: number }
+      gm_configured_webhooks: { Args: { p_guild: string }; Returns: string[] }
       gm_consume_discord_auth_ticket: {
         Args: { p_ticket: string }
         Returns: {
@@ -1980,6 +1981,7 @@ export type Database = {
       gm_guild_tag_history: { Args: { p_guild: string }; Returns: Json }
       gm_invoke_event_reminders: { Args: never; Returns: undefined }
       gm_is_admin_caller: { Args: never; Returns: boolean }
+      gm_is_webhook_key: { Args: { p_key: string }; Returns: boolean }
       gm_issue_admin_invite: {
         Args: {
           p_code_hash: string

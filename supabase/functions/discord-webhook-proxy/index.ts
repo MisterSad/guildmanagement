@@ -1,9 +1,12 @@
+import { z } from "https://esm.sh/zod@3.23.8";
 import { EdgeLogger } from "../_shared/logger.ts";
-import { validateCallerAuth } from "../_shared/auth.ts";
+import { resolveCaller } from "../_shared/auth.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.ts";
 import { serviceClient } from "../_shared/clients.ts";
 import { serveUnlessTest } from "../_shared/serve.ts";
+import { isAdminRole, isGuildAdmin, isGuildInScope, isServerAdmin } from "../_shared/admin-authz.ts";
+import type { CallerInfo } from "../_shared/auth.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -46,6 +49,69 @@ function isValidDiscordWebhook(url: string): boolean {
   }
 }
 
+/** The one definition of a webhook key, as in public.gm_is_webhook_key(). */
+export function isWebhookKey(key: string): boolean {
+  return key === "discord_webhook_url" || /^webhook_[a-z0-9_]{1,40}$/.test(key);
+}
+
+/** `https://` + host + path, without the wrappers users paste around it. */
+function cleanWebhookUrl(url: string): string {
+  const clean = url.replace(/^[<"'\s]+|[>'"\s]+$/g, "").trim();
+  return clean.startsWith("http") ? clean : "https://" + clean;
+}
+
+const SetWebhookSchema = z.object({
+  action: z.literal("set-webhook"),
+  guild: z.string().trim().min(1).max(64),
+  key: z.string().trim().max(64).refine(isWebhookKey, "not a webhook key"),
+  // Empty removes the webhook.
+  url: z.string().trim().max(512),
+}).strict();
+
+/**
+ * ARC-04: the only way a webhook URL is written. The browser can neither read
+ * nor write webhook rows of guild_config (migration webhook_urls_server_only);
+ * it sends the new URL here, once, and is told only whether one is now set.
+ */
+async function setWebhook(
+  caller: CallerInfo,
+  rawBody: unknown,
+  json: (b: unknown, s?: number) => Response,
+  logger: EdgeLogger,
+): Promise<Response> {
+  const parsed = SetWebhookSchema.safeParse(rawBody);
+  if (!parsed.success) return json({ ok: false, error: "bad_request" }, 400);
+  const { guild, key, url } = parsed.data;
+
+  const admin = serviceClient();
+  const { data: g } = await admin.from("guilds").select("id, server_number").eq("id", guild).maybeSingle();
+  if (!g) return json({ ok: false, error: "forbidden" }, 403);
+  const target = g as { id: string; server_number: string | null };
+  if (!isGuildInScope({ role: caller.role, guild: caller.guild, serverNumber: caller.serverNumber }, target.id, target.server_number)) {
+    logger.warn("set-webhook outside the caller's scope", { requestedGuild: guild });
+    return json({ ok: false, error: "forbidden" }, 403);
+  }
+
+  if (!url) {
+    const { error } = await admin.from("guild_config").delete().eq("guild", target.id).eq("key", key);
+    if (error) return json({ ok: false, error: "save_failed" }, 500);
+    logger.info("Webhook removed", { guild: target.id, key });
+    return json({ ok: true, configured: false });
+  }
+
+  if (!isValidDiscordWebhook(url)) {
+    return json({ ok: false, error: "invalid_discord_webhook_url" }, 400);
+  }
+  const { error } = await admin.from("guild_config").upsert(
+    { guild: target.id, key, value: cleanWebhookUrl(url), updated_at: new Date().toISOString() },
+    { onConflict: "guild,key" },
+  );
+  if (error) return json({ ok: false, error: "save_failed" }, 500);
+  // Never log the URL: it is the channel's credential.
+  logger.info("Webhook set", { guild: target.id, key });
+  return json({ ok: true, configured: true });
+}
+
 export async function handler(req: Request): Promise<Response> {
   const json = makeJson(req);
   const logger = new EdgeLogger("discord-webhook-proxy", req);
@@ -60,8 +126,8 @@ export async function handler(req: Request): Promise<Response> {
   }
 
   // 1. Mandatory JWT & RBAC Verification (C1 / SEV-01 Fix)
-  const caller = await validateCallerAuth(req, SUPABASE_URL, ANON_KEY, SERVICE_ROLE);
-  if (!caller.authenticated || !caller.role || (caller.role !== "guild_admin" && caller.role !== "server_admin" && caller.role !== "super_admin")) {
+  const caller = await resolveCaller(req);
+  if (!caller.authenticated || !caller.role || !isAdminRole(caller.role)) {
     logger.warn("Unauthorized attempt to access discord proxy", {
       authenticated: caller.authenticated,
       role: caller.role,
@@ -76,8 +142,21 @@ export async function handler(req: Request): Promise<Response> {
   let requestedGuild = "";
   let hasExplicitEveryonePermission = false;
 
+  let rawBody: any;
   try {
-    const rawBody = await req.json();
+    rawBody = await req.json();
+  } catch {
+    return json({ ok: false, error: "bad_request" }, 400);
+  }
+
+  if (rawBody && typeof rawBody === "object" && rawBody.action === "set-webhook") {
+    const clientIp = extractClientIp(req.headers);
+    const limit = await checkAndRecordIpAttempt(serviceClient(), clientIp, { limit: 30, windowMs: 60000 });
+    if (!limit.allowed) return json({ ok: false, error: "rate_limit_exceeded", retry_after: 60 }, 429);
+    return await setWebhook(caller, rawBody, json, logger);
+  }
+
+  try {
     const body =
       rawBody && typeof rawBody === "object" && rawBody.body && typeof rawBody.body === "object"
         ? rawBody.body
@@ -95,7 +174,7 @@ export async function handler(req: Request): Promise<Response> {
     }
 
     // 1. Interdire formellement les URLs Discord webhook fournies par le client pour les guild_admins
-    if (caller.role === "guild_admin" && rawClientWebhook) {
+    if (isGuildAdmin(caller.role) && rawClientWebhook) {
       logger.warn("Guild admin attempted to provide client-supplied webhook URL", {
         callerGuild: caller.guild,
       });
@@ -103,7 +182,7 @@ export async function handler(req: Request): Promise<Response> {
     }
 
     // Guild Admins are strictly scoped to their own guild
-    if (caller.role === "guild_admin") {
+    if (isGuildAdmin(caller.role)) {
       if (requestedGuild && caller.guild && requestedGuild.toUpperCase() !== caller.guild.toUpperCase()) {
         logger.warn("Guild admin attempted cross-guild discord webhook dispatch", {
           callerGuild: caller.guild,
@@ -112,7 +191,7 @@ export async function handler(req: Request): Promise<Response> {
         return json({ ok: false, error: "forbidden_cross_guild" }, 403);
       }
       requestedGuild = caller.guild || requestedGuild;
-    } else if (caller.role === "server_admin") {
+    } else if (isServerAdmin(caller.role)) {
       if (rawClientWebhook) {
         logger.warn("Server admin attempted to provide client-supplied webhook URL", {
           callerServer: caller.serverNumber,
@@ -147,7 +226,7 @@ export async function handler(req: Request): Promise<Response> {
     );
     hasExplicitEveryonePermission =
       explicitEveryoneRequested &&
-      (caller.role === "super_admin" || caller.role === "guild_admin" || caller.role === "server_admin");
+      isAdminRole(caller.role);
 
     // Server-side resolution from guild_config
     requestedGuild = requestedGuild || caller.guild || "";

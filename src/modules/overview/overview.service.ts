@@ -7,6 +7,7 @@
  */
 
 import { getTimezoneOffset } from '../../utils/timezone';
+import { webhookChainIsSet } from '../../core/integrations/discord';
 
 export interface ClockMember {
   name: string;
@@ -125,20 +126,12 @@ export function serializeTimezoneClocks(list: ClockMember[]): string {
 }
 
 /**
- * Every `guild_config` key a Discord reminder can be posted through: the
- * default webhook, then each event's own (same fallback chain as
- * `resolveDiscordWebhook` and the event-reminders cron).
+ * Whether the guild can receive any Discord reminder at all, from the list of
+ * webhook keys `gm_configured_webhooks` says are set (ARC-04: never the URLs).
+ * Measured on 2026-09-30: 17 of 31 guilds had no webhook anywhere, so no
+ * reminder could reach them whatever their toggles said -- and nothing in the
+ * app told them.
  */
-export const DISCORD_WEBHOOK_KEYS = [
-  'discord_webhook_url',
-  'webhook_armsrace', 'webhook_svs', 'webhook_gvg', 'webhook_dtr', 'webhook_calamity', 'webhook_shadowfront'
-];
-
-/**
- * Whether the guild can receive any Discord reminder at all. Measured on
- * 2026-09-30: 17 of 31 guilds had no webhook anywhere, so no reminder could
- * reach them whatever their toggles said -- and nothing in the app told them.
- */
-export function hasDiscordWebhook(rows: Array<{ key?: string | null; value?: string | null }> | null | undefined): boolean {
-  return (rows || []).some((r) => !!r && DISCORD_WEBHOOK_KEYS.indexOf(String(r.key)) !== -1 && String(r.value || '').trim() !== '');
+export function hasDiscordWebhook(configured: string[] | null | undefined): boolean {
+  return webhookChainIsSet(configured);
 }

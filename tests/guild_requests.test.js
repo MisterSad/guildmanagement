@@ -53,7 +53,7 @@ describe('Guild Requests: clearing history never touches pending requests', () =
         const idx = src.indexOf('"clear-resolved-guild-requests"');
         expect(idx).toBeGreaterThan(-1);
         const block = src.slice(idx, idx + 800);
-        expect(block).toContain('info.role !== "super_admin"');
+        expect(block).toContain('!isSuperAdmin(info.role)');
         expect(block).toMatch(/\.neq\(\s*["']status["'],\s*["']pending["']\s*\)/);
     });
 });

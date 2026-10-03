@@ -87,19 +87,19 @@ describe('Regression: guild-data-export enforces guild scoping and stays paginat
   );
 
   it('forces guild_admin onto their own guild, never a client-supplied one', () => {
-    const idx = src.indexOf('caller.role === "guild_admin" ? caller.guild');
+    const idx = src.indexOf('isGuildAdmin(caller.role) ? caller.guild');
     expect(idx).toBeGreaterThan(-1);
   });
 
   it('checks isGuildInScope for every non-guild_admin caller before exporting', () => {
     expect(src).toContain('isGuildInScope(');
-    const idx = src.indexOf('if (caller.role !== "guild_admin")');
+    const idx = src.indexOf('if (!isGuildAdmin(caller.role))');
     expect(idx).toBeGreaterThan(-1);
   });
 
   it('rejects an inactive account and an unrecognized role', () => {
     expect(src).toContain('caller.status !== "active"');
-    expect(src).toContain('caller.role !== "super_admin" && caller.role !== "server_admin" && caller.role !== "guild_admin"');
+    expect(src).toContain('!isAdminRole(caller.role)');
   });
 
   it('is registered as requiring a JWT in config.toml', () => {

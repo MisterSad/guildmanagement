@@ -1,6 +1,6 @@
 import { z } from "https://esm.sh/zod@3.23.8";
 import { EdgeLogger } from "../_shared/logger.ts";
-import { validateCallerAuth } from "../_shared/auth.ts";
+import { resolveCaller } from "../_shared/auth.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { getValidatedEnv } from "../_shared/env.ts";
 import { GEMINI_MODEL_FALLBACKS, geminiGenerateContentUrl, geminiSupportsThinking } from "../_shared/gemini.ts";
@@ -22,6 +22,7 @@ import {
 } from "./video.ts";
 import { serviceClient, anonClient } from "../_shared/clients.ts";
 import { serveUnlessTest } from "../_shared/serve.ts";
+import { isAdminRole } from "../_shared/admin-authz.ts";
 
 export interface OcrImageItem {
   base64Data: string;
@@ -717,8 +718,8 @@ export async function handler(req: Request): Promise<Response> {
   }
 
   // 1. Mandatory JWT & RBAC Verification (SEV-02 Fix)
-  const caller = await validateCallerAuth(req, SUPABASE_URL, ANON_KEY, SERVICE_ROLE);
-  if (!caller.authenticated || !caller.role || (caller.role !== "guild_admin" && caller.role !== "server_admin" && caller.role !== "super_admin")) {
+  const caller = await resolveCaller(req);
+  if (!caller.authenticated || !caller.role || !isAdminRole(caller.role)) {
     logger.warn("Unauthorized attempt to access OCR endpoint", {
       authenticated: caller.authenticated,
       role: caller.role,

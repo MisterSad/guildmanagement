@@ -16,7 +16,7 @@ import { type AccountRow, getAccounts, filterAccountsOut } from './admin-store';
 import { fetchAccounts, fetchGuilds } from './accounts.controller';
 import { showToast, openCustomMsgModal } from '../dialogs/dialogs.service';
 import { initChestTiersSettings, loadChestTiers } from '../../events/chest-settings';
-import { testDiscordWebhook, formatDiscordRoleMention, sendDiscordWebhookDetailed } from '../../../core/integrations/discord';
+import { testDiscordWebhook, formatDiscordRoleMention, sendDiscordWebhookDetailed, configuredWebhooks, setDiscordWebhook } from '../../../core/integrations/discord';
 import { buildGvgDailyTaskEmbed } from '../../../core/config/gvg-tasks';
 import { overviewView } from '../../overview/views/OverviewView';
 
@@ -175,18 +175,11 @@ interface ConfigField { key: string; el: string; gated?: boolean; }
 interface CheckboxField { key: string; el: string; def: boolean; gated?: boolean; }
 
 const VALUE_FIELDS: ConfigField[] = [
-  { key: 'discord_webhook_url', el: 'discord-webhook-url' },
   { key: 'coeff_svs', el: 'coeff-svs' },
   { key: 'coeff_gvg', el: 'coeff-gvg' },
   { key: 'coeff_shadowfront', el: 'coeff-shadowfront' },
   { key: 'coeff_dtr', el: 'coeff-dtr' },
   { key: 'coeff_armsrace', el: 'coeff-armsrace' },
-  { key: 'webhook_armsrace', el: 'webhook-armsrace' },
-  { key: 'webhook_dtr', el: 'webhook-dtr' },
-  { key: 'webhook_shadowfront', el: 'webhook-shadowfront' },
-  { key: 'webhook_calamity', el: 'webhook-calamity', gated: true },
-  { key: 'webhook_gvg', el: 'webhook-gvg', gated: true },
-  { key: 'webhook_svs', el: 'webhook-svs', gated: true },
   { key: 'discord_role_id', el: 'discord-role-id' },
   { key: 'discord_role_id_armsrace', el: 'discord-role-id-armsrace' },
   { key: 'discord_role_id_dtr', el: 'discord-role-id-dtr' },
@@ -198,6 +191,62 @@ const VALUE_FIELDS: ConfigField[] = [
   { key: 'discord_verification_channel_id', el: 'discord-verification-channel-id' },
   { key: 'discord_audit_channel_id', el: 'discord-audit-channel-id' }
 ];
+
+/**
+ * ARC-04: webhook URLs are write-only from here. The form shows whether each
+ * one is set, never its URL; typing a URL replaces it, "Remove" deletes it,
+ * and an empty field leaves it as it is. Both go through the proxy, which
+ * accepts Discord webhook URLs only.
+ */
+const WEBHOOK_FIELDS: ConfigField[] = [
+  { key: 'discord_webhook_url', el: 'discord-webhook-url' },
+  { key: 'webhook_armsrace', el: 'webhook-armsrace' },
+  { key: 'webhook_dtr', el: 'webhook-dtr' },
+  { key: 'webhook_shadowfront', el: 'webhook-shadowfront' },
+  { key: 'webhook_calamity', el: 'webhook-calamity', gated: true },
+  { key: 'webhook_gvg', el: 'webhook-gvg', gated: true },
+  { key: 'webhook_svs', el: 'webhook-svs', gated: true }
+];
+
+const WEBHOOK_SET_PLACEHOLDER = 'Webhook set. Paste a new URL to replace it.';
+
+/** The webhook keys set when the form was last loaded. */
+let configuredWebhookKeys: string[] = [];
+
+function renderWebhookField(field: ConfigField, isSet: boolean): void {
+  const input = byId<HTMLInputElement>(field.el);
+  if (!input) return;
+  if (!input.dataset.gmEmptyPlaceholder) input.dataset.gmEmptyPlaceholder = input.placeholder;
+  input.value = '';
+  input.placeholder = isSet ? WEBHOOK_SET_PLACEHOLDER : (input.dataset.gmEmptyPlaceholder || '');
+  const wrapper = input.closest('.gm-ui-input') || input;
+  let remove = wrapper.parentElement?.querySelector<HTMLButtonElement>(`button[data-gm-webhook-remove="${field.key}"]`) || null;
+  if (!isSet) { remove?.remove(); return; }
+  if (remove) return;
+  remove = document.createElement('button');
+  remove.type = 'button';
+  remove.className = 'gm-btn gm-btn-ghost gm-btn-sm';
+  remove.dataset.gmWebhookRemove = field.key;
+  remove.setAttribute('aria-label', 'Remove this webhook');
+  remove.innerHTML = '<i class="ph ph-trash" aria-hidden="true"></i> <span>Remove</span>';
+  remove.addEventListener('click', async () => {
+    remove!.disabled = true;
+    const res = await setDiscordWebhook(field.key, '');
+    if (!res.ok) {
+      remove!.disabled = false;
+      showToast(t('toast_config_save_failed').replace('{n}', '1'), 'error');
+      return;
+    }
+    configuredWebhookKeys = configuredWebhookKeys.filter((k) => k !== field.key);
+    renderWebhookField(field, false);
+  });
+  wrapper.insertAdjacentElement('afterend', remove);
+}
+
+async function loadWebhookFields(): Promise<void> {
+  configuredWebhookKeys = (await configuredWebhooks()) || [];
+  for (const field of WEBHOOK_FIELDS) renderWebhookField(field, configuredWebhookKeys.indexOf(field.key) !== -1);
+}
 
 const CHECKBOX_FIELDS: CheckboxField[] = [
   { key: 'notify_armsrace_creation', el: 'notify-armsrace-creation', def: true },
@@ -277,6 +326,7 @@ export async function loadGuildSettings(): Promise<void> {
   for (const field of CHECKBOX_FIELDS) {
     setChecked(field.el, await configGet(field.key), field.def);
   }
+  await loadWebhookFields();
   refreshAuditChannelWarning();
 
   const tagSettingEl = byId<HTMLInputElement>('guild-tag-setting');
@@ -322,6 +372,24 @@ async function onGuildSettingsSubmit(e: Event): Promise<void> {
       const value = el ? el.value.trim() : '';
       promises.push(g.config.set(field.key, (field.gated && !showCalamityGvgSvs) ? '' : value));
     }
+    const webhookWrites: Array<{ field: ConfigField; url: string }> = [];
+    for (const field of WEBHOOK_FIELDS) {
+      const typed = (byId<HTMLInputElement>(field.el)?.value || '').trim();
+      if (field.gated && !showCalamityGvgSvs) {
+        // A disabled feature keeps no webhook, as before.
+        if (configuredWebhookKeys.indexOf(field.key) !== -1) webhookWrites.push({ field, url: '' });
+      } else if (typed) {
+        webhookWrites.push({ field, url: typed });
+      }
+    }
+    for (const w of webhookWrites) {
+      promises.push(setDiscordWebhook(w.field.key, w.url).then((r) => {
+        if (!r.ok && r.error === 'invalid_discord_webhook_url') {
+          showToast('Not a Discord webhook URL: ' + w.field.key, 'error');
+        }
+        return r.ok;
+      }));
+    }
     for (const field of CHECKBOX_FIELDS) {
       const el = byId<HTMLInputElement>(field.el);
       const checked = el ? el.checked : field.def;
@@ -337,6 +405,7 @@ async function onGuildSettingsSubmit(e: Event): Promise<void> {
       showToast(t('toast_config_save_failed').replace('{n}', String(failures)), 'error');
       return;
     }
+    await loadWebhookFields();
     showToast(t('toast_config_updated'), 'success');
   } catch (err: any) {
     showToast(t('toast_err_generic') + ' ' + err.message, 'error');

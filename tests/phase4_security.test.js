@@ -20,20 +20,6 @@ const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$
 describe('M14 — a suspended account is authorized for nothing', () => {
   const auth = stripComments(read('supabase/functions/_shared/auth.ts'));
 
-  it('refuses centrally instead of asking each endpoint to remember', () => {
-    // The helper used to RETURN `status` and leave the check to callers. One
-    // of seven did it. Nulling the role makes every existing `!caller.role`
-    // gate cover the case automatically.
-    expect(auth).toContain('acc.status !== "active"');
-    const branch = auth.slice(auth.indexOf('acc.status !== "active"'));
-    expect(branch.slice(0, 300)).toContain('denied(');
-  });
-
-  it('still reports the status so a caller can explain why', () => {
-    expect(auth).toContain('status: acc.status ?? null');
-    expect(auth).toContain('active: boolean');
-  });
-
   it('every consumer gates on the role, which is what makes this work', () => {
     for (const f of ['tickets', 'ocr-guild-members', 'migration-summary', 'discord-webhook-proxy', 'guild-data-export']) {
       const src = read(`supabase/functions/${f}/index.ts`);
@@ -270,17 +256,16 @@ describe('C1 — session revocation is now real, not merely documented', () => {
     expect(epoch).toContain("split(\".\")[1]");
   });
 
-  it('wires the check into every JWT-validating entry point', () => {
-    // Six functions share validateCallerAuth; three validate their own JWT and
-    // would otherwise have kept serving a revoked token with the service key.
-    for (const f of [
-      '_shared/auth.ts',
-      'admin-accounts/index.ts',
-      'member-portal/index.ts',
-    ]) {
-      const src = read(`supabase/functions/${f}`);
-      expect(src, `${f} must consult the epoch`).toContain('isSessionRevoked(jwt,');
-      expect(src, `${f} must select session_version`).toMatch(/\.select\("[^"]*session_version/);
+  it('every JWT-validating function goes through the one resolver that checks the epoch', () => {
+    // Behaviour is executed in supabase/functions/_shared/auth.test.ts; this
+    // only guards that no function grows its own lookup again.
+    const auth = read('supabase/functions/_shared/auth.ts');
+    expect(auth).toContain('isSessionRevoked(jwt,');
+    for (const f of ['admin-accounts', 'member-portal', 'tickets', 'guild-data-export', 'ocr-guild-members', 'migration-summary', 'discord-webhook-proxy']) {
+      const src = read(`supabase/functions/${f}/index.ts`);
+      expect(src, f).toContain('resolveCaller(req');
+      // A caller lookup of its own would read the account by its auth user id.
+      expect(src, f).not.toContain('.eq("auth_user_id", user.id)');
     }
   });
 

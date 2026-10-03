@@ -13,8 +13,9 @@
  * is deciding; how that identity was proven (a JWT in the app, a linked Discord
  * account on a button click) is the caller's job.
  */
-import { canManageAccount, normalizeRole, type CallerCtx, type Role } from "./admin-authz.ts";
+import { canManageAccount, isMember, normalizeRole, type CallerCtx, type Role } from "./admin-authz.ts";
 import { findUserByEmail } from "./pagination.ts";
+import { emailFor, randomSecret } from "./shadow-session.ts";
 import { sendDirectMessage } from "./discord-verification.ts";
 import type { EdgeLogger } from "./logger.ts";
 import type { AdminClient } from "./db.ts";
@@ -73,18 +74,6 @@ export async function getTargetCtx(
     guild: targetAcc.guild ?? null,
     serverNumber: sNum,
   };
-}
-
-export async function emailFor(id: string): Promise<string> {
-  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(id));
-  const hex = [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
-  return `gm_${hex}@no-reply.guildmgmt.app`;
-}
-
-export function randomSecret(): string {
-  const b = new Uint8Array(48);
-  crypto.getRandomValues(b);
-  return btoa(String.fromCharCode(...b)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
 /** The Discord identity linked to an account, or null. Never taken from a request. */
@@ -155,7 +144,7 @@ export async function decideRegistration(
     .maybeSingle();
   if (!targetAcc) return { ok: false, error: "not_found", status: 404 };
   const target = targetAcc as { id: string; role: string | null; guild: string | null; server_number: string | null; status: string };
-  if (target.status !== "pending" || target.role !== "member") {
+  if (target.status !== "pending" || !isMember(target.role)) {
     return { ok: false, error: "not_pending", status: 200 };
   }
 

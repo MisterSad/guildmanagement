@@ -1,10 +1,11 @@
 import { EdgeLogger } from "../_shared/logger.ts";
-import { validateCallerAuth } from "../_shared/auth.ts";
+import { resolveCaller } from "../_shared/auth.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.ts";
 import { z } from "https://esm.sh/zod@3.23.8";
 import { serviceClient } from "../_shared/clients.ts";
 import { serveUnlessTest } from "../_shared/serve.ts";
+import { isAdminRole, isSuperAdmin } from "../_shared/admin-authz.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -22,7 +23,6 @@ function makeJson(req: Request) {
     });
 }
 
-const ADMIN_ROLES = ["super_admin", "server_admin", "guild_admin"];
 
 // SSRF-safe check mirroring discord-webhook-proxy: only real Discord webhook
 // URLs are accepted, and redirects are never followed.
@@ -129,8 +129,8 @@ export async function handler(req: Request): Promise<Response> {
 
   const admin = serviceClient();
 
-  const caller = await validateCallerAuth(req, SUPABASE_URL, ANON_KEY, SERVICE_ROLE);
-  if (!caller.authenticated || !caller.role || !ADMIN_ROLES.includes(caller.role)) {
+  const caller = await resolveCaller(req);
+  if (!caller.authenticated || !caller.role || !isAdminRole(caller.role)) {
     logger.warn("Forbidden tickets call", { role: caller.role, authenticated: caller.authenticated });
     return json({ ok: false, error: "forbidden" }, 403);
   }
@@ -158,7 +158,7 @@ export async function handler(req: Request): Promise<Response> {
     const description = input.description;
     const category = input.category;
     const severity = input.severity;
-    const guild = caller.role === "super_admin" && input.guild
+    const guild = isSuperAdmin(caller.role) && input.guild
       ? input.guild
       : (caller.guild ?? "").trim();
 
@@ -302,7 +302,7 @@ export async function handler(req: Request): Promise<Response> {
   }
 
   if (action === "list") {
-    if (caller.role !== "super_admin") {
+    if (!isSuperAdmin(caller.role)) {
       return json({ ok: false, error: "forbidden" }, 403);
     }
     const { data, error } = await admin.rpc("gm_list_tickets");
@@ -314,7 +314,7 @@ export async function handler(req: Request): Promise<Response> {
   }
 
   if (action === "update-status") {
-    if (caller.role !== "super_admin") {
+    if (!isSuperAdmin(caller.role)) {
       return json({ ok: false, error: "forbidden" }, 403);
     }
     const parsed = UpdateStatusSchema.safeParse(body);

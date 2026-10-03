@@ -24,6 +24,21 @@ export function normalizeRole(r: string | null | undefined): Role {
   return "member";
 }
 
+/**
+ * Role predicates: the ONLY place an Edge Function compares a role to a name
+ * (audit ARC-03). Exact comparisons on the canonical strings, so a caller that
+ * already normalised (resolveCaller does) and one reading a raw row get the
+ * same answer they had with an inline `role === "..."`.
+ */
+export function isSuperAdmin(r: string | null | undefined): boolean { return r === "super_admin"; }
+export function isServerAdmin(r: string | null | undefined): boolean { return r === "server_admin"; }
+export function isGuildAdmin(r: string | null | undefined): boolean { return r === "guild_admin"; }
+export function isMember(r: string | null | undefined): boolean { return r === "member"; }
+/** Any of the three administrative roles. */
+export function isAdminRole(r: string | null | undefined): boolean {
+  return isSuperAdmin(r) || isServerAdmin(r) || isGuildAdmin(r);
+}
+
 export interface CallerCtx {
   role: Role | null;
   guild: string | null;

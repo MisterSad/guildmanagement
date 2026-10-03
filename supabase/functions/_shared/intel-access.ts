@@ -17,6 +17,8 @@
  * another tenant's page by passing its id with their own guild in the body.
  */
 
+import { isGuildAdmin, isServerAdmin, isSuperAdmin } from "./admin-authz.ts";
+
 export interface IntelCaller {
   role: string | null;
   guild: string | null;
@@ -32,12 +34,12 @@ export interface IntelTarget {
 }
 
 export function canReadIntel(caller: IntelCaller, target: IntelTarget): boolean {
-  if (caller.role === "super_admin") return true;
-  if (caller.role !== "guild_admin" && caller.role !== "server_admin") return false;
+  if (isSuperAdmin(caller.role)) return true;
+  if (!isGuildAdmin(caller.role) && !isServerAdmin(caller.role)) return false;
 
   if (target.scope === "guild") {
     if (!target.guildId) return false;
-    if (caller.role === "guild_admin") return !!caller.guild && caller.guild === target.guildId;
+    if (isGuildAdmin(caller.role)) return !!caller.guild && caller.guild === target.guildId;
     return !!caller.serverNumber && !!target.guildServerNumber && caller.serverNumber === target.guildServerNumber;
   }
 

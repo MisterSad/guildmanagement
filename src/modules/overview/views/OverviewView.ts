@@ -23,7 +23,6 @@ import {
   parseTimezoneClocks,
   serializeTimezoneClocks,
   buildOfficerClocks,
-  DISCORD_WEBHOOK_KEYS,
   hasDiscordWebhook
 } from '../overview.service';
 import { escapeHTML } from '../../../core/utils/text';
@@ -263,7 +262,7 @@ export class OverviewView {
     const guild = legacy.getActiveGuild();
     if (!slot || !guild) return;
     try {
-      const res = await db.from('guild_config').select('key, value').eq('guild', guild).in('key', DISCORD_WEBHOOK_KEYS);
+      const res = await db.rpc('gm_configured_webhooks', { p_guild: guild });
       if (res.error || hasDiscordWebhook(res.data)) return;
     } catch (_) {
       return;

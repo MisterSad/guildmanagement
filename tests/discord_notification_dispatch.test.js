@@ -57,7 +57,7 @@ describe('Discord Webhook & Reminders Regression Guard', () => {
     // discord-webhook-proxy rules:
     // 1. If caller is guild_admin and rawClientWebhook is truthy -> 403 forbidden_client_webhook_url
     // 2. If allowEveryoneMention is true -> preserves everyone in allowed_mentions
-    expect(proxyContent).toContain('if (caller.role === "guild_admin" && rawClientWebhook)');
+    expect(proxyContent).toContain('if (isGuildAdmin(caller.role) && rawClientWebhook)');
     expect(proxyContent).toContain('return json({ ok: false, error: "forbidden_client_webhook_url" }, 403);');
 
     // Frontend guarantees rawClientWebhook is empty:

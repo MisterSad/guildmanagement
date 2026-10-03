@@ -73,7 +73,7 @@ describe('the recovery path does not leak who exists', () => {
     // reachable without any authentication at all.
     const handler = fn.slice(fn.indexOf('async function handleBackupLogin'));
     const body = handler.slice(0, handler.indexOf('\n}\n'));
-    expect(body).toMatch(/acc\.role !== "super_admin"/);
+    expect(body).toMatch(/!isSuperAdmin\(acc\.role\)/);
     // The unknown / not-active / not-super_admin branch and the bad-code branch
     // must both answer invalid_code.
     expect((body.match(/error: "invalid_code"/g) || []).length).toBeGreaterThanOrEqual(3);
@@ -82,7 +82,7 @@ describe('the recovery path does not leak who exists', () => {
   it('is restricted to the super_admin, and says why', () => {
     // Every other account has an administrator above it who can unlink and
     // reissue a relink code, which is stronger because it needs a second human.
-    expect(fn).toMatch(/acc\.role !== "super_admin"/);
+    expect(fn).toMatch(/!isSuperAdmin\(acc\.role\)/);
     expect(read('src/core/auth/session.ts')).toMatch(/super_admin has nobody above them/i);
   });
 

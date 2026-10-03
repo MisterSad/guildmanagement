@@ -105,12 +105,12 @@ describe('Ticket 1.2: discord-webhook-proxy - Discord URL Whitelist & SSRF Prote
 
 describe('Ticket 1.2: discord-webhook-proxy - Client Webhook URLs & Open Relay Prevention', () => {
     it('formally forbids client-supplied webhook URLs for guild_admins (returns 403)', () => {
-        expect(proxyContent).toContain('if (caller.role === "guild_admin" && rawClientWebhook)');
+        expect(proxyContent).toContain('if (isGuildAdmin(caller.role) && rawClientWebhook)');
         expect(proxyContent).toContain('return json({ ok: false, error: "forbidden_client_webhook_url" }, 403);');
     });
 
     it('formally forbids client-supplied webhook URLs for server_admins (returns 403)', () => {
-        expect(proxyContent).toContain('if (caller.role === "server_admin")');
+        expect(proxyContent).toContain('if (isServerAdmin(caller.role))');
         expect(proxyContent).toContain('if (rawClientWebhook)');
         expect(proxyContent).toContain('return json({ ok: false, error: "forbidden_client_webhook_url" }, 403);');
     });
@@ -184,7 +184,7 @@ describe('Ticket 1.2: discord-webhook-proxy - allowed_mentions Sanitization', ()
     it('requires both explicit request flag AND authorized admin role to validate permission in the edge function', () => {
         expect(proxyContent).toContain('explicitEveryoneRequested');
         expect(proxyContent).toContain('hasExplicitEveryonePermission');
-        expect(proxyContent).toContain('caller.role === "super_admin" || caller.role === "guild_admin" || caller.role === "server_admin"');
+        expect(proxyContent).toContain('isAdminRole(caller.role)');
         expect(proxyContent).toContain('payload.allowed_mentions = { parse: ["roles", "users"] };');
         expect(proxyContent).toContain('payload.allowed_mentions = { parse: ["roles", "users", "everyone"] };');
     });
@@ -204,7 +204,7 @@ describe('Ticket 1.2: discord-webhook-proxy - Architectural & Security Guards', 
     });
 
     it('enforces JWT validation and authorizes only admin roles', () => {
-        expect(proxyContent).toContain('validateCallerAuth');
-        expect(proxyContent).toContain('caller.role !== "guild_admin" && caller.role !== "server_admin" && caller.role !== "super_admin"');
+        expect(proxyContent).toContain('resolveCaller');
+        expect(proxyContent).toContain('!isAdminRole(caller.role)');
     });
 });

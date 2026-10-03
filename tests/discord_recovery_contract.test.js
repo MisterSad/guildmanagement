@@ -187,12 +187,12 @@ describe('backup codes: one implementation, one audience', () => {
     // reissue — stronger, because a second human is involved. A reply that
     // distinguished "wrong role" from "wrong code" would be a role oracle.
     const fn = discordFn.slice(discordFn.indexOf('async function handleBackupLogin'));
-    expect(fn).toContain('acc.role !== "super_admin"');
+    expect(fn).toContain('!isSuperAdmin(acc.role)');
     // The server logs the true reason — that is useful and stays server-side.
     // What must be uniform is the RESPONSE: every refusal returns invalid_code.
     // `locked_until` also appears in the earlier .select(), so the end bound
     // must be searched for AFTER the role check, not from the start.
-    const roleAt = fn.indexOf('acc.role !== "super_admin"');
+    const roleAt = fn.indexOf('!isSuperAdmin(acc.role)');
     const refusal = fn.slice(roleAt, fn.indexOf('locked_until', roleAt));
     const responses = refusal.match(/json\(\{ ok: false, error: "[a-z_]+" \}/g) || [];
     expect(responses.length).toBeGreaterThan(0);

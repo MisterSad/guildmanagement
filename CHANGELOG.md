@@ -2,6 +2,38 @@
 
 ## [Unreleased]
 
+- **One authorization decision point, and webhook URLs out of the browser** (medium-term plan, phase M2; audit ARC-03 outside the worker, BE-A-19, ARC-04).
+  - **One caller resolver.**
+    - `_shared/auth.ts` `resolveCaller(req)` replaces the four implementations: `validateCallerAuth`, `admin-accounts`' `getCallerInfo`, `member-portal`'s `getIdentity`, and the officer lookup of `discord-bot-interactions`, now `officerAccountsForDiscord`.
+    - Every function now refuses an inactive account (M14) and a revoked session (C1) the same way, and gets a normalized role and server. Before this, only one of the four normalized the role.
+    - 7 Deno tests cover it.
+  - **Role decisions go through `_shared/admin-authz.ts`.**
+    - `isSuperAdmin`, `isServerAdmin`, `isGuildAdmin`, `isMember` and `isAdminRole` replace about 40 inline comparisons and both `ADMIN_ROLES` lists.
+    - `tests/edge_role_predicates.test.js` fails on any new `role === "…"` outside that module.
+  - **`emailFor` and `randomSecret`** now live only in `_shared/shadow-session.ts`. The copy in `registration-decision.ts` is gone.
+  - **ARC-04: the browser no longer reads, stores or writes a Discord webhook URL.**
+    - Migration `webhook_urls_server_only`:
+      - `authenticated` no longer sees, inserts, updates or deletes the webhook rows of `guild_config`, via `gm_is_webhook_key`;
+      - `gm_configured_webhooks(guild)` names the keys that are set, never their values.
+    - Production measured before writing it: 75 webhook URLs, all valid Discord URLs.
+    - `discord-webhook-proxy` gains `set-webhook`, now the only writer of webhook URLs:
+      - Zod-validated;
+      - limited to the caller's scope;
+      - Discord webhook URLs only;
+      - rate-limited, failing closed;
+      - the URL is never logged.
+    - Front end:
+      - the admin form shows whether each webhook is set. Typing a URL replaces it, and a **Remove** button deletes it;
+      - `getGuildConfig` and `setGuildConfig` refuse webhook keys;
+      - the copies earlier versions left in `localStorage` are deleted;
+      - the Overview callout and event notifications ask the RPC.
+    - **Visible change:** admins no longer see their webhook URLs. They see "Webhook set".
+    - Tests:
+      - `supabase/tests/09_webhook_urls.sql`, 14 assertions;
+      - 6 Deno tests for `set-webhook`;
+      - `tests/webhook_urls_server_only.test.js`, 11 tests, including a static guard checked against the previous code.
+  - **Regex tests** that pinned the inline role strings, in 12 files, now pin the predicates.
+
 - **Tests that run the code** (medium-term plan, phase M1; audit QA-01, QA-02, QA-05). No behaviour change in production.
   - **Starting point.** 41% of the suite only read the source text; no test executed an Edge Function handler or any SQL.
   - **SQL tests on a real database.**

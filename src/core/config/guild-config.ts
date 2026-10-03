@@ -17,14 +17,6 @@ export const LOCAL_CONFIG_FALLBACK: Record<string, string> = {
   // B1: spread from the single declaration in ./event-coeffs, which the stats
   // engine reads too. These were five hand-written strings that duplicated it.
   ...defaultCoeffConfigEntries(),
-  webhook_armsrace: '',
-  webhook_dtr: '',
-  webhook_shadowfront: '',
-  webhook_calamity: '',
-  webhook_gvg: '',
-  webhook_svs: '',
-  webhook_svs_opponent: '',
-  webhook_gvg_opponent: '',
   notify_armsrace_reminder_30: 'true',
   notify_armsrace_reminder_5: 'true',
   notify_armsrace_start: 'true',
@@ -60,6 +52,38 @@ function ls(): Storage | null {
 }
 
 /**
+ * ARC-04: a Discord webhook URL is the credential of a channel, and the
+ * browser never holds one. The database hides these rows from browser sessions
+ * (public.gm_is_webhook_key); they are written through discord-webhook-proxy's
+ * `set-webhook` action, and `configuredWebhooks()` in core/integrations/discord
+ * says which are set. Same definition as the SQL function.
+ */
+export function isWebhookKey(key: string): boolean {
+  return key === 'discord_webhook_url' || /^webhook_[a-z0-9_]{1,40}$/.test(key);
+}
+
+let localWebhooksPurged = false;
+
+/**
+ * Deletes the webhook URLs earlier versions mirrored into localStorage
+ * (`gm_config_<guild>_webhook_*`). Runs once per page load.
+ */
+export function purgeLocalWebhookCopies(): void {
+  if (localWebhooksPurged) return;
+  localWebhooksPurged = true;
+  const store = ls();
+  if (!store) return;
+  try {
+    const doomed: string[] = [];
+    for (let i = 0; i < store.length; i++) {
+      const k = store.key(i);
+      if (k && /^gm_config_.+_(discord_webhook_url|webhook_[a-z0-9_]+)$/.test(k)) doomed.push(k);
+    }
+    doomed.forEach((k) => store.removeItem(k));
+  } catch (_) { /* storage blocked: nothing was stored either */ }
+}
+
+/**
  * Reads one config key: DB → localStorage → fallback table (or '').
  *
  * H2: `guild` may be passed explicitly. It used to be impossible to read
@@ -70,6 +94,8 @@ function ls(): Storage | null {
  * `gm_config_null_<key>` is not a cache, it is a bug waiting to be read back.
  */
 export async function getGuildConfig(key: string, guild?: string | null): Promise<any> {
+  purgeLocalWebhookCopies();
+  if (isWebhookKey(key)) return '';
   const currentG = guild || getActiveGuild();
   if (!currentG) {
     return LOCAL_CONFIG_FALLBACK[key] !== undefined ? LOCAL_CONFIG_FALLBACK[key] : '';
@@ -100,6 +126,10 @@ export async function getGuildConfig(key: string, guild?: string | null): Promis
  * visually validate an unchecked notification toggle (P0 audit RC1).
  */
 export async function setGuildConfig(key: string, value: any, guild?: string | null): Promise<boolean> {
+  if (isWebhookKey(key)) {
+    console.error(`[guild-config] Refusing to write "${key}": webhooks are set through setDiscordWebhook().`);
+    return false;
+  }
   const currentG = guild || getActiveGuild();
   // H2: refuse rather than write config into a guessed tenant. Returning false
   // is already the contract callers use to surface a failed persist.

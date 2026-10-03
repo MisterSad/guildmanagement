@@ -54,6 +54,7 @@ import {
   discordJson,
 } from "../_shared/discord.ts";
 import type { AdminClient } from "../_shared/db.ts";
+import { officerAccountsForDiscord } from "../_shared/auth.ts";
 import { serviceClient } from "../_shared/clients.ts";
 import { serveUnlessTest } from "../_shared/serve.ts";
 
@@ -132,48 +133,9 @@ async function resolveLinkedAccount(
   return { ok: true, uid: usable[0].uid!, guild: usable[0].guild! };
 }
 
-interface OfficerAccount {
-  id: string;
-  role: ReturnType<typeof normalizeRole>;
-  guild: string | null;
-  serverNumber: string | null;
-}
-
-/**
- * The ACTIVE officer accounts (any role above member) linked to a Discord
- * identity, each with its server number resolved from its guild when unset --
- * the same derivation admin-accounts' getCallerInfo() applies to a JWT caller.
- * This is the only source of authority for /invite and the join-request
- * buttons: Discord roles and permissions grant nothing.
- */
-async function officerAccounts(
-  admin: AdminClient,
-  discordUserId: string,
-): Promise<OfficerAccount[]> {
-  const { data: links } = await admin
-    .from("discord_account_links")
-    .select("account_id")
-    .eq("discord_user_id", discordUserId);
-  const ids = ((links as { account_id: string }[]) || []).map((l) => l.account_id);
-  if (ids.length === 0) return [];
-  const { data: accs } = await admin
-    .from("accounts")
-    .select("id, role, guild, server_number, status")
-    .in("id", ids);
-  const out: OfficerAccount[] = [];
-  for (const a of (accs as any[]) || []) {
-    if (a.status !== "active") continue;
-    const role = normalizeRole(a.role);
-    if (role === "member") continue;
-    let serverNumber: string | null = a.server_number ?? null;
-    if (!serverNumber && a.guild) {
-      const { data: g } = await admin.from("guilds").select("server_number").eq("id", a.guild).maybeSingle();
-      serverNumber = (g as any)?.server_number ?? null;
-    }
-    out.push({ id: a.id, role, guild: a.guild ?? null, serverNumber });
-  }
-  return out;
-}
+// The ACTIVE officer accounts linked to a Discord identity, resolved by the
+// same code as a JWT caller (_shared/auth.ts). Discord roles grant nothing.
+const officerAccounts = officerAccountsForDiscord;
 
 const NOT_AN_OFFICER_MSG =
   "Only a guild officer can do this. Sign in to the app with **Continue with Discord** using your officer account first.";

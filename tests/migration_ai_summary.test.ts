@@ -16,7 +16,7 @@ describe('Migration Hub AI Summary & Executive Briefing', () => {
       expect(fs.existsSync(edgeFnPath)).toBe(true);
       const content = fs.readFileSync(edgeFnPath, 'utf-8');
 
-      expect(content).toContain('validateCallerAuth');
+      expect(content).toContain('resolveCaller');
       expect(content).toContain('getValidatedEnv');
       expect(content).toContain('EdgeLogger');
       expect(content).toContain('getCorsHeaders');
@@ -30,11 +30,7 @@ describe('Migration Hub AI Summary & Executive Briefing', () => {
 
     it('enforces admin role gating (super_admin, server_admin, guild_admin)', () => {
       const content = fs.readFileSync(edgeFnPath, 'utf-8');
-      expect(content).toContain('ADMIN_ROLES');
-      expect(content).toContain('"super_admin"');
-      expect(content).toContain('"server_admin"');
-      expect(content).toContain('"guild_admin"');
-      expect(content).toContain('!ADMIN_ROLES.includes(caller.role)');
+      expect(content).toContain('!isAdminRole(caller.role)');
     });
 
     it('enforces strict Zod schema validation on request payload', () => {

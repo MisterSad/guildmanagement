@@ -41,8 +41,8 @@ describe('Bug-report ticketing (V3.5.3)', () => {
 
   it('the tickets Edge Function enforces identity + the 3-role gate and is CORS-correct', () => {
     const edge = read('supabase/functions/tickets/index.ts');
-    expect(edge).toContain('validateCallerAuth');
-    expect(edge).toContain('ADMIN_ROLES.includes(caller.role)');
+    expect(edge).toContain('resolveCaller');
+    expect(edge).toContain('!isAdminRole(caller.role)');
     expect(edge).toContain('forbidden');
     expect(edge).toContain('makeJson(req)');
     expect(edge).toContain('getCorsHeaders(req)');

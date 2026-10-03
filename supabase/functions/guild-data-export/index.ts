@@ -20,9 +20,9 @@
 import ExcelJS from "npm:exceljs@4.4.0";
 import { EdgeLogger } from "../_shared/logger.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
-import { validateCallerAuth } from "../_shared/auth.ts";
+import { resolveCaller } from "../_shared/auth.ts";
 import { escapeOrFilterValue } from "../_shared/like.ts";
-import { isGuildInScope } from "../_shared/admin-authz.ts";
+import { isAdminRole, isGuildAdmin, isGuildInScope } from "../_shared/admin-authz.ts";
 import { fetchAllRows } from "../_shared/pagination.ts";
 import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.ts";
 import { serviceClient } from "../_shared/clients.ts";
@@ -98,12 +98,12 @@ export async function handler(req: Request): Promise<Response> {
   if (req.method !== "POST") return json({ ok: false, error: "method_not_allowed" }, 405);
 
   const admin = serviceClient();
-  const caller = await validateCallerAuth(req, SUPABASE_URL, ANON_KEY, SERVICE_ROLE);
+  const caller = await resolveCaller(req);
 
   if (!caller.authenticated || !caller.role || caller.status !== "active") {
     return json({ ok: false, error: "unauthorized" }, 401);
   }
-  if (caller.role !== "super_admin" && caller.role !== "server_admin" && caller.role !== "guild_admin") {
+  if (!isAdminRole(caller.role)) {
     return json({ ok: false, error: "forbidden" }, 403);
   }
 
@@ -123,12 +123,12 @@ export async function handler(req: Request): Promise<Response> {
     return json({ ok: false, error: "invalid_guild" }, 400);
   }
 
-  let targetGuild: string | null = caller.role === "guild_admin" ? caller.guild : (body?.guild || null);
+  let targetGuild: string | null = isGuildAdmin(caller.role) ? caller.guild : (body?.guild || null);
   if (!targetGuild) {
     return json({ ok: false, error: "missing_guild" }, 400);
   }
 
-  if (caller.role !== "guild_admin") {
+  if (!isGuildAdmin(caller.role)) {
     const { data: g } = await admin.from("guilds").select("server_number").eq("id", targetGuild).maybeSingle();
     // FINDING M16, upstream half. `targetGuild` arrives from the request body
     // for anyone above guild_admin, and it is interpolated into a PostgREST

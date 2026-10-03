@@ -139,8 +139,9 @@ describe('member-portal no longer decrypts the shadow secret on every request', 
   // the very assertion that proves it is gone.
   const code = body.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
 
-  it('resolves the player UID straight from the accounts row', () => {
-    expect(code).toContain('const playerUid = (acc.uid || accountId) as string;');
+  it('resolves the player UID from the caller resolved by _shared/auth.ts', () => {
+    expect(code).toContain('const caller = await resolveCaller(req, admin);');
+    expect(code).toContain('uid: caller.uid || caller.accountId,');
   });
 
   it('makes no gm_get_shadow call and reads no player_uid field', () => {
@@ -148,12 +149,4 @@ describe('member-portal no longer decrypts the shadow secret on every request', 
     expect(code).not.toMatch(/row\?\.player_uid/);
   });
 
-  it('still selects uid in the accounts query it depends on', () => {
-    // Asserted per column, not as a frozen list: the same query legitimately
-    // grew `session_version` for finding C1, and pinning the exact string made
-    // that addition look like a regression in the UID resolution this covers.
-    const select = code.match(/\.select\("([^"]*)"\)/);
-    expect(select, 'getIdentity must still query accounts').not.toBe(null);
-    expect(select[1].split(',').map((c) => c.trim())).toContain('uid');
-  });
 });

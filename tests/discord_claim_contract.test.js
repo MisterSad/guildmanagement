@@ -85,7 +85,7 @@ describe('the ordering that must not be inverted', () => {
     // administrator above them to unlink and reissue. They must leave this
     // request holding codes.
     const fn = discordFn.slice(discordFn.indexOf('async function handleClaim'));
-    expect(fn).toContain('role === "super_admin"');
+    expect(fn).toContain('isSuperAdmin(role)');
     expect(fn).toContain('issueBackupCodes(admin, accountId)');
     expect(fn.indexOf('issueBackupCodes')).toBeLessThan(fn.indexOf('establishShadowSession'));
     expect(fn).toContain('backup_codes: backupCodes');
