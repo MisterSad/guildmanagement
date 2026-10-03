@@ -11,7 +11,9 @@
 
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 
 const root = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
@@ -133,5 +135,30 @@ describe('config.toml stays the single declaration of verify_jwt', () => {
                       'ocr-guild-members', 'tickets', 'migration-summary']) {
       expect(block(fn), `${fn} must stay verify_jwt = true`).toMatch(/verify_jwt\s*=\s*true/);
     }
+  });
+});
+
+describe('the deploy script, run', () => {
+  // Runs the real script with a stand-in `supabase` that only records what it
+  // was asked to deploy. d089916 (M3) changed four functions and _test/, and
+  // the deploy job failed trying to deploy `_test` as a function.
+  function deployedBetween(base, head) {
+    const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'gm-deploy-'));
+    const log = path.join(bin, 'deployed.log');
+    fs.writeFileSync(path.join(bin, 'supabase'), `#!/usr/bin/env bash\necho "$3" >> "${log}"\n`, { mode: 0o755 });
+    execFileSync('bash', ['scripts/deploy-edge-functions.sh', base, head], {
+      cwd: root,
+      env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, SUPABASE_ACCESS_TOKEN: 'test', SUPABASE_PROJECT_REF: 'test-ref' },
+      stdio: 'pipe',
+    });
+    return fs.existsSync(log) ? fs.readFileSync(log, 'utf8').trim().split('\n').sort() : [];
+  }
+
+  const hasCommit = (sha) => {
+    try { execFileSync('git', ['cat-file', '-e', `${sha}^{commit}`], { cwd: root, stdio: 'pipe' }); return true; } catch { return false; }
+  };
+
+  it.runIf(hasCommit('b68ed4b') && hasCommit('d089916'))('deploys the functions a push changed, never a `_` directory', () => {
+    expect(deployedBetween('b68ed4b', 'd089916')).toEqual(['admin-accounts', 'auth-discord', 'event-reminders', 'member-portal']);
   });
 });

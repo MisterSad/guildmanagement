@@ -15,6 +15,7 @@
 #     (where verify_jwt is declared)          -> every function;
 #   - any file under supabase/functions/<fn>/ -> that function. The hook only
 #     looked at index.ts, so a change to a function's other files never shipped;
+#   - any other supabase/functions/_<dir>/ (e.g. _test) -> nothing;
 #   - an unknown base (first push, force-push) -> every function.
 #
 # NOTE ON verify_jwt -- do not add `--no-verify-jwt` back.
@@ -62,6 +63,9 @@ else
     fi
     if [[ "$f" == "${FUNCTIONS_DIR}/"*/* ]]; then
       fn=$(echo "$f" | cut -d'/' -f3)
+      # Other `_` directories (_test: the in-memory Supabase the handler tests
+      # run against) are not functions and are imported by none.
+      [[ "$fn" == _* ]] && continue
       # A function deleted in this push has nothing left to deploy.
       [[ -d "${FUNCTIONS_DIR}/${fn}" ]] && DEPLOY_FUNCTIONS+=("$fn")
     fi
