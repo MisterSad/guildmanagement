@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+- **Guild rename, phase 3 of 3: documentation and Discord side effects.**
+  - **ADR-022, "The guild TAG is a mutable tenant key".** It records why the key is renamed in place by a deferred cascade rather than moved to a UUID surrogate, and the invariants this sets:
+    - a new tag-carrying column needs a deferrable FK, or an entry in `gm_rename_guild`;
+    - nothing may cache a TAG without a refresh path.
+
+    AGENTS.md carries the invariant.
+  - **Discord, checked in the worker and the Edge Function:**
+    - The worker's channel→TAG map refreshes every 5 minutes. During that window, a verification resolves no home server (`home_server_unknown`) and fails visibly. It never writes under the old TAG.
+    - `/reconcile-roles` finds the guild role by name, so the Discord role must be renamed by hand. The rename dialog now says both.
+  - **ARCHITECTURE.md and AGENTS.md re-measured on production:**
+    - 35 guilds, ~3,797 members, ~55,943 participation rows;
+    - 41 tables, all with RLS and FORCE RLS, and 86 policies. The previous figures were 26, ~3,005, 38 and 87.
+
+    Ten tables missing from the §4.1 inventory are now listed.
+
 - **Guild rename, phase 2 of 3: the UI.**
   - **A "Guild TAG" card on Accounts & Access.** It shows the current TAG, the last changes and when the next change is possible, plus a "Change TAG" button.
   - **The server decides who sees the card.** `gm_guild_tag_history` (migration `20261003071704`) now returns `can_rename` and `cooldown_applies`, with the same rule `gm_rename_guild` enforces. Checked live for all three roles: guild_admin and super_admin may rename, the super_admin is exempt from the cooldown, and a server_admin, who can read the history but not rename, never sees a button that would always fail.

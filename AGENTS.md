@@ -10,11 +10,12 @@ Never claim completion without proof, and never fabricate a result. Measure agai
 - **Frontend**: TypeScript ES modules in `src/`, built by Vite. No UI framework. Views call each other by typed import; only three `window.GM_*` names survive deliberately (`tests/gm_bridge_contract.test.js` pins the list).
 - **Backend**: Supabase Postgres 17 (RLS, `SECURITY DEFINER`, `SET search_path = ''`) + Deno Edge Functions. 15 deployed, 15 in the repo — keep it reconciled (ADR-017).
 - **Hosting**: Vercel. No service worker behaviour, no PWA, no cookies, no analytics.
-- **Scale**: 26 guilds, ~3,005 members, ~55,760 participation rows, 38 tables, 87 policies.
+- **Scale** (measured 2026-10-03): 35 guilds, ~3,797 members, ~55,943 participation rows, 41 tables, 86 policies.
 
 ## Invariants that are easy to break
 - **Four roles**: `super_admin`, `server_admin`, `guild_admin`, `member`. Resolved from `accounts` via `auth.uid()` — never from client-supplied data.
 - **No per-tenant branching, and no hardcoded tenant list.** An unresolved tenant fails visibly; it never falls back to a real guild.
+- **The guild TAG is a mutable tenant key** (ADR-022). A new column carrying a tag needs a `DEFERRABLE INITIALLY IMMEDIATE` FK (`ON UPDATE CASCADE` to `guilds`), or an entry in `gm_rename_guild`. `tests/guild_rename_migration.test.js` checks it against the regenerated types.
 - **`core/` never imports `modules/`.**
 - **`src/core/state/app-state.ts` is the only writer** of cross-cutting state. Never assign `window.currentGuild` and friends directly.
 - **The app is free** (ADR-015) and has **no PWA or push** (ADR-016). Do not reintroduce either, and do not document them.

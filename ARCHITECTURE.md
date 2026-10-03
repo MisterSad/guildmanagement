@@ -67,7 +67,7 @@
 │                                   DATABASE LAYER (Postgres 17)                          │
 │  ┌───────────────────────────────────────────────────────────────────────────────────┐  │
 │  │ Supabase Postgres 17 (Multi-Tenant Schema with Zero-Trust Row Level Security)       │  │
-│  │ ├─ 38 persistent tables, all RLS + FORCE RLS, 87 policies                         │  │
+│  │ ├─ 41 persistent tables, all RLS + FORCE RLS, 86 policies                         │  │
 │  │ ├─ Security Definer Access Helpers with `SET search_path TO ''`                   │  │
 │  │ ├─ Deterministic Event Session Generator: `public.gm_event_session_id()`           │  │
 │  │ ├─ Distributed Audit Ledger: `public.system_audit_logs` (service_role only)       │  │
@@ -158,10 +158,10 @@ The Player Portal (`portal.js`) never connects to Postgres directly. All actions
 
 ### 4. Database Topology & Access Helpers
 
-#### 4.1 Database Tables (**38 persistent tables**, counted live 2026-09-27; all have RLS *and* FORCE RLS, across 87 policies):
-- **Core Tenant / Roster** (19): `guilds` (**26 rows**, 1 is `DEMO`), `guild_members` (**~3,005 rows**), `event_status`, `event_participants` (**~55,760 rows** — the permanent attendance ledger), `war_opponents`, `war_sessions`, `event_daily_scores`, `event_chest_tiers` (SvS/GvG granular war — added 2026-09-13, see §4.4), `shadowfront_squads` (weekly squad *assignments* — does not reliably retain history once a later session overwrites it, unlike `event_participants`; see the Shadowfront attendance-rate note below), `shadowfront_signups`, `weekly_scores`, `sanctions`, `banned_players`, `guild_config`, `guild_transfers`, `player_name_history`, `player_metrics_history`, `server_migration_groups`, `server_migration_group_servers`. `diplomatic_treaties` was dropped in Phase 3 (0 rows, no UI).
+#### 4.1 Database Tables (**41 persistent tables**, counted live 2026-10-03; all have RLS *and* FORCE RLS, across 86 policies):
+- **Core Tenant / Roster** (19): `guilds` (**35 rows**, 1 is `DEMO`), `guild_members` (**~3,797 rows**), `event_status`, `event_participants` (**~55,943 rows** — the permanent attendance ledger), `war_opponents`, `war_sessions`, `event_daily_scores`, `event_chest_tiers` (SvS/GvG granular war — added 2026-09-13, see §4.4), `shadowfront_squads` (weekly squad *assignments* — does not reliably retain history once a later session overwrites it, unlike `event_participants`; see the Shadowfront attendance-rate note below), `shadowfront_signups`, `weekly_scores`, `sanctions`, `banned_players`, `guild_config`, `guild_transfers`, `player_name_history`, `player_metrics_history`, `server_migration_groups`, `server_migration_group_servers`. `diplomatic_treaties` was dropped in Phase 3 (0 rows, no UI).
 
-> **These figures were counted against production on 2026-09-27, not estimated.** The previous set (13 / ~1,540 / ~33k) understated the live system by roughly a factor of two and had been carried forward unchecked. Re-measure rather than adjust: `SELECT count(*)` on the three tables.
+> **These figures were counted against production on 2026-10-03, not estimated.** The previous set (13 / ~1,540 / ~33k) understated the live system by roughly a factor of two and had been carried forward unchecked. Re-measure rather than adjust: `SELECT count(*)` on the three tables.
 - **Accounts & Identity** (8): `accounts` (custom bcrypt credential store, source of truth — see §2), `login_throttle` (shared IP rate limit for `auth-login` + `auth-passkey`), `webauthn_challenges`, `account_passkeys`, `account_backup_codes` (Passkeys/WebAuthn, added 2026-09), `discord_account_links`, `discord_link_codes`, `discord_verification_throttle` (Discord account linking + verification rate limiting, added 2026-09).
 - **Self-Service Requests** (1): `guild_creation_requests` (public `guild-request` submissions, reviewed by `super_admin`).
 - **Player Portal** (1): `player_absences`. `player_push_prefs` was dropped with Web Push in Phase 2.
@@ -169,8 +169,9 @@ The Player Portal (`portal.js`) never connects to Postgres directly. All actions
 - **Leader Hall E2EE (Signal Protocol) — removed entirely (0)**: the seven `e2ee_*` tables are dropped. Verified against `pg_class`, not assumed from a migration file.
 - **Support** (1): `tickets` (in-app bug-report console). `gm_payments` was dropped in Phase 1 with the rest of the payment surface.
 - **Observability** (1): `system_audit_logs` (service_role-only INSERT).
+- **Not yet sorted into the groups above** (10, listed so the inventory matches `pg_class`): `guild_tag_history` (one row per guild TAG change, drives the 7-day cooldown — ADR-022), `guild_weekly_snapshots` (ADR-019), `ocr_cache` (ADR-012), `migration_wiki_pages`, `migration_wiki_comments`, `account_link_codes`, `discord_auth_tickets`, `discord_auth_throttle`, `discord_oauth_states`, `discord_rally_responses`.
 
-> **Count note**: count tables from `pg_class`, never from the number of `CREATE TABLE` statements in the migration chain — the chain also contains the drops, so the two diverge every time something is removed, which is how this document came to claim 42. As of 2026-09-27 there are **38**, every one with RLS and FORCE RLS enabled. Phases 1–3 dropped `gm_payments`, `diplomatic_treaties`, the seven `e2ee_*` tables and the two Web Push tables; `tmp_demo_roster` is a session-scoped `TEMP` staging table and never appears in the count.
+> **Count note**: count tables from `pg_class`, never from the number of `CREATE TABLE` statements in the migration chain — the chain also contains the drops, so the two diverge every time something is removed, which is how this document came to claim 42. As of 2026-10-03 there are **41**, every one with RLS and FORCE RLS enabled. Phases 1–3 dropped `gm_payments`, `diplomatic_treaties`, the seven `e2ee_*` tables and the two Web Push tables; `tmp_demo_roster` is a session-scoped `TEMP` staging table and never appears in the count.
 
 > ⚠️ **Note on `shadowfront_squads` completeness**: a long-tenured player can show more attended Shadowfront weeks (`event_participants`) than surviving squad-assignment rows (`shadowfront_squads`), because the latter doesn't reliably retain every past week once a later session overwrites it. The Stats attendance-rate calculation (`gm-utils.js:computeShadowfrontAttendanceRate`) floors its denominator at the attended count to stay mathematically capped at 100%, but the underlying gap in `shadowfront_squads` itself is unresolved — any *new* feature reading that table should not assume it is a complete historical ledger.
 

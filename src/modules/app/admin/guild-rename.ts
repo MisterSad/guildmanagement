@@ -2,7 +2,7 @@
  * src/modules/app/admin/guild-rename.ts
  *
  * Changing a guild's TAG after creation (gm_rename_guild, migration
- * 20261003070904). The tag is the tenant key, so the server moves every row in
+ * 20261003070904, ADR-022). The tag is the tenant key, so the server moves every row in
  * one transaction; this module is the UI around it:
  *
  *   - the "Guild TAG" card on Accounts & Access (shown when the server says
@@ -202,7 +202,8 @@ export function openRenameGuildDialog(guild: string, onRenamed?: (newTag: string
       '<ul class="gm-dim" style="font-size: 0.85rem; margin: 0.5rem 0 1rem; padding-left: 1.1rem; text-align: left;">' +
         '<li>Every member, score, event and setting moves to the new TAG.</li>' +
         '<li>Other admins signed in right now will need to reload the page.</li>' +
-        '<li>Discord roles and channels named after the old TAG are not renamed.</li>' +
+        '<li>Discord roles and channels named after the old TAG are not renamed: rename your guild role in Discord, the bot finds it by name.</li>' +
+        '<li>Discord verification picks up the new TAG within 5 minutes.</li>' +
         '<li>A guild admin can change the TAG once every 7 days.</li>' +
       '</ul>' +
       '<div class="confirm-actions">' +
