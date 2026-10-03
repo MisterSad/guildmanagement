@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+- **Security: the retired cron secret is out of the working tree, and its rotation is proven** (audit REC-03, SEC-18).
+  - `tests/remediation_audit.test.js` held the plaintext of the cron secret committed in `a85ee6e`, inside the very assertion that it never reappears in the migrations. It now checks a SHA-256 digest over a sliding window, so it guards the same thing without carrying the value.
+  - **Rotation verified on production.** Compared by digest, never by value: Vault's `event_reminders_cron_secret` is a different 64-character value. The Edge `CRON_SECRET` matches it, since every pg_cron call to `event-reminders` on 2026-10-03 returned 200. The old value opens nothing.
+  - An exhaustive scan of every tracked file, with a digest over a sliding window, found the value nowhere else. It remains in Git history, which is now harmless.
+
 - **Security: the browser never posts to a Discord webhook** (audit ARC-04, AGENTS.md rule 5).
   - **Removed the fallback in `shareMatchupRosterToDiscord`.** When `discord-webhook-proxy` refused, including with its `429` rate limit, the browser POSTed straight to the webhook. That bypassed the proxy's server-side resolution, guild scoping and rate limit. The helper had no caller anywhere, and it also prompted for a webhook URL and saved it from the browser, so it is deleted outright with its `window.GM` export.
   - **Removed the direct POST in `sendDiscordWebhookDetailed`.** Without a Supabase client it now fails with `proxy_unavailable`. Every webhook goes through the proxy.

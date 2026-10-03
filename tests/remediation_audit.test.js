@@ -3,6 +3,21 @@ import fs from 'fs';
 import path from 'path';
 import { logger } from '../src/core/logger/logger';
 import { computeMemberTier, calculateMatchupData, calculateMatchupAsync } from '../src/workers/matchup.worker';
+import crypto from 'node:crypto';
+
+// SHA-256 of the cron secret committed in a85ee6e and rotated since (Vault holds
+// a different, 64-character value, verified 2026-10-03). Only the digest lives
+// here, so the repository no longer hands out the value it is checking for.
+const RETIRED_CRON_SECRET_SHA256 = 'bcd74467ea99b62ce696da40114d057bc5f8d4119724d663f66f69040e30ab8c';
+const RETIRED_CRON_SECRET_LENGTH = 37;
+
+function containsRetiredCronSecret(text) {
+  for (let i = 0; i + RETIRED_CRON_SECRET_LENGTH <= text.length; i++) {
+    const candidate = text.slice(i, i + RETIRED_CRON_SECRET_LENGTH);
+    if (crypto.createHash('sha256').update(candidate).digest('hex') === RETIRED_CRON_SECRET_SHA256) return true;
+  }
+  return false;
+}
 
 describe('Audit Remediation Verification Suite', () => {
   it('SEV-01: verifies discord-webhook-proxy requires JWT and checks guild_admin/server_admin/super_admin roles', () => {
@@ -198,8 +213,10 @@ describe('Audit Remediation Verification Suite', () => {
     // 2. Legacy migrations scrubbed
     const leg1 = fs.readFileSync(path.resolve(__dirname, '../supabase/migrations/20260817113000_schedule_event_reminders_cron.sql'), 'utf-8');
     const leg2 = fs.readFileSync(path.resolve(__dirname, '../supabase/migrations/20260817114500_update_event_reminders_cron_secret.sql'), 'utf-8');
-    expect(leg1).not.toContain('fgf-cron-secret-2026-secure-reminders');
-    expect(leg2).not.toContain('fgf-cron-secret-2026-secure-reminders');
+    // The retired cron secret is checked by digest, never by value: this test
+    // used to carry the plaintext it was guarding against (audit REC-03).
+    expect(containsRetiredCronSecret(leg1)).toBe(false);
+    expect(containsRetiredCronSecret(leg2)).toBe(false);
     expect(leg1).toContain('__ROTATED__SEE_VAULT__');
     expect(leg2).toContain('__ROTATED__SEE_VAULT__');
 
