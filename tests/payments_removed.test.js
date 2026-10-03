@@ -52,10 +52,10 @@ describe('no payment code ships', () => {
     // -- and a raw search flags correct documentation as a regression. This has
     // now bitten in five separate suites; strip, then assert.
     const config = stripHashComments(read('supabase/config.toml'));
-    const hook = stripHashComments(read('scripts/hooks/pre-push'));
+    const hook = stripHashComments(read('scripts/deploy-edge-functions.sh'));
     for (const slug of ['gm-create-order', 'gm-order-status', 'gm-stripe-webhook', 'gm-revolut-webhook']) {
       expect(config, `config.toml still declares ${slug}`).not.toContain(slug);
-      expect(hook, `the pre-push hook still deploys ${slug}`).not.toContain(slug);
+      expect(hook, `the deploy script still names ${slug}`).not.toContain(slug);
     }
   });
 

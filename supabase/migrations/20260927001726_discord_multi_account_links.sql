@@ -110,8 +110,10 @@ BEGIN
 
     -- No ON CONFLICT: the delete above has just guaranteed no row exists for
     -- this account, and (discord_user_id, account_id) is the key now. The old
-    -- `ON CONFLICT (discord_user_id)` would raise, because that column alone is
-    -- no longer a unique constraint.
+    -- conflict target on discord_user_id alone would raise, because that column
+    -- is no longer a unique constraint. (Reworded 2026-10-03: the assertion
+    -- below matched this comment and failed every replay. Production ran the
+    -- file without comments.)
     INSERT INTO public.discord_account_links (discord_user_id, account_id)
     VALUES (p_discord_user_id, v_acc.id);
 

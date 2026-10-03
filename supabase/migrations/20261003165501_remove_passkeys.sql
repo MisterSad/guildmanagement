@@ -33,7 +33,10 @@ BEGIN
     RAISE NOTICE 'gm_claim_account_with_discord no longer names the passkey tables';
     RETURN;
   END IF;
-  IF md5(v_def) <> 'bd8c0de38c06eeeaac0e76164f0f2621' OR position(v_old IN v_def) = 0 THEN
+  IF current_setting('gm.replay', true) = 'on' AND position(v_old IN v_def) = 0 THEN
+    RAISE NOTICE 'replay: gm_claim_account_with_discord left to the snapshot migrations'; RETURN;
+  END IF;
+  IF (md5(v_def) <> 'bd8c0de38c06eeeaac0e76164f0f2621' AND current_setting('gm.replay', true) IS DISTINCT FROM 'on') OR position(v_old IN v_def) = 0 THEN
     RAISE EXCEPTION 'gm_claim_account_with_discord changed since this migration was written; re-read it first';
   END IF;
   v_def := replace(v_def, v_old,
@@ -90,7 +93,10 @@ BEGIN
   IF to_regclass('public.account_passkeys') IS NOT NULL OR to_regclass('public.webauthn_challenges') IS NOT NULL THEN
     RAISE EXCEPTION 'a passkey table still exists';
   END IF;
-  IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+  -- On an empty replay the claim function still has the repository's earlier
+  -- body here; snapshot_drifted_functions_1 restates production's, md5-checked.
+  IF current_setting('gm.replay', true) IS DISTINCT FROM 'on'
+     AND EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
              WHERE n.nspname = 'public' AND p.prokind = 'f'
                AND pg_get_functiondef(p.oid) ~ '(account_passkeys|webauthn_challenges)') THEN
     RAISE EXCEPTION 'a function still names a dropped passkey table';

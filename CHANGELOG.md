@@ -2,6 +2,37 @@
 
 ## [Unreleased]
 
+- **CI: the migrations replay, the Edge Functions type-check, and deploys wait for a green build** (short-term plan, phase 5; audit DB-01, DB-03, QA-08, INF-09, SEC-24).
+  - **The migration chain replays on an empty PostgreSQL 17.** It never had: the first attempt stopped at migration 83 of 138.
+    - `scripts/replay-migrations.sh` applies `supabase/replay/prelude.sql` and then every file, one transaction each, stopping at the first error.
+    - The prelude now behaves like Supabase where the migrations look: `cron.job` records schedules, plus `auth.users`, `auth.sessions`, `auth.refresh_tokens`, `storage.buckets` and `storage.objects`, and Supabase's default grants to the API roles.
+    - **Applied migrations were edited, for replay only.** Five checks that pin production's function bodies or reviewed row counts now step aside when `gm.replay = on`; none of them relaxes a grant or a policy. One comment matched its own migration's assertion and was reworded. Two `gm_event_scoring_key` overloads are reordered. `reconcile_schema_objects` now also replaces a mismatched foreign key instead of skipping it.
+  - **The replayed schema is compared with production.** `supabase/replay/schema-fingerprint.sql` gives one line per object (columns, grants, constraints, indexes, function bodies with their EXECUTE grants, policies, triggers), and CI diffs it against `tests/fixtures/schema_fingerprint.txt`.
+    - The first comparison found 84 differences. Two would have been incidents on a restore built from the repository:
+      - `authenticated` got INSERT, UPDATE and DELETE on `accounts`, plus SELECT on the credential columns (finding C0 again);
+      - three authorisation helpers were executable by `anon`.
+    - **`20261003174320_reconcile_replay_to_production`** closes all 84. Every statement is conditional. On production its only effect is `accounts.created_at DEFAULT now()`.
+    - Checked on production in a rolled-back transaction: the fingerprint after it equals the replay's exactly, md5 `4c6f6285…` over 1,091 objects.
+    - Applied 2026-10-03 with the owner's approval. Production's fingerprint afterwards is that same md5.
+  - **Edge Functions are type-checked.** `deno check` reported 121 errors.
+    - 106 came from one cause: `ReturnType<typeof createClient>`, written inline 28 times, resolves every table to `never` in supabase-js 2.117. The new `_shared/db.ts` gives one `AdminClient` type instead.
+    - The rest were TypeScript 5.9 strictness: buffers handed to WebCrypto and `Blob`, Node's `process` read in `env.ts`, and a union narrowed by `mode`.
+    - Two were real bugs:
+      - `tickets` passed its log context as a third argument, which `logger.warn` drops, so the ticket number was never logged;
+      - `admin-accounts issue-admin-invite` queried `id = undefined` when no guild was given, and now answers `missing_fields`.
+  - **Deploys run from CI, after every job is green.** The `deploy-edge-functions` job runs on `main` only, through `scripts/deploy-edge-functions.sh`, authenticated by the `SUPABASE_ACCESS_TOKEN` repository secret. It keeps the hook's protections:
+    - no `--no-verify-jwt` (finding M1);
+    - functions enumerated from disk.
+    It also fixes two gaps:
+    - any file of a function now redeploys it (the hook only looked at `index.ts`), and `config.toml` redeploys everything;
+    - a missing token fails the job instead of skipping it.
+  - **The `pre-push` hook no longer deploys.** It deployed from a laptop before CI had run; it now only type-checks. Reinstall it with `npm run setup:hooks`.
+  - **`ci.yml` declares `permissions: contents: read`** (SEC-24).
+  - **Tests.**
+    - New: `tests/deploy_edge_functions.test.js` (replaces `deploy_hook.test.js`) and `tests/migration_replay.test.js`.
+    - Gate: type-check clean, 2,444 unit tests, build, 44 e2e, `deno check` clean.
+    - The CI replay job was run locally exactly as CI runs it: 138 migrations, fingerprint match.
+
 - **Database: production and the repository describe the same schema again** (short-term plan, phase 4b; audit DB-01, DB-04, BE-B-05). No app code changes.
   - **`20261003170654_reconcile_schema_objects`** adds what the base migrations declared but production never built, and versions what only production had.
     - **Indexes.** The index on `accounts.auth_user_id`, which every RLS helper filters on, did not exist: the audit measured 11.9 M sequential scans of `accounts`. It served 14,194 lookups in the first minutes. Also new: `guild_members(uid)` and `event_daily_scores(guild, pseudo)`.

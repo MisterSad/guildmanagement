@@ -810,19 +810,8 @@ REVOKE ALL ON FUNCTION public.gm_erase_account(p_account_id text) FROM PUBLIC, a
 GRANT EXECUTE ON FUNCTION public.gm_erase_account(p_account_id text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.gm_erase_account(p_account_id text) TO service_role;
 
--- gm_event_scoring_key(p_event_name text, p_session_id text, p_week_start date)
-CREATE OR REPLACE FUNCTION public.gm_event_scoring_key(p_event_name text, p_session_id text, p_week_start date)
- RETURNS text
- LANGUAGE sql
- IMMUTABLE
- SET search_path TO ''
-AS $function$
-  SELECT public.gm_event_scoring_key(p_event_name, p_session_id, to_char(p_week_start, 'YYYY-MM-DD'));
-$function$;
-REVOKE ALL ON FUNCTION public.gm_event_scoring_key(p_event_name text, p_session_id text, p_week_start date) FROM PUBLIC, anon, authenticated, service_role;
-GRANT EXECUTE ON FUNCTION public.gm_event_scoring_key(p_event_name text, p_session_id text, p_week_start date) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.gm_event_scoring_key(p_event_name text, p_session_id text, p_week_start date) TO service_role;
-
+-- (The text overload comes first: the date one is a SQL function that calls it,
+-- and a SQL body is validated when it is created.)
 -- gm_event_scoring_key(p_event_name text, p_session_id text, p_week_start text)
 CREATE OR REPLACE FUNCTION public.gm_event_scoring_key(p_event_name text, p_session_id text, p_week_start text)
  RETURNS text
@@ -841,6 +830,19 @@ AS $function$
 $function$;
 REVOKE ALL ON FUNCTION public.gm_event_scoring_key(p_event_name text, p_session_id text, p_week_start text) FROM PUBLIC, anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.gm_event_scoring_key(p_event_name text, p_session_id text, p_week_start text) TO service_role;
+
+-- gm_event_scoring_key(p_event_name text, p_session_id text, p_week_start date)
+CREATE OR REPLACE FUNCTION public.gm_event_scoring_key(p_event_name text, p_session_id text, p_week_start date)
+ RETURNS text
+ LANGUAGE sql
+ IMMUTABLE
+ SET search_path TO ''
+AS $function$
+  SELECT public.gm_event_scoring_key(p_event_name, p_session_id, to_char(p_week_start, 'YYYY-MM-DD'));
+$function$;
+REVOKE ALL ON FUNCTION public.gm_event_scoring_key(p_event_name text, p_session_id text, p_week_start date) FROM PUBLIC, anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.gm_event_scoring_key(p_event_name text, p_session_id text, p_week_start date) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.gm_event_scoring_key(p_event_name text, p_session_id text, p_week_start date) TO service_role;
 
 -- gm_find_player_by_uid(p_uid text)
 CREATE OR REPLACE FUNCTION public.gm_find_player_by_uid(p_uid text)

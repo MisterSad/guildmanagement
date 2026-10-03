@@ -64,8 +64,10 @@ function getRawEnv(): Record<string, string | undefined> {
     }
     return env;
   }
-  if (typeof process !== "undefined" && process.env) {
-    return process.env as Record<string, string | undefined>;
+  // Node (vitest): read through globalThis so the Deno type-check needs no Node types.
+  const proc = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process;
+  if (proc?.env) {
+    return proc.env;
   }
   return {};
 }

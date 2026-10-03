@@ -119,6 +119,7 @@ CREATE TRIGGER trg_event_status_updated_at
 DO $fk$
 DECLARE
   r record;
+  v_old record;
 BEGIN
   FOR r IN SELECT * FROM (VALUES
       ('accounts',           'guild'),
@@ -130,6 +131,19 @@ BEGIN
       ('player_absences',    'guild'),
       ('war_opponents',      'guild_ref')
   ) v(tbl, col) LOOP
+    -- The base migrations of the repository declared some of these keys ON
+    -- DELETE CASCADE, under other names. Production never had them; an empty
+    -- replay does. Any key on the column that is not exactly the one below goes.
+    FOR v_old IN
+      SELECT k.conname FROM pg_constraint k
+      WHERE k.conrelid = ('public.' || r.tbl)::regclass AND k.contype = 'f'
+        AND k.confrelid = 'public.guilds'::regclass
+        AND k.conkey = ARRAY[(SELECT attnum FROM pg_attribute WHERE attrelid = ('public.' || r.tbl)::regclass AND attname = r.col)]
+        AND NOT (k.conname = r.tbl || '_' || r.col || '_fkey' AND k.confupdtype = 'c' AND k.confdeltype = 'a'
+                 AND k.condeferrable AND NOT k.condeferred)
+    LOOP
+      EXECUTE format('ALTER TABLE public.%I DROP CONSTRAINT %I', r.tbl, v_old.conname);
+    END LOOP;
     IF NOT EXISTS (
       SELECT 1 FROM pg_constraint c
       WHERE c.conrelid = ('public.' || r.tbl)::regclass AND c.contype = 'f'

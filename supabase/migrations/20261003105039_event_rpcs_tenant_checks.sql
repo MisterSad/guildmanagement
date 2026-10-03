@@ -46,6 +46,8 @@ DECLARE
   v_def  text;
   v_args text[];
 BEGIN
+  -- These guards pin production's bodies; an empty replay has the repository's.
+  IF current_setting('gm.replay', true) = 'on' THEN RETURN; END IF;
   SELECT pg_get_functiondef(p.oid), p.proargnames INTO v_def, v_args
     FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
    WHERE n.nspname = 'public' AND p.proname = 'gm_add_member_to_active_events'

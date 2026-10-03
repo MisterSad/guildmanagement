@@ -7,14 +7,14 @@
  * particular are unbounded, append-only ledgers for a real guild).
  */
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
+import type { AdminClient } from "./db.ts";
 
 /**
  * Searches for a GoTrue user by email across all pages.
  * Handles pagination up to 10,000 users safely.
  */
 export async function findUserByEmail(
-  admin: ReturnType<typeof createClient>,
+  admin: AdminClient,
   email: string
 ): Promise<{ id: string; email?: string; app_metadata?: Record<string, unknown> } | null> {
   if (!email) return null;
@@ -62,7 +62,7 @@ const TABLE_PAGE_SIZE = 1000;
  * default row cap otherwise applies transparently to a plain .select()).
  */
 export async function fetchAllRows(
-  admin: ReturnType<typeof createClient>,
+  admin: AdminClient,
   table: string,
   columns: string,
   applyFilter: (query: any) => any

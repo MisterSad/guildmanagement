@@ -23,6 +23,7 @@ import {
   setPlayerAbsence,
   deletePlayerAbsence,
 } from "../_shared/player-actions.ts";
+import type { AdminClient } from "../_shared/db.ts";
 
 const SUPABASE_URL = typeof Deno !== "undefined" && Deno.env ? (Deno.env.get("SUPABASE_URL") || "") : "";
 const ANON_KEY     = typeof Deno !== "undefined" && Deno.env ? (Deno.env.get("SUPABASE_ANON_KEY") || "") : "";
@@ -178,7 +179,7 @@ interface PlayerIdentity {
  */
 async function getIdentity(
   req: Request,
-  admin: ReturnType<typeof createClient>
+  admin: AdminClient
 ): Promise<PlayerIdentity | null> {
   const authHeader = req.headers.get("Authorization") || "";
   const match = authHeader.match(/^Bearer (.+)$/i);
@@ -230,7 +231,7 @@ async function getIdentity(
 }
 
 async function getGuildAverages(
-  admin: ReturnType<typeof createClient>,
+  admin: AdminClient,
   guild: string
 ): Promise<{
   avg_power: number;

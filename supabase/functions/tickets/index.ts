@@ -44,7 +44,7 @@ function isValidDiscordWebhook(url: string): boolean {
   }
 }
 
-function dataUrlToBytes(dataUrl: string): { bytes: Uint8Array; mimeType: string; extension: string } | null {
+function dataUrlToBytes(dataUrl: string): { bytes: Uint8Array<ArrayBuffer>; mimeType: string; extension: string } | null {
   if (typeof dataUrl !== "string") return null;
   try {
     const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
@@ -53,7 +53,7 @@ function dataUrlToBytes(dataUrl: string): { bytes: Uint8Array; mimeType: string;
     const b64 = match[2];
     const binaryStr = atob(b64);
     const len = binaryStr.length;
-    const bytes = new Uint8Array(len);
+    const bytes = new Uint8Array(new ArrayBuffer(len));
     for (let i = 0; i < len; i++) {
       bytes[i] = binaryStr.charCodeAt(i);
     }
@@ -164,7 +164,7 @@ serve(async (req: Request) => {
 
     const rawAttachments = input.attachments;
     const attachments = rawAttachments
-      .filter((a) => typeof a === "string" && a.startsWith("data:image/") && a.length < 2_500_000)
+      .filter((a): a is string => typeof a === "string" && a.startsWith("data:image/") && a.length < 2_500_000)
       .slice(0, 3);
 
     const { data, error } = await admin.rpc("gm_create_ticket", {
@@ -272,7 +272,7 @@ serve(async (req: Request) => {
           logger.warn("Ticket Discord dispatch failed", { ticketNo, status: discordRes.status });
         }
       } catch (e) {
-        logger.warn("Ticket Discord dispatch error", undefined, { ticketNo, message: String((e as Error)?.message || e) });
+        logger.warn("Ticket Discord dispatch error", { ticketNo, message: String((e as Error)?.message || e) });
       }
     } else {
       logger.warn("TICKET_WEBHOOK_URL missing or invalid", { ticketNo });
@@ -290,7 +290,7 @@ serve(async (req: Request) => {
         p_service: "tickets",
       });
     } catch (auditErr) {
-      logger.warn("Ticket audit log failed", undefined, { ticketNo });
+      logger.warn("Ticket audit log failed", { ticketNo });
     }
 
     return json({
@@ -362,7 +362,7 @@ serve(async (req: Request) => {
         });
         webhookOk = discordRes.ok || discordRes.status === 204;
       } catch (e) {
-        logger.warn("Ticket status Discord dispatch error", undefined, { ticketNo, message: String((e as Error)?.message || e) });
+        logger.warn("Ticket status Discord dispatch error", { ticketNo, message: String((e as Error)?.message || e) });
       }
     }
 

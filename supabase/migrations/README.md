@@ -16,6 +16,29 @@ that `supabase_migrations.schema_migrations` holds for it on production, and
 4. Rename the file to `<that version>_<name>.sql`. Add the entry to
    `tests/fixtures/migration_history.json`.
 5. If the schema changed, regenerate `src/types/database.generated.ts`.
+6. Regenerate `tests/fixtures/schema_fingerprint.txt` from production with
+   `supabase/replay/schema-fingerprint.sql` (read-only), sorted with `LC_ALL=C sort`.
+   The CI job `migrations-replay` fails until the chain builds that schema.
+
+## Replaying the chain (audit DB-03)
+
+`scripts/replay-migrations.sh` applies `supabase/replay/prelude.sql`, then every
+file in version order, each in its own transaction, on an empty PostgreSQL 17.
+CI runs it on every push and compares the result with production's fingerprint.
+Locally:
+
+    docker run -d --name gm-replay -e POSTGRES_PASSWORD=postgres -v "$PWD":/repo postgres:17
+    docker exec -e PGUSER=postgres -w /repo gm-replay bash scripts/replay-migrations.sh
+
+The script sets `gm.replay = on`. A migration may read it for one purpose only:
+to step aside from a check that pins **production's** function bodies or data
+volumes (an md5 precondition, a reviewed row count). It must never relax a grant,
+a policy or an RLS check. `tests/migration_replay.test.js` lists the files allowed
+to read it. Production's final function bodies are restated by the
+`snapshot_drifted_functions_*` migrations, which assert each one by md5.
+
+A body check that matches a pattern must not be able to match a comment inside
+that body: `20260927001726` failed every replay until its comment was reworded.
 
 **Never use `supabase db push`.** It compares file names with recorded versions.
 Before 2026-10-03, 40 files carried a different timestamp from production, so it

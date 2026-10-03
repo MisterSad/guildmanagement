@@ -30,8 +30,8 @@
  * Trust model unchanged otherwise: this only ever writes to guild_members
  * (roster/stats), never to accounts.
  */
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 import { logPlayerAction } from "./player-actions.ts";
+import type { AdminClient } from "./db.ts";
 
 export const AUDIT_SERVICE = "discord-profile-verification";
 
@@ -64,7 +64,7 @@ export function bracketed(raw: string | null | undefined): string {
 }
 
 export async function resolveExpectedTag(
-  admin: ReturnType<typeof createClient>,
+  admin: AdminClient,
   fgfGuild: string
 ): Promise<string> {
   const { data: tagConfigRow } = await admin
@@ -79,7 +79,7 @@ export async function resolveExpectedTag(
 
 /** The game-server number of the guild this verification channel belongs to. */
 export async function resolveHomeServerNumber(
-  admin: ReturnType<typeof createClient>,
+  admin: AdminClient,
   fgfGuild: string
 ): Promise<string | null> {
   const { data: guildRow } = await admin
@@ -110,7 +110,7 @@ export type TagResolution =
  * back to a global scan.
  */
 export async function resolveTagToGuildOnServer(
-  admin: ReturnType<typeof createClient>,
+  admin: AdminClient,
   tagNormalized: string,
   homeServerNumber: string | null,
   homeGuild: string
@@ -205,7 +205,7 @@ interface RosterRow {
  * roster.
  */
 export async function findRosterMember(
-  admin: ReturnType<typeof createClient>,
+  admin: AdminClient,
   fgfGuild: string,
   uid: string,
   pseudo: string
@@ -261,7 +261,7 @@ export async function findRosterMember(
 
 /** Opt-in per guild (owner decision): absent means the historical behaviour. */
 export async function requiresRosterMembership(
-  admin: ReturnType<typeof createClient>,
+  admin: AdminClient,
   fgfGuild: string
 ): Promise<boolean> {
   const { data: row } = await admin
@@ -283,7 +283,7 @@ export async function requiresRosterMembership(
  * members are in that position in production today.
  */
 export async function findOtherGuildMemberships(
-  admin: ReturnType<typeof createClient>,
+  admin: AdminClient,
   fgfGuild: string,
   uid: string
 ): Promise<string[]> {
@@ -298,7 +298,7 @@ export async function findOtherGuildMemberships(
 }
 
 export async function resolveAuditChannelId(
-  admin: ReturnType<typeof createClient>,
+  admin: AdminClient,
   fgfGuild: string
 ): Promise<string | null> {
   const { data: rows } = await admin
@@ -455,7 +455,7 @@ export type VerificationResult =
     };
 
 async function logRefusal(
-  admin: ReturnType<typeof createClient>,
+  admin: AdminClient,
   fgfGuild: string,
   discordUserId: string,
   extracted: ExtractedProfile,
@@ -493,7 +493,7 @@ async function logRefusal(
  * the roster says.
  */
 export async function evaluateVerification(
-  admin: ReturnType<typeof createClient>,
+  admin: AdminClient,
   fgfGuild: string,
   discordUserId: string,
   extracted: ExtractedProfile

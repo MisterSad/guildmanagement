@@ -29,7 +29,7 @@ Corollaries:
 
 1. **Reconcile against the platform, never against a document.** The check is `list_edge_functions` compared to `ls supabase/functions/`, in both directions. A function in the repo but not deployed is as much a finding as the reverse.
 2. **`config.toml` is the declaration of `verify_jwt`, and the deployed value must match it.** Where a handler also verifies the JWT itself, that is defence in depth and does not excuse the platform setting.
-3. **A migration that a function depends on must be followed by a deploy of that function.** The `pre-push` hook on `main` (`scripts/hooks/pre-push`) automates this; note that any change under `_shared/` redeploys **all** functions.
+3. **A migration that a function depends on must be followed by a deploy of that function.** Since 2026-10-03 the CI job `deploy-edge-functions` does this on every push to `main`, after every other job is green (`scripts/deploy-edge-functions.sh`). Any change under `_shared/` or to `config.toml` redeploys **all** functions; any other file of a function redeploys that function. The `pre-push` hook no longer deploys: it deployed from a laptop before CI had run.
 4. **Never document a function as absent.** If it cannot be found, look at the platform before writing that it does not exist.
 
 ## 3. Consequences & Invariants

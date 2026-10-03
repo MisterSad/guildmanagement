@@ -6,6 +6,16 @@ on:
   pull_request:
     branches: [ main ]
 
+# Read-only by default (audit SEC-24). No job needs to write to the repository.
+permissions:
+  contents: read
+
+# Pipelines for the same ref queue instead of running side by side, so two
+# deploys never race.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
@@ -49,3 +59,81 @@ jobs:
 
       - name: Build Vite Production Bundle
         run: npm run build
+
+  # The whole migration chain on an empty PostgreSQL 17, then the resulting
+  # schema compared with production's fingerprint (audit DB-01, DB-03).
+  migrations-replay:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Replay every migration
+        run: bash scripts/replay-migrations.sh
+
+      - name: Compare the schema with production
+        run: |
+          psql -X -At -f supabase/replay/schema-fingerprint.sql | LC_ALL=C sort > /tmp/replay.txt
+          LC_ALL=C sort tests/fixtures/schema_fingerprint.txt > /tmp/expected.txt
+          if ! diff -u /tmp/expected.txt /tmp/replay.txt; then
+            echo "::error::The migration chain no longer builds production's schema. If production changed on purpose, regenerate tests/fixtures/schema_fingerprint.txt from it (supabase/replay/schema-fingerprint.sql, read-only)."
+            exit 1
+          fi
+
+  # Type-check every Edge Function (audit QA-08, INF-09). --no-config keeps
+  # Deno away from the front end's package.json and node_modules.
+  deno-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.5.2
+
+      - name: deno check
+        run: deno check --no-config --node-modules-dir=none supabase/functions/*/index.ts
+
+  # Deploys only from main, and only once everything above is green. The
+  # pre-push hook used to do this from a laptop, before CI had run at all.
+  deploy-edge-functions:
+    needs: [build-and-test, migrations-replay, deno-check]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      # The project ref is public: it is in the front-end bundle and the CSP.
+      SUPABASE_PROJECT_REF: vgweufzwmfwplusskmuf
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.119.0
+
+      - name: Deploy the changed Edge Functions
+        run: bash scripts/deploy-edge-functions.sh "${{ github.event.before }}" "${{ github.sha }}"

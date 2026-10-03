@@ -83,6 +83,8 @@ GRANT EXECUTE ON FUNCTION public.gm_latest_glory_scores(text) TO authenticated, 
 
 DO $pre$
 BEGIN
+  -- Pins production's body; an empty replay has the repository's.
+  IF current_setting('gm.replay', true) = 'on' THEN RETURN; END IF;
   IF md5(pg_get_functiondef('public.gm_purge_discord_ephemera()'::regprocedure)) <> 'b9e4d1c8f6517eafcfd61f494556ec3e'
      AND pg_get_functiondef('public.gm_purge_discord_ephemera()'::regprocedure) !~ 'webauthn_challenges' THEN
     RAISE EXCEPTION 'gm_purge_discord_ephemera changed since this migration was written; re-read it first';

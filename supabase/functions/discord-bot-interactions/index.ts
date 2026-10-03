@@ -54,6 +54,7 @@ import {
   EPHEMERAL_FLAG,
   discordJson,
 } from "../_shared/discord.ts";
+import type { AdminClient } from "../_shared/db.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -96,7 +97,7 @@ const NO_UID_MSG = "Your linked account doesn't have an in-game UID on file. Con
  * admin's command lands on their player account. Only ACTIVE accounts count.
  */
 async function resolveLinkedAccount(
-  admin: ReturnType<typeof createClient>,
+  admin: AdminClient,
   discordUserId: string
 ): Promise<{ ok: true; uid: string; guild: string } | { ok: false; message: string; components?: unknown[] }> {
   const { data: links } = await admin
@@ -145,7 +146,7 @@ interface OfficerAccount {
  * buttons: Discord roles and permissions grant nothing.
  */
 async function officerAccounts(
-  admin: ReturnType<typeof createClient>,
+  admin: AdminClient,
   discordUserId: string,
 ): Promise<OfficerAccount[]> {
   const { data: links } = await admin

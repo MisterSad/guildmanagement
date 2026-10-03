@@ -16,6 +16,7 @@ import {
 } from "../_shared/registration-decision.ts";
 import { randomBackupCode, sha256Hex, issueBackupCodes, BACKUP_CODE_COUNT } from "../_shared/backup-codes.ts";
 import { isSessionRevoked } from "../_shared/session-epoch.ts";
+import type { AdminClient } from "../_shared/db.ts";
 
 const SUPABASE_URL  = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -77,7 +78,7 @@ function makeJson(req: Request) {
 
 async function getCallerInfo(
   req: Request,
-  admin: ReturnType<typeof createClient>
+  admin: AdminClient
 ): Promise<{ role: Role | null; accountId: string | null; guild: string | null; serverNumber: string | null }> {
   const authHeader = req.headers.get("Authorization") || "";
   const match = authHeader.match(/^Bearer (.+)$/i);
@@ -160,7 +161,7 @@ type ProvisionResult = { ok: true } | { ok: false; error: string; status: number
  * "create" the super_admin's id and receive a working password for it.
  */
 async function provisionNewAccount(
-  admin: ReturnType<typeof createClient>,
+  admin: AdminClient,
   logger: EdgeLogger,
   account: { id: string; password: string; role: string; guild: string | null },
 ): Promise<ProvisionResult> {
@@ -481,6 +482,9 @@ Deno.serve(async (req: Request) => {
     const parsedInvite = AdminInviteSchema.safeParse(body);
     if (!parsedInvite.success) return json({ ok: false, error: "missing_fields" }, 400);
     const targetGuild = parsedInvite.data.guild;
+    // An invitation always names its guild. Without one the lookup below used
+    // to query `id = undefined` and answer guild_not_found.
+    if (!targetGuild) return json({ ok: false, error: "missing_fields" }, 400);
     const targetRole = parsedInvite.data.role as Role;
 
     const ceiling = maxAssignableRole(info.role);

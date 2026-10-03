@@ -1,0 +1,124 @@
+// Short-term plan, phase 5: Edge Functions deploy from CI, after every check is
+// green, through scripts/deploy-edge-functions.sh. The pre-push hook used to do
+// it from a laptop before CI had run, so a red build could already be live.
+//
+// The protections the hook had earned the hard way move with the deploy:
+//   - never `--no-verify-jwt` (finding M1: it made admin-accounts public);
+//   - functions enumerated from the filesystem, never a hand-kept list (a stale
+//     name blocked releases, a missing one never shipped);
+//   - fail visibly when the deploy cannot run (ADR-017: silent skips are how
+//     the deployed code drifted from the repository).
+
+import { describe, it, expect } from 'vitest';
+import fs from 'node:fs';
+import path from 'node:path';
+
+const root = path.resolve(__dirname, '..');
+const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
+// Absence assertions must not be defeated by the comment explaining the absence.
+const stripHashComments = (s) => s.replace(/^\s*#.*$/gm, '');
+
+const script = read('scripts/deploy-edge-functions.sh');
+const code = stripHashComments(script);
+const hook = stripHashComments(read('scripts/hooks/pre-push'));
+const ci = read('.github/workflows/ci.yml');
+
+describe('the deploy script', () => {
+  it('never passes --no-verify-jwt, so config.toml decides', () => {
+    expect(code).not.toContain('--no-verify-jwt');
+    const deploys = code.match(/supabase functions deploy [^\n]*/g) || [];
+    expect(deploys.length).toBeGreaterThanOrEqual(2);
+    for (const d of deploys) {
+      expect(d).not.toMatch(/--(no-)?verify-jwt/);
+      expect(d).toContain('--project-ref "$SUPABASE_PROJECT_REF"');
+    }
+    expect(script).toMatch(/do not add `--no-verify-jwt` back/i);
+  });
+
+  it('enumerates the function directories and skips _shared', () => {
+    expect(code).toContain('find "${FUNCTIONS_DIR}" -mindepth 1 -maxdepth 1 -type d');
+    expect(code).toMatch(/\[\[ "\$fn" == _\* \]\] && continue/);
+  });
+
+  it('redeploys everything when shared code or config.toml changes', () => {
+    expect(code).toContain('"${FUNCTIONS_DIR}/_shared/"*');
+    expect(code).toContain('"supabase/config.toml"');
+  });
+
+  it('deploys a function when ANY of its files changes, not only index.ts', () => {
+    expect(code).toContain('"${FUNCTIONS_DIR}/"*/*');
+    expect(code).not.toMatch(/\*\/index\.ts\b/);
+  });
+
+  it('fails visibly without its token, and on any failed deploy', () => {
+    expect(code).toContain('SUPABASE_ACCESS_TOKEN is not set: nothing was deployed');
+    // The token check exits before anything is enumerated or deployed.
+    expect(script.indexOf('nothing was deployed')).toBeLessThan(script.indexOf('ALL_FUNCTIONS=()'));
+    expect(code).toContain('::error::Deploy failed for:');
+  });
+
+  it('never prints the token', () => {
+    expect(code).not.toMatch(/echo[^\n]*SUPABASE_ACCESS_TOKEN\}/);
+    expect(code).not.toMatch(/echo[^\n]*\$SUPABASE_ACCESS_TOKEN/);
+  });
+});
+
+describe('the pre-push hook no longer deploys', () => {
+  it('runs no deploy command', () => {
+    expect(hook).not.toMatch(/functions deploy/);
+    expect(hook).not.toMatch(/npx supabase/);
+  });
+
+  it('still reads git stdin in the order git writes it, keyed on the remote ref', () => {
+    expect(hook).toContain('while read local_ref local_sha remote_ref remote_sha; do');
+    expect(hook).toContain('if [[ "$remote_ref" == "refs/heads/main" ]]; then');
+  });
+});
+
+describe('the CI pipeline', () => {
+  it('is read-only by default (SEC-24)', () => {
+    expect(ci).toMatch(/^permissions:\n  contents: read$/m);
+  });
+
+  it('replays the migrations and compares the schema with production', () => {
+    expect(ci).toContain('image: postgres:17');
+    expect(ci).toContain('bash scripts/replay-migrations.sh');
+    expect(ci).toContain('tests/fixtures/schema_fingerprint.txt');
+  });
+
+  it('type-checks the Edge Functions with Deno', () => {
+    expect(ci).toContain('deno check --no-config --node-modules-dir=none supabase/functions/*/index.ts');
+  });
+
+  it('deploys only from main, only after every other job, with the token as a secret', () => {
+    const job = ci.slice(ci.indexOf('  deploy-edge-functions:'));
+    expect(job).toContain('needs: [build-and-test, migrations-replay, deno-check]');
+    expect(job).toContain("if: github.event_name == 'push' && github.ref == 'refs/heads/main'");
+    expect(job).toContain('SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}');
+    expect(job).toContain('bash scripts/deploy-edge-functions.sh');
+  });
+});
+
+describe('config.toml stays the single declaration of verify_jwt', () => {
+  const toml = read('supabase/config.toml');
+  const block = (fn) => {
+    const b = toml.slice(toml.indexOf(`[functions.${fn}]`));
+    const next = b.indexOf('\n[', 1);
+    return next > 0 ? b.slice(0, next) : b;
+  };
+
+  it('declares verify_jwt for every function directory', () => {
+    const dirs = fs.readdirSync(path.join(root, 'supabase/functions'), { withFileTypes: true })
+      .filter((e) => e.isDirectory() && !e.name.startsWith('_'))
+      .map((e) => e.name);
+    const missing = dirs.filter((d) => !toml.includes(`[functions.${d}]`) || !/verify_jwt\s*=\s*(true|false)/.test(block(d)));
+    expect(missing).toEqual([]);
+  });
+
+  it('keeps the seven JWT-gated functions gated', () => {
+    for (const fn of ['admin-accounts', 'member-portal', 'guild-data-export', 'discord-webhook-proxy',
+                      'ocr-guild-members', 'tickets', 'migration-summary']) {
+      expect(block(fn), `${fn} must stay verify_jwt = true`).toMatch(/verify_jwt\s*=\s*true/);
+    }
+  });
+});

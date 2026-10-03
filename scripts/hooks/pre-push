@@ -1,216 +1,25 @@
 #!/usr/bin/env bash
-# .git/hooks/pre-push
+# scripts/hooks/pre-push
 #
-# Auto-deploy Supabase Edge Functions when pushing to main.
+# This hook no longer deploys anything (short-term plan, phase 5).
 #
-# Logic:
-#   1. Only activates on pushes targeting the 'main' branch.
-#   2. Collects all changed files across every commit being pushed.
-#   3. If ANY file under supabase/functions/_shared/ was changed → deploy ALL
-#      functions (safe, atomic: guarantees every function gets the latest shared
-#      code and avoids the "version drift" bug that caused Discord link to fail).
-#   4. Otherwise → deploy only the individual functions whose own index.ts
-#      was changed.
-#   5. If no function files changed at all → skip silently (no-op).
+# It used to deploy the changed Edge Functions from this machine on every push
+# to main -- before CI had run, so a red build could already be live in
+# production. Deploys now happen in the CI `deploy` job, after every check is
+# green, through scripts/deploy-edge-functions.sh.
 #
-# Exit codes:
-#   0  → push proceeds (deploy succeeded or nothing to deploy)
-#   1  → deploy failed (push is BLOCKED to avoid pushing broken state)
-#
-# Requires: npx supabase (project already linked via supabase link)
-#
-# NOTE ON verify_jwt — do not add `--no-verify-jwt` back.
-#   This hook used to pass that flag on every single deploy, forcing
-#   verify_jwt = false onto ALL functions regardless of what
-#   `supabase/config.toml` declares. That is the root cause of audit finding M1:
-#   `admin-accounts` -- the role provisioner -- ran publicly while both
-#   config.toml and ARCHITECTURE.md said it was JWT-gated. Seven functions are
-#   declared `verify_jwt = true`, and the blanket flag would have made every one
-#   of them public again on the next push to main.
-#   Without the flag the CLI reads the per-function value from config.toml,
-#   which is where that decision belongs. `tests/deploy_hook.test.js` fails if
-#   the flag comes back.
+# What is left is a fast local check, so an obvious type error is caught before
+# it costs a CI run. Skip it with `git push --no-verify` when you must.
 
 set -euo pipefail
 
-REMOTE="$1"   # remote name (e.g. "origin")
-# $2 is the remote URL — unused here but available
+REMOTE="$1"   # remote name, unused
 
-MAIN_BRANCH="main"
-FUNCTIONS_DIR="supabase/functions"
-SHARED_DIR="${FUNCTIONS_DIR}/_shared"
-
-# ── 1. Collect pushed commits ────────────────────────────────────────────────
-# Read from stdin. git sends, per ref, in THIS order:
-#
-#     <local-ref> SP <local-sha> SP <remote-ref> SP <remote-sha> LF
-#
-# The ref comes first, not the sha. This loop used to read
-# "local_sha local_ref remote_sha remote_ref", which swapped every pair: the
-# branch guard compared a SHA against "refs/heads/main" and never matched, so
-# the hook returned 0 without deploying anything, on every push, silently.
-# `RANGE` was then "refs/heads/main..refs/heads/main"-shaped nonsense whose
-# `git diff` failure was swallowed by `|| true`, so there was no second chance
-# to notice. This is the mechanism behind audit finding H1, where
-# ocr-guild-members ran for days without the code that was in the repository.
-CHANGED_FILES=""
 while read local_ref local_sha remote_ref remote_sha; do
-  # Only process pushes to main.
-  #
-  # This tests the REMOTE ref, not the local one. It used to test $local_ref,
-  # which is the branch name on this side -- so `git push origin HEAD:main`,
-  # and every push from a worktree whose branch is not literally named "main",
-  # updated production while silently skipping the deploy. That is precisely
-  # the code-vs-deployed drift this hook exists to prevent. What matters is
-  # where the commits land, which is $remote_ref.
-  if [[ "$remote_ref" != "refs/heads/${MAIN_BRANCH}" ]]; then
-    continue
+  if [[ "$remote_ref" == "refs/heads/main" ]]; then
+    echo "pre-push: type-checking before pushing to main..."
+    npm run --silent type-check
+    exit 0
   fi
-
-  # Determine the range of commits being pushed
-  if [[ "$remote_sha" == "0000000000000000000000000000000000000000" ]]; then
-    # First push to this branch — diff against the initial empty tree
-    RANGE="$local_sha"
-    FILES=$(git diff-tree --no-commit-id -r --name-only "$RANGE" 2>/dev/null || true)
-  else
-    RANGE="${remote_sha}..${local_sha}"
-    FILES=$(git diff --name-only "$RANGE" 2>/dev/null || true)
-  fi
-
-  CHANGED_FILES="${CHANGED_FILES}${FILES}"$'\n'
 done
-
-# Nothing targeted main → skip
-if [[ -z "${CHANGED_FILES// /}" ]]; then
-  exit 0
-fi
-
-# ── 2. Detect which functions are affected ───────────────────────────────────
-DEPLOY_ALL=false
-DEPLOY_FUNCTIONS=()
-
-while IFS= read -r f; do
-  [[ -z "$f" ]] && continue
-
-  # _shared/ touched → must redeploy everything
-  if [[ "$f" == ${SHARED_DIR}/* ]]; then
-    DEPLOY_ALL=true
-    break
-  fi
-
-  # Individual function index.ts changed
-  if [[ "$f" == ${FUNCTIONS_DIR}/*/index.ts ]]; then
-    # Extract function name (the directory between functions/ and /index.ts)
-    fn_name=$(echo "$f" | sed "s|${FUNCTIONS_DIR}/||" | cut -d'/' -f1)
-    if [[ "$fn_name" != "_shared" ]]; then
-      DEPLOY_FUNCTIONS+=("$fn_name")
-    fi
-  fi
-done <<< "$CHANGED_FILES"
-
-# ── 3. Nothing to deploy ─────────────────────────────────────────────────────
-if [[ "$DEPLOY_ALL" == false && "${#DEPLOY_FUNCTIONS[@]}" -eq 0 ]]; then
-  exit 0
-fi
-
-# ── 4. Deploy ────────────────────────────────────────────────────────────────
-echo ""
-echo "╔══════════════════════════════════════════════════════════╗"
-echo "║  🚀  Supabase Edge Function auto-deploy (pre-push)       ║"
-echo "╚══════════════════════════════════════════════════════════╝"
-
-if [[ "$DEPLOY_ALL" == true ]]; then
-  echo "  → _shared/ changed — deploying ALL functions"
-  echo ""
-
-  # Enumerated from the filesystem, never hand-maintained. The previous version
-  # was a hardcoded list, and the copy installed in .git/hooks had gone stale:
-  # it still named gm-create-order / gm-order-status / gm-stripe-webhook, which
-  # phase 1 deleted, and did not know about auth-discord. Deploying a function
-  # whose directory no longer exists fails, and a failure here BLOCKS the push --
-  # so a stale list does not degrade gracefully, it stops releases.
-  ALL_FUNCTIONS=()
-  while IFS= read -r d; do
-    fn=$(basename "$d")
-    [[ "$fn" == _* ]] && continue
-    ALL_FUNCTIONS+=("$fn")
-  done < <(find "${FUNCTIONS_DIR}" -mindepth 1 -maxdepth 1 -type d | sort)
-
-  FAILED=()
-  for fn in "${ALL_FUNCTIONS[@]}"; do
-    printf "  Deploying %-35s" "${fn}..."
-    if npx supabase functions deploy "$fn" 2>/dev/null 1>/dev/null; then
-      echo "✅"
-    else
-      # Retry once (cold network, transient error)
-      sleep 2
-      if npx supabase functions deploy "$fn" 2>/dev/null 1>/dev/null; then
-        echo "✅ (retry)"
-      else
-        echo "❌ FAILED"
-        FAILED+=("$fn")
-      fi
-    fi
-  done
-
-  if [[ "${#FAILED[@]}" -gt 0 ]]; then
-    echo ""
-    echo "  ❌ Deploy failed for: ${FAILED[*]}"
-    echo "  Push blocked. Fix the deploy errors and push again."
-    echo "  Run:  npx supabase functions deploy ${FAILED[0]}"
-    echo ""
-    exit 1
-  fi
-
-else
-  # Deduplicate.
-  #
-  # `mapfile` is a bash 4 builtin and macOS ships bash 3.2 at /bin/bash, which
-  # is what `#!/usr/bin/env bash` resolves to here. This branch -- the one that
-  # deploys INDIVIDUAL functions, i.e. the common case -- therefore died with
-  # "mapfile: command not found" the first time it ran, and blocked the push.
-  # It failed closed, which is the right direction, but it had never run at all
-  # before today: the field-order bug fixed in d780276 meant the hook returned
-  # early on every push since it was written.
-  #
-  # A `while read` loop is portable to bash 3.2, and is already the idiom used
-  # by the deploy-all branch above.
-  DEDUPED=()
-  while IFS= read -r fn; do
-    [[ -z "$fn" ]] && continue
-    DEDUPED+=("$fn")
-  done < <(printf '%s\n' "${DEPLOY_FUNCTIONS[@]}" | sort -u)
-  DEPLOY_FUNCTIONS=("${DEDUPED[@]}")
-
-  echo "  → Deploying ${#DEPLOY_FUNCTIONS[@]} function(s): ${DEPLOY_FUNCTIONS[*]}"
-  echo ""
-
-  FAILED=()
-  for fn in "${DEPLOY_FUNCTIONS[@]}"; do
-    printf "  Deploying %-35s" "${fn}..."
-    if npx supabase functions deploy "$fn" 2>/dev/null 1>/dev/null; then
-      echo "✅"
-    else
-      sleep 2
-      if npx supabase functions deploy "$fn" 2>/dev/null 1>/dev/null; then
-        echo "✅ (retry)"
-      else
-        echo "❌ FAILED"
-        FAILED+=("$fn")
-      fi
-    fi
-  done
-
-  if [[ "${#FAILED[@]}" -gt 0 ]]; then
-    echo ""
-    echo "  ❌ Deploy failed for: ${FAILED[*]}"
-    echo "  Push blocked. Fix the deploy errors and push again."
-    echo ""
-    exit 1
-  fi
-fi
-
-echo ""
-echo "  ✅ All functions deployed successfully."
-echo ""
 exit 0

@@ -40,6 +40,7 @@ import { getCorsHeaders } from "../_shared/cors.ts";
 import { checkAndRecordDiscordAttempt } from "../_shared/rate-limit.ts";
 import { callGeminiVision } from "../_shared/gemini-vision.ts";
 import { normalizeTag, resolveExpectedTag, resolveHomeServerNumber, resolveTagToGuildOnServer, evaluateVerification, resolveAuditChannelId, postAuditMessage, ExtractedProfile, RefusalReason } from "../_shared/discord-verification.ts";
+import type { AdminClient } from "../_shared/db.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -204,7 +205,7 @@ function buildNickname(tagDisplay: string, pseudo: string, serverNumber: string 
 // DURABLE helper, so it survives while the player's reply and the screenshot
 // are cleaned up around it.
 async function resolveOfficerChannel(
-  admin: ReturnType<typeof createClient>,
+  admin: AdminClient,
   targetGuild: string,
   fgfGuild: string,
   verificationChannelId: string,

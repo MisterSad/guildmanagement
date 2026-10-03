@@ -43,7 +43,11 @@ BEGIN
     RAISE NOTICE 'gm_transfer_guild_member already refuses members';
     RETURN;
   END IF;
-  IF md5(v_def) <> 'fd0994eaea64352d1d35bdb9194dfdba' OR position(v_old IN v_def) = 0 THEN
+  -- An empty replay has the repository's earlier body: the md5 pins production's.
+  IF current_setting('gm.replay', true) = 'on' AND position(v_old IN v_def) = 0 THEN
+    RAISE NOTICE 'replay: gm_transfer_guild_member left to the snapshot migrations'; RETURN;
+  END IF;
+  IF (md5(v_def) <> 'fd0994eaea64352d1d35bdb9194dfdba' AND current_setting('gm.replay', true) IS DISTINCT FROM 'on') OR position(v_old IN v_def) = 0 THEN
     RAISE EXCEPTION 'gm_transfer_guild_member changed since this migration was written; re-read it first';
   END IF;
   v_def := replace(v_def, v_old,
@@ -100,6 +104,9 @@ BEGIN
       CONTINUE;  -- already done
     END IF;
     v_hits := (SELECT count(*) FROM regexp_matches(v_def, 'auth_user_id\s*=\s*auth\.uid\(\)', 'g'));
+    IF v_hits = 0 AND current_setting('gm.replay', true) = 'on' THEN
+      CONTINUE;  -- replay: left to the snapshot migrations
+    END IF;
     IF v_hits = 0 THEN
       RAISE EXCEPTION '%: no inline caller resolution found; re-read it first', v_sig;
     END IF;
@@ -395,7 +402,10 @@ BEGIN
     RAISE NOTICE 'gm_purge_guild_data already revokes sessions';
     RETURN;
   END IF;
-  IF md5(v_def) <> 'af62cc5a9350260f6fc165679f2bc177' OR position(v_old IN v_def) = 0 THEN
+  IF current_setting('gm.replay', true) = 'on' AND position(v_old IN v_def) = 0 THEN
+    RAISE NOTICE 'replay: gm_purge_guild_data left to the snapshot migrations'; RETURN;
+  END IF;
+  IF (md5(v_def) <> 'af62cc5a9350260f6fc165679f2bc177' AND current_setting('gm.replay', true) IS DISTINCT FROM 'on') OR position(v_old IN v_def) = 0 THEN
     RAISE EXCEPTION 'gm_purge_guild_data changed since this migration was written; re-read it first';
   END IF;
   v_def := replace(v_def, v_old,
@@ -427,7 +437,10 @@ BEGIN
     RAISE NOTICE 'gm_erase_account already revokes sessions';
     RETURN;
   END IF;
-  IF md5(v_def) <> '582705fb224c2be47f4d9d2cd5cc42f6' OR position(v_gate IN v_def) = 0 OR position(v_del IN v_def) = 0 THEN
+  IF current_setting('gm.replay', true) = 'on' AND (position(v_gate IN v_def) = 0 OR position(v_del IN v_def) = 0) THEN
+    RAISE NOTICE 'replay: gm_erase_account left to the snapshot migrations'; RETURN;
+  END IF;
+  IF (md5(v_def) <> '582705fb224c2be47f4d9d2cd5cc42f6' AND current_setting('gm.replay', true) IS DISTINCT FROM 'on') OR position(v_gate IN v_def) = 0 OR position(v_del IN v_def) = 0 THEN
     RAISE EXCEPTION 'gm_erase_account changed since this migration was written; re-read it first';
   END IF;
   v_def := replace(v_def, v_gate, E'    IF auth.uid() IS NOT NULL AND NOT public.is_super_admin() THEN\n');
@@ -453,6 +466,10 @@ WHERE NOT EXISTS (SELECT 1 FROM public.accounts a WHERE a.auth_user_id = u.id)
 DO $check$
 DECLARE
   v_sig text;
+  -- Function BODIES are production's only after the snapshot_drifted_functions
+  -- migrations, which check every one by md5. An empty replay skips the body
+  -- checks here and keeps the policy and grant checks.
+  v_bodies boolean := current_setting('gm.replay', true) IS DISTINCT FROM 'on';
 BEGIN
   FOREACH v_sig IN ARRAY ARRAY[
     'check_uid_exists_globally(text)', 'gm_admin_request_transfer(text,text)',
@@ -465,13 +482,13 @@ BEGIN
     'gm_transfer_guild_member(text,text,text)', 'gm_unsync_shadowfront_participant(text,text,text)',
     'request_guild_transfer(text,text)', 'resolve_guild_transfer(uuid,text)', 'gm_can_admin_see_absences(text)'
   ] LOOP
-    IF to_regprocedure('public.' || v_sig) IS NOT NULL
+    IF v_bodies AND to_regprocedure('public.' || v_sig) IS NOT NULL
        AND pg_get_functiondef(('public.' || v_sig)::regprocedure) !~ 'gm_session_is_valid' THEN
       RAISE EXCEPTION '% still ignores session revocation', v_sig;
     END IF;
   END LOOP;
 
-  IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+  IF v_bodies AND EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
              WHERE n.nspname = 'public' AND p.prokind = 'f'
                AND pg_get_functiondef(p.oid) ~ 'auth_user_id\s*=\s*(\(SELECT\s+)?auth\.uid\(\)'
                AND pg_get_functiondef(p.oid) !~ 'gm_session_is_valid') THEN
@@ -484,10 +501,10 @@ BEGIN
     RAISE EXCEPTION 'a policy still resolves its caller without a session check';
   END IF;
 
-  IF pg_get_functiondef('public.gm_transfer_guild_member(text,text,text)'::regprocedure) !~ 'v_caller_role NOT IN' THEN
+  IF v_bodies AND pg_get_functiondef('public.gm_transfer_guild_member(text,text,text)'::regprocedure) !~ 'v_caller_role NOT IN' THEN
     RAISE EXCEPTION 'members can still transfer players';
   END IF;
-  IF pg_get_functiondef('public.gm_can_admin_see_absences(text)'::regprocedure) ~ '(ALPHA|jwt)' THEN
+  IF v_bodies AND pg_get_functiondef('public.gm_can_admin_see_absences(text)'::regprocedure) ~ '(ALPHA|jwt)' THEN
     RAISE EXCEPTION 'gm_can_admin_see_absences still matches by e-mail or falls back to ALPHA';
   END IF;
   IF has_table_privilege('authenticated', 'public.migration_wiki_pages', 'UPDATE')
@@ -499,11 +516,11 @@ BEGIN
   IF EXISTS (SELECT 1 FROM public.migration_wiki_pages WHERE owner_guild IS NULL AND scope = 'guild') THEN
     RAISE EXCEPTION 'a guild wiki page has no owner guild';
   END IF;
-  IF pg_get_functiondef('public.gm_purge_guild_data(text)'::regprocedure) ~ 'role <> ''super_admin'''
-     OR pg_get_functiondef('public.gm_purge_guild_data(text)'::regprocedure) !~ 'gm_revoke_auth_sessions' THEN
+  IF v_bodies AND (pg_get_functiondef('public.gm_purge_guild_data(text)'::regprocedure) ~ 'role <> ''super_admin'''
+     OR pg_get_functiondef('public.gm_purge_guild_data(text)'::regprocedure) !~ 'gm_revoke_auth_sessions') THEN
     RAISE EXCEPTION 'guild deletion still deletes server_admin accounts or leaves sessions';
   END IF;
-  IF pg_get_functiondef('public.gm_erase_account(text)'::regprocedure) !~ 'gm_revoke_auth_sessions' THEN
+  IF v_bodies AND pg_get_functiondef('public.gm_erase_account(text)'::regprocedure) !~ 'gm_revoke_auth_sessions' THEN
     RAISE EXCEPTION 'GDPR erasure still leaves sessions';
   END IF;
   IF has_function_privilege('authenticated', 'public.gm_revoke_auth_sessions(uuid)', 'EXECUTE') THEN

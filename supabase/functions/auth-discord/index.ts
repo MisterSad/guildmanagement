@@ -990,7 +990,8 @@ async function handleOnboard(req: Request, body: unknown, admin: any, logger: Ed
   // Report that plainly instead of minting a session that would be refused.
   if (row.status === "pending") {
     logger.info("Player registered through Discord, awaiting approval", { accountId, guild: row.guild });
-    await announceJoinRequest(admin, logger, row.guild as string, accountId, parsed.data.uid);
+    await announceJoinRequest(admin, logger, row.guild as string, accountId,
+      parsed.data.mode === "join" ? parsed.data.uid : "");
     return json({
       ok: true,
       state: "pending_approval",

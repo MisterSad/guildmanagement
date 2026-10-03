@@ -24,8 +24,9 @@ describe('auth-discord is reachable without a session', () => {
     expect(block.slice(0, 120)).toMatch(/verify_jwt\s*=\s*false/);
   });
 
-  it('is in the deploy list', () => {
-    expect(read('scripts/hooks/pre-push')).toContain('auth-discord');
+  it('is deployed: the CI deploy enumerates every function directory', () => {
+    expect(read('supabase/functions/auth-discord/index.ts').length).toBeGreaterThan(0);
+    expect(read('scripts/deploy-edge-functions.sh')).toContain('find "${FUNCTIONS_DIR}" -mindepth 1 -maxdepth 1 -type d');
   });
 
   it('fails closed when the OAuth secrets are missing', () => {

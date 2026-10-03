@@ -31,6 +31,9 @@
 
 DO $$
 BEGIN
+    -- An empty replay (scripts/replay-migrations.sh) has the repository's
+    -- earlier bodies, not production's; these guards protect production only.
+    IF current_setting('gm.replay', true) = 'on' THEN RETURN; END IF;
     IF position('DELETE FROM public.accounts WHERE guild = trim(p_guild_id)' IN
                 pg_get_functiondef('public.gm_delete_guild(text)'::regprocedure)) = 0 THEN
         RAISE EXCEPTION 'gm_delete_guild has drifted from the definition this migration was written against';
@@ -256,6 +259,8 @@ BEGIN
     DELETE FROM public.guild_config    WHERE guild <> '' AND guild NOT IN (SELECT id FROM public.guilds);
     GET DIAGNOSTICS v_cfg = ROW_COUNT;
 
+    -- Production's reviewed counts. An empty replay has nothing to clean up.
+    IF current_setting('gm.replay', true) = 'on' THEN RETURN; END IF;
     IF v_other <> 0 OR v_bans <> 6 OR v_abs <> 12 OR v_logs <> 59 OR v_cfg <> 1 THEN
         RAISE EXCEPTION 'guild orphan cleanup: expected 6/12/59/1 and 0 elsewhere, found %/%/%/% and % elsewhere -- review before deleting',
             v_bans, v_abs, v_logs, v_cfg, v_other;

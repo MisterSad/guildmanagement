@@ -15,8 +15,8 @@
  * update-metrics, get-active-sessions, get-badges, ...) -- single source of
  * truth either way, no duplicate copy left behind.
  */
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 import { getPlayer } from "./member-lookup.ts";
+import type { AdminClient } from "./db.ts";
 
 export const MAX_ALLOWED_POWER = 5_000_000_000;
 export const MAX_ALLOWED_EVENT_SCORE = 9_999_999_999;
@@ -118,7 +118,7 @@ export interface AuditLogEntry {
 }
 
 export async function logPlayerAction(
-  admin: ReturnType<typeof createClient>,
+  admin: AdminClient,
   entry: AuditLogEntry
 ): Promise<void> {
   try {
@@ -149,7 +149,7 @@ export async function logPlayerAction(
 }
 
 export async function updatePlayerPower(
-  admin: ReturnType<typeof createClient>,
+  admin: AdminClient,
   uid: string,
   guildContext: string | null,
   rawPowerInput: unknown
@@ -194,7 +194,7 @@ export async function updatePlayerPower(
 }
 
 export async function updatePlayerGlory(
-  admin: ReturnType<typeof createClient>,
+  admin: AdminClient,
   uid: string,
   guildContext: string | null,
   rawGloryInput: unknown
@@ -229,7 +229,7 @@ export async function updatePlayerGlory(
 }
 
 export async function updatePlayerTimezone(
-  admin: ReturnType<typeof createClient>,
+  admin: AdminClient,
   uid: string,
   guildContext: string | null,
   offset: number,
@@ -270,7 +270,7 @@ export interface Challenge {
 }
 
 export async function getPlayerChallenges(
-  admin: ReturnType<typeof createClient>,
+  admin: AdminClient,
   uid: string,
   guildContext: string | null
 ): Promise<{
@@ -346,7 +346,7 @@ export async function getPlayerChallenges(
 }
 
 export async function listPlayerAbsences(
-  admin: ReturnType<typeof createClient>,
+  admin: AdminClient,
   uid: string
 ): Promise<{ ok: boolean; error?: string; absences?: any[] }> {
   const { data, error } = await admin.rpc("gm_get_player_absences", { p_uid: uid });
@@ -355,7 +355,7 @@ export async function listPlayerAbsences(
 }
 
 export async function setPlayerAbsence(
-  admin: ReturnType<typeof createClient>,
+  admin: AdminClient,
   uid: string,
   guildContext: string | null,
   params: { startDate: string; endDate: string; kind: string; note?: string | null; id?: string | null }
@@ -394,7 +394,7 @@ export async function setPlayerAbsence(
 }
 
 export async function deletePlayerAbsence(
-  admin: ReturnType<typeof createClient>,
+  admin: AdminClient,
   uid: string,
   guildContext: string | null,
   absenceId: string

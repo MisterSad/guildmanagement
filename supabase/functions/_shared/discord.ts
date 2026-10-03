@@ -35,9 +35,11 @@ export function discordPublicKeyHex(): string | undefined {
   return Deno.env.get("DISCORD_PUBLIC_KEY") || undefined;
 }
 
-function hexToBytes(hex: string): Uint8Array {
+// Backed by a plain ArrayBuffer: WebCrypto's BufferSource excludes the
+// SharedArrayBuffer-backed views TypeScript 5.9 otherwise infers.
+function hexToBytes(hex: string): Uint8Array<ArrayBuffer> {
   const clean = hex.trim();
-  const out = new Uint8Array(clean.length / 2);
+  const out = new Uint8Array(new ArrayBuffer(clean.length / 2));
   for (let i = 0; i < out.length; i++) {
     out[i] = parseInt(clean.substring(i * 2, i * 2 + 2), 16);
   }

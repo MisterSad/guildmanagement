@@ -7,7 +7,7 @@
  * Edge Functions (which would also require faking an authenticated
  * context member-portal doesn't otherwise need).
  */
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
+import type { AdminClient } from "./db.ts";
 
 export interface MemberSnapshot {
   pseudo: string;
@@ -27,7 +27,7 @@ export interface MemberSnapshot {
 }
 
 export async function getPlayer(
-  admin: ReturnType<typeof createClient>,
+  admin: AdminClient,
   uid: string,
   guildContext: string | null
 ): Promise<MemberSnapshot | null> {
