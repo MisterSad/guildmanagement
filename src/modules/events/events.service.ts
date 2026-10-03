@@ -6,6 +6,7 @@
  */
 
 import { getSupabaseClient } from '../../core/api/supabase';
+import { guildWrite } from '../../core/api/guild-rpc';
 import { buildEventSessionId, sessionIdBase } from '../../core/config/events';
 import { EventStatus, EventParticipant, ChestTier, WarSession, EventDailyScore, WarOpponentKind } from '../../types/database';
 import { logger } from '../../core/logger/logger';
@@ -353,6 +354,25 @@ export class EventsService {
     const payload = rpcData(data, {});
     if (payload.ok !== true) return { ok: false, error: String(payload.error || 'rpc_failed') };
     return { ok: true, updated: typeof payload.updated === 'number' ? payload.updated : rows.length };
+  }
+
+  /**
+   * Moves a running session (Events, Arms Race or a Shadowfront squad) to a
+   * new start, in one transaction: status, participants, a Shadowfront
+   * squad's rows, and an SvS/GvG war session with its daily scores (M4a).
+   * `newSessionId` is buildEventSessionId's for the new start. Throws on refusal.
+   */
+  public static async rescheduleSession(
+    eventName: string, oldSessionId: string | null, newSessionId: string, startAt: string
+  ): Promise<{ ok: true; session_id: string; week_start: string }> {
+    return guildWrite('gm_reschedule_event_session', {
+      p_event_name: eventName, p_old_session_id: oldSessionId, p_new_session_id: newSessionId, p_start_at: startAt
+    });
+  }
+
+  /** Deletes a session -- participants, Shadowfront squad rows, status -- in one transaction (M4a). */
+  public static async deleteSession(eventName: string, sessionId: string | null): Promise<{ ok: true; participants: number }> {
+    return guildWrite('gm_delete_event_session', { p_event_name: eventName, p_session_id: sessionId });
   }
 }
 

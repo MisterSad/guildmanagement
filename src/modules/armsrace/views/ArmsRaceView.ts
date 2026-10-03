@@ -301,40 +301,11 @@ export class ArmsRaceView {
         if (!startAt) return;
 
         try {
-          const g = legacy.getActiveGuild();
-          const updateRes = await db.from('event_status').update({
-            start_at: startAt,
-            updated_at: new Date().toISOString()
-          }).eq('guild', g)
-            .eq('event_name', ARMSRACE_STAGE_EVENTS[stageKey]);
-          if (updateRes.error) throw updateRes.error;
-
-          const newWeek = legacy.getWeekStart(startAt);
-          const updatePartRes = await db.from('event_participants').update({
-            week_start: newWeek
-          }).eq('guild', g)
-            .eq('event_name', ARMSRACE_STAGE_EVENTS[stageKey])
-            .eq('session_id', stg.sessionId);
-          if (updatePartRes.error) throw updatePartRes.error;
-
+          // One transaction (M4a): status and participants move together.
           // Recalculate session_id: pass [] to avoid collision check (renaming).
           const newSessionId = legacy.buildEventSessionId(ARMSRACE_STAGE_EVENTS[stageKey], new Date(startAt), []);
-          if (newSessionId !== stg.sessionId) {
-            const updateSidPartRes = await db.from('event_participants').update({
-              session_id: newSessionId
-            }).eq('guild', g)
-              .eq('event_name', ARMSRACE_STAGE_EVENTS[stageKey])
-              .eq('session_id', stg.sessionId);
-            if (updateSidPartRes.error) throw updateSidPartRes.error;
-
-            const updateSidStatusRes = await db.from('event_status').update({
-              session_id: newSessionId
-            }).eq('guild', g)
-              .eq('event_name', ARMSRACE_STAGE_EVENTS[stageKey]);
-            if (updateSidStatusRes.error) throw updateSidStatusRes.error;
-
-            stg.sessionId = newSessionId;
-          }
+          const moved = await EventsService.rescheduleSession(ARMSRACE_STAGE_EVENTS[stageKey], stg.sessionId, newSessionId, startAt);
+          stg.sessionId = moved.session_id;
 
           legacy.showToast(legacy.t('toast_member_updated'), 'success');
           legacy.notifyDiscordEvent(ARMSRACE_STAGE_EVENTS[stageKey], startAt, 'edit');
@@ -362,19 +333,8 @@ export class ArmsRaceView {
       '<strong>Arms Race ' + legacy.esc(armsRaceStageLabel(stageKey)) + '</strong><br>' + legacy.t('confirm_delete_session_body'),
       async () => {
         try {
-          const currentG = legacy.getActiveGuild();
-          const delPartRes = await db.from('event_participants')
-            .delete()
-            .eq('guild', currentG)
-            .eq('event_name', ARMSRACE_STAGE_EVENTS[stageKey])
-            .eq('session_id', stg.sessionId);
-          if (delPartRes.error) throw delPartRes.error;
-
-          const delStatusRes = await db.from('event_status')
-            .delete()
-            .eq('guild', currentG)
-            .eq('event_name', ARMSRACE_STAGE_EVENTS[stageKey]);
-          if (delStatusRes.error) throw delStatusRes.error;
+          // Participants and status, in one transaction (M4a).
+          await EventsService.deleteSession(ARMSRACE_STAGE_EVENTS[stageKey], stg.sessionId);
 
           legacy.showToast(legacy.t('toast_session_deleted'), 'success');
           await this.load();

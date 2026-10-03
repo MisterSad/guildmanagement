@@ -12,10 +12,10 @@
 import { t, esc, winAny, byId } from '../admin/utils';
 import { getActiveGuild } from '../../../core/auth/roles';
 import { patchAppState } from '../../../core/state/app-state';
-import { getWeekStart } from '../../../core/utils/date';
 import { getGuildMembers, setGuildMembers, pushGuildMember, filterGuildMembersOut, findGuildMember, getPendingTransfers, setPendingTransfers, transferActionFor } from './members.store';
 import { renderGuildMembers, membersSkeletonHtml } from './members.render';
 import { showToast } from '../dialogs/dialogs.service';
+import { addMember, updateMember } from '../../members/members.service';
 import { eventsView } from '../../events/views/EventsView';
 import { armsRaceView } from '../../armsrace/views/ArmsRaceView';
 import { shadowfrontView } from '../../shadowfront/views/ShadowfrontView';
@@ -488,47 +488,24 @@ export async function handleAddMember(inputId: string, uidInputId: string, power
   } catch (err) { console.error('Ban check failed', err); }
 
   try {
-    const currentG = activeGuild();
-    const newMemberRow: any = {
-      pseudo, uid: uidVal, overall_power: powerVal, role: roleVal, guild: currentG,
+    // The row, its first metrics snapshot and its enrolment in the running
+    // events are one transaction (M4a); the row pushed is the one stored.
+    const added = await addMember({
+      pseudo, uid: uidVal, overall_power: powerVal, role: roleVal,
       fleet_rating: fleetVal, tech_power: techVal, flagship_power: flagshipVal,
       champion_power: champVal, crew_power: crewVal, glory_score: gloryVal
-    };
-    // Take back the row the database actually wrote, rather than pushing a
-    // client-side guess. The old code inserted without `.select()` and then
-    // invented `created_at` from the browser clock -- so the roster showed a
-    // timestamp that was never stored, and silently discarded anything the
-    // database fills in itself (defaults, triggers, normalisation).
-    const insertRes = await client.from('guild_members').insert([newMemberRow]).select();
-    if (insertRes.error) throw insertRes.error;
-    const storedRow = Array.isArray(insertRes.data) && insertRes.data.length > 0
-      ? insertRes.data[0]
-      : null;
-    pushGuildMember(storedRow || newMemberRow);
+    });
+    pushGuildMember(added.member);
 
     ['member-pseudo', 'member-uid', 'member-power', 'member-fleet', 'member-tech', 'member-flagship', 'member-champ', 'member-crew', 'member-glory']
       .forEach((id) => { const el = byId<HTMLInputElement>(id); if (el) el.value = ''; });
     if (roleInput) roleInput.value = 'R1';
 
-    if (fleetVal || techVal || flagshipVal || champVal || crewVal || gloryVal || powerVal) {
-      try {
-        await client.rpc('gm_upsert_player_metrics', {
-          p_guild: currentG, p_pseudo: pseudo, p_total_power: powerVal, p_tech_power: techVal,
-          p_champion_power: champVal, p_crew_power: crewVal, p_flagship_power: flagshipVal,
-          p_fleet_rating: fleetVal, p_glory_score: gloryVal
-        });
-      } catch (e) { console.error('Initial player metrics snapshot error:', e); }
-    }
-
     renderGuildMembers();
     showToast(pseudo + ' ' + t('toast_member_added'), 'success');
     if (gm && gm.cache && typeof gm.cache.invalidate === 'function') gm.cache.invalidate();
 
-    let addedEvents = 0;
-    try {
-      const enrollRes = await client.rpc('gm_add_member_to_active_events', { p_pseudo: pseudo, p_guild: activeGuild() });
-      if (!enrollRes.error && typeof enrollRes.data === 'number') addedEvents = enrollRes.data;
-    } catch (err) { console.error('Auto-enroll into active events failed', err); }
+    const addedEvents = added.added_events || 0;
 
     // Phase 7: direct calls. These were three `window` probes that no-opped
     // whenever a name drifted -- the same shape as the dead `maybeInitOcr`
@@ -621,17 +598,7 @@ export async function renameGuildMember(
   }
 
   try {
-    const activeG = activeGuild();
     const targetPseudo = member ? member.pseudo : oldPseudo;
-
-    if (pseudoChanged && (newUid || (member && member.uid))) {
-      const histIns = await client.from('player_name_history').insert({
-        guild: activeG, uid: newUid || (member ? member.uid : null),
-        old_pseudo: oldPseudo, new_pseudo: newPseudo,
-        changed_by: gm.currentAccountId || localStorage.getItem('gm_user') || 'Admin'
-      });
-      if (histIns.error) console.error('Logging name history failed', histIns.error);
-    }
 
     const update: any = {};
     if (pseudoChanged) update.pseudo = newPseudo;
@@ -646,35 +613,12 @@ export async function renameGuildMember(
     if (extraMetrics.glory_score !== undefined) update.glory_score = parseInt(extraMetrics.glory_score) || 0;
     if (extraMetrics.timezone !== undefined) update.timezone = extraMetrics.timezone || null;
     if (extraMetrics.timezone_offset !== undefined) update.timezone_offset = extraMetrics.timezone_offset;
-    update.power_updated_at = new Date().toISOString();
-    update.metrics_updated_at = new Date().toISOString();
 
-    const res = await client.from('guild_members').update(update).eq('guild', activeG).eq('pseudo', targetPseudo);
-    if (res.error) throw res.error;
-
-    try {
-      await client.rpc('gm_upsert_player_metrics', {
-        p_guild: activeG, p_pseudo: newPseudo, p_total_power: powerVal,
-        p_tech_power: update.tech_power !== undefined ? update.tech_power : (member ? member.tech_power : 0),
-        p_champion_power: update.champion_power !== undefined ? update.champion_power : (member ? member.champion_power : 0),
-        p_crew_power: update.crew_power !== undefined ? update.crew_power : (member ? member.crew_power : 0),
-        p_flagship_power: update.flagship_power !== undefined ? update.flagship_power : (member ? member.flagship_power : 0),
-        p_fleet_rating: update.fleet_rating !== undefined ? update.fleet_rating : (member ? member.fleet_rating : 0),
-        p_glory_score: update.glory_score !== undefined ? update.glory_score : (member ? member.glory_score : 0)
-      });
-    } catch (rpcErr) { console.warn('Metrics snapshot RPC fallback', rpcErr); }
-
-    // A changed Glory is also this week's Glory Tracker entry, as when it is
-    // typed on the Glory page. It used to stop at the profile field.
-    if (update.glory_score !== undefined && member && update.glory_score !== (Number(member.glory_score) || 0)) {
-      try {
-        const glRes = await client.rpc('gm_upsert_player_glory', {
-          p_guild: activeG, p_pseudo: newPseudo, p_week_start: getWeekStart(), p_glory: update.glory_score
-        });
-        const glRow = glRes.error ? null : (Array.isArray(glRes.data) ? glRes.data[0] : glRes.data);
-        if (glRes.error || !glRow || !glRow.ok) console.warn('Glory Tracker update failed', glRes.error || glRow);
-      } catch (glErr) { console.warn('Glory Tracker update failed', glErr); }
-    }
+    // One transaction (M4a): the update, the metrics snapshot, this week's
+    // Glory entry when Glory changed, and the name-history row of a rename
+    // (written by the server, with the caller's account as its author). The
+    // history row used to be written first and kept when the rename failed.
+    await updateMember(targetPseudo, update);
 
     await fetchGuildMembers();
     showToast(t('toast_member_updated'), 'success');

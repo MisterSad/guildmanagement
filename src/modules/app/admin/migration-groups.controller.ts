@@ -9,6 +9,7 @@
 
 import { esc, winAny, byId, getDb } from './utils';
 import { showToast } from '../dialogs/dialogs.service';
+import { createMigrationGroup } from '../../migration/migration.service';
 
 let migrationGroupsFormWired = false;
 
@@ -37,13 +38,8 @@ export async function renderMigrationGroupsList(): Promise<void> {
         const submitBtn = form.querySelector('button[type="submit"]') as HTMLButtonElement | null;
         if (submitBtn) submitBtn.disabled = true;
         try {
-          const groupRes = await db.from('server_migration_groups').insert([{ name, status: 'open' }]).select('id').single();
-          if (groupRes.error) throw new Error(groupRes.error.message);
-
-          const groupId = groupRes.data.id;
-          const linkRes = await db.from('server_migration_group_servers')
-            .insert(uniqueServers.map((s) => ({ group_id: groupId, server_number: s })));
-          if (linkRes.error) throw new Error(linkRes.error.message);
+          // The group and its servers in one transaction (M4a).
+          await createMigrationGroup(name, uniqueServers);
 
           showToast('Migration group "' + name + '" opened for servers: ' + uniqueServers.join(', '), 'success');
           if (nameInput) nameInput.value = '';

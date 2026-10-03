@@ -6,6 +6,8 @@
  * secure editable-field whitelist).
  */
 
+import { guildWrite } from '../../core/api/guild-rpc';
+
 export interface HistoryEventMeta {
   icon: string;
   label: string;
@@ -129,4 +131,18 @@ export function filterSessions(sessions: HistorySession[], activeFilter: string)
 
 export function sortSessionsDesc(sessions: HistorySession[]): HistorySession[] {
   return sessions.slice().sort((a, b) => sessionTime(b) - sessionTime(a));
+}
+
+/**
+ * Clears a category's history in one transaction. Sessions still running --
+ * their participants, status and squads -- and squads not yet started are
+ * kept (owner decision, 2026-10-03). Throws on refusal.
+ */
+export function clearEventHistory(eventNames: string[]): Promise<{ ok: true; participants: number; sessions: number; spared: number }> {
+  return guildWrite('gm_clear_event_history', { p_event_names: eventNames });
+}
+
+/** Deletes one session of the History detail dialog in one transaction. Throws on refusal. */
+export function deleteHistorySession(eventName: string, weekStart: string, sessionId: string | null): Promise<{ ok: true; participants: number }> {
+  return guildWrite('gm_delete_history_session', { p_event_name: eventName, p_week_start: weekStart, p_session_id: sessionId });
 }

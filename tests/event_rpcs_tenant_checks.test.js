@@ -7,6 +7,7 @@
 // the service role still worked.
 
 import { describe, it, expect } from 'vitest';
+import { sqlFunctionBody } from './helpers/sql-function.js';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -52,8 +53,8 @@ describe('the two live event RPCs check the tenant', () => {
   it('keeps the parameter names the client sends', () => {
     expect(sql).toContain('CREATE FUNCTION public.gm_add_member_to_active_events(p_pseudo text, p_guild text)');
     expect(sql).toMatch(/gm_populate_event_participants\(\s*p_event_name text, p_session_id text, p_week_start date, p_guild text\s*\)/);
-    const members = read('src/modules/app/members/members.controller.ts');
-    expect(members).toContain("client.rpc('gm_add_member_to_active_events', { p_pseudo: pseudo, p_guild: activeGuild() })");
+    // M4a: adding a member enrols it inside the same transaction.
+    expect(sqlFunctionBody('gm_add_member')).toContain('public.gm_add_member_to_active_events(v_pseudo, v_guild)');
     const armsrace = read('src/modules/armsrace/armsrace.service.ts');
     for (const p of ['p_event_name', 'p_session_id', 'p_week_start', 'p_guild']) expect(armsrace).toContain(p);
   });

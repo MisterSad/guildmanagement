@@ -6,6 +6,7 @@
 // wrong, so neither gets re-litigated.
 
 import { describe, it, expect } from 'vitest';
+import { sqlFunctionBody } from './helpers/sql-function.js';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -114,9 +115,10 @@ describe('fonts are not requested in weights nothing uses', () => {
 describe('a member row comes back from the database, not from the browser', () => {
   it('selects the inserted row instead of inventing created_at', () => {
     const ctrl = read('src/modules/app/members/members.controller.ts');
-    expect(ctrl).toContain(".insert([newMemberRow]).select()");
-    expect(stripComments(ctrl)).not.toContain('newMemberRow.created_at = new Date().toISOString()');
-    expect(ctrl).toContain('pushGuildMember(storedRow || newMemberRow)');
+    // M4a: gm_add_member returns the stored row, and that is what is pushed.
+    expect(sqlFunctionBody('gm_add_member')).toContain('RETURNING to_jsonb(m.*) INTO v_row');
+    expect(stripComments(ctrl)).not.toContain('created_at = new Date().toISOString()');
+    expect(ctrl).toContain('pushGuildMember(added.member)');
   });
 });
 

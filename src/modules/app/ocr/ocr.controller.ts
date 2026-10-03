@@ -16,11 +16,12 @@ import { getGuildMembers } from '../members/members.store';
 import { renderGuildMembers } from '../members/members.render';
 import {
   ocrDownsampleEvenly,
-  upsertPlayerMetrics,
   categorizeOcrDiff,
   parseOcrScore,
   compressImageForUpload,
-  fuseOcrPlayers
+  fuseOcrPlayers,
+  recordEventAttendance,
+  commitOcrRoster
 } from '../../ocr/ocr.service';
 import { getActiveGuild } from '../../../core/auth/roles';
 import { fetchGuildMembers } from '../members/members.controller';
@@ -794,15 +795,14 @@ export async function commitOcrUpdates(): Promise<void> {
         const assignRes = await client.from('shadowfront_squads').select('pseudo, role, squad').eq('guild', currentG).eq('session_id', activeSid);
         const assignMap: Record<string, string> = {};
         (assignRes.data || []).forEach((a: any) => { assignMap[String(a.pseudo).toLowerCase()] = a.role; });
-        await runInChunks(selectedPlayers, 10, async (sp: any) => {
-          const role = assignMap[String(sp.pseudo).toLowerCase()];
-          const updatePayload: any = { participated: 1 };
-          if (role === 'reserve') updatePayload.sub_present = true;
-          const upRes = await client.from('event_participants').update(updatePayload).eq('guild', currentG).eq('event_name', 'Shadowfront').eq('session_id', activeSid).eq('pseudo', sp.pseudo).select('pseudo');
-          if (upRes.data && upRes.data.length === 0) {
-            await client.from('event_participants').insert([Object.assign({ guild: currentG, event_name: 'Shadowfront', session_id: activeSid, pseudo: sp.pseudo, week_start: getWeekStart(sqRes.data.start_at || new Date()) }, updatePayload)]);
-          }
-        });
+        // One transaction for the whole read (M4a): each player's row is
+        // updated or created, a reserve marked as such. Per-row failures used
+        // to be swallowed.
+        await recordEventAttendance('Shadowfront', activeSid, getWeekStart(sqRes.data.start_at || new Date()),
+          selectedPlayers.map((sp: any) => ({
+            pseudo: sp.pseudo,
+            sub_present: assignMap[String(sp.pseudo).toLowerCase()] === 'reserve'
+          })));
         // Phase 7: a direct call. The `window` probe silently skipped the
         // refresh whenever the namespace or method name drifted, leaving the
         // Shadowfront tab showing pre-OCR data with no error.
@@ -815,12 +815,8 @@ export async function commitOcrUpdates(): Promise<void> {
           return;
         }
         const arSid = arRes.data.session_id;
-        await runInChunks(selectedPlayers, 10, async (sp: any) => {
-          const upRes = await client.from('event_participants').update({ participated: 1 }).eq('guild', currentG).eq('event_name', arEvName).eq('session_id', arSid).eq('pseudo', sp.pseudo).select('pseudo');
-          if (upRes.data && upRes.data.length === 0) {
-            await client.from('event_participants').insert([{ guild: currentG, event_name: arEvName, session_id: arSid, pseudo: sp.pseudo, participated: 1, week_start: getWeekStart(arRes.data.start_at || new Date()) }]);
-          }
-        });
+        await recordEventAttendance(arEvName, arSid, getWeekStart(arRes.data.start_at || new Date()),
+          selectedPlayers.map((sp: any) => ({ pseudo: sp.pseudo })));
         await armsRaceView.load();
       } else {
         const evName = meta.eventKey;
@@ -857,16 +853,12 @@ export async function commitOcrUpdates(): Promise<void> {
             if (!batchRes.ok) throw new Error(batchRes.error || 'rpc_failed');
           }
         } else if (metric === 'dtr') {
-          await runInChunks(selectedPlayers, 10, async (sp: any) => {
-            const scoreVal = sp.score != null ? sp.score : 0;
-            const updatePayload: any = {};
-            if (scoreVal > 0) updatePayload.participated = 1;
-            else { updatePayload.appointed = true; updatePayload.participated = 1; }
-            const upRes = await client.from('event_participants').update(updatePayload).eq('guild', currentG).eq('event_name', evName).eq('session_id', evSid).eq('pseudo', sp.pseudo).select('pseudo');
-            if (upRes.data && upRes.data.length === 0) {
-              await client.from('event_participants').insert([Object.assign({ guild: currentG, event_name: evName, session_id: evSid, pseudo: sp.pseudo, week_start: getWeekStart(evRes.data.start_at || new Date()) }, updatePayload)]);
-            }
-          });
+          // A Trade Route read with no score is an appointee.
+          await recordEventAttendance(evName, evSid, getWeekStart(evRes.data.start_at || new Date()),
+            selectedPlayers.map((sp: any) => ({
+              pseudo: sp.pseudo,
+              appointed: !((sp.score != null ? sp.score : 0) > 0)
+            })));
         }
         await eventsView.loadEvent(evName);
       }
@@ -1018,93 +1010,45 @@ export async function executeRosterCommit(
     if (span) span.textContent = 'Validating & Saving...';
   }
 
-  let updatedCount = 0, addedCount = 0, removedCount = 0, failedCount = 0, rankAssignedCount = 0;
   const metric = getCurrentOcrMetric();
   const meta = getOcrMeta(metric);
 
   try {
-    const client = db();
-    const currentG = currentGuild();
     const x = gm();
+    const bulkRank = (rank: unknown): string | undefined =>
+      (typeof rank === 'string' && x && typeof x.isRoleAllowedForBulk === 'function' && x.isRoleAllowedForBulk(rank)) ? rank : undefined;
     const roster = members();
 
-    await runInChunks(selectedExisting, 10, async (sp: any) => {
-      const scoreVal = sp.score != null ? sp.score : (sp.overall_power || 0);
+    // All of it or none of it (M4a, owner decision 2026-10-03): the import is
+    // one database transaction. A refused row -- a UID already taken, a
+    // banned one, an R5 removal -- now refuses the whole import and names the
+    // row, where it used to be skipped, counted, and the rest applied.
+    const existingRows = selectedExisting.map((sp: any) => {
       const existing = roster.find((m: any) => String(m.pseudo).toLowerCase() === String(sp.pseudo).toLowerCase());
-      if (!existing) return;
-
-      if (targetField === 'glory_score') {
-        const gloryWeek = getWeekStart();
-        const glRes = await client.rpc('gm_upsert_player_glory', { p_guild: currentG, p_pseudo: existing.pseudo, p_week_start: gloryWeek, p_glory: scoreVal });
-        const glRow = glRes.error ? null : (Array.isArray(glRes.data) ? glRes.data[0] : glRes.data);
-        if (glRes.error || !glRow || !glRow.ok) { failedCount++; return; }
-        existing.glory_score = scoreVal;
-        existing.metrics_updated_at = new Date().toISOString();
-        updatedCount++;
-      } else {
-        const updatePayload: any = {};
-        updatePayload[targetField] = scoreVal;
-        updatePayload.metrics_updated_at = new Date().toISOString();
-        if (targetField === 'overall_power') updatePayload.power_updated_at = new Date().toISOString();
-        let rankChanged = false;
-        if (metric === 'members' && sp.rank && x && typeof x.isRoleAllowedForBulk === 'function' && x.isRoleAllowedForBulk(sp.rank) && existing.role !== 'R5') {
-          updatePayload.role = sp.rank;
-          rankChanged = sp.rank !== existing.role;
-        }
-        const upRes = await client.from('guild_members').update(updatePayload).eq('guild', currentG).eq('pseudo', existing.pseudo);
-        if (upRes.error) { failedCount++; return; }
-        existing[targetField] = scoreVal;
-        existing.metrics_updated_at = updatePayload.metrics_updated_at;
-        if (updatePayload.role) existing.role = updatePayload.role;
-        if (rankChanged) rankAssignedCount++;
-        updatedCount++;
-      }
-
-      try {
-        await upsertPlayerMetrics(currentG, existing.pseudo, {
-          overall_power: existing.overall_power || 0, fleet_rating: existing.fleet_rating || 0, tech_power: existing.tech_power || 0,
-          flagship_power: existing.flagship_power || 0, champion_power: existing.champion_power || 0, crew_power: existing.crew_power || 0, glory_score: existing.glory_score || 0
-        });
-      } catch (_) { /* history snapshot best-effort */ }
-    });
-
-    await runInChunks(selectedNew, 10, async (np: any) => {
-      const nScore = np.score != null ? np.score : (np.overall_power || 0);
-      const assignedUid = (np.uid && String(np.uid).trim()) ? String(np.uid).trim() : ('TEMP-' + Math.random().toString(36).substring(2, 10));
-      const newMember: any = {
-        pseudo: np.pseudo, uid: assignedUid,
-        overall_power: targetField === 'overall_power' ? nScore : 0,
-        fleet_rating: targetField === 'fleet_rating' ? nScore : 0,
-        tech_power: targetField === 'tech_power' ? nScore : 0,
-        flagship_power: targetField === 'flagship_power' ? nScore : 0,
-        champion_power: targetField === 'champion_power' ? nScore : 0,
-        crew_power: targetField === 'crew_power' ? nScore : 0,
-        glory_score: targetField === 'glory_score' ? nScore : 0,
-        guild: currentG,
-        role: (x && typeof x.isRoleAllowedForBulk === 'function' && x.isRoleAllowedForBulk(np.rank)) ? np.rank : 'R1'
+      if (!existing) return null;
+      const row: { pseudo: string; score: number; role?: string } = {
+        pseudo: existing.pseudo,
+        score: sp.score != null ? sp.score : (sp.overall_power || 0)
       };
-      if (newMember.role !== 'R1') rankAssignedCount++;
-      const insRes = await client.from('guild_members').insert([newMember]);
-      if (insRes.error) { failedCount++; return; }
-      roster.push(newMember);
-      addedCount++;
+      // A rank is only read by the Members OCR, and never overrides an R5.
+      const rank = metric === 'members' && targetField !== 'glory_score' ? bulkRank(sp.rank) : undefined;
+      if (rank && existing.role !== 'R5') row.role = rank;
+      return row;
+    }).filter(Boolean) as Array<{ pseudo: string; score: number; role?: string }>;
 
-      if (targetField === 'glory_score' && nScore > 0) {
-        try { await client.rpc('gm_upsert_player_glory', { p_guild: currentG, p_pseudo: newMember.pseudo, p_week_start: getWeekStart(), p_glory: nScore }); } catch (_) { /* best effort */ }
-      }
-      try {
-        await upsertPlayerMetrics(currentG, newMember.pseudo, {
-          overall_power: newMember.overall_power, fleet_rating: newMember.fleet_rating, tech_power: newMember.tech_power,
-          flagship_power: newMember.flagship_power, champion_power: newMember.champion_power, crew_power: newMember.crew_power, glory_score: newMember.glory_score
-        });
-      } catch (_) { /* best effort */ }
-    });
+    const newRows = selectedNew.map((np: any) => ({
+      pseudo: np.pseudo,
+      uid: (np.uid && String(np.uid).trim()) ? String(np.uid).trim() : null,
+      score: np.score != null ? np.score : (np.overall_power || 0),
+      role: bulkRank(np.rank) || 'R1'
+    }));
 
-    if (checkedRemovalPseudos.length > 0) {
-      const delRes = await client.from('guild_members').delete().eq('guild', currentG).in('pseudo', checkedRemovalPseudos);
-      if (delRes.error) showToast('Error removing members: ' + delRes.error.message, 'error');
-      else removedCount = checkedRemovalPseudos.length;
-    }
+    const result = await commitOcrRoster(targetField, existingRows, newRows, checkedRemovalPseudos);
+    const updatedCount = result.updated;
+    const addedCount = result.added;
+    const removedCount = result.removed;
+    const rankAssignedCount = result.ranks_assigned;
+    const failedCount = 0;
 
     await fetchGuildMembers();
     renderGuildMembers();
@@ -1126,7 +1070,8 @@ export async function executeRosterCommit(
     invalidateCache();
   } catch (err: any) {
     console.error('Commit OCR error:', err);
-    showToast('Failed to save OCR updates: ' + (err.message || err), 'error');
+    // The import is all-or-nothing: say so, so nobody re-checks half a roster.
+    showToast('Nothing was saved: ' + (err.message || err), 'error');
   } finally {
     if (btnCommit) {
       btnCommit.disabled = false;

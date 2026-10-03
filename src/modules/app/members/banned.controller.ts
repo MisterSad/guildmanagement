@@ -19,6 +19,7 @@ import {
 } from './members.store';
 import { renderGuildMembers } from './members.render';
 import { showToast } from '../dialogs/dialogs.service';
+import { banMember } from '../../members/members.service';
 import { getActiveGuild } from '../../../core/auth/roles';
 
 function g(): any {
@@ -161,9 +162,6 @@ export async function handleAddBannedPlayer(): Promise<void> {
 }
 
 async function executeBan(uidVal: string, pseudoVal: string, reasonVal: string): Promise<void> {
-  const client = db();
-  if (!client) return;
-  const gm = g();
   const uidInput = byId<HTMLInputElement>('banned-uid');
   const pseudoInput = byId<HTMLInputElement>('banned-pseudo');
   const reasonInput = byId<HTMLInputElement>('banned-reason');
@@ -172,26 +170,20 @@ async function executeBan(uidVal: string, pseudoVal: string, reasonVal: string):
   if (btn) btn.disabled = true;
 
   try {
-    const currentG = activeGuild();
-    const currentUser = (gm && gm.currentAccountId) || localStorage.getItem('gm_user') || 'Admin';
-    const res = await client.from('banned_players').insert([{
-      guild: currentG, uid: uidVal, pseudo: pseudoVal || null, reason: reasonVal || null, created_by: currentUser
-    }]);
-    if (res.error) throw res.error;
+    // The ban and the removal from the roster are one transaction (M4a). The
+    // removal used to fail silently and leave the banned player on the
+    // roster; the author is now the caller's account, read server-side.
+    const res = await banMember(uidVal, pseudoVal || null, reasonVal || null);
 
     if (uidInput) uidInput.value = '';
     if (pseudoInput) pseudoInput.value = '';
     if (reasonInput) reasonInput.value = '';
 
     let kickMsg = '';
-    const member = getGuildMembers().find((m) => m.uid === uidVal);
-    if (member) {
-      const delRes = await client.from('guild_members').delete().eq('uid', uidVal).eq('guild', currentG);
-      if (!delRes.error) {
-        filterGuildMembersOut((m) => m.uid === uidVal);
-        renderGuildMembers();
-        kickMsg = t('toast_player_banned_kick');
-      }
+    if (res.removed) {
+      filterGuildMembersOut((m) => m.uid === uidVal);
+      renderGuildMembers();
+      kickMsg = t('toast_player_banned_kick');
     }
 
     showToast(t('toast_player_banned_ok') + kickMsg, 'success');

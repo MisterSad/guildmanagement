@@ -606,7 +606,7 @@ constraint|event_daily_scores.event_daily_scores_guild_fkey|cbb1cfaf2e68dde52285
 constraint|event_daily_scores.event_daily_scores_pkey|057b41184e0a21a4ba71eabd92bf5a98
 constraint|event_daily_scores.event_daily_scores_score_check|c6f3307b879a2fdf4f7b7a086f3a1e96
 constraint|event_daily_scores.fk_event_daily_scores_member|e297e836771b80156b28aedbce791381
-constraint|event_daily_scores.fk_event_daily_scores_session|b1bc532b77e51a3ba503116ae2615b44
+constraint|event_daily_scores.fk_event_daily_scores_session|2533b6b04d5e9100f1a52b4ab3a47232
 constraint|event_participants.event_participants_guild_event_session_pseudo_key|34a6af5545f6004099b432ac31dfb1bc
 constraint|event_participants.event_participants_guild_pseudo_fkey|e297e836771b80156b28aedbce791381
 constraint|event_participants.event_participants_pkey|057b41184e0a21a4ba71eabd92bf5a98
@@ -701,6 +701,7 @@ constraint|weekly_scores.weekly_scores_pkey|057b41184e0a21a4ba71eabd92bf5a98
 function|check_uid_exists_globally(p_uid text)|1a807cbd33f2eb073ab1f5002c5ac26d
 function|check_user_guild_access(p_guild text)|f5efff5ac24d45b0681a9cad5e9de921
 function|check_user_guild_write_access(p_guild text)|4bc62baef2bc2daeee56834fe3ee0a2d
+function|gm_add_member(p_guild text, p_member jsonb)|5f17e83dd9d1376be3f8a4ee48f8faef
 function|gm_add_member_to_active_events(p_pseudo text, p_guild text)|418a378d8ded8cb5f7be7ce33a091932
 function|gm_admin_delete(p_id text)|34a3dfdf991f02afba0a9c651dd66031
 function|gm_admin_list()|905259b3521fafac82c62228de9fa716
@@ -711,6 +712,7 @@ function|gm_approve_guild_request(p_request_id uuid)|6a2de59690f9f296894ab45a80a
 function|gm_approve_participant_submission(p_guild text, p_event_name text, p_session_id text, p_pseudo text)|4886c55427c0a12415a1693b79b63e83
 function|gm_approve_player_account(p_id text)|9121269427114cddd3bbf82870da8db4
 function|gm_attach_shadow(p_id text, p_auth_user_id uuid, p_secret text)|027735cdfce242d58cedc600d726e915
+function|gm_ban_member(p_guild text, p_uid text, p_pseudo text, p_reason text)|8c07be6beee1f3c5d4e497547a18d38b
 function|gm_caller_guild()|f721c9c46bff4d2f21719482f21bf7c6
 function|gm_can_access_server_wiki(p_server_number text)|3ab3242dd1a283219cf10d887c59ee40
 function|gm_can_access_wiki_page(p_page_id uuid)|80911462376c0f3c7c28419cd2edca1f
@@ -726,11 +728,16 @@ function|gm_chests_for_score(p_tiers jsonb, p_score bigint)|d5264fd40bfb8a8cc8d1
 function|gm_claim_account_with_discord(p_id text, p_password text, p_discord_user_id text)|46fcd4d49bcfe48a9931712db36c8eab
 function|gm_cleanup_expired_ocr_cache()|d5f745a7610840d72e117d3f7ce5708a
 function|gm_cleanup_stale_reminder_locks()|9a34f882b348e11fe9049e04ba31744c
+function|gm_clear_event_history(p_guild text, p_event_names text[])|8bab483ed8ccd23fd765f3dae2c0aeb6
+function|gm_commit_ocr_roster(p_guild text, p_field text, p_existing jsonb, p_new jsonb, p_removals text[])|47861b795acbdd6bf568c771395bbc40
 function|gm_configured_webhooks(p_guild text)|31a8c606e6538c040e2e62e2c6f75f12
 function|gm_consume_discord_auth_ticket(p_ticket text)|c68353bd7af7dc84dfedaeacc7a1c325
 function|gm_consume_discord_oauth_state(p_state text)|c9dad7fbaa1881e470f66b255afc2b3a
+function|gm_create_migration_group(p_name text, p_servers text[])|1bf280ac1a9957dface3e49ec9bc2773
 function|gm_create_ticket(p_title text, p_description text, p_category text, p_severity text, p_guild text, p_reporter_account_id text, p_reporter_role text, p_attachments jsonb)|c5775e28dc846cebf77c969051e01bf4
+function|gm_delete_event_session(p_guild text, p_event_name text, p_session_id text)|e4272a965e61b7025f5a2baee0242ddb
 function|gm_delete_guild(p_guild_id text)|b3ab5b1d9ba8efd5cdeb8acd102924f7
+function|gm_delete_history_session(p_guild text, p_event_name text, p_week_start date, p_session_id text)|e95d0a13b674672f0e987a3d7a22aa74
 function|gm_delete_player_absence(p_id uuid, p_uid text)|f9d6fcfdfe1ef8d2d0b4ef29ddae9b62
 function|gm_delete_war_session(p_guild text, p_event_name text, p_session_id text)|bedc8bce6ed5de8801f03712b3ef78d6
 function|gm_discord_create_guild(p_discord_user_id text, p_discord_username text, p_guild_tag text, p_server_number text)|3602b806ec18da7530b40a6150f77093
@@ -772,6 +779,7 @@ function|gm_protect_r5_role_change()|983185e7d9ff61842296eea41cf895ec
 function|gm_purge_cron_history()|e7261ac866989db747005cb54aec2ca5
 function|gm_purge_discord_ephemera()|78245437563bbffa903b391d27ff09d9
 function|gm_purge_guild_data(p_guild text)|2a8db42e5e892364adc70ca72813a1b2
+function|gm_record_event_attendance(p_guild text, p_event_name text, p_session_id text, p_week_start date, p_rows jsonb)|ebe8ca0eec209af6939a86ffb0ba1914
 function|gm_redeem_admin_invite(p_code_hash text, p_discord_user_id text, p_discord_username text)|3fb9266abcbeda8620c279f39b94e8cd
 function|gm_redeem_relink_code(p_code_hash text, p_discord_user_id text)|ae03b6ce8ef30ea4672c8ad856b86554
 function|gm_refuse_banned_member()|d51228561b320232ba85f8d82467c995
@@ -780,6 +788,8 @@ function|gm_reject_guild_request(p_request_id uuid, p_reason text)|3eb64184c99d7
 function|gm_reject_player_account(p_id text)|049ca9c183d9084efca69c104bc92175
 function|gm_rename_guild(p_guild text, p_new_tag text)|1ab1bb5a0a0f15e7f7f68f3fa9f4ad93
 function|gm_report_client_error(p_level text, p_service text, p_correlation_id text, p_guild text, p_user_identifier text, p_message text, p_metadata jsonb, p_error_details jsonb)|7372054b4e5c0dd1e8b2714d9a9e530e
+function|gm_require_guild_write(p_guild text)|d243d55c8b21993edfdfbcc216b10dc1
+function|gm_reschedule_event_session(p_guild text, p_event_name text, p_old_session_id text, p_new_session_id text, p_start_at timestamp with time zone)|d9c0fc38a0f2f597ded56588c45a96a2
 function|gm_reset_account_password(p_id text, p_password text)|b126defa8c7912ade5b4dc12d7112caf
 function|gm_reset_demo_tenant_data()|643de35ffbeecb7b7ac228173eceae95
 function|gm_revoke_auth_sessions(p_auth_user_id uuid)|266ebf04477bb57a983e5777cb305b4d
@@ -799,6 +809,7 @@ function|gm_transfer_guild_member(p_uid text, p_target_guild text, p_pseudo text
 function|gm_transfer_sync_related_rows(p_pseudo text, p_source_guild text, p_target_guild text)|30101347274c2a29c64a03de67012e90
 function|gm_unsync_shadowfront_participant(p_guild text, p_session_id text, p_pseudo text)|3c0694f309408921d6b7cf11864d1e97
 function|gm_update_account_role(p_id text, p_role text, p_guild text, p_server_number text)|2a3c10cbfc19383e425ae89eeec727c1
+function|gm_update_member(p_guild text, p_pseudo text, p_update jsonb)|db6a1201bad453c7fbe03d2d3e755028
 function|gm_update_player_timezone(p_uid text, p_offset numeric, p_timezone text)|26eb5ac092ed065670e778cec333e49b
 function|gm_update_ticket_status(p_id bigint, p_status text)|586ecf453384db68ff5a38149e24a9a8
 function|gm_upsert_daily_scores(p_guild text, p_event_name text, p_session_id text, p_rows jsonb)|8e2e31139e522cbc22c96a6a4b159643

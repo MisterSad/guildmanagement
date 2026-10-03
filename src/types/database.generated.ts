@@ -1697,6 +1697,7 @@ export type Database = {
         Args: { p_guild: string }
         Returns: boolean
       }
+      gm_add_member: { Args: { p_guild: string; p_member: Json }; Returns: Json }
       gm_add_member_to_active_events: {
         Args: { p_guild: string; p_pseudo: string }
         Returns: number
@@ -1746,6 +1747,10 @@ export type Database = {
       gm_attach_shadow: {
         Args: { p_auth_user_id: string; p_id: string; p_secret: string }
         Returns: undefined
+      }
+      gm_ban_member: {
+        Args: { p_guild: string; p_pseudo: string; p_reason: string; p_uid: string }
+        Returns: Json
       }
       gm_caller_guild: { Args: never; Returns: string }
       gm_can_access_server_wiki: {
@@ -1818,6 +1823,20 @@ export type Database = {
       }
       gm_cleanup_expired_ocr_cache: { Args: never; Returns: undefined }
       gm_cleanup_stale_reminder_locks: { Args: never; Returns: number }
+      gm_clear_event_history: {
+        Args: { p_event_names: string[]; p_guild: string }
+        Returns: Json
+      }
+      gm_commit_ocr_roster: {
+        Args: {
+          p_existing: Json
+          p_field: string
+          p_guild: string
+          p_new: Json
+          p_removals: string[]
+        }
+        Returns: Json
+      }
       gm_configured_webhooks: { Args: { p_guild: string }; Returns: string[] }
       gm_consume_discord_auth_ticket: {
         Args: { p_ticket: string }
@@ -1834,6 +1853,10 @@ export type Database = {
           code_verifier: string
           origin: string
         }[]
+      }
+      gm_create_migration_group: {
+        Args: { p_name: string; p_servers: string[] }
+        Returns: Json
       }
       gm_create_ticket: {
         Args: {
@@ -1852,12 +1875,25 @@ export type Database = {
           ticket_number: number
         }[]
       }
+      gm_delete_event_session: {
+        Args: { p_event_name: string; p_guild: string; p_session_id: string }
+        Returns: Json
+      }
       gm_delete_guild: {
         Args: { p_guild_id: string }
         Returns: {
           error: string
           ok: boolean
         }[]
+      }
+      gm_delete_history_session: {
+        Args: {
+          p_event_name: string
+          p_guild: string
+          p_session_id: string
+          p_week_start: string
+        }
+        Returns: Json
       }
       gm_delete_player_absence: {
         Args: { p_id: string; p_uid: string }
@@ -2092,6 +2128,16 @@ export type Database = {
       gm_purge_cron_history: { Args: never; Returns: number }
       gm_purge_discord_ephemera: { Args: never; Returns: Json }
       gm_purge_guild_data: { Args: { p_guild: string }; Returns: Json }
+      gm_record_event_attendance: {
+        Args: {
+          p_event_name: string
+          p_guild: string
+          p_rows: Json
+          p_session_id: string
+          p_week_start: string
+        }
+        Returns: Json
+      }
       gm_redeem_admin_invite: {
         Args: {
           p_code_hash: string
@@ -2145,6 +2191,17 @@ export type Database = {
           p_user_identifier?: string
         }
         Returns: boolean
+      }
+      gm_require_guild_write: { Args: { p_guild: string }; Returns: string }
+      gm_reschedule_event_session: {
+        Args: {
+          p_event_name: string
+          p_guild: string
+          p_new_session_id: string
+          p_old_session_id: string
+          p_start_at: string
+        }
+        Returns: Json
       }
       gm_reset_account_password: {
         Args: { p_id: string; p_password: string }
@@ -2235,6 +2292,10 @@ export type Database = {
           role: string
           server_number: string
         }[]
+      }
+      gm_update_member: {
+        Args: { p_guild: string; p_pseudo: string; p_update: Json }
+        Returns: Json
       }
       gm_update_player_timezone: {
         Args: { p_offset: number; p_timezone?: string; p_uid: string }

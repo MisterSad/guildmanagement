@@ -2,6 +2,29 @@
 
 ## [Unreleased]
 
+- **Multi-step guild writes are transactions** (medium-term plan, phase M4a; audit ARC-02, DB-11, DB-12).
+  - **What changes.** Seven browser flows used to issue 2 to 6 table writes with no rollback. Each is now one `SECURITY DEFINER` function, called through `src/core/api/guild-rpc.ts` `guildWrite()`, and it does all of its work or none.
+    - The guard: `gm_require_guild_write`, the same rule as the RLS write policies, session epoch included. Every statement is filtered on that guild.
+    - The functions are granted to `authenticated` only.
+  - **Flows and the failure each could leave:**
+    - session reschedule (Events, Arms Race, Shadowfront: `gm_reschedule_event_session`). Shadowfront ignored four of its six write errors;
+    - session delete (`gm_delete_event_session`);
+    - history clear and single-session delete (`gm_clear_event_history`, `gm_delete_history_session`);
+    - ban (`gm_ban_member`). The roster removal failed silently and left the banned player on the roster; the author is now the caller's account, read server-side;
+    - member add and edit (`gm_add_member`, `gm_update_member`). A rename's history row was written first and kept when the rename failed;
+    - OCR attendance and roster import (`gm_record_event_attendance`, `gm_commit_ocr_roster`);
+    - migration group creation (`gm_create_migration_group`). It could leave an "open" group with no servers.
+  - **Visible changes, decided by the owner on 2026-10-03:**
+    - An OCR roster import is **all-or-nothing**. One refused row (UID taken or banned, an R5 removal…) refuses the import and names the row; the toast says "Nothing was saved".
+    - Moving an **SvS/GvG** session to another week now takes its war session and daily scores along. They used to stay orphaned on the old session id. `fk_event_daily_scores_session` gains `ON UPDATE CASCADE`.
+    - **Clear history** spares running sessions (participants, status, squads) and squads not yet started. It used to delete every squad of the guild, the running one included.
+  - **Tests:**
+    - `supabase/tests/10_transactional_writes.sql`, 43 assertions: who may call each function, the whole job done, and nothing done when one step is refused;
+    - `tests/guild_rpc.test.js`;
+    - executed OCR and ban tests now assert the single call and its payload;
+    - regex tests that pinned the old browser logic now read the function bodies (`tests/helpers/sql-function.js`).
+  - **Not covered:** Shadowfront's per-player un-assignment still issues direct deletes, outside the M4a list.
+
 - **The four largest Edge Functions are split by action** (medium-term plan, phase M3; audit BE-A-20, ARC-09, QA-09). No behaviour change, proven as follows.
   - **Characterization first.** Before any code moved, each handler was run against the in-memory Supabase with a frozen clock and frozen randomness, and everything it did was recorded with `assertSnapshot`: the response, every read, write, RPC and GoTrue call, and every request to Discord.
     - 108 scenarios: `event-reminders` 15, `member-portal` 26, `admin-accounts` 36, `auth-discord` 22.

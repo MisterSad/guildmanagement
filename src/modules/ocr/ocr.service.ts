@@ -11,6 +11,7 @@
 import { findBestMatchingMember, cleanPlayerPseudo, parseGeminiJson } from '../../core/utils/text';
 import { getClient } from '../../core/api/supabase';
 import { SUPABASE_URL } from '../../core/config/constants';
+import { guildWrite } from '../../core/api/guild-rpc';
 
 export { parseGeminiJson };
 
@@ -467,3 +468,32 @@ export function parseOcrScore(rawScore: unknown, rawText?: string | null): numbe
 }
 
 
+
+/**
+ * Marks the players an OCR read as present in a session, in one transaction:
+ * an existing row is updated, a missing one created. `sub_present` marks a
+ * Shadowfront reserve, `appointed` a Trade Route appointee. Throws on refusal.
+ */
+export function recordEventAttendance(
+  eventName: string, sessionId: string, weekStart: string,
+  rows: Array<{ pseudo: string; sub_present?: boolean; appointed?: boolean }>
+): Promise<{ ok: true; updated: number; inserted: number }> {
+  return guildWrite('gm_record_event_attendance', {
+    p_event_name: eventName, p_session_id: sessionId, p_week_start: weekStart, p_rows: rows
+  });
+}
+
+export interface OcrRosterResult { ok: true; updated: number; added: number; removed: number; ranks_assigned: number }
+
+/**
+ * Applies an OCR roster import all-or-nothing (owner decision, 2026-10-03):
+ * one refused row and nothing is written; the error names the row.
+ */
+export function commitOcrRoster(
+  field: string,
+  existing: Array<{ pseudo: string; score: number; role?: string }>,
+  newRows: Array<{ pseudo: string; uid?: string | null; score: number; role?: string }>,
+  removals: string[]
+): Promise<OcrRosterResult> {
+  return guildWrite('gm_commit_ocr_roster', { p_field: field, p_existing: existing, p_new: newRows, p_removals: removals });
+}

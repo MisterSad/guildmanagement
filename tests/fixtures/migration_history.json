@@ -560,6 +560,10 @@
     {
       "version": "20261003191900",
       "name": "webhook_urls_server_only"
+    },
+    {
+      "version": "20261003203015",
+      "name": "transactional_guild_writes"
     }
   ]
 }

@@ -437,45 +437,12 @@ export class ShadowfrontView {
         if (!startAt) return;
 
         try {
-          const updateRes = await db.from('event_status').update({
-            start_at: startAt,
-            updated_at: new Date().toISOString()
-          }).eq('guild', currentG)
-            .eq('event_name', SHADOWFRONT_SQUAD_EVENT[squad]);
-          if (updateRes.error) throw updateRes.error;
-
-          const newWeek = legacy.getWeekStart(startAt);
-          await db.from('shadowfront_squads').update({
-            week_start: newWeek
-          }).eq('guild', currentG)
-            .eq('session_id', sq.sessionId);
-
-          await db.from('event_participants').update({
-            week_start: newWeek
-          }).eq('guild', currentG)
-            .eq('event_name', SHADOWFRONT_EVENT_NAME)
-            .eq('session_id', sq.sessionId);
-
+          // One transaction (M4a): status, squad rows and participants move to
+          // the new start and session id together, or not at all. Four of the
+          // six writes this replaces never checked their error.
           const newSessionId = legacy.buildEventSessionId(SHADOWFRONT_SQUAD_EVENT[squad], new Date(startAt), []);
-          if (newSessionId !== sq.sessionId) {
-            await db.from('event_participants').update({
-              session_id: newSessionId
-            }).eq('guild', currentG)
-              .eq('event_name', SHADOWFRONT_EVENT_NAME)
-              .eq('session_id', sq.sessionId);
-
-            await db.from('shadowfront_squads').update({
-              session_id: newSessionId
-            }).eq('guild', currentG)
-              .eq('session_id', sq.sessionId);
-
-            await db.from('event_status').update({
-              session_id: newSessionId
-            }).eq('guild', currentG)
-              .eq('event_name', SHADOWFRONT_SQUAD_EVENT[squad]);
-
-            sq.sessionId = newSessionId;
-          }
+          const moved = await EventsService.rescheduleSession(SHADOWFRONT_SQUAD_EVENT[squad], sq.sessionId, newSessionId, startAt);
+          sq.sessionId = moved.session_id;
 
           legacy.showToast(legacy.t('toast_member_updated'), 'success');
           legacy.notifyDiscordEvent(SHADOWFRONT_SQUAD_EVENT[squad], startAt, 'edit');
@@ -503,25 +470,8 @@ export class ShadowfrontView {
       '<strong>' + legacy.esc(this.squadLabel(squad)) + '</strong><br>' + legacy.t('confirm_delete_session_body'),
       async () => {
         try {
-          const currentG = legacy.getActiveGuild();
-          const delPartRes = await db.from('event_participants')
-            .delete()
-            .eq('guild', currentG)
-            .eq('event_name', SHADOWFRONT_EVENT_NAME)
-            .eq('session_id', sq.sessionId);
-          if (delPartRes.error) throw delPartRes.error;
-
-          const delSquadsRes = await db.from('shadowfront_squads')
-            .delete()
-            .eq('guild', currentG)
-            .eq('session_id', sq.sessionId);
-          if (delSquadsRes.error) throw delSquadsRes.error;
-
-          const delStatusRes = await db.from('event_status')
-            .delete()
-            .eq('guild', currentG)
-            .eq('event_name', SHADOWFRONT_SQUAD_EVENT[squad]);
-          if (delStatusRes.error) throw delStatusRes.error;
+          // Participants, squad rows and status, in one transaction (M4a).
+          await EventsService.deleteSession(SHADOWFRONT_SQUAD_EVENT[squad], sq.sessionId);
 
           legacy.showToast(legacy.t('toast_session_deleted'), 'success');
           await this.load();

@@ -9,6 +9,7 @@
 
 import { APP_VERSION } from '../../core/config/constants';
 import { detectClientEnvironment } from '../../core/auth/roles';
+import { guildWrite } from '../../core/api/guild-rpc';
 
 const ALLOWED_BULK_ROLES = ['R1', 'R2', 'R3', 'R4'];
 
@@ -82,4 +83,32 @@ export function formatTicketDescription(sections: TicketDescriptionSections): st
   );
 
   return parts.join('\n\n');
+}
+
+// ── Transactional roster writes (M4a) ───────────────────────────────────────
+// Each is one database function: all of it happens, or none of it.
+
+/** Bans a UID and removes it from the roster together. Throws on refusal (`already_banned`, an R5...). */
+export function banMember(uid: string, pseudo: string | null, reason: string | null): Promise<{ ok: true; removed: string | null }> {
+  return guildWrite('gm_ban_member', { p_uid: uid, p_pseudo: pseudo, p_reason: reason });
+}
+
+export interface NewMember {
+  pseudo: string; uid: string; role: string; overall_power: number;
+  fleet_rating?: number; tech_power?: number; flagship_power?: number;
+  champion_power?: number; crew_power?: number; glory_score?: number;
+}
+
+/** Adds a member, its first metrics snapshot and its enrolment in running events. Returns the stored row. */
+export function addMember(member: NewMember): Promise<{ ok: true; member: any; added_events: number }> {
+  return guildWrite('gm_add_member', { p_member: member });
+}
+
+/**
+ * Updates a member -- profile, metrics snapshot, this week's Glory, and the
+ * name-history row of a rename -- together. `update` holds only the fields
+ * that change; the server refuses any other key.
+ */
+export function updateMember(pseudo: string, update: Record<string, unknown>): Promise<{ ok: true; pseudo: string }> {
+  return guildWrite('gm_update_member', { p_pseudo: pseudo, p_update: update });
 }

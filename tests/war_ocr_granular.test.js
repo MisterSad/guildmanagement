@@ -13,6 +13,7 @@
  *   - the OCR modal shows a day selector for svs_day / gvg_day.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { setVerifiedRole } from '../src/core/auth/roles';
 import fs from 'fs';
 import path from 'path';
 
@@ -109,6 +110,7 @@ beforeEach(() => {
   db = makeDb();
   window.GM = window.GM || {};
   window.GM.db = db;
+  setVerifiedRole('super_admin', 't_super');
   window.GM.getActiveGuild = () => 'ALPHA';
   window.GM.getGuildTag = async () => '[FGF]';
   window.GM_EVENTS = { loadEvent: vi.fn() };
@@ -199,7 +201,11 @@ describe('war OCR commit routing — day containers', () => {
     await commitOcrUpdates();
 
     expect(dailyRpcCalls().length).toBe(0);
-    expect(db.__calls.update.filter((c) => c.table === 'event_participants').length).toBe(1);
+    // M4a: one transactional attendance call, no table write from the browser.
+    const att = db.__calls.rpc.filter((c) => c.name === 'gm_record_event_attendance');
+    expect(att).toHaveLength(1);
+    expect(att[0].args.p_rows).toEqual([{ pseudo: 'Alpha', appointed: false }]);
+    expect(db.__calls.update.filter((c) => c.table === 'event_participants')).toEqual([]);
   });
 });
 

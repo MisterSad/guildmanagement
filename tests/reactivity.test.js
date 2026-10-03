@@ -112,8 +112,12 @@ describe('Batched per-row Supabase calls (previously sequential for-loops)', () 
     const start = ocrJs.indexOf('export async function commitOcrUpdates');
     const end = ocrJs.indexOf('function invalidateCache');
     const ocrFn = ocrJs.slice(start, end > start ? end : undefined);
-    const runInChunksCalls = (ocrFn.match(/runInChunks\(/g) || []).length;
-    expect(runInChunksCalls).toBeGreaterThanOrEqual(5);
+    // M4a: the per-row write loops became one transactional call each
+    // (gm_record_event_attendance, gm_commit_ocr_roster); only the UID
+    // pre-check probes still fan out, through runInChunks.
+    expect((ocrFn.match(/runInChunks\(/g) || []).length).toBeGreaterThanOrEqual(1);
+    expect((ocrFn.match(/await recordEventAttendance\(/g) || []).length).toBe(3);
+    expect(ocrFn).toContain('await commitOcrRoster(');
     expect(ocrFn).not.toMatch(/for \(var i = 0; i < selected(Players|Existing)\.length; i\+\+\)/);
   });
 

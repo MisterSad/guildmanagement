@@ -5,6 +5,7 @@
 //    the weekly event_participants rows the Glory tab reads (week_start filter).
 
 import { describe, it, expect } from 'vitest';
+import { sqlFunctionBody } from './helpers/sql-function.js';
 import fs from 'fs';
 import path from 'path';
 
@@ -30,25 +31,18 @@ describe('Members accordion collapse (v128.1)', () => {
 });
 
 describe('Glory OCR weekly routing (v128.1)', () => {
+  // M4a: the roster import is gm_commit_ocr_roster, all-or-nothing.
   it('existing-member glory updates route through the gm_upsert_player_glory RPC', () => {
-    const app = read('src/modules/app/ocr/ocr.controller.ts');
-    const commitIdx = app.indexOf('function executeRosterCommit');
-    const commitSrc = app.slice(commitIdx, commitIdx + 12000);
-    expect(commitIdx).toBeGreaterThan(-1);
-    // The glory branch calls the RPC (writes event_participants weekly row + syncs guild_members)
-    expect(commitSrc).toContain("if (targetField === 'glory_score')");
-    expect(commitSrc).toMatch(/\.rpc\('gm_upsert_player_glory'/);
-    expect(commitSrc).toContain('p_week_start: gloryWeek');
+    const fn = sqlFunctionBody('gm_commit_ocr_roster');
+    expect(fn).toContain("IF p_field = 'glory_score' THEN");
+    expect(fn).toContain('public.gm_upsert_player_glory(v_guild, v_pseudo, v_week, v_score)');
     // Non-glory metrics keep the direct guild_members update
-    expect(commitSrc).toContain("from('guild_members')");
+    expect(fn).toContain("'UPDATE public.guild_members SET %I = $1");
+    expect(read('src/modules/app/ocr/ocr.controller.ts')).toContain('await commitOcrRoster(targetField, existingRows, newRows, checkedRemovalPseudos)');
   });
 
   it('new-member glory inserts also record the weekly event_participants row', () => {
-    const app = read('src/modules/app/ocr/ocr.controller.ts');
-    const commitIdx = app.indexOf('function executeRosterCommit');
-    const commitSrc = app.slice(commitIdx, commitIdx + 16000);
-    expect(commitSrc).toMatch(/if \(targetField === 'glory_score' && nScore > 0\)/);
-    expect(commitSrc).toContain('p_week_start: getWeekStart()');
+    expect(sqlFunctionBody('gm_commit_ocr_roster')).toContain("IF p_field = 'glory_score' AND v_score > 0 THEN");
   });
 
   it('the Glory tab still reads weekly scores from event_participants by week_start', () => {

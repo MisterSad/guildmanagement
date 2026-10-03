@@ -27,6 +27,8 @@ import {
   getCategoryEventNames,
   filterSessions,
   sortSessionsDesc,
+  clearEventHistory,
+  deleteHistorySession,
   type HistorySession
 } from '../history.service';
 import { EventsService, type WarEventName } from '../../events/events.service';
@@ -367,26 +369,15 @@ export class HistoryView {
 
   private async deleteCategoryHistory(filterKey: string, count: string): Promise<void> {
     const eventNames = getCategoryEventNames(filterKey);
-    const currentG = legacy.getActiveGuild();
 
     legacy.showConfirm(
       'Delete all ' + filterKey + ' history',
-      'Are you sure you want to delete all <strong>' + count + '</strong> session(s) in category <strong>' + legacy.esc(filterKey) + '</strong>? This action cannot be undone.',
+      'Are you sure you want to delete the finished sessions among these <strong>' + count + '</strong> in category <strong>' + legacy.esc(filterKey) + '</strong>? A session still running is kept. This action cannot be undone.',
       async () => {
         try {
-          const db = legacy.getDb();
-          if (!db) return;
-
-          const delPartRes = await db.from('event_participants').delete().eq('guild', currentG).in('event_name', eventNames);
-          if (delPartRes.error) throw delPartRes.error;
-
-          if (filterKey === 'Shadowfront') {
-            const delSquadRes = await db.from('shadowfront_squads').delete().eq('guild', currentG);
-            if (delSquadRes.error) throw delSquadRes.error;
-          }
-
-          const delStatusRes = await db.from('event_status').delete().eq('guild', currentG).in('event_name', eventNames);
-          if (delStatusRes.error) throw delStatusRes.error;
+          // One transaction (M4a). Running sessions -- their participants,
+          // status and squads -- and squads not yet started are spared.
+          await clearEventHistory(eventNames);
 
           legacy.showToast(legacy.t('toast_session_deleted'), 'success');
           await this.load();
@@ -748,26 +739,8 @@ export class HistoryView {
           '<strong>' + legacy.esc(meta.label) + '</strong><br>' + legacy.t('confirm_delete_session_body'),
           async () => {
             try {
-              const db = legacy.getDb();
-              if (!db) return;
-              const currentG = legacy.getActiveGuild();
-              let query: any = db.from('event_participants').delete()
-                .eq('guild', currentG)
-                .eq('event_name', eventName)
-                .eq('week_start', weekStart);
-              if (sessionId) query = query.eq('session_id', sessionId);
-              else query = query.is('session_id', null);
-              const delPartRes = await query;
-              if (delPartRes.error) throw delPartRes.error;
-
-              if (eventName === 'Shadowfront' && sessionId) {
-                const delSquadRes = await db.from('shadowfront_squads').delete().eq('guild', currentG).eq('session_id', sessionId);
-                if (delSquadRes.error) throw delSquadRes.error;
-              }
-              if (sessionId) {
-                const delStatusRes = await db.from('event_status').delete().eq('guild', currentG).eq('session_id', sessionId);
-                if (delStatusRes.error) throw delStatusRes.error;
-              }
+              // Participants, Shadowfront squads and status, in one transaction (M4a).
+              await deleteHistorySession(eventName, weekStart, sessionId || null);
 
               legacy.showToast(legacy.t('toast_session_deleted'), 'success');
               close();

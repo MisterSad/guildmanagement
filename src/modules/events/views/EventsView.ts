@@ -969,34 +969,12 @@ export class EventsView {
       }, async (startAt: string | null) => {
         if (!startAt) return;
         try {
-          const updateRes = await db.from('event_status').update({
-            start_at: startAt,
-            updated_at: new Date().toISOString()
-          }).eq('guild', currentG).eq('event_name', s.activeEventName);
-          if (updateRes.error) throw updateRes.error;
-
-          const newWeek = legacy.getWeekStart(startAt);
-          const updatePartRes = await db.from('event_participants').update({ week_start: newWeek })
-            .eq('guild', currentG)
-            .eq('event_name', s.activeEventName)
-            .eq('session_id', s.sessionId);
-          if (updatePartRes.error) throw updatePartRes.error;
-
+          // One transaction (M4a): status and participants move together, and
+          // an SvS/GvG war session with its daily scores follows a change of
+          // week (they used to stay behind on the old session id).
           const newSessionId = legacy.buildEventSessionId(s.activeEventName as string, new Date(startAt), []);
-          if (newSessionId !== s.sessionId) {
-            const updateSidPartRes = await db.from('event_participants').update({ session_id: newSessionId })
-              .eq('guild', currentG)
-              .eq('event_name', s.activeEventName)
-              .eq('session_id', s.sessionId);
-            if (updateSidPartRes.error) throw updateSidPartRes.error;
-
-            const updateSidStatusRes = await db.from('event_status').update({ session_id: newSessionId })
-              .eq('guild', currentG)
-              .eq('event_name', s.activeEventName);
-            if (updateSidStatusRes.error) throw updateSidStatusRes.error;
-
-            s.sessionId = newSessionId;
-          }
+          const moved = await EventsService.rescheduleSession(s.activeEventName as string, s.sessionId, newSessionId, startAt);
+          s.sessionId = moved.session_id;
 
           legacy.showToast(legacy.t('toast_member_updated'), 'success');
           legacy.notifyDiscordEvent(s.activeEventName as string, startAt, 'edit');
@@ -1023,17 +1001,8 @@ export class EventsView {
       '<strong>' + legacy.esc(s.activeEventName) + '</strong><br>' + legacy.t('confirm_delete_session_body'),
       async () => {
         try {
-          const currentG = this.currentGuild();
-          const delPartRes = await db.from('event_participants').delete()
-            .eq('guild', currentG)
-            .eq('event_name', s.activeEventName)
-            .eq('session_id', s.sessionId);
-          if (delPartRes.error) throw delPartRes.error;
-
-          const delStatusRes = await db.from('event_status').delete()
-            .eq('guild', currentG)
-            .eq('event_name', s.activeEventName);
-          if (delStatusRes.error) throw delStatusRes.error;
+          // Participants and status, in one transaction (M4a).
+          await EventsService.deleteSession(s.activeEventName as string, s.sessionId);
 
           legacy.showToast(legacy.t('toast_session_deleted'), 'success');
           s.activeEventName = null;

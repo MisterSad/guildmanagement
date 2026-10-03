@@ -28,6 +28,7 @@ import {
 } from '../src/modules/app/members/members.store';
 import { showToast } from '../src/modules/app/dialogs/dialogs.service';
 import { renderGuildMembers } from '../src/modules/app/members/members.render';
+import { setVerifiedRole } from '../src/core/auth/roles';
 
 /** Records every filter so a test can prove which tenant was addressed. */
 function fakeDb(responses = {}) {
@@ -47,6 +48,10 @@ function fakeDb(responses = {}) {
   };
   return {
     calls,
+    rpc(name, args) {
+      calls.push({ rpc: name, args });
+      return Promise.resolve(responses[`rpc.${name}`] ?? { data: { ok: true, removed: null }, error: null });
+    },
     from(table) {
       return {
         select: () => builderFor(table, 'select'),
@@ -75,6 +80,7 @@ beforeEach(() => {
   setBannedPlayers([]);
   setGuildMembers([]);
   window.GM = { validateUid: () => '', currentAccountId: 'TheAdmin' };
+  setVerifiedRole('super_admin', 'TheAdmin');
   // Banning a roster member now asks first (it erases their history); the
   // stub confirms and records what was shown.
   window.showConfirm = vi.fn((_title, _body, onConfirm) => { window.__confirmRun = Promise.resolve(onConfirm()); });
@@ -152,7 +158,9 @@ describe('handleAddBannedPlayer', () => {
     expect(showToast).toHaveBeenCalledWith(expect.anything(), 'error');
   });
 
-  it('writes the ban into the active guild, attributed to the caller', async () => {
+  // M4a: the ban and the removal are one call to gm_ban_member. The author is
+  // the caller's account, read by the server -- the browser no longer sends it.
+  it('bans in the active guild through one transactional call', async () => {
     const db = fakeDb();
     window.GM.db = db;
     document.getElementById('banned-uid').value = '900';
@@ -161,27 +169,26 @@ describe('handleAddBannedPlayer', () => {
 
     await handleAddBannedPlayer();
 
-    const insert = db.calls.find((c) => c.op === 'insert');
-    expect(insert.rows[0]).toMatchObject({
-      guild: 'ALPHA', uid: '900', pseudo: 'Cheater', reason: 'bot', created_by: 'TheAdmin'
-    });
+    const call = db.calls.find((c) => c.rpc === 'gm_ban_member');
+    expect(call.args).toEqual({ p_guild: 'ALPHA', p_uid: '900', p_pseudo: 'Cheater', p_reason: 'bot' });
+    expect(db.calls.filter((c) => c.op === 'insert' || c.op === 'delete')).toEqual([]);
   });
 
-  it('stores null rather than empty strings for the optional fields', async () => {
+  it('sends null rather than empty strings for the optional fields', async () => {
     const db = fakeDb();
     window.GM.db = db;
     document.getElementById('banned-uid').value = '900';
 
     await handleAddBannedPlayer();
 
-    const insert = db.calls.find((c) => c.op === 'insert');
-    expect(insert.rows[0].pseudo).toBeNull();
-    expect(insert.rows[0].reason).toBeNull();
+    const call = db.calls.find((c) => c.rpc === 'gm_ban_member');
+    expect(call.args.p_pseudo).toBeNull();
+    expect(call.args.p_reason).toBeNull();
   });
 
   it('kicks the player from the roster when they are a current member', async () => {
     setGuildMembers([{ uid: '900', pseudo: 'Cheater' }, { uid: '901', pseudo: 'Innocent' }]);
-    const db = fakeDb();
+    const db = fakeDb({ 'rpc.gm_ban_member': { data: { ok: true, removed: 'Cheater' }, error: null } });
     window.GM.db = db;
     document.getElementById('banned-uid').value = '900';
 
@@ -191,11 +198,22 @@ describe('handleAddBannedPlayer', () => {
     // It asked first, and said what the removal costs.
     expect(window.showConfirm).toHaveBeenCalledTimes(1);
     expect(window.showConfirm.mock.calls[0][1]).toContain('Cheater');
-    const kick = db.calls.find((c) => c.table === 'guild_members' && c.op === 'delete');
-    expect(kick, 'a banned member must be removed from the roster').toBeTruthy();
-    expect(kick.filters).toMatchObject({ uid: '900', guild: 'ALPHA' });
+    expect(db.calls.some((c) => c.rpc === 'gm_ban_member'), 'the ban and the removal are one call').toBe(true);
     expect(getGuildMembers().map((m) => m.uid)).toEqual(['901']);
     expect(renderGuildMembers).toHaveBeenCalled();
+  });
+
+  it('keeps the roster as it was when the ban is refused', async () => {
+    setGuildMembers([{ uid: '900', pseudo: 'Cheater' }]);
+    const db = fakeDb({ 'rpc.gm_ban_member': { data: null, error: { message: 'cannot delete an R5', code: 'P0001' } } });
+    window.GM.db = db;
+    document.getElementById('banned-uid').value = '900';
+
+    await handleAddBannedPlayer();
+    await window.__confirmRun;
+
+    expect(getGuildMembers()).toHaveLength(1);
+    expect(showToast).toHaveBeenCalledWith(expect.stringContaining('cannot delete an R5'), 'error');
   });
 
   it('bans nothing when the officer cancels the confirmation', async () => {
@@ -248,8 +266,8 @@ describe('handleAddBannedPlayer', () => {
     expect(getGuildMembers(), 'a failed kick must not drop the row locally').toHaveLength(1);
   });
 
-  it('re-enables the submit button even when the insert throws', async () => {
-    window.GM.db = fakeDb({ 'banned_players.insert': { error: { message: 'boom' } } });
+  it('re-enables the submit button even when the ban fails', async () => {
+    window.GM.db = fakeDb({ 'rpc.gm_ban_member': { data: null, error: { message: 'boom' } } });
     document.getElementById('banned-uid').value = '900';
     const btn = document.querySelector('#add-banned-form button[type="submit"]');
 

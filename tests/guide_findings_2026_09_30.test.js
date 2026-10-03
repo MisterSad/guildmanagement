@@ -5,6 +5,7 @@
  * item 4, the silent history loss on ban, is covered in banned_controller).
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { sqlFunctionBody } from './helpers/sql-function.js';
 import fs from 'fs';
 import path from 'path';
 
@@ -26,9 +27,11 @@ describe('5. a Glory typed outside the Glory page reaches the Glory Tracker', ()
     expect(handler).toContain('metricsRow.ok === false');
   });
   it('Members → Edit: a changed Glory also writes this week through gm_upsert_player_glory', () => {
-    const src = read('src/modules/app/members/members.controller.ts');
-    expect(src).toMatch(/update\.glory_score !== \(Number\(member\.glory_score\) \|\| 0\)/);
-    expect(src).toContain("client.rpc('gm_upsert_player_glory'");
+    // M4a: the edit is gm_update_member, which files a changed Glory for the
+    // week in the same transaction (run by supabase/tests/10_transactional_writes.sql).
+    const fn = sqlFunctionBody('gm_update_member');
+    expect(fn).toContain("IF p_update ? 'glory_score' AND v_new.glory_score IS DISTINCT FROM COALESCE(v_old.glory_score, 0) THEN");
+    expect(fn).toContain('public.gm_upsert_player_glory(v_guild, v_new.pseudo,');
   });
 });
 
