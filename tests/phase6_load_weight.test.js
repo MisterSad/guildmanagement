@@ -95,10 +95,9 @@ describe('the icon font ships only the glyphs the app draws', () => {
 });
 
 describe('fonts are not requested in weights nothing uses', () => {
-  it('no longer asks Google for Inter 300', () => {
-    for (const f of ['index.html', 'terms.html']) {
-      expect(read(f), f).toContain('family=Inter:wght@400;500;600;700');
-      expect(read(f), f).not.toContain('family=Inter:wght@300');
+  it('no page asks Google for a font at all (self-hosted since phase 6, audit FE-21)', () => {
+    for (const f of ['index.html', 'terms.html', 'privacy.html']) {
+      expect(read(f), f).not.toContain('fonts.googleapis.com');
     }
   });
 

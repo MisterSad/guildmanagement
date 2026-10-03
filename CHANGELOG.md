@@ -2,6 +2,33 @@
 
 ## [Unreleased]
 
+- **Privacy: erasure the operator can run, no more reversible passwords, self-hosted fonts, an exact privacy policy** (short-term plan, phase 6; audit BE-B-12, C0, FE-21, SEC-10). This change is user-facing.
+  - **Migration `20261003180936_privacy_erasure_and_credentials`.**
+    - Checked on production in a rolled-back transaction, then applied with the owner's approval.
+    - Production's schema fingerprint afterwards equals the replay's: md5 `c55a1934…` over 1,091 objects.
+  - **Erasure.**
+    - `gm_erase_player` refused every call without a browser session, so an e-mailed request could not be executed from the SQL editor or the service role. It now checks the guild for a browser caller only, the `gm_erase_account` idiom. It also clears `accounts.uid`, which kept the erased player's game identifier.
+    - `gm_erase_account` now strips `account_id` and `app_role` from the sign-in record it keeps. `auth.users` is never deleted, per the owner's decision.
+    - Both functions were checked on DEMO: no session needed, UID cleared, sessions ended, metadata stripped.
+  - **Reversible password copies (C0).**
+    - `gm_admin_upsert`, `gm_register_player` and `gm_reset_account_password` write the bcrypt hash only. A reset also deletes any old copy.
+    - `gm_verify_password` deletes the copy at the first successful sign-in.
+    - 74 copies were deleted where the hash verifies the same password. 59 remain: 58 legacy accounts without a hash, deleted at their next sign-in, and one copy that disagrees with its hash, kept and counted rather than guessed at.
+  - **No fallback to a real tenant.** `gm_list_event_sessions` listed the ALPHA guild's sessions when the caller's guild was unresolved; it now lists nothing. The same dead `COALESCE(…, 'ALPHA')` is removed from `gm_approve_participant_submission` and `gm_sync_shadowfront_participants`.
+  - **Fonts.**
+    - Inter, Plus Jakarta Sans and JetBrains Mono are served from this origin. They come from Fontsource 5.3.0 (variable weight, latin and latin-ext subsets, OFL licence in `fonts/OFL.txt`), through `fonts.css`.
+    - Google is out of the CSP (`style-src`, `font-src`). Before, every page view sent the visitor's IP address to Google, undisclosed.
+    - Checked in the browser on the app and on the privacy page: no external font request, no console error.
+  - **`privacy.html`** (text validated by the owner):
+    - §3.1 and §9.1: passwords are hashed; a legacy encrypted copy remains only until the next sign-in.
+    - §3.2: screen recordings are stored transiently, and Google keeps them for 48 hours at most.
+    - §6.1: Google's role in transcribing recordings.
+    - §6.3: partitioning for all three administrative roles.
+    - §7.5: player erasure also clears the claiming account; account erasure is described exactly, including the sign-in record that is kept.
+  - **Tests.**
+    - New: `tests/privacy_phase6.test.js` and `tests/self_hosted_fonts.test.js`.
+    - Gate: type-check clean, 2,461 unit tests, build, 44 e2e, replay of 139 migrations with a fingerprint match.
+
 - **CI: the migrations replay, the Edge Functions type-check, and deploys wait for a green build** (short-term plan, phase 5; audit DB-01, DB-03, QA-08, INF-09, SEC-24).
   - **The migration chain replays on an empty PostgreSQL 17.** It never had: the first attempt stopped at migration 83 of 138.
     - `scripts/replay-migrations.sh` applies `supabase/replay/prelude.sql` and then every file, one transaction each, stopping at the first error.

@@ -103,6 +103,22 @@ for (const file of files) {
 }
 
 
+// Self-hosted typefaces (fonts.css, audit FE-21). index.html gets them bundled
+// by Vite; the legal pages are not Vite entries and link the root fonts.css,
+// copied above, which points at fonts/. Copy that directory alongside it.
+{
+  const fontsSrc = path.join(rootDir, 'fonts');
+  const fontsDst = path.join(distDir, 'fonts');
+  fs.mkdirSync(fontsDst, { recursive: true });
+  const copied = fs.readdirSync(fontsSrc).filter((f) => f.endsWith('.woff2') || f === 'OFL.txt');
+  if (!copied.some((f) => f.endsWith('.woff2'))) {
+    throw new Error('build.js: fonts/ holds no woff2 -- the legal pages would render in fallback fonts.');
+  }
+  for (const f of copied) fs.copyFileSync(path.join(fontsSrc, f), path.join(fontsDst, f));
+  console.log(`Copied ${copied.length} font file(s) to dist/fonts.`);
+}
+
+
 // version.json: a tiny, unminified marker the client polls (see app.js
 // checkForNewVersion()) to detect a stale long-lived tab -- a full reload
 // re-fetches this deploy's actual app.js, so a stale tab never silently keeps

@@ -82,15 +82,15 @@ describe('H3 — terms.html is a self-contained legal page again', () => {
     expect(css).toMatch(/\.terms-icon\s*\{[^}]*fill:\s*currentColor/);
   });
 
-  it('loads only the two stylesheets it is allowed to: Google Fonts, and its own', () => {
-    // The CSP permits `style-src 'self' https://fonts.googleapis.com`, so these
-    // are the only two shapes that can load. Any third link is either a
-    // CSP violation or the app bundle creeping back in.
+  it('loads only its own two stylesheets: the self-hosted fonts, and legal.css', () => {
+    // The CSP permits `style-src 'self'` only since the fonts are self-hosted
+    // (audit FE-21): any third link is either a CSP violation or the app bundle
+    // creeping back in.
     const links = terms.match(/<link[^>]+rel="stylesheet"[^>]*>/g) || [];
     expect(links.length).toBe(2);
-    expect(links.some((l) => l.includes('fonts.googleapis.com')), 'the font stylesheet').toBe(true);
+    expect(links.some((l) => l.includes('href="fonts.css"')), 'the font stylesheet').toBe(true);
     expect(links.some((l) => l.includes('legal.css')), 'the legal stylesheet').toBe(true);
-    expect(read('vercel.json')).toContain('https://fonts.googleapis.com');
+    expect(read('vercel.json')).not.toContain('fonts.googleapis.com');
   });
 });
 
