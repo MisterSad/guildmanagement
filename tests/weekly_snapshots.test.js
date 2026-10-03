@@ -21,7 +21,7 @@ const rootDir = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(rootDir, p), 'utf8');
 const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*--.*$/gm, '');
 
-const migration = read('supabase/migrations/20260927180000_guild_weekly_snapshots.sql');
+const migration = read('supabase/migrations/20260927114958_guild_weekly_snapshots.sql');
 const sql = stripComments(migration);
 
 describe('the snapshot cannot be erased by removing a member', () => {

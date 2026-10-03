@@ -263,7 +263,7 @@ describe('ocr-guild-members, video branch', () => {
 });
 
 describe('the ocr-videos bucket', () => {
-  const sql = read('supabase/migrations/20261001200000_ocr_videos_bucket.sql');
+  const sql = read('supabase/migrations/20261001194004_ocr_videos_bucket.sql');
 
   it('is private and capped like the Edge Function', () => {
     expect(sql).toMatch(/'ocr-videos',\s*'ocr-videos',\s*false,\s*67108864/);

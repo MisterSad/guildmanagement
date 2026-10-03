@@ -2,7 +2,7 @@
  * Every RPC the client calls must exist in a migration.
  *
  * `StatsView.ts` called `list_event_weeks` for months after migration
- * 20260926140000 dropped it. Nothing caught it, for two compounding reasons:
+ * 20260926070155 dropped it. Nothing caught it, for two compounding reasons:
  * supabase-js answers a missing function with `{ data: null, error }` instead
  * of throwing, and the unit tests mocked `list_event_weeks` themselves — so the
  * suite was green against a function that did not exist anywhere but in the

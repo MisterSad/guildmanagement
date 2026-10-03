@@ -78,7 +78,7 @@ describe('stats granularity additions (StatsView + StatsService after cutover)',
   it('splits Shadowfront squad assignment into participant/reserve, squad1/squad2, and commander counts', () => {
     // The split moved into SQL with phase S5: the browser no longer receives
     // every shadowfront_squads row to tally it. Same six counters, counted once.
-    const migration = read('supabase/migrations/20260927190000_gm_stats_events.sql');
+    const migration = read('supabase/migrations/20260927120934_gm_stats_events.sql');
     expect(migration).toContain("lower(coalesce(sq.role, '')) = 'reserve'");
     expect(migration).toContain("sq.squad = 'squad1'");
     expect(migration).toContain("sq.squad = 'squad2'");
@@ -107,7 +107,7 @@ describe('stats granularity additions (StatsView + StatsService after cutover)',
     // scoring key, so gm_stats_events resolves it like any other event.
     expect(statsView).toContain("if (key === 'glory') return 'Glory'");
     expect(statsView).toContain("{ key: 'Glory'");
-    const migration = read('supabase/migrations/20260927190000_gm_stats_events.sql');
+    const migration = read('supabase/migrations/20260927120934_gm_stats_events.sql');
     expect(migration).toContain("'Shadowfront', 'DTR', 'Arms Race', 'Glory'");
   });
 

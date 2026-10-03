@@ -358,7 +358,7 @@ export function initOcrGeminiModule(): void {
 // ocr-guild-members hands it to Gemini whole, checks the rank positions it read
 // for gaps, and re-reads the gaps once.
 
-/** Mirrors the bucket (migration 20261001200000) and the Edge Function. */
+/** Mirrors the bucket (migration 20261001194004) and the Edge Function. */
 const OCR_VIDEO_BUCKET = 'ocr-videos';
 const OCR_VIDEO_MAX_BYTES = 64 * 1024 * 1024;
 const OCR_VIDEO_MAX_DURATION_SEC = 300;
@@ -890,7 +890,7 @@ export async function commitOcrUpdates(): Promise<void> {
   const selectedNewIndices: number[] = [];
   if (tbodyNew) tbodyNew.querySelectorAll('.ocr-row-cb:checked').forEach((cb) => selectedNewIndices.push(parseInt(cb.getAttribute('data-index') || '0', 10)));
   // Never send an R5 for removal, whatever the table held (the database
-  // refuses it too, migration 20260930150000).
+  // refuses it too, migration 20260930182821).
   const r5Pseudos = new Set(getGuildMembers().filter((m: any) => m && m.role === 'R5').map((m: any) => String(m.pseudo).toLowerCase()));
   const checkedRemovalPseudos: string[] = [];
   if (tbodyRemoved) tbodyRemoved.querySelectorAll('.ocr-removal-cb:checked').forEach((cb) => { const p = cb.getAttribute('data-removal-pseudo'); if (p && !r5Pseudos.has(p.toLowerCase())) checkedRemovalPseudos.push(p); });

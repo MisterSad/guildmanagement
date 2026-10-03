@@ -18,7 +18,7 @@
  */
 
 export const OCR_VIDEO_BUCKET = "ocr-videos";
-/** Same ceiling as the bucket's file_size_limit (migration 20261001200000). */
+/** Same ceiling as the bucket's file_size_limit (migration 20261001194004). */
 export const OCR_VIDEO_MAX_BYTES = 64 * 1024 * 1024;
 export const OCR_VIDEO_MAX_DURATION_SEC = 300;
 export const OCR_VIDEO_MIME_TYPES = ["video/mp4", "video/quicktime", "video/webm"] as const;

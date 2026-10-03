@@ -51,7 +51,7 @@ export interface PendingTransfer {
  * move never decides it: the RECEIVING guild decides a player's own request,
  * the LOSING guild decides an admin pull, and the pulling guild may only
  * withdraw its pull. Mirrors `resolve_guild_transfer` (migration
- * 20260930140000), which enforces it.
+ * 20260930182818), which enforces it.
  */
 export function transferActionFor(tr: PendingTransfer, activeGuild: string | null): 'decide' | 'withdraw' | 'wait' {
   const byAdmin = tr.requested_by === 'admin';

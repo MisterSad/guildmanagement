@@ -30,7 +30,7 @@ import path from 'path';
 const root = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.resolve(root, p), 'utf-8');
 
-const migration = read('supabase/migrations/20260926160000_credential_integrity.sql');
+const migration = read('supabase/migrations/20260926101947_credential_integrity.sql');
 
 /** Slice one CREATE OR REPLACE FUNCTION body out of a migration. */
 function fnBody(sql, name) {

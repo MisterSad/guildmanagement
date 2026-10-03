@@ -15,7 +15,7 @@
 //  2. `gm_reset_demo_tenant_data` wrote three of the dropped `guilds` columns.
 //     Dropping them without repairing it would have broken the nightly 03:00
 //     DEMO cron silently -- the exact failure the Web Push removal already hit
-//     once (20260926120100 / 20260926120200).
+//     once (20260926063407 / 20260926063533).
 
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
@@ -28,7 +28,7 @@ const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$
 /** For `#`-commented files: shell scripts and TOML. */
 const stripHashComments = (s) => s.replace(/^\s*#.*$/gm, '');
 
-const MIGRATION = 'supabase/migrations/20260926180000_drop_payments.sql';
+const MIGRATION = 'supabase/migrations/20260926153207_drop_payments.sql';
 
 describe('no payment code ships', () => {
   it('has no payment Edge Function and no Stripe helper', () => {

@@ -120,7 +120,7 @@ export function categorizeOcrDiff(
       if (!m || !m.pseudo) return;
       // The R5 is never proposed for removal: a leader missing from one
       // screenshot used to be ticked for deletion, history and all. The
-      // database refuses it too (migration 20260930150000).
+      // database refuses it too (migration 20260930182821).
       if (m.role === 'R5') return;
       const pseudoKey = m.pseudo.trim().toLowerCase();
       if (!seenMemberPseudos.has(pseudoKey)) {

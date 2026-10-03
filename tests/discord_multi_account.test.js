@@ -19,7 +19,7 @@ const rootDir = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(rootDir, p), 'utf8');
 const stripSql = (s) => s.replace(/^\s*--.*$/gm, '');
 
-const MIGRATION = 'supabase/migrations/20260927120000_discord_multi_account_links.sql';
+const MIGRATION = 'supabase/migrations/20260927001726_discord_multi_account_links.sql';
 const migration = stripSql(read(MIGRATION));
 const fn = read('supabase/functions/auth-discord/index.ts');
 const session = read('src/core/auth/session.ts');

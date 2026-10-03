@@ -1,7 +1,7 @@
 /**
  * tests/least_privilege_grants.test.js
  *
- * Grants, not just policies (AGENTS.md rule 2). Migration 20260930160000 takes
+ * Grants, not just policies (AGENTS.md rule 2). Migration 20260930185459 takes
  * away Supabase's default grants: everything from `anon`, TRUNCATE/TRIGGER/
  * REFERENCES from `authenticated`, and the direct write path beside tables that
  * are only ever written through a SECURITY DEFINER RPC.
@@ -15,7 +15,7 @@ import fs from 'fs';
 import path from 'path';
 
 const root = path.resolve(__dirname, '..');
-const sql = fs.readFileSync(path.join(root, 'supabase/migrations/20260930160000_least_privilege_table_grants.sql'), 'utf-8');
+const sql = fs.readFileSync(path.join(root, 'supabase/migrations/20260930185459_least_privilege_table_grants.sql'), 'utf-8');
 
 function srcFiles(dir) {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -70,8 +70,8 @@ describe('least-privilege table grants', () => {
   });
 });
 
-describe('least-privilege function defaults (20260930170000)', () => {
-  const fsql = fs.readFileSync(path.join(root, 'supabase/migrations/20260930170000_least_privilege_function_defaults.sql'), 'utf-8');
+describe('least-privilege function defaults (20260930190017)', () => {
+  const fsql = fs.readFileSync(path.join(root, 'supabase/migrations/20260930190017_least_privilege_function_defaults.sql'), 'utf-8');
   it('new functions are born without PUBLIC or anon EXECUTE', () => {
     // PUBLIC's EXECUTE is a GLOBAL default: it cannot be revoked IN SCHEMA.
     expect(fsql).toContain('ALTER DEFAULT PRIVILEGES FOR ROLE postgres REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;');

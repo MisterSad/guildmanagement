@@ -26,7 +26,7 @@ const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\
 
 const portal = stripComments(read('src/modules/portal/views/PortalView.ts'));
 const edge = stripComments(read('supabase/functions/member-portal/index.ts'));
-const migration = read('supabase/migrations/20260927210000_gm_player_stats.sql');
+const migration = read('supabase/migrations/20260927123150_gm_player_stats.sql');
 
 describe('there is one weighting, in core, and both screens import it', () => {
   it('the Stats page and the Portal reach the same module', () => {

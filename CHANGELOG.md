@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+- **Migrations: the directory now matches production's history** (short-term plan, phase 4a; audit DB-02, INF-02, REC-02). No database change.
+  - **40 files renamed to the version production recorded for them.** Their content is unchanged. Production keyed each one on the time it was applied, not on its file name, so `supabase db push` would have tried to replay all 40. Six of the old names also had an impossible hour (24 to 29). Old to new names: `supabase/migrations/README.md`.
+  - **6 migrations applied without any file are restored** from `schema_migrations.statements`, byte for byte (md5 checked). They include the `gm_stats_health` that produces `scheduled_ahead`, read by the Stats view, and the cascade-based `gm_erase_player`.
+  - **References updated** in tests, sources and docs: 47 occurrences in 37 files. Migration contents and older CHANGELOG entries are left as they were.
+  - **New `supabase/migrations/README.md`:** apply with the MCP `apply_migration`, rename the file to the recorded version, never `db push`. `PROJECT_CONTEXT.md` now opens with a warning that its `db push` instructions are historical.
+  - **New guard:** `tests/migration_history.test.js` checks the directory against `tests/fixtures/migration_history.json` (131 entries), and `canonical_replay` exempts the one restored file that, as applied, had no `NOTIFY`.
+  - Gate: type-check clean, 2457 unit tests, build, 44 e2e.
+
 - **Edge Functions: bounded inputs, a limiter that fails closed, reproducible bundles** (short-term plan, phase 3; audit SEC-12, BE-A-12, BE-A-15, SEC-13, INF-05, SEC-19; migration `20261003114333`).
   - **Discord verification limiter (SEC-12).**
     - `checkAndRecordDiscordAttempt` read the window, then wrote the bucket, and answered "allowed" on any error. That contradicted AGENTS.md rule 7, on the path that calls a metered vision API.

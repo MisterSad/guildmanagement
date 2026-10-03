@@ -1,5 +1,10 @@
 # Contexte Projet & SSOT - FGF Guild Management
 
+> **Superseded for migrations (2026-10-03):** the `supabase db push` instructions in
+> the entries below are historical, and running them now would replay applied
+> migrations. Follow `supabase/migrations/README.md`: apply with the MCP
+> `apply_migration`, then rename the file to the version production recorded.
+
 ## 1. Stack Technique Réelle
 - **Runtime & Build :** Node.js 20 LTS, Vite 8.2 (build via `scripts/build.js` + minification esbuild).
 - **Frontend :** SPA TypeScript/ESM (`/src/main.ts`), pont legacy `window.GM_*` assemblé dans `/src/core/gm-bridge.ts`. Le monolithe `app.js` (7 431 lignes) a été **supprimé** au cutover final Strangler et le Service Worker legacy racine a été migré sous `/src/sw/service-worker.ts` (parseur pur dans `/src/sw/push-payload.ts`), compilé vers `dist/sw.js` (racine de `dist/`, scope `/`) par esbuild dans `scripts/build.js`. La racine du projet ne contient plus aucun script applicatif : uniquement des configs d'outillage (`playwright.config.js`, `vitest.config.js`).
@@ -29,7 +34,7 @@ Mission d'audit global terminée et **déployée en production le 2026-09-13** (
 ### Phase 2 — Sécurité Rôles & RLS (`sec(auth)`)
 - Contrainte `accounts_role_check` stricte : `super_admin`, `server_admin`, `guild_admin`, `member` (défaut `member`). **Abandon définitif des rôles virtuels/in-game** (`R5`, `R4`, `admin`) — plus aucun alias d'élévation.
 - Helpers exacts sans alias : `is_super_admin()`, `is_server_admin()`, `gm_can_read_guilds()` — résolution exclusivement via `public.accounts` (`auth_user_id` + `status='active'`).
-- Époque d'invalidation de session `accounts.session_version` + `public.gm_session_is_valid()` (claim JWT `app_metadata.session_version`), bumpée sur reset de mot de passe / changement de rôle / suspension (admin-accounts + shadow-session). **Réellement appliquée depuis `20260926250000` (C1)** : le contrôle est replié dans les six helpers RLS (77 références de policy) et dans `_shared/session-epoch.ts` pour les Edge Functions. Tolérant à l'absence de claim (jeton légataire) mais refusant un claim périmé — un contrôle strict aurait coupé 122 des 171 comptes au déploiement.
+- Époque d'invalidation de session `accounts.session_version` + `public.gm_session_is_valid()` (claim JWT `app_metadata.session_version`), bumpée sur reset de mot de passe / changement de rôle / suspension (admin-accounts + shadow-session). **Réellement appliquée depuis `20260926185133` (C1)** : le contrôle est replié dans les six helpers RLS (77 références de policy) et dans `_shared/session-epoch.ts` pour les Edge Functions. Tolérant à l'absence de claim (jeton légataire) mais refusant un claim périmé — un contrôle strict aurait coupé 122 des 171 comptes au déploiement.
 - RLS `player_absences` corrigée : self-read via `a.uid = player_absences.uid` (plus de dépendance au `app_metadata.account_id`).
 
 ### Phase 3 — Résilience Frontend & Roster (`perf(frontend)`)

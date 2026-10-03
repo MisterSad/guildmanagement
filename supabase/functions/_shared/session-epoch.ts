@@ -27,7 +27,7 @@
  * legacy token. That tolerance is required during the Discord migration -- 122
  * of 171 GoTrue users had no such claim, so a strict check would have cut
  * database access for 71% of the user base. See
- * `20260926250000_real_session_revocation.sql`.
+ * `20260926185133_real_session_revocation.sql`.
  */
 export function readTokenSessionVersion(jwt: string): number | null {
   try {

@@ -350,7 +350,7 @@ export class StatsView {
     if (!db) return;
 
     try {
-      // `list_event_weeks` was dropped by migration 20260926140000 and no gm_*
+      // `list_event_weeks` was dropped by migration 20260926070155 and no gm_*
       // twin was ever written, so this call answered { data: null, error } for
       // months. Nothing read `.error`, the list fell through to the single-week
       // fallback below, and every period filter (2w / 4w / 8w) silently became

@@ -7,7 +7,7 @@
 
 // /call-to-arms answers live in `discord_rally_responses`, not in memory: a
 // Map here lost every answer on each restart, and the next click rebuilt the
-// post from nothing (migration 20260930130000).
+// post from nothing (migration 20260930174334).
 export const CTA_CLICK_SUFFIX = "\n\n**Click a button below to declare your attendance:**";
 
 /** Rebuild the rally's three lists from its stored rows. */

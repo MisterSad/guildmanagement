@@ -56,7 +56,7 @@ describe('worker wiring', () => {
 });
 
 describe('discord_rally_responses migration', () => {
-  const sql = fs.readFileSync(path.resolve(__dirname, '../supabase/migrations/20260930130000_discord_rally_responses.sql'), 'utf-8');
+  const sql = fs.readFileSync(path.resolve(__dirname, '../supabase/migrations/20260930174334_discord_rally_responses.sql'), 'utf-8');
   it('is service-role only: RLS forced, no policy, no API-role grant', () => {
     expect(sql).toContain('ENABLE ROW LEVEL SECURITY');
     expect(sql).toContain('FORCE ROW LEVEL SECURITY');

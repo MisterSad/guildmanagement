@@ -86,13 +86,13 @@ describe('no SQL in the repository reads guilds.name', () => {
   const readRe = /(?<![a-z0-9_])(?:guilds|g|gu)\.name(?![a-z0-9_])/i;
 
   // The two migrations that INTRODUCED the read are applied history and must not
-  // be edited (ADR-008); 20260928110000 supersedes both. Any OTHER migration
+  // be edited (ADR-008); 20260927233228 supersedes both. Any OTHER migration
   // reading the column is a regression, and so is a new one.
   const SUPERSEDED = new Set([
     '20260914090000_war_daily_scores_and_chest_tiers.sql',
     '20260915130000_fix_war_session_day_results_clear.sql',
   ]);
-  const FIX = '20260928110000_war_opponents_stop_reading_guilds_name.sql';
+  const FIX = '20260927233228_war_opponents_stop_reading_guilds_name.sql';
 
   it('has no migration reading it outside the superseded history', () => {
     const offenders = [];
@@ -188,7 +188,7 @@ describe('the canonical DDL still declares the column, and that is recorded', ()
     // missing -- which the two tests above enforce.
     expect(declaresName || !liveHasName).toBe(true);
     if (declaresName && !liveHasName) {
-      expect(declaresName, 'documented divergence: see 20260928110000').toBe(true);
+      expect(declaresName, 'documented divergence: see 20260927233228').toBe(true);
     }
   });
 });

@@ -184,7 +184,7 @@ describe('B3 — replay, fail-open throttling, per-isolate limits, scrubbers', (
 });
 
 describe('M17 — the audit ledger cannot be flooded or silently forged', () => {
-  const m = read('supabase/migrations/20260926240000_harden_client_error_reporting.sql');
+  const m = read('supabase/migrations/20260926184503_harden_client_error_reporting.sql');
 
   it('no longer keys the rate limit on a caller-supplied value', () => {
     // Rotating correlation_id bypassed it; an EMPTY one skipped the check
@@ -301,7 +301,7 @@ describe('C1 — session revocation is now real, not merely documented', () => {
 });
 
 describe('C1 — the migration folds the check into the policy helpers', () => {
-  const m = read('supabase/migrations/20260926250000_real_session_revocation.sql');
+  const m = read('supabase/migrations/20260926185133_real_session_revocation.sql');
 
   it('backfills the claim before enforcing it', () => {
     // Enforcing first would have refused the 122 users who had no claim.
@@ -341,7 +341,7 @@ describe('C1 — the migration folds the check into the policy helpers', () => {
 });
 
 describe('M4 — the deny-all posture is now stated, not merely implied', () => {
-  const m = read('supabase/migrations/20260926260000_document_deny_all_tables.sql');
+  const m = read('supabase/migrations/20260926191847_document_deny_all_tables.sql');
 
   it('documents every policy-less table, not just the ones that existed at audit time', () => {
     // The audit counted 11. Phase 1 removed gm_payments and push_subscriptions,
@@ -382,10 +382,10 @@ describe('M4 — the deny-all posture is now stated, not merely implied', () => 
 });
 
 describe('M3 — measured database debt, including what is deliberately left alone', () => {
-  const m = read('supabase/migrations/20260926270000_database_debt.sql');
+  const m = read('supabase/migrations/20260926192432_database_debt.sql');
 
   it('drops the duplicate index this work introduced, and keeps the survivor', () => {
-    // 20260926240000 added idx_audit_logs_created_at_recent with
+    // 20260926184503 added idx_audit_logs_created_at_recent with
     // CREATE INDEX IF NOT EXISTS under a new name -- which cannot detect an
     // existing index carrying the same definition under a different name.
     expect(m).toContain('DROP INDEX IF EXISTS public.idx_audit_logs_created_at_recent');
@@ -395,7 +395,7 @@ describe('M3 — measured database debt, including what is deliberately left alo
   });
 
   it('no longer creates that index in the migration that introduced it', () => {
-    const m17 = read('supabase/migrations/20260926240000_harden_client_error_reporting.sql');
+    const m17 = read('supabase/migrations/20260926184503_harden_client_error_reporting.sql');
     expect(m17).not.toContain('CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at_recent');
   });
 

@@ -7,7 +7,7 @@
 //      transport error, so it answered "✅ Stats Updated" and wrote nothing.
 //      (tests/rpc_names_exist.test.js now greps this directory too.)
 //   2. `resolveLinkedAccount` used `.maybeSingle()` on `discord_account_links`,
-//      which migration 20260927120000 re-keyed to (discord_user_id, account_id)
+//      which migration 20260927001726 re-keyed to (discord_user_id, account_id)
 //      so one Discord identity can legitimately hold several accounts.
 //      `.maybeSingle()` ERRORS on that rather than picking one, so every command
 //      here already threw for the one identity in production that has two.

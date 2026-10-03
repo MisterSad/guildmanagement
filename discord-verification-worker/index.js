@@ -664,7 +664,7 @@ function timezoneLabel(offset) {
  * { ambiguous: [{ id, guild, role }] } when the person holds several and the
  * command has to ask which one.
  *
- * Migration 20260927120000 re-keyed `discord_account_links` to
+ * Migration 20260927001726 re-keyed `discord_account_links` to
  * (discord_user_id, account_id), so one Discord identity legitimately holds
  * several accounts -- an administrator who is also a player. `.maybeSingle()`
  * ERRORS on that rather than picking one, so every command here threw for the

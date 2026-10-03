@@ -89,7 +89,7 @@ const NO_UID_MSG = "Your linked account doesn't have an in-game UID on file. Con
 
 /**
  * One Discord identity may hold SEVERAL accounts since migration
- * 20260927120000 re-keyed `discord_account_links` to
+ * 20260927001726 re-keyed `discord_account_links` to
  * (discord_user_id, account_id) -- an administrator who is also a player.
  * `.maybeSingle()` ERRORS on that rather than picking one, so it is not used
  * here; and a tie is never broken silently, because silently picking is how an

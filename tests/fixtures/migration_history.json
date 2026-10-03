@@ -1,0 +1,529 @@
+{
+  "_comment": "Snapshot of supabase_migrations.schema_migrations on production (list_migrations), taken 2026-10-03. Update it after every apply_migration; tests/migration_history.test.js checks the files against it.",
+  "migrations": [
+    {
+      "version": "20260812000001",
+      "name": "schema_tables_and_indexes"
+    },
+    {
+      "version": "20260812000002",
+      "name": "security_rls_policies"
+    },
+    {
+      "version": "20260812000003",
+      "name": "functions_and_rpcs"
+    },
+    {
+      "version": "20260812000004",
+      "name": "triggers_and_crons"
+    },
+    {
+      "version": "20260815233800",
+      "name": "server_admin_role_and_functions"
+    },
+    {
+      "version": "20260815234100",
+      "name": "update_accounts_role_check_constraint"
+    },
+    {
+      "version": "20260815234200",
+      "name": "fix_all_accounts_guild_constraints"
+    },
+    {
+      "version": "20260817060000",
+      "name": "fix_glory_ghost_null_sessions"
+    },
+    {
+      "version": "20260817113000",
+      "name": "schedule_event_reminders_cron"
+    },
+    {
+      "version": "20260817114500",
+      "name": "update_event_reminders_cron_secret"
+    },
+    {
+      "version": "20260817190000",
+      "name": "draft_scouting_and_combat_scoring"
+    },
+    {
+      "version": "20260817203000",
+      "name": "player_scores_and_metrics_tracking"
+    },
+    {
+      "version": "20260817220000",
+      "name": "sync_glory_score_to_guild_members"
+    },
+    {
+      "version": "20260818030000",
+      "name": "demo_tenant_dynamic_data_and_daily_reset"
+    },
+    {
+      "version": "20260818081500",
+      "name": "fix_demo_tenant_accounts_credentials_and_uid"
+    },
+    {
+      "version": "20260819203000",
+      "name": "platform_stabilization_and_hardening"
+    },
+    {
+      "version": "20260819203500",
+      "name": "drop_orphaned_notification_tables"
+    },
+    {
+      "version": "20260819204000",
+      "name": "player_portal_audit_logging"
+    },
+    {
+      "version": "20260823050000",
+      "name": "role_helpers_remove_user_metadata_fallback"
+    },
+    {
+      "version": "20260823053000",
+      "name": "harden_subscription_payment_and_plans"
+    },
+    {
+      "version": "20260823060000",
+      "name": "security_rpc_lockdown"
+    },
+    {
+      "version": "20260823063000",
+      "name": "cron_secret_to_vault"
+    },
+    {
+      "version": "20260823070000",
+      "name": "auth_hardening"
+    },
+    {
+      "version": "20260823100000",
+      "name": "canonical_reconciliation_round2"
+    },
+    {
+      "version": "20260823110000",
+      "name": "login_throttle_ip"
+    },
+    {
+      "version": "20260823213000",
+      "name": "add_event_participants_created_at"
+    },
+    {
+      "version": "20260824000000",
+      "name": "free_app_and_donations"
+    },
+    {
+      "version": "20260824090000",
+      "name": "guard_gm_admin_upsert_service_calls"
+    },
+    {
+      "version": "20260824113700",
+      "name": "tickets"
+    },
+    {
+      "version": "20260824122000",
+      "name": "fix_tickets_service_role_rpc"
+    },
+    {
+      "version": "20260824123500",
+      "name": "tickets_attachments"
+    },
+    {
+      "version": "20260824124500",
+      "name": "ticket_statuses"
+    },
+    {
+      "version": "20260825000001",
+      "name": "guild_leader_hall_e2ee"
+    },
+    {
+      "version": "20260825152000",
+      "name": "guild_leader_hall_actions"
+    },
+    {
+      "version": "20260825153000",
+      "name": "diplomatic_treaties"
+    },
+    {
+      "version": "20260825154000",
+      "name": "e2ee_prekey_publishing_fix"
+    },
+    {
+      "version": "20260825155000",
+      "name": "e2ee_rename_group"
+    },
+    {
+      "version": "20260825160000",
+      "name": "e2ee_group_members_management"
+    },
+    {
+      "version": "20260825161000",
+      "name": "leader_hall_tenant_access_audit"
+    },
+    {
+      "version": "20260825170500",
+      "name": "fix_e2ee_conv_members_guild_fk"
+    },
+    {
+      "version": "20260825173500",
+      "name": "e2ee_reactions"
+    },
+    {
+      "version": "20260830054451",
+      "name": "protect_r5_role_demotion"
+    },
+    {
+      "version": "20260830054835",
+      "name": "canonicalize_save_push_subscription_v2"
+    },
+    {
+      "version": "20260830061230",
+      "name": "e2ee_identity_signing_key"
+    },
+    {
+      "version": "20260830070000",
+      "name": "fix_transfer_authorization_and_collisions"
+    },
+    {
+      "version": "20260830071000",
+      "name": "promote_archived_event_rpcs"
+    },
+    {
+      "version": "20260830072000",
+      "name": "cross_server_migration_groups"
+    },
+    {
+      "version": "20260831000000",
+      "name": "promote_and_extend_gm_stats_data"
+    },
+    {
+      "version": "20260831010000",
+      "name": "gm_get_player_event_history"
+    },
+    {
+      "version": "20260901000000",
+      "name": "webauthn_passkeys"
+    },
+    {
+      "version": "20260901010000",
+      "name": "gm_list_eligible_leaders"
+    },
+    {
+      "version": "20260901130000",
+      "name": "guild_self_service_requests"
+    },
+    {
+      "version": "20260901150000",
+      "name": "discord_bot_phase1"
+    },
+    {
+      "version": "20260902000000",
+      "name": "discord_verification"
+    },
+    {
+      "version": "20260902100000",
+      "name": "enable_demo_donations"
+    },
+    {
+      "version": "20260902210000",
+      "name": "draft_activity_and_combat_density"
+    },
+    {
+      "version": "20260904030000",
+      "name": "fix_gm_admin_list_status"
+    },
+    {
+      "version": "20260913000000",
+      "name": "drop_leader_hall_e2ee"
+    },
+    {
+      "version": "20260913120000",
+      "name": "perf_and_resilience_fixes"
+    },
+    {
+      "version": "20260913130000",
+      "name": "roles_rls_session_hardening"
+    },
+    {
+      "version": "20260914090000",
+      "name": "war_daily_scores_and_chest_tiers"
+    },
+    {
+      "version": "20260914100000",
+      "name": "raise_event_score_limit_to_9999999999"
+    },
+    {
+      "version": "20260914110000",
+      "name": "fix_event_reminders_trigger_and_tz"
+    },
+    {
+      "version": "20260915100000",
+      "name": "war_aggregate_day0"
+    },
+    {
+      "version": "20260915120000",
+      "name": "widen_chest_tiers_limit"
+    },
+    {
+      "version": "20260915130000",
+      "name": "fix_war_session_day_results_clear"
+    },
+    {
+      "version": "20260919190000",
+      "name": "member_iana_timezone"
+    },
+    {
+      "version": "20260920000000",
+      "name": "migration_hub_wiki"
+    },
+    {
+      "version": "20260920010000",
+      "name": "migration_wiki_comments"
+    },
+    {
+      "version": "20260920100000",
+      "name": "force_rls_all_tables"
+    },
+    {
+      "version": "20260920110000",
+      "name": "client_error_logging_rpc"
+    },
+    {
+      "version": "20260920120000",
+      "name": "reschedule_event_reminders_cron"
+    },
+    {
+      "version": "20260920130000",
+      "name": "ocr_cache_table"
+    },
+    {
+      "version": "20260920140000",
+      "name": "fk_indexes_and_perf_optimizations"
+    },
+    {
+      "version": "20260926060420",
+      "name": "restrict_accounts_column_grants"
+    },
+    {
+      "version": "20260926060512",
+      "name": "revoke_overreaching_function_grants"
+    },
+    {
+      "version": "20260926063112",
+      "name": "drop_web_push"
+    },
+    {
+      "version": "20260926063407",
+      "name": "repair_push_table_dependents"
+    },
+    {
+      "version": "20260926063533",
+      "name": "repair_demo_reset_push_subscriptions"
+    },
+    {
+      "version": "20260926070155",
+      "name": "drop_dead_rpcs_and_diplomacy"
+    },
+    {
+      "version": "20260926101947",
+      "name": "credential_integrity"
+    },
+    {
+      "version": "20260926153207",
+      "name": "20260926180000_drop_payments"
+    },
+    {
+      "version": "20260926173028",
+      "name": "20260926190000_discord_oauth_state"
+    },
+    {
+      "version": "20260926174708",
+      "name": "20260926200000_account_link_codes"
+    },
+    {
+      "version": "20260926180239",
+      "name": "20260926210000_discord_claim"
+    },
+    {
+      "version": "20260926181134",
+      "name": "20260926220000_admin_invite_codes"
+    },
+    {
+      "version": "20260926182332",
+      "name": "20260926230000_discord_onboarding"
+    },
+    {
+      "version": "20260926184503",
+      "name": "20260926240000_harden_client_error_reporting"
+    },
+    {
+      "version": "20260926185133",
+      "name": "20260926250000_real_session_revocation"
+    },
+    {
+      "version": "20260926191847",
+      "name": "20260926260000_document_deny_all_tables"
+    },
+    {
+      "version": "20260926192432",
+      "name": "20260926270000_database_debt"
+    },
+    {
+      "version": "20260926204850",
+      "name": "20260926280000_admin_list_server_number"
+    },
+    {
+      "version": "20260926212324",
+      "name": "20260926290000_drop_legacy_transfer_wrapper"
+    },
+    {
+      "version": "20260926223300",
+      "name": "gdpr_retention_and_erasure"
+    },
+    {
+      "version": "20260926223728",
+      "name": "gdpr_erase_player_via_cascade"
+    },
+    {
+      "version": "20260927001726",
+      "name": "discord_multi_account_links"
+    },
+    {
+      "version": "20260927105504",
+      "name": "gm_stats_weeks"
+    },
+    {
+      "version": "20260927105636",
+      "name": "gm_stats_weeks_delegate_authz"
+    },
+    {
+      "version": "20260927111234",
+      "name": "gm_stats_members_aggregate"
+    },
+    {
+      "version": "20260927112053",
+      "name": "gm_stats_members_window_glory"
+    },
+    {
+      "version": "20260927112753",
+      "name": "gm_stats_members_reliability"
+    },
+    {
+      "version": "20260927114032",
+      "name": "gm_stats_health"
+    },
+    {
+      "version": "20260927114958",
+      "name": "guild_weekly_snapshots"
+    },
+    {
+      "version": "20260927115059",
+      "name": "guild_weekly_snapshots_normalise_week"
+    },
+    {
+      "version": "20260927120934",
+      "name": "gm_stats_events"
+    },
+    {
+      "version": "20260927121137",
+      "name": "drop_gm_stats_data"
+    },
+    {
+      "version": "20260927123150",
+      "name": "gm_player_stats"
+    },
+    {
+      "version": "20260927123426",
+      "name": "gm_stats_health_normalise_week"
+    },
+    {
+      "version": "20260927123537",
+      "name": "gm_stats_health_quality_bound_future"
+    },
+    {
+      "version": "20260927233028",
+      "name": "20260928100000_glory_upsert_service_role_parity"
+    },
+    {
+      "version": "20260927233228",
+      "name": "20260928110000_war_opponents_stop_reading_guilds_name"
+    },
+    {
+      "version": "20260930165759",
+      "name": "20260930100000_fractional_timezone_offsets"
+    },
+    {
+      "version": "20260930165802",
+      "name": "20260930110000_r5_handover_by_guild_admin"
+    },
+    {
+      "version": "20260930173247",
+      "name": "20260930120000_daily_scores_service_role_parity"
+    },
+    {
+      "version": "20260930174334",
+      "name": "20260930130000_discord_rally_responses"
+    },
+    {
+      "version": "20260930182818",
+      "name": "20260930140000_transfer_requester_cannot_approve"
+    },
+    {
+      "version": "20260930182821",
+      "name": "20260930150000_protect_r5_from_deletion"
+    },
+    {
+      "version": "20260930185459",
+      "name": "20260930160000_least_privilege_table_grants"
+    },
+    {
+      "version": "20260930190017",
+      "name": "20260930170000_least_privilege_function_defaults"
+    },
+    {
+      "version": "20261001194004",
+      "name": "20261001200000_ocr_videos_bucket"
+    },
+    {
+      "version": "20261002120000",
+      "name": "discord_signin_retry"
+    },
+    {
+      "version": "20261003070904",
+      "name": "guild_rename"
+    },
+    {
+      "version": "20261003071704",
+      "name": "guild_tag_history_can_rename"
+    },
+    {
+      "version": "20261003074711",
+      "name": "chest_tiers_audit_level"
+    },
+    {
+      "version": "20261003080433",
+      "name": "guild_delete_removes_everything"
+    },
+    {
+      "version": "20261003090434",
+      "name": "admin_create_only_and_demo_credentials"
+    },
+    {
+      "version": "20261003091725",
+      "name": "backup_reader_role"
+    },
+    {
+      "version": "20261003105039",
+      "name": "event_rpcs_tenant_checks"
+    },
+    {
+      "version": "20261003112152",
+      "name": "truncation_fixes_and_log_retention"
+    },
+    {
+      "version": "20261003113839",
+      "name": "tenant_isolation_and_sessions"
+    },
+    {
+      "version": "20261003114333",
+      "name": "atomic_verification_throttle"
+    }
+  ]
+}

@@ -15,7 +15,7 @@ const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$
 
 const fn = read('supabase/functions/auth-discord/index.ts');
 const fnCode = stripComments(fn);
-const migration = read('supabase/migrations/20260926190000_discord_oauth_state.sql');
+const migration = read('supabase/migrations/20260926173028_discord_oauth_state.sql');
 
 describe('auth-discord is reachable without a session', () => {
   it('is declared verify_jwt = false, like every other pre-session endpoint', () => {

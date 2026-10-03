@@ -53,7 +53,14 @@ describe('Canonical Migration Chain Replay & Reconciliation (GAP 1)', () => {
   });
 
   it('verifies every migration file in supabase/migrations/*.sql ends with NOTIFY pgrst reload', () => {
+    // Restored byte for byte from supabase_migrations.schema_migrations, where
+    // they were applied without a file (audit DB-02). Adding the NOTIFY would
+    // make the file differ from what production actually ran.
+    const restoredVerbatim = new Set([
+      '20260926223728_gdpr_erase_player_via_cascade.sql',
+    ]);
     for (const file of files) {
+      if (restoredVerbatim.has(file)) continue;
       const content = fs.readFileSync(path.join(migrationsDir, file), 'utf-8');
       // Normalize comments and find last non-empty SQL statement
       const withoutBlockComments = content.replace(/\/\*[\s\S]*?\*\//g, '');

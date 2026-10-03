@@ -80,7 +80,7 @@ describe('member-portal submit-scores', () => {
 });
 
 describe('gm_upsert_daily_scores service-role parity migration', () => {
-  const sql = fs.readFileSync(path.resolve(__dirname, '../supabase/migrations/20260930120000_daily_scores_service_role_parity.sql'), 'utf-8');
+  const sql = fs.readFileSync(path.resolve(__dirname, '../supabase/migrations/20260930173247_daily_scores_service_role_parity.sql'), 'utf-8');
   it('gates on write access only when there is a JWT', () => {
     expect(sql).toMatch(/IF auth\.uid\(\) IS NOT NULL THEN\s+IF NOT public\.check_user_guild_write_access\(v_target\) THEN/);
   });

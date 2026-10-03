@@ -127,7 +127,7 @@ async function getIdentity(
 
   // C1: refuse a token minted before the account's session_version was bumped.
   // Same absent-tolerant rule as gm_session_is_valid(); see
-  // 20260926250000_real_session_revocation.sql. The epoch is read from the
+  // 20260926185133_real_session_revocation.sql. The epoch is read from the
   // token's own payload because getUser() answers from the live auth.users row,
   // whose value is always the freshly bumped one.
   if (isSessionRevoked(jwt, acc.session_version as number | null)) {

@@ -14,7 +14,7 @@ const rootDir = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(rootDir, p), 'utf8');
 const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
 
-const migration = read('supabase/migrations/20260926220000_admin_invite_codes.sql');
+const migration = read('supabase/migrations/20260926181134_admin_invite_codes.sql');
 const adminFn = stripComments(read('supabase/functions/admin-accounts/index.ts'));
 const discordFn = stripComments(read('supabase/functions/auth-discord/index.ts'));
 const inviteBlock = adminFn.slice(

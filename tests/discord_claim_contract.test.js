@@ -15,7 +15,7 @@ const rootDir = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(rootDir, p), 'utf8');
 const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
 
-const migration = read('supabase/migrations/20260926210000_discord_claim.sql');
+const migration = read('supabase/migrations/20260926180239_discord_claim.sql');
 const claimFn = migration.slice(
   migration.indexOf('FUNCTION public.gm_claim_account_with_discord'),
   migration.indexOf('REVOKE ALL ON FUNCTION public.gm_check_discord_throttle')

@@ -43,7 +43,7 @@ That is the whole decision, and it is not an oversight:
   referentially consistent, and would then be destroyed by exactly the cascade
   it exists to survive. It would look like a fix and be none.
 - **Dropping the foreign key** from the existing tables was considered and
-  rejected. `gm_erase_player` (migration `20260927100000`) is built on
+  rejected. `gm_erase_player` (migration `20260926223300`) is built on
   `ON UPDATE CASCADE` propagating a pseudonymising rename across all seven
   children in one transaction, and that migration's own comments record that an
   earlier version was wrong precisely because it fought the cascade. Erasure

@@ -190,7 +190,7 @@ describe('phase-2 residue that measurement says is already gone', () => {
   });
 
   it('has a drop migration for the push tables and their RPCs', () => {
-    const drop = read('supabase/migrations/20260926120000_drop_web_push.sql');
+    const drop = read('supabase/migrations/20260926063112_drop_web_push.sql');
     for (const obj of [
       'push_subscriptions',
       'player_push_prefs',

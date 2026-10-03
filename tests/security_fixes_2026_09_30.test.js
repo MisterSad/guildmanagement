@@ -38,7 +38,7 @@ describe('1. transfers: whoever asks never decides', () => {
     expect(transferActionFor(legacy, 'NEW')).toBe('decide');
   });
 
-  const sql = read('supabase/migrations/20260930140000_transfer_requester_cannot_approve.sql');
+  const sql = read('supabase/migrations/20260930182818_transfer_requester_cannot_approve.sql');
   it('records who asked, and resolves the approver from it', () => {
     expect(sql).toContain("VALUES (p_uid, v_pseudo, v_source_guild, v_target, 'pending', 'admin')");
     expect(sql).toMatch(/v_approver_guild := CASE WHEN v_transfer\.requested_by = 'admin'\s+THEN v_transfer\.source_guild ELSE v_transfer\.target_guild END;/);
@@ -121,7 +121,7 @@ describe('3. the R5 leader is never removed by accident', () => {
   });
 
   it('the database refuses it from a user session, and leaves system paths alone', () => {
-    const sql = read('supabase/migrations/20260930150000_protect_r5_from_deletion.sql');
+    const sql = read('supabase/migrations/20260930182821_protect_r5_from_deletion.sql');
     expect(sql).toMatch(/IF OLD\.role = 'R5'\s+AND auth\.uid\(\) IS NOT NULL\s+AND NOT public\.is_super_admin\(\) THEN/);
     expect(sql).toContain('BEFORE DELETE ON public.guild_members');
     expect(sql).toContain('REVOKE EXECUTE ON FUNCTION public.gm_protect_r5_deletion() FROM PUBLIC, anon, authenticated;');
