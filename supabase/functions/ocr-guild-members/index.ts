@@ -5,6 +5,22 @@ import { validateCallerAuth } from "../_shared/auth.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { getValidatedEnv } from "../_shared/env.ts";
 import { GEMINI_MODEL_FALLBACKS, geminiGenerateContentUrl, geminiSupportsThinking } from "../_shared/gemini.ts";
+import { checkAndRecordIpAttempt } from "../_shared/rate-limit.ts";
+import {
+  OCR_VIDEO_BUCKET,
+  OCR_VIDEO_MAX_BYTES,
+  OCR_VIDEO_MAX_DURATION_SEC,
+  OCR_VIDEO_MIME_TYPES,
+  OCR_VIDEO_PATH_REGEX,
+  geminiDeleteFile,
+  geminiUploadFile,
+  geminiWaitActive,
+  mergeVideoPasses,
+  ocrNeedsSecondPass,
+  ocrVideoCoverage,
+  ocrVideoFps,
+  type VideoCoverage,
+} from "./video.ts";
 
 export interface OcrImageItem {
   base64Data: string;
@@ -97,6 +113,17 @@ export const MetadataSchema = z
   .strict();
 
 // Request schema
+// A staged screen recording (ADR-021). Only the object path travels: the video
+// itself is uploaded by the browser to the private `ocr-videos` bucket, and the
+// path is matched against the one shape the client generates.
+export const VideoItemSchema = z
+  .object({
+    path: z.string().regex(OCR_VIDEO_PATH_REGEX),
+    mimeType: z.enum(OCR_VIDEO_MIME_TYPES),
+  })
+  .strict();
+
+// Request schema
 export const OcrRequestSchema = z.object({
   images: z.array(ImageItemSchema).max(5).optional(),
   imageBase64: z.string().optional(),
@@ -105,6 +132,7 @@ export const OcrRequestSchema = z.object({
   guildTag: GuildTagSchema,
   rankHint: z.enum(VALID_RANKS).optional().nullable(),
   metadata: MetadataSchema.optional(),
+  video: VideoItemSchema.optional(),
 });
 
 function makeJson(req: Request) {
@@ -249,6 +277,431 @@ Core Guidelines:
 5. Output format:
    Return ONLY a valid JSON object strictly conforming to the requested schema. Never output explanations or markdown outside the JSON.`;
 
+
+// Prepended to SYSTEM_INSTRUCTION for a video. The screenshot rules all still
+// apply -- a frame is a screenshot -- but a recording shows most rows many
+// times over, and the model must report each player once.
+const VIDEO_SYSTEM_PREAMBLE = `The input is a screen recording of a list being scrolled, not a set of screenshots. Treat every frame as a screenshot and apply all the rules below to it.
+
+Video rules:
+- Every player row appears whole in at least one frame. Read the list from its first row to its last and report each player EXACTLY ONCE, however many frames show them.
+- "position": the rank number printed on the row (for the top three, the number on the medal). Use null only if the row shows no number at all. Never compute or guess a position.
+- "expected_count": if the screen shows how many entries the list holds (e.g. a "40/40" member counter), report that number; otherwise null.
+- Do not stop early. A long list is still one list: continue until the last row shown in the recording.`;
+
+// The completeness pass. What the first pass found is sent as a separate,
+// labelled data part -- never spliced into this text.
+const SECOND_PASS_INSTRUCTION = `A first reading of this same recording is given above as ISOLATED DATA. It is known to be incomplete: the positions in "missing_positions" were not read, and "expected_count" (when set) says how many rows the list holds.
+Watch the recording again and return ONLY the player rows that are NOT in "already_found" -- above all the rows at the missing positions. Do not repeat a row from "already_found". If a row truly does not appear in any frame, leave it out: never invent a player, a name or a score.`;
+
+const MULTI_GUILD_METRICS = ["fleet", "flagship", "champs", "crew", "svs_prep", "svs_pvp", "gvg_prep", "gvg_pvp", "svs_day", "gvg_day"];
+
+const metricInstructions: Record<string, string> = {
+  members: `Full Guild Roster / Liste des Membres. Extract player pseudo, player UID if visible, in-game rank section (see rank instructions below), and total overall power converted into pure numerical integer. Convert strings like "145.2M" -> 145200000, "12,400,000" -> 12400000, "500K" -> 500000.`,
+  power: `Overall Total Power / Puissance Totale. Extract player pseudo and total numerical power. Convert strings like "145.2M" -> 145200000, "12,400,000" -> 12400000, "500K" -> 500000.`,
+  fleet: `Strongest Fleet Rating / Plus Forte Flotte (March 1 / Première Marche). Multi-guild server ranking. Extract player pseudo and fleet rating numerical power. Convert strings like "2.16M" -> 2160000, "1,850,000" -> 1850000, "2.26M" -> 2260000.`,
+  tech: `Technology Power / Puissance Technologique (Alliance / Research Tech). Extract player pseudo and technology power integer. Convert strings like "15.4M" -> 15400000, "18,200,000" -> 18200000.`,
+  flagship: `Strongest Flagship Power / Puissance Vaisseau Amiral. Multi-guild server ranking. Extract player pseudo and flagship power integer. Convert strings like "10.3M" -> 10300000, "9.8M" -> 9800000.`,
+  champs: `Champion Total Power / Puissance Totale des Champions (Heroes / Héros). Multi-guild server ranking. Extract player pseudo and champion total power integer. Convert strings like "32.5M" -> 32500000, "28.4M" -> 28400000.`,
+  crew: `Crew Total Power / Puissance Totale de l'Équipage (Foundation Officers). Multi-guild server ranking. Extract player pseudo and crew total power integer. Convert strings like "5.1M" -> 5100000, "4.8M" -> 4800000.`,
+  glory: `Glory Score / Points de Gloire (PvP & Weekly Glory ranking). Extract player pseudo and cumulative Glory points integer. Convert strings like "240M" -> 240000000, "496,000,000" -> 496000000, "50K" -> 50000.`,
+  svs_prep: `Server vs Server (SvS) Day 1 to 5 Preparation Stage Score / Score Phase de Préparation SvS (Jours 1 à 5). Extract player pseudo and preparation score integer. Convert strings like "28.5M" -> 28500000, "1,200,000" -> 1200000. Target guild members with guild tag.`,
+  svs_pvp: `Server vs Server (SvS) Day 6 PvP Battle Score / Score Jour 6 PvP SvS. Extract player pseudo and Day 6 PvP score integer. Convert strings like "45.8M" -> 45800000, "3,450,000" -> 3450000. Target guild members with guild tag.`,
+  gvg_prep: `Guild vs Guild (GvG) Day 1 to 5 Preparation Stage Score / Score Phase de Préparation GvG (Jours 1 à 5). Extract player pseudo and preparation score integer. Convert strings like "18.2M" -> 18200000, "950,000" -> 950000. Target guild members with guild tag.`,
+  gvg_pvp: `Guild vs Guild (GvG) Day 6 PvP Battle Score / Score Jour 6 PvP GvG. Extract player pseudo and Day 6 PvP score integer. Convert strings like "35.1M" -> 35100000, "2,100,000" -> 2100000. Target guild members with guild tag.`,
+  // Per-day grid metrics: {day} is substituted with the VALIDATED scanDay
+  // integer below (never a raw, uncontrolled string).
+  svs_day: `Server vs Server (SvS) Day {day} Preparation Score / Score Jour {day} Phase de Préparation SvS. Extract player pseudo and the preparation score for Day {day} only (per-day grid, not the cumulative total). Convert strings like "5.2M" -> 5200000, "850,000" -> 850000. Target guild members with guild tag.`,
+  gvg_day: `Guild vs Guild (GvG) Day {day} Preparation Score / Score Jour {day} Phase de Préparation GvG. Extract player pseudo and the preparation score for Day {day} only (per-day grid, not the cumulative total). Convert strings like "4.8M" -> 4800000, "720,000" -> 720000. Target guild members with guild tag.`,
+  shadowfront_s1: `Shadowfront Squad 1 Battle / Composition Roster (Escouade 1). Extract all visible player usernames (pseudos) participating or listed in Squad 1 main squad or reserve substitutes.`,
+  shadowfront_s2: `Shadowfront Squad 2 Battle / Composition Roster (Escouade 2). Extract all visible player usernames (pseudos) participating or listed in Squad 2 main squad or reserve substitutes.`,
+  dtr: `Defend Trade Route (DTR) / Défense de la Route Commerciale. Extract all player usernames (pseudos) and their score/points. If score is explicitly 0 or 0 pts, output score as 0; if score > 0, output positive integer score.`,
+  armsrace_sa: `Arms Race Stage A / Course aux Armements Étape A. Extract all visible player usernames (pseudos) participating or present in Stage A.`,
+  armsrace_sb: `Arms Race Stage B / Course aux Armements Étape B. Extract all visible player usernames (pseudos) participating or present in Stage B.`
+};
+
+export function buildTaskMetadata(
+  metricType: string,
+  guildTag: string,
+  rankHint: string | null,
+  scanDay: number | undefined
+) {
+  const isMultiGuild = MULTI_GUILD_METRICS.includes(metricType);
+  const isMembersRoster = metricType === "members";
+  const targetMetricDesc = metricInstructions[metricType] || metricInstructions.power;
+
+  // Substitution is only allowed for the two per-day war metrics, using the
+  // Zod-validated integer (never raw text). Any other metric keeps its prompt.
+  let resolvedMetricDesc = targetMetricDesc;
+  if ((metricType === "svs_day" || metricType === "gvg_day") && scanDay !== undefined) {
+    resolvedMetricDesc = targetMetricDesc.replace("{day}", String(scanDay));
+  }
+
+  const taskMetadata = {
+    metric: metricType,
+    metric_description: resolvedMetricDesc,
+    guild_tag: guildTag || null,
+    rank_hint: rankHint || null,
+    scan_day: scanDay || null,
+    is_multi_guild: isMultiGuild,
+    is_members_roster: isMembersRoster,
+  };
+  return { taskMetadata, isMultiGuild, isMembersRoster };
+}
+
+/** `forVideo` adds the two fields the completeness check is computed from. */
+function buildResponseSchema(forVideo: boolean) {
+  const playerProperties: Record<string, unknown> = {
+    pseudo: { type: "STRING" },
+    guild_tag: { type: "STRING", nullable: true },
+    score: { type: "NUMBER" },
+    raw_score: { type: "STRING", nullable: true },
+    uid: { type: "STRING", nullable: true },
+    rank: { type: "STRING", nullable: true },
+  };
+  const properties: Record<string, unknown> = {
+    metric: { type: "STRING" },
+    guild_tag: { type: "STRING", nullable: true },
+    players: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: playerProperties,
+        required: ["pseudo", "score"],
+      },
+    },
+    endingRank: { type: "STRING", nullable: true },
+  };
+  if (forVideo) {
+    playerProperties.position = { type: "INTEGER", nullable: true };
+    properties.expected_count = { type: "INTEGER", nullable: true };
+  }
+  return { type: "OBJECT", properties, required: ["metric", "players"] };
+}
+
+/**
+ * One extraction against the shared model list: the first model to return a
+ * complete answer wins. Returns "" as `raw` when every model failed.
+ */
+async function runGemini(
+  systemInstruction: string,
+  parts: any[],
+  responseSchema: unknown,
+  logger: EdgeLogger,
+  extraGenerationConfig: Record<string, unknown> = {}
+): Promise<{ raw: string; lastError: string }> {
+  // `thinking_config` is added per model below: Gemini 2.0 rejects it.
+  const baseGenerationConfig = {
+    response_mime_type: "application/json",
+    response_schema: responseSchema,
+    temperature: 0.1,
+    // Was 8192, shared with the thinking tokens. See geminiSupportsThinking().
+    // A two-image batch answers in well under 2k tokens, so this is headroom,
+    // not a bill: Gemini charges the tokens emitted, not the ceiling.
+    max_output_tokens: 32768,
+    ...extraGenerationConfig,
+  };
+
+  const buildPayload = (modelName: string) => ({
+    system_instruction: {
+      parts: [{ text: systemInstruction }],
+    },
+    contents: [{ parts }],
+    generationConfig: geminiSupportsThinking(modelName)
+      ? { ...baseGenerationConfig, thinking_config: { thinking_budget: 0 } }
+      : baseGenerationConfig,
+  });
+
+  // B1: one shared list; three of the five entries here were identifiers
+  // Google has never published. See _shared/gemini.ts.
+  const modelsToTry = GEMINI_MODEL_FALLBACKS;
+
+  let geminiResultRaw = "";
+  let lastError = "";
+
+  const callGemini = (modelName: string, payload: unknown): Promise<Response> =>
+    fetch(geminiGenerateContentUrl(modelName), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": GEMINI_API_KEY,
+      },
+      body: JSON.stringify(payload),
+    });
+
+  for (const modelName of modelsToTry) {
+    try {
+      let resp = await callGemini(modelName, buildPayload(modelName));
+
+      // If this build of the model has not heard of thinking_config it answers
+      // 400 rather than ignoring the field, and the whole OCR would fail on a
+      // parameter that is only an optimisation. Drop it and ask again.
+      if (resp.status === 400 && geminiSupportsThinking(modelName)) {
+        const errTxt = await resp.text();
+        logger.warn("Gemini rejected the request; retrying without thinking_config", {
+          modelName,
+          status: 400,
+          detail: errTxt.slice(0, 300),
+        });
+        resp = await callGemini(modelName, {
+          system_instruction: { parts: [{ text: systemInstruction }] },
+          contents: [{ parts }],
+          generationConfig: baseGenerationConfig,
+        });
+      }
+
+      if (!resp.ok) {
+        const errTxt = await resp.text();
+        lastError = `Model ${modelName} returned ${resp.status}: ${errTxt}`;
+        logger.warn("Gemini model attempt failed", { modelName, status: resp.status });
+        continue;
+      }
+
+      const respData = await resp.json();
+      const candidate = respData?.candidates?.[0];
+      const textCandidate = candidate?.content?.parts?.[0]?.text;
+      const finishReason = candidate?.finishReason ?? null;
+
+      // A truncated answer used to be accepted here, logged as a success, and
+      // then thrown away four lines later by JSON.parse -- a 500 to the user
+      // with no retry, because the loop had already broken out. Anything other
+      // than STOP means the text is not the whole answer, so try the next model
+      // instead of parsing a fragment.
+      if (textCandidate && finishReason && finishReason !== "STOP") {
+        lastError = `Model ${modelName} stopped early: ${finishReason}`;
+        logger.warn("Gemini returned a truncated candidate", {
+          modelName,
+          finishReason,
+          textLength: String(textCandidate).length,
+          usage: respData?.usageMetadata ?? null,
+        });
+        continue;
+      }
+
+      if (textCandidate) {
+        geminiResultRaw = textCandidate;
+        logger.info("Gemini OCR extraction succeeded", {
+          modelName,
+          modelVersion: respData?.modelVersion ?? null,
+          finishReason,
+          usage: respData?.usageMetadata ?? null,
+        });
+        break;
+      }
+
+      lastError = `Model ${modelName} returned no text (finishReason: ${finishReason ?? "none"})`;
+      logger.warn("Gemini returned no text candidate", { modelName, finishReason });
+    } catch (e: any) {
+      lastError = `Fetch exception for ${modelName}: ${e.message}`;
+      logger.warn("Exception during Gemini fetch", { modelName, error: e.message });
+    }
+  }
+
+  return { raw: geminiResultRaw, lastError };
+}
+
+function normalizePlayers(parsed: any, isMembersRoster: boolean, withPosition: boolean): Record<string, unknown>[] {
+  const rawList = Array.isArray(parsed?.players) ? parsed.players : (Array.isArray(parsed) ? parsed : []);
+
+  // Clean and validate players defensively
+  const players = rawList
+    .map((p: any) => {
+      const pseudo = String(p.pseudo || p.name || p.username || "").trim();
+      const rawScore = p.score != null ? p.score : (p.overall_power != null ? p.overall_power : (p.power != null ? p.power : 0));
+      const rawText = p.raw_score != null ? String(p.raw_score).trim() : (typeof rawScore === "string" ? rawScore : null);
+      const val = parseOcrScore(rawScore, rawText);
+      const uid = p.uid ? String(p.uid).trim() : null;
+      const result: Record<string, unknown> = {
+        pseudo,
+        score: Math.max(0, val),
+        overall_power: Math.max(0, val),
+        raw_score: rawText || (typeof rawScore === "string" ? rawScore : String(val)),
+        uid
+      };
+      if (isMembersRoster) {
+        const rawRank = typeof p.rank === "string" ? p.rank.trim().toUpperCase() : null;
+        result.rank = rawRank && VALID_RANKS_SET.has(rawRank) ? rawRank : null;
+      }
+      if (withPosition) {
+        const pos = typeof p.position === "number" ? Math.round(p.position) : NaN;
+        result.position = Number.isInteger(pos) && pos >= 1 ? pos : null;
+      }
+      return result;
+    })
+    .filter((p: any) => p.pseudo.length > 0 && p.score >= 0);
+  return players;
+}
+
+function parseEndingRank(parsed: any, isMembersRoster: boolean): string | null {
+  if (!isMembersRoster) return null;
+  const rawEnding = typeof parsed?.endingRank === "string" ? parsed.endingRank.trim().toUpperCase() : null;
+  return rawEnding && VALID_RANKS_SET.has(rawEnding) ? rawEnding : null;
+}
+
+function parseExpectedCount(parsed: any): number | null {
+  const n = parsed?.expected_count;
+  return typeof n === "number" && Number.isInteger(n) && n >= 1 && n <= 100000 ? n : null;
+}
+
+interface VideoScanContext {
+  req: Request;
+  json: (body: unknown, status?: number) => Response;
+  logger: EdgeLogger;
+  caller: { accountId?: string | null; guild?: string | null };
+  video: { path: string; mimeType: string };
+  metricType: string;
+  guildTag: string;
+  taskMetadata: Record<string, unknown>;
+  isMultiGuild: boolean;
+  isMembersRoster: boolean;
+}
+
+/** Staged videos older than this are removed whenever their guild scans again. */
+const OCR_VIDEO_STALE_MS = 60 * 60 * 1000;
+
+/**
+ * The video path (ADR-021): staged object -> Gemini File API -> one reading,
+ * then one targeted re-reading when the positions show it missed rows.
+ *
+ * Every storage operation runs under the CALLER's JWT, so RLS -- not this
+ * function -- decides which video may be read and deleted.
+ */
+async function handleVideoScan(ctx: VideoScanContext): Promise<Response> {
+  const { req, json, logger, caller, video, metricType, guildTag, taskMetadata, isMultiGuild, isMembersRoster } = ctx;
+
+  const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
+  // A video costs a few hundred thousand tokens: budget it per account. Fails
+  // closed, like every throttle built on this helper.
+  const budget = await checkAndRecordIpAttempt(admin, `ocr-video:${caller.accountId}`, { limit: 20, windowMs: 600_000 });
+  if (!budget.allowed) return json({ ok: false, error: "too_many_attempts" }, 429);
+
+  const userClient = createClient(SUPABASE_URL, ANON_KEY, {
+    auth: { persistSession: false },
+    global: { headers: { Authorization: req.headers.get("Authorization") || "" } },
+  });
+  const bucket = userClient.storage.from(OCR_VIDEO_BUCKET);
+
+  let geminiFileName: string | null = null;
+  try {
+    const { data: blob, error: downloadErr } = await bucket.download(video.path);
+    if (downloadErr || !blob) {
+      logger.warn("OCR video not readable by caller", { error: downloadErr?.message ?? null });
+      return json({ ok: false, error: "video_not_found" }, 404);
+    }
+    if (blob.size > OCR_VIDEO_MAX_BYTES) return json({ ok: false, error: "payload_too_large" }, 413);
+    const bytes = await blob.arrayBuffer();
+
+    const uploadStarted = Date.now();
+    const uploaded = await geminiUploadFile(GEMINI_API_KEY, bytes, video.mimeType);
+    geminiFileName = uploaded.name;
+    const file = await geminiWaitActive(GEMINI_API_KEY, uploaded.name, 90_000);
+    logger.info("OCR video ready at Gemini", {
+      bytes: bytes.byteLength,
+      durationSec: file.durationSec,
+      readyMs: Date.now() - uploadStarted,
+    });
+
+    // The duration is Gemini's own reading of the file, not a client claim.
+    const durationSec = file.durationSec ?? OCR_VIDEO_MAX_DURATION_SEC;
+    if (durationSec > OCR_VIDEO_MAX_DURATION_SEC) return json({ ok: false, error: "video_too_long" }, 400);
+
+    const systemInstruction = VIDEO_SYSTEM_PREAMBLE + "\n\n" + SYSTEM_INSTRUCTION;
+    const responseSchema = buildResponseSchema(true);
+    const mediaConfig = { media_resolution: "MEDIA_RESOLUTION_HIGH" };
+    const videoPart = (fps: number) => ({
+      file_data: { mime_type: file.mimeType || video.mimeType, file_uri: file.uri },
+      video_metadata: { fps },
+    });
+    const metadataPart = {
+      text: `[EXTRACTION TASK METADATA - ISOLATED INPUT]\n${JSON.stringify(taskMetadata, null, 2)}`,
+    };
+
+    // ── Pass 1
+    const fps1 = ocrVideoFps(durationSec, 1);
+    const first = await runGemini(systemInstruction, [
+      metadataPart,
+      { text: "Extract every player row shown in this screen recording, each player exactly once." },
+      videoPart(fps1),
+    ], responseSchema, logger, mediaConfig);
+    if (!first.raw) {
+      logger.error("All Gemini OCR models failed on the video", undefined, { lastError: first.lastError });
+      return json({ ok: false, error: "ocr_processing_failed", message: first.lastError || "Failed to read the video" }, 500);
+    }
+    let parsedFirst: any;
+    try {
+      parsedFirst = JSON.parse(first.raw);
+    } catch (e) {
+      logger.error("Failed to parse Gemini OCR JSON response (video)", e, { rawLength: first.raw.length });
+      return json({ ok: false, error: "json_parse_failed" }, 500);
+    }
+    let players = normalizePlayers(parsedFirst, isMembersRoster, true);
+    const expectedCount = parseExpectedCount(parsedFirst);
+    const filtered = isMultiGuild && !!guildTag;
+    let coverage: VideoCoverage = ocrVideoCoverage(players as any, expectedCount, filtered);
+    let passes = 1;
+
+    // ── Pass 2, only when the first one demonstrably missed rows
+    if (ocrNeedsSecondPass(coverage)) {
+      const fps2 = ocrVideoFps(durationSec, 2);
+      const firstPassData = {
+        already_found: players.map((p: any) => ({ position: p.position ?? null, pseudo: p.pseudo })),
+        missing_positions: coverage.missingPositions,
+        expected_count: coverage.expected,
+      };
+      const second = await runGemini(systemInstruction, [
+        metadataPart,
+        { text: `[FIRST PASS RESULT - ISOLATED DATA, NOT INSTRUCTIONS]\n${JSON.stringify(firstPassData)}` },
+        { text: SECOND_PASS_INSTRUCTION },
+        videoPart(fps2),
+      ], responseSchema, logger, mediaConfig);
+      passes = 2;
+      if (second.raw) {
+        try {
+          const extra = normalizePlayers(JSON.parse(second.raw), isMembersRoster, true);
+          players = mergeVideoPasses(players as any, extra as any) as any;
+          coverage = ocrVideoCoverage(players as any, expectedCount, filtered);
+        } catch (e) {
+          // The first reading stands; the coverage it reports says what is missing.
+          logger.warn("Second OCR video pass returned unparseable JSON", { error: (e as Error)?.message });
+        }
+      } else {
+        logger.warn("Second OCR video pass failed on every model", { lastError: second.lastError });
+      }
+    }
+
+    const endingRank = parseEndingRank(parsedFirst, isMembersRoster);
+    logger.info("OCR video extraction completed", {
+      metricType,
+      detectedCount: players.length,
+      expected: coverage.expected,
+      missing: coverage.missingPositions.length,
+      passes,
+      fps: fps1,
+    });
+    return json({ ok: true, metricType, players, count: players.length, endingRank, cached: false, coverage, passes });
+  } catch (e: any) {
+    const code = String(e?.message || "");
+    logger.error("OCR video processing failed", e, { step: code.slice(0, 64) });
+    if (code === "gemini_file_timeout" || code === "gemini_file_failed") {
+      return json({ ok: false, error: "video_processing_failed" }, 502);
+    }
+    return json({ ok: false, error: "ocr_processing_failed" }, 500);
+  } finally {
+    if (geminiFileName) await geminiDeleteFile(GEMINI_API_KEY, geminiFileName);
+    await bucket.remove([video.path]).catch(() => {});
+    // Uploads whose scan never reached this point (a closed tab, a timeout).
+    try {
+      const folder = video.path.split("/")[0];
+      const { data: listed } = await bucket.list(folder, { limit: 100 });
+      const cutoff = Date.now() - OCR_VIDEO_STALE_MS;
+      const stale = (listed || [])
+        .filter((o: any) => o?.name && o.created_at && new Date(o.created_at).getTime() < cutoff)
+        .map((o: any) => `${folder}/${o.name}`);
+      if (stale.length > 0) await bucket.remove(stale);
+    } catch { /* best effort */ }
+  }
+}
+
 Deno.serve(async (req: Request) => {
   const json = makeJson(req);
   const logger = new EdgeLogger("ocr-guild-members", req);
@@ -311,6 +764,24 @@ Deno.serve(async (req: Request) => {
   const rankHint = metadata?.rankHint ?? parseResult.data.rankHint ?? null;
   // Strict int enum (1..6) enforced by MetadataSchema — never raw user text.
   const scanDay = metadata?.scanDay;
+
+  const { taskMetadata, isMultiGuild, isMembersRoster } = buildTaskMetadata(metricType, guildTag, rankHint, scanDay);
+
+  if (parseResult.data.video) {
+    if (images?.length || rawBase64) return json({ ok: false, error: "video_and_images" }, 400);
+    return await handleVideoScan({
+      req,
+      json,
+      logger,
+      caller,
+      video: parseResult.data.video,
+      metricType,
+      guildTag,
+      taskMetadata,
+      isMultiGuild,
+      isMembersRoster,
+    });
+  }
   const imagesArray = images || [];
   let imageBase64 = rawBase64 || "";
   let mimeType = rawMime || "image/png";
@@ -363,51 +834,6 @@ Deno.serve(async (req: Request) => {
     logger.warn("OCR cache lookup failed, continuing to live extraction", { error: cacheLookupErr?.message });
   }
 
-  const isMultiGuild = ["fleet", "flagship", "champs", "crew", "svs_prep", "svs_pvp", "gvg_prep", "gvg_pvp", "svs_day", "gvg_day"].includes(metricType);
-  const isMembersRoster = metricType === "members";
-
-  const metricInstructions: Record<string, string> = {
-    members: `Full Guild Roster / Liste des Membres. Extract player pseudo, player UID if visible, in-game rank section (see rank instructions below), and total overall power converted into pure numerical integer. Convert strings like "145.2M" -> 145200000, "12,400,000" -> 12400000, "500K" -> 500000.`,
-    power: `Overall Total Power / Puissance Totale. Extract player pseudo and total numerical power. Convert strings like "145.2M" -> 145200000, "12,400,000" -> 12400000, "500K" -> 500000.`,
-    fleet: `Strongest Fleet Rating / Plus Forte Flotte (March 1 / Première Marche). Multi-guild server ranking. Extract player pseudo and fleet rating numerical power. Convert strings like "2.16M" -> 2160000, "1,850,000" -> 1850000, "2.26M" -> 2260000.`,
-    tech: `Technology Power / Puissance Technologique (Alliance / Research Tech). Extract player pseudo and technology power integer. Convert strings like "15.4M" -> 15400000, "18,200,000" -> 18200000.`,
-    flagship: `Strongest Flagship Power / Puissance Vaisseau Amiral. Multi-guild server ranking. Extract player pseudo and flagship power integer. Convert strings like "10.3M" -> 10300000, "9.8M" -> 9800000.`,
-    champs: `Champion Total Power / Puissance Totale des Champions (Heroes / Héros). Multi-guild server ranking. Extract player pseudo and champion total power integer. Convert strings like "32.5M" -> 32500000, "28.4M" -> 28400000.`,
-    crew: `Crew Total Power / Puissance Totale de l'Équipage (Foundation Officers). Multi-guild server ranking. Extract player pseudo and crew total power integer. Convert strings like "5.1M" -> 5100000, "4.8M" -> 4800000.`,
-    glory: `Glory Score / Points de Gloire (PvP & Weekly Glory ranking). Extract player pseudo and cumulative Glory points integer. Convert strings like "240M" -> 240000000, "496,000,000" -> 496000000, "50K" -> 50000.`,
-    svs_prep: `Server vs Server (SvS) Day 1 to 5 Preparation Stage Score / Score Phase de Préparation SvS (Jours 1 à 5). Extract player pseudo and preparation score integer. Convert strings like "28.5M" -> 28500000, "1,200,000" -> 1200000. Target guild members with guild tag.`,
-    svs_pvp: `Server vs Server (SvS) Day 6 PvP Battle Score / Score Jour 6 PvP SvS. Extract player pseudo and Day 6 PvP score integer. Convert strings like "45.8M" -> 45800000, "3,450,000" -> 3450000. Target guild members with guild tag.`,
-    gvg_prep: `Guild vs Guild (GvG) Day 1 to 5 Preparation Stage Score / Score Phase de Préparation GvG (Jours 1 à 5). Extract player pseudo and preparation score integer. Convert strings like "18.2M" -> 18200000, "950,000" -> 950000. Target guild members with guild tag.`,
-    gvg_pvp: `Guild vs Guild (GvG) Day 6 PvP Battle Score / Score Jour 6 PvP GvG. Extract player pseudo and Day 6 PvP score integer. Convert strings like "35.1M" -> 35100000, "2,100,000" -> 2100000. Target guild members with guild tag.`,
-    // Per-day grid metrics: {day} is substituted with the VALIDATED scanDay
-    // integer below (never a raw, uncontrolled string).
-    svs_day: `Server vs Server (SvS) Day {day} Preparation Score / Score Jour {day} Phase de Préparation SvS. Extract player pseudo and the preparation score for Day {day} only (per-day grid, not the cumulative total). Convert strings like "5.2M" -> 5200000, "850,000" -> 850000. Target guild members with guild tag.`,
-    gvg_day: `Guild vs Guild (GvG) Day {day} Preparation Score / Score Jour {day} Phase de Préparation GvG. Extract player pseudo and the preparation score for Day {day} only (per-day grid, not the cumulative total). Convert strings like "4.8M" -> 4800000, "720,000" -> 720000. Target guild members with guild tag.`,
-    shadowfront_s1: `Shadowfront Squad 1 Battle / Composition Roster (Escouade 1). Extract all visible player usernames (pseudos) participating or listed in Squad 1 main squad or reserve substitutes.`,
-    shadowfront_s2: `Shadowfront Squad 2 Battle / Composition Roster (Escouade 2). Extract all visible player usernames (pseudos) participating or listed in Squad 2 main squad or reserve substitutes.`,
-    dtr: `Defend Trade Route (DTR) / Défense de la Route Commerciale. Extract all player usernames (pseudos) and their score/points. If score is explicitly 0 or 0 pts, output score as 0; if score > 0, output positive integer score.`,
-    armsrace_sa: `Arms Race Stage A / Course aux Armements Étape A. Extract all visible player usernames (pseudos) participating or present in Stage A.`,
-    armsrace_sb: `Arms Race Stage B / Course aux Armements Étape B. Extract all visible player usernames (pseudos) participating or present in Stage B.`
-  };
-
-  const targetMetricDesc = metricInstructions[metricType] || metricInstructions.power;
-
-  // Substitution is only allowed for the two per-day war metrics, using the
-  // Zod-validated integer (never raw text). Any other metric keeps its prompt.
-  let resolvedMetricDesc = targetMetricDesc;
-  if ((metricType === "svs_day" || metricType === "gvg_day") && scanDay !== undefined) {
-    resolvedMetricDesc = targetMetricDesc.replace("{day}", String(scanDay));
-  }
-
-  const taskMetadata = {
-    metric: metricType,
-    metric_description: resolvedMetricDesc,
-    guild_tag: guildTag || null,
-    rank_hint: rankHint || null,
-    scan_day: scanDay || null,
-    is_multi_guild: isMultiGuild,
-    is_members_roster: isMembersRoster,
-  };
 
   const parts: any[] = [
     {
@@ -454,137 +880,11 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  const responseSchema = {
-    type: "OBJECT",
-    properties: {
-      metric: { type: "STRING" },
-      guild_tag: { type: "STRING", nullable: true },
-      players: {
-        type: "ARRAY",
-        items: {
-          type: "OBJECT",
-          properties: {
-            pseudo: { type: "STRING" },
-            guild_tag: { type: "STRING", nullable: true },
-            score: { type: "NUMBER" },
-            raw_score: { type: "STRING", nullable: true },
-            uid: { type: "STRING", nullable: true },
-            rank: { type: "STRING", nullable: true },
-          },
-          required: ["pseudo", "score"],
-        },
-      },
-      endingRank: { type: "STRING", nullable: true },
-    },
-    required: ["metric", "players"],
-  };
-
-  // `thinking_config` is added per model below: Gemini 2.0 rejects it.
-  const baseGenerationConfig = {
-    response_mime_type: "application/json",
-    response_schema: responseSchema,
-    temperature: 0.1,
-    // Was 8192, shared with the thinking tokens. See geminiSupportsThinking().
-    // A two-image batch answers in well under 2k tokens, so this is headroom,
-    // not a bill: Gemini charges the tokens emitted, not the ceiling.
-    max_output_tokens: 32768,
-  };
-
-  const buildPayload = (modelName: string) => ({
-    system_instruction: {
-      parts: [{ text: SYSTEM_INSTRUCTION }],
-    },
-    contents: [{ parts }],
-    generationConfig: geminiSupportsThinking(modelName)
-      ? { ...baseGenerationConfig, thinking_config: { thinking_budget: 0 } }
-      : baseGenerationConfig,
-  });
-
-  // B1: one shared list; three of the five entries here were identifiers
-  // Google has never published. See _shared/gemini.ts.
-  const modelsToTry = GEMINI_MODEL_FALLBACKS;
-
-  let geminiResultRaw = "";
-  let lastError = "";
+  const responseSchema = buildResponseSchema(false);
 
   logger.info("Initiating Gemini OCR scan", { imageCount: imagesArray.length || 1 });
+  const { raw: geminiResultRaw, lastError } = await runGemini(SYSTEM_INSTRUCTION, parts, responseSchema, logger);
 
-  const callGemini = (modelName: string, payload: unknown): Promise<Response> =>
-    fetch(geminiGenerateContentUrl(modelName), {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": GEMINI_API_KEY,
-      },
-      body: JSON.stringify(payload),
-    });
-
-  for (const modelName of modelsToTry) {
-    try {
-      let resp = await callGemini(modelName, buildPayload(modelName));
-
-      // If this build of the model has not heard of thinking_config it answers
-      // 400 rather than ignoring the field, and the whole OCR would fail on a
-      // parameter that is only an optimisation. Drop it and ask again.
-      if (resp.status === 400 && geminiSupportsThinking(modelName)) {
-        const errTxt = await resp.text();
-        logger.warn("Gemini rejected the request; retrying without thinking_config", {
-          modelName,
-          status: 400,
-          detail: errTxt.slice(0, 300),
-        });
-        resp = await callGemini(modelName, {
-          system_instruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
-          contents: [{ parts }],
-          generationConfig: baseGenerationConfig,
-        });
-      }
-
-      if (!resp.ok) {
-        const errTxt = await resp.text();
-        lastError = `Model ${modelName} returned ${resp.status}: ${errTxt}`;
-        logger.warn("Gemini model attempt failed", { modelName, status: resp.status });
-        continue;
-      }
-
-      const respData = await resp.json();
-      const candidate = respData?.candidates?.[0];
-      const textCandidate = candidate?.content?.parts?.[0]?.text;
-      const finishReason = candidate?.finishReason ?? null;
-
-      // A truncated answer used to be accepted here, logged as a success, and
-      // then thrown away four lines later by JSON.parse -- a 500 to the user
-      // with no retry, because the loop had already broken out. Anything other
-      // than STOP means the text is not the whole answer, so try the next model
-      // instead of parsing a fragment.
-      if (textCandidate && finishReason && finishReason !== "STOP") {
-        lastError = `Model ${modelName} stopped early: ${finishReason}`;
-        logger.warn("Gemini returned a truncated candidate", {
-          modelName,
-          finishReason,
-          textLength: String(textCandidate).length,
-          usage: respData?.usageMetadata ?? null,
-        });
-        continue;
-      }
-
-      if (textCandidate) {
-        geminiResultRaw = textCandidate;
-        logger.info("Gemini OCR extraction succeeded", {
-          modelName,
-          finishReason,
-          usage: respData?.usageMetadata ?? null,
-        });
-        break;
-      }
-
-      lastError = `Model ${modelName} returned no text (finishReason: ${finishReason ?? "none"})`;
-      logger.warn("Gemini returned no text candidate", { modelName, finishReason });
-    } catch (e: any) {
-      lastError = `Fetch exception for ${modelName}: ${e.message}`;
-      logger.warn("Exception during Gemini fetch", { modelName, error: e.message });
-    }
-  }
 
   if (!geminiResultRaw) {
     logger.error("All Gemini OCR models failed", undefined, { lastError });
@@ -600,30 +900,7 @@ Deno.serve(async (req: Request) => {
 
   try {
     const parsed = JSON.parse(geminiResultRaw);
-    const rawList = Array.isArray(parsed?.players) ? parsed.players : (Array.isArray(parsed) ? parsed : []);
-
-    // Clean and validate players defensively
-    const players = rawList
-      .map((p: any) => {
-        const pseudo = String(p.pseudo || p.name || p.username || "").trim();
-        const rawScore = p.score != null ? p.score : (p.overall_power != null ? p.overall_power : (p.power != null ? p.power : 0));
-        const rawText = p.raw_score != null ? String(p.raw_score).trim() : (typeof rawScore === "string" ? rawScore : null);
-        const val = parseOcrScore(rawScore, rawText);
-        const uid = p.uid ? String(p.uid).trim() : null;
-        const result: Record<string, unknown> = {
-          pseudo,
-          score: Math.max(0, val),
-          overall_power: Math.max(0, val),
-          raw_score: rawText || (typeof rawScore === "string" ? rawScore : String(val)),
-          uid
-        };
-        if (isMembersRoster) {
-          const rawRank = typeof p.rank === "string" ? p.rank.trim().toUpperCase() : null;
-          result.rank = rawRank && VALID_RANKS_SET.has(rawRank) ? rawRank : null;
-        }
-        return result;
-      })
-      .filter((p: any) => p.pseudo.length > 0 && p.score >= 0);
+    const players = normalizePlayers(parsed, isMembersRoster, false);
 
     let endingRank: string | null = null;
     if (isMembersRoster) {

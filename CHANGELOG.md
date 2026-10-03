@@ -2,6 +2,53 @@
 
 ## [Unreleased]
 
+- **Guild rename, phase 3 of 3: documentation and Discord side effects.**
+  - **ADR-022, "The guild TAG is a mutable tenant key".** It records why the key is renamed in place by a deferred cascade rather than moved to a UUID surrogate, and the invariants this sets:
+    - a new tag-carrying column needs a deferrable FK, or an entry in `gm_rename_guild`;
+    - nothing may cache a TAG without a refresh path.
+
+    AGENTS.md carries the invariant.
+  - **Discord, checked in the worker and the Edge Function:**
+    - The worker's channel→TAG map refreshes every 5 minutes. During that window, a verification resolves no home server (`home_server_unknown`) and fails visibly. It never writes under the old TAG.
+    - `/reconcile-roles` finds the guild role by name, so the Discord role must be renamed by hand. The rename dialog now says both.
+  - **ARCHITECTURE.md and AGENTS.md re-measured on production:**
+    - 35 guilds, ~3,797 members, ~55,943 participation rows;
+    - 41 tables, all with RLS and FORCE RLS, and 86 policies. The previous figures were 26, ~3,005, 38 and 87.
+
+    Ten tables missing from the §4.1 inventory are now listed.
+
+- **Guild rename, phase 2 of 3: the UI.**
+  - **A "Guild TAG" card on Accounts & Access.** It shows the current TAG, the last changes and when the next change is possible, plus a "Change TAG" button.
+  - **The server decides who sees the card.** `gm_guild_tag_history` (migration `20261003071704`) now returns `can_rename` and `cooldown_applies`, with the same rule `gm_rename_guild` enforces. Checked live for all three roles: guild_admin and super_admin may rename, the super_admin is exempt from the cooldown, and a server_admin, who can read the history but not rename, never sees a button that would always fail.
+  - **The super-admin guild list gains a "Rename" button.** It opens the same dialog.
+  - **The dialog validates as you type**, using the same format as the server; brackets are stripped and the TAG is uppercased. It lists the consequences, including that Discord roles and channels named after the old TAG are not renamed. A server refusal (TAG taken, reserved, cooldown with its date) is shown inline and the dialog stays open.
+  - **After renaming the active guild, the page reloads on the new TAG.** First, this browser's tag-keyed cache entries (`gm_config_<TAG>_*`, server number, join code) and the guild pointers move to the new TAG. A TAG may contain `_`, so `AB`'s config keys are told apart from `AB_C`'s by the lowercase key that follows: a test pins this.
+  - **A stale selection no longer points at a guild that is gone.** At sign-in or session restore, a guild saved in `localStorage` that the switcher no longer lists is dropped, and a valid one is picked. This covers a guild renamed or deleted since this browser last chose it.
+  - **Tests:** `tests/guild_rename_ui.test.js` (21 tests) and `e2e/guild-rename.spec.js`. The e2e spec runs the card and dialog against the built bundle, with no CSP or console error.
+
+- **Guild rename, phase 1 of 3: the database can change a guild's TAG** (migration `20261003070904`; no UI yet). In game a guild can change its tag. The app could not, because the tag *is* the tenant key: `guilds.id`, carried by 28 columns across 25 tables. Renamed guilds had to ask for their tenant to be deleted and recreated.
+  - **`gm_rename_guild(p_guild, p_new_tag)` moves every one of those columns in one transaction.**
+    - Who: a `super_admin`, or a `guild_admin` of that guild. A `server_admin` cannot rename.
+    - Format: the same as at creation, 2 to 12 characters `[A-Z0-9_]`, uppercased, unique regardless of case.
+    - Never `DEMO`, in either direction.
+    - Cooldown: 7 days between renames. A `super_admin` bypasses it.
+    - The in-game display tag (`guild_config.guild_tag`) is reset to `[NEW]`.
+    - Each rename writes a `guild_tag_history` row and an audit log line.
+  - **Every foreign key carrying a tag column is now `DEFERRABLE INITIALLY IMMEDIATE`, and the 14 to `guilds(id)` are `ON UPDATE CASCADE`.**
+    - Only the rename defers them; every other statement still checks immediately.
+    - This is needed because some children hang off two parents. `player_metrics_history` and `event_daily_scores` point at both `guilds` and `guild_members`. `event_daily_scores` also points at `war_sessions`. A rehearsal on production inside `BEGIN … ROLLBACK` caught that last one.
+    - The constraints are rebuilt from the catalogue. The migration aborts if any one is left out.
+  - **A tag is refused while a deleted guild's rows still sit under it.** `gm_delete_guild` leaves rows behind in the tables without a foreign key: the deleted CLAW still owns 6 bans, 12 absences and 59 audit lines. Taking that tag would hand them to another tenant.
+  - **Verified on production, then rolled back.** STW (202 members) was renamed: all 21 tag tables had 0 rows left under the old tag and the same count under the new one. The audit log gained exactly one line. All six refusals answered correctly.
+  - `tests/guild_rename_migration.test.js` reads the inventory from the generated types. It fails when a future tag column is neither covered by a foreign key nor moved by the function.
+
+- **Video OCR, phase 1 of 4: the server can read a whole recording with Gemini** (ADR-021 to come; nothing calls it yet). The browser's frame extractor found 3 or 4 players out of 40 on some recordings, because its scroll estimator was tuned on one desktop capture.
+  - **The video travels through a private `ocr-videos` bucket** (migration `20261001200000`), not the request body. Measured on production: a 1 MB binary body hung `ocr-guild-members` for 160 s, and 60 MB bodies ended in a gateway 502. Upload, read and delete are gated on `check_user_guild_write_access` for the guild in the first path segment. The function reads and deletes under the caller's JWT, so RLS decides what it can reach.
+  - `ocr-guild-members` sends the file to the Gemini File API and reads it at high media resolution. The frame rate is set from the duration Gemini measured, not from a client claim.
+  - **Completeness is checked, not assumed.** Missing rank positions, or a total below the on-screen "40/40" counter, trigger one targeted second pass at a higher frame rate. That pass can only add players. The response reports `coverage: { expected, found, missingPositions }`.
+  - Video scans are throttled per account (20 per 10 minutes, failing closed). The Gemini file and the staged object are deleted whatever happens.
+  - The image path is unchanged. Its model loop, task metadata and player normalisation are now shared functions.
+
 - **V3.34.0: the Discord bot rework (phases A–E).** The app version is bumped, and `DISCORD_CHANGELOG.md` is rewritten for officers and players. Announce it only once the worker is redeployed on Render and the front end is live.
 
 - **Discord bot, phase E: a warning when join requests would go nowhere, and the documentation catches up.**

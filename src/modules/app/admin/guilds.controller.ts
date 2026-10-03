@@ -2,7 +2,7 @@
  * src/modules/app/admin/guilds.controller.ts
  *
  * Super-admin guild roster: guilds grouped by game server, with the server
- * number editor and guild deletion.
+ * number editor, guild rename (guild-rename.ts) and guild deletion.
  *
  * Phase 1 (payment removal) renamed this from `subscriptions.controller.ts`.
  * Only the subscription fields were dead -- the tab itself is live and is the
@@ -21,6 +21,7 @@
 import { t, esc, winAny, byId, getDb, ls } from './utils';
 import { fetchGuilds } from './accounts.controller';
 import { showToast } from '../dialogs/dialogs.service';
+import { openRenameGuildDialog } from './guild-rename';
 
 export async function renderGuildsList(): Promise<void> {
   const container = byId('guilds-list-container');
@@ -104,6 +105,9 @@ export async function renderGuildsList(): Promise<void> {
               '<button class="gm-btn gm-btn-primary save-guild-btn" data-guild="' + esc(guildId) + '" style="margin-top: 1.15rem; padding: 0.35rem 0.65rem; font-size: var(--fs-sm); display:flex; align-items:center; gap:0.25rem; height: auto; line-height: 1.2;">' +
                 '<i class="ph ph-floppy-disk"></i> Save' +
               '</button>' +
+              '<button class="gm-btn gm-btn-ghost rename-guild-btn" data-guild="' + esc(guildId) + '" style="margin-top: 1.15rem; padding: 0.35rem 0.65rem; font-size: var(--fs-sm); display:flex; align-items:center; gap:0.25rem; height: auto; line-height: 1.2;">' +
+                '<i class="ph ph-tag"></i> Rename' +
+              '</button>' +
               '<button class="gm-btn gm-btn-danger-ghost delete-guild-btn" data-guild="' + esc(guildId) + '" style="margin-top: 1.15rem; padding: 0.35rem 0.65rem; font-size: var(--fs-sm); display:flex; align-items:center; gap:0.25rem; height: auto; line-height: 1.2;">' +
                 '<i class="ph ph-trash"></i> Delete' +
               '</button>' +
@@ -162,6 +166,19 @@ export async function renderGuildsList(): Promise<void> {
           (btn as HTMLButtonElement).disabled = false;
           btn.innerHTML = origText;
         }
+      });
+    });
+
+    container.querySelectorAll('.rename-guild-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const guildId = btn.getAttribute('data-guild') || '';
+        // Renaming the active guild reloads the page (applyRenameToSession);
+        // any other guild only needs the roster and the selects refreshed.
+        openRenameGuildDialog(guildId, async () => {
+          await fetchGuilds();
+          await renderGuildsList();
+          if (typeof w.populateGuildSelects === 'function') w.populateGuildSelects();
+        });
       });
     });
 
