@@ -70,10 +70,8 @@ describe('bounded inputs (BE-A-15, SEC-13)', () => {
     expect(src).toMatch(/mimeType: z\.string\(\)\.regex\(/);
   });
 
-  it('auth-passkey is a tombstone: passkeys were removed (owner decision, 2026-10-03)', () => {
-    const src = read('supabase/functions/auth-passkey/index.ts');
-    expect(src).toContain('status: 410');
-    expect(src).not.toMatch(/simplewebauthn|createClient/);
+  it('auth-passkey is gone: passkeys were removed (owner decision, 2026-10-03)', () => {
+    expect(fs.existsSync(path.resolve(root, 'supabase/functions/auth-passkey'))).toBe(false);
   });
 });
 

@@ -48,11 +48,9 @@ describe('no passkey code in the app', () => {
 });
 
 describe('no passkey path on the server', () => {
-  it('auth-passkey answers 410 to everything and loads nothing', () => {
-    const src = read('supabase/functions/auth-passkey/index.ts');
-    expect(src).toContain('status: 410');
-    expect(src).toContain('passkeys_removed');
-    expect(src).not.toMatch(/simplewebauthn|createClient|establishShadowSession/);
+  it('auth-passkey is deleted, from the platform (2026-10-03) and from the repository', () => {
+    expect(exists('supabase/functions/auth-passkey')).toBe(false);
+    expect(read('supabase/config.toml')).not.toContain('[functions.auth-passkey]');
   });
 
   it('auth-login no longer reads or reports passkeys', () => {

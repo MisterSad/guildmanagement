@@ -35,5 +35,6 @@ Corollaries:
 ## 3. Consequences & Invariants
 
 - **Reconciled 2026-09-27: 15 deployed, 15 in the repository, zero drift in either direction.** `admin-accounts` is now genuinely `verify_jwt = true`.
+- **Reconciled again 2026-10-03: 14 deployed, 14 in the repository.** `auth-passkey` was deleted from the platform by the owner, then from this repository (directory and `config.toml` block), in that order: removing the source first would have left the last deployed version live.
 - `tests/supabase_config_functions.test.js` enforces the repo-internal half — every directory has a `[functions.*]` block and every block has a directory. **Nothing in CI can see the platform**, so the deployed-vs-repo comparison is a runbook step (`docs/DEPLOY_RUNBOOK.md`), performed at every release, not a test. Do not mistake a green CI for a reconciled platform.
 - Deleting a function from the repository does **not** remove it from the platform. Remove it there too, and remove its `[functions.*]` block, or `tests/supabase_config_functions.test.js` fails.

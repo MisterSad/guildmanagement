@@ -8,7 +8,7 @@ Never claim completion without proof, and never fabricate a result. Measure agai
 
 ## Stack
 - **Frontend**: TypeScript ES modules in `src/`, built by Vite. No UI framework. Views call each other by typed import; only three `window.GM_*` names survive deliberately (`tests/gm_bridge_contract.test.js` pins the list).
-- **Backend**: Supabase Postgres 17 (RLS, `SECURITY DEFINER`, `SET search_path = ''`) + Deno Edge Functions. 15 deployed, 15 in the repo — keep it reconciled (ADR-017).
+- **Backend**: Supabase Postgres 17 (RLS, `SECURITY DEFINER`, `SET search_path = ''`) + Deno Edge Functions. 14 deployed, 14 in the repo — keep it reconciled (ADR-017). Deploys run from CI only.
 - **Hosting**: Vercel. No service worker behaviour, no PWA, no cookies, no analytics.
 - **Scale** (measured 2026-10-03): 35 guilds, ~3,797 members, ~55,943 participation rows, 41 tables, 86 policies.
 

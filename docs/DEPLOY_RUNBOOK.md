@@ -144,12 +144,11 @@ Apply each migration file sequentially using `supabase db query --linked -f <FIL
 
 ## 5. Phase 3 — Edge Functions Deployment Matrix
 
-Deploy all **16** Edge Functions, adhering to the codified JWT verification matrix in `supabase/config.toml` (the two must stay in lockstep — `tests/supabase_config_functions.test.js` enforces one `[functions.<name>]` block per function):
+> **Since 2026-10-03 the 14 Edge Functions deploy from CI only** (`deploy-edge-functions` job, `scripts/deploy-edge-functions.sh`), after every check is green, and **without** `--no-verify-jwt`: the CLI reads `verify_jwt` from `supabase/config.toml` (finding M1). The matrix below is for reading, and for a disaster recovery with the CLI; drop the flag there too. `tests/supabase_config_functions.test.js` enforces one `[functions.<name>]` block per function.
 
 ```sh
 # Public Endpoints (verify_jwt = false)
 supabase functions deploy auth-login --no-verify-jwt
-supabase functions deploy auth-passkey --no-verify-jwt
 supabase functions deploy player-register --no-verify-jwt
 supabase functions deploy guild-request --no-verify-jwt
 supabase functions deploy event-reminders --no-verify-jwt

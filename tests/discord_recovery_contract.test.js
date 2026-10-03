@@ -17,7 +17,6 @@ const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$
 const migration = read('supabase/migrations/20260926174708_account_link_codes.sql');
 const adminFn = stripComments(read('supabase/functions/admin-accounts/index.ts'));
 const discordFn = stripComments(read('supabase/functions/auth-discord/index.ts'));
-const passkeyFn = stripComments(read('supabase/functions/auth-passkey/index.ts'));
 const shared = stripComments(read('supabase/functions/_shared/backup-codes.ts'));
 
 describe('an unlink can never strand an account', () => {
@@ -163,10 +162,9 @@ describe('backup codes: one implementation, one audience', () => {
   it('lives in _shared, and auth-discord uses it', () => {
     // The audit found four subtly different HTML escapers (M11). A credential
     // check is a far worse place for that drift. auth-passkey, the other user,
-    // is a tombstone since passkeys were removed (2026-10-03).
+    // was deleted with the passkeys (2026-10-03).
     expect(discordFn).toContain('from "../_shared/backup-codes.ts"');
-    expect(passkeyFn).toContain('passkeys_removed');
-    expect(passkeyFn).not.toContain('backup-codes');
+    expect(fs.existsSync(path.join(rootDir, 'supabase/functions/auth-passkey'))).toBe(false);
   });
 
   it('excludes visually ambiguous characters', () => {

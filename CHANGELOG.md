@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+- **`auth-passkey` is deleted, from the platform and from the repository.** The owner deleted it from the Supabase dashboard on 2026-10-03.
+  - Verified: `list_edge_functions` shows 14 functions, and its URL answers 404.
+  - The directory and its `[functions.auth-passkey]` block are gone. The tests that read the tombstone now assert its absence.
+  - ARCHITECTURE.md, AGENTS.md, ADR-017, PROJECT_CONTEXT.md and the runbooks give 14 functions. The deploy runbook now says deploys run from CI, without `--no-verify-jwt`.
+  - Order mattered: deleting the source first would have left the last deployed version live (ADR-017).
+
 - **Privacy: erasure the operator can run, no more reversible passwords, self-hosted fonts, an exact privacy policy** (short-term plan, phase 6; audit BE-B-12, C0, FE-21, SEC-10). This change is user-facing.
   - **Migration `20261003180936_privacy_erasure_and_credentials`.**
     - Checked on production in a rolled-back transaction, then applied with the owner's approval.

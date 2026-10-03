@@ -92,7 +92,7 @@ PGOPTIONS='-c session_replication_role=replica' \
 Then:
 
 1. Recreate the Vault secrets, with the **same** `gm_accounts_key`.
-2. Set the Edge Function secrets and deploy the 15 functions.
+2. Set the Edge Function secrets and deploy the 14 functions.
 3. Recreate the cron jobs from `cron.job` in the dump.
 4. Point Vercel and the Render worker at the new project.
 

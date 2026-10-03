@@ -4,9 +4,9 @@
 // [functions.<name>] block in supabase/config.toml carrying a boolean
 // verify_jwt. A missing block silently defaults to verify_jwt = true during
 // `supabase functions deploy`, which breaks any unauthenticated endpoint
-// (password login, passkey sign-in, public self-service, signature- or
-// secret-authenticated webhooks) -- the exact regression that hit
-// auth-passkey and guild-request. See PROJECT_CONTEXT.md / ARCHITECTURE.md.
+// (password login, public self-service, signature- or secret-authenticated
+// webhooks) -- the exact regression that hit the former auth-passkey and
+// guild-request. See PROJECT_CONTEXT.md / ARCHITECTURE.md.
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
@@ -68,12 +68,11 @@ describe('supabase/config.toml Edge Function coverage', () => {
   });
 
   it('keeps unauthenticated endpoints on verify_jwt = false', () => {
-    // These authenticate by their own means (password/passkey ceremony,
+    // These authenticate by their own means (password,
     // public self-service, Ed25519 signature, shared secret, webhook
     // signature, or cron secret) -- no Supabase JWT exists at call time.
     for (const name of [
       'auth-login',
-      'auth-passkey',
       'player-register',
       'guild-request',
       'event-reminders',

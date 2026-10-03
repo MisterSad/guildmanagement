@@ -443,12 +443,6 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 [functions.auth-login]
 verify_jwt = false
 
-# Tombstone since 2026-10-03: passkeys were removed and the function answers
-# 410 Gone to everything. verify_jwt stays false so that answer is what callers
-# get. Remove this block when the function is deleted from the dashboard.
-[functions.auth-passkey]
-verify_jwt = false
-
 # Discord OAuth sign-in. No session exists at any of its three routes by
 # definition (sign-in is what they perform), so a Supabase JWT cannot gate
 # them. Each authenticates by its own means instead: /start and /callback by a
