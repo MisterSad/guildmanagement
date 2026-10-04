@@ -137,8 +137,8 @@ export class HistoryView {
     const filtered = filterSessions(this.sessions, this.activeFilter);
 
     const pillsHtml =
-      '<div class="gm-tabs-pill-row" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:1.5rem;">' +
-      '<div class="gm-tabs-pill" style="margin:0;">' +
+      '<div class="u-d-flex u-justify-space-between u-items-center u-wrap-wrap u-gap-1rem u-mb-1_5rem gm-tabs-pill-row">' +
+      '<div class="u-m-0 gm-tabs-pill">' +
       FILTERS.map((f) => {
         const isActive = f === this.activeFilter;
         const label = f === 'All' ? t('history_filter_all') : f;
@@ -158,7 +158,7 @@ export class HistoryView {
       }).join('') +
       '</div>' +
       (this.activeFilter !== 'All' && filtered.length > 0
-        ? '<button class="gm-btn gm-btn-danger history-clear-category-btn" style="font-size:0.82rem; padding:0.4rem 0.85rem; display:inline-flex; align-items:center; gap:0.4rem;" data-filter="' +
+        ? '<button class="u-fs-0_82rem u-p-0_4rem-0_85rem u-d-inline-flex u-items-center u-gap-0_4rem gm-btn gm-btn-danger history-clear-category-btn" data-filter="' +
           escapeHTML(this.activeFilter) +
           '" data-count="' +
           filtered.length +
@@ -265,11 +265,11 @@ export class HistoryView {
       cardsHtml +=
         '<div class="gm-timeline-item">' +
         '<div class="gm-timeline-time-col">' +
-        '<div style="font-size:0.85rem; font-weight:700;">' +
+        '<div class="u-fs-0_85rem u-fw-700">' +
         escapeHTML(leftTopStr) +
         '</div>' +
         (leftSubStr
-          ? '<div style="font-size:0.7rem; font-weight:500; opacity:0.7; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' +
+          ? '<div class="u-fs-0_7rem u-fw-500 u-opacity-0_7 u-ws-nowrap u-overflow-hidden u-to-ellipsis">' +
             escapeHTML(leftSubStr) +
             '</div>'
           : '') +
@@ -300,7 +300,7 @@ export class HistoryView {
         escapeHTML(meta.label) +
         '</span>' +
         '</div>' +
-        '<div style="display:flex; gap:0.4rem; align-items:center;">' +
+        '<div class="u-d-flex u-gap-0_4rem u-items-center">' +
         ((s.total_score || 0) > 0
           ? '<span class="gm-task-countdown-badge"><i class="ph ph-trophy"></i> ' +
             formatNumber(s.total_score) +
@@ -331,7 +331,7 @@ export class HistoryView {
         warMetaHtml +
         '</div>' +
         '<button class="gm-task-action-btn" title="View Session Details" aria-label="View session details">' +
-        '<i class="ph ph-caret-right" style="font-size:1.3rem;"></i>' +
+        '<i class="u-fs-1_3rem ph ph-caret-right"></i>' +
         '</button>' +
         '</div>' +
         '</div>' +
@@ -607,7 +607,7 @@ export class HistoryView {
             participatedCell =
               '<td class="gm-center" data-label="' +
               t('col_participated') +
-              '"><label class="check-toggle" style="margin: auto;"><input type="checkbox" class="hist-edit-check" data-field="participated" data-pseudo="' +
+              '"><label class="u-m-auto check-toggle"><input type="checkbox" class="hist-edit-check" data-field="participated" data-pseudo="' +
               escapeHTML(r.pseudo) +
               '"' +
               (r.participated > 0 ? ' checked' : '') +
@@ -626,19 +626,19 @@ export class HistoryView {
         if (eventName === 'Shadowfront') {
           if (isAdmin) {
             lateCell =
-              '<td class="gm-center" data-label="Late"><label class="check-toggle" style="margin: auto;"><input type="checkbox" class="hist-edit-check" data-field="late" data-pseudo="' +
+              '<td class="gm-center" data-label="Late"><label class="u-m-auto check-toggle"><input type="checkbox" class="hist-edit-check" data-field="late" data-pseudo="' +
               escapeHTML(r.pseudo) +
               '"' +
               (r.late ? ' checked' : '') +
               '><span class="check-slider"></span></label></td>';
             excusedCell =
-              '<td class="gm-center" data-label="Excused"><label class="check-toggle" style="margin: auto;"><input type="checkbox" class="hist-edit-check" data-field="excused" data-pseudo="' +
+              '<td class="gm-center" data-label="Excused"><label class="u-m-auto check-toggle"><input type="checkbox" class="hist-edit-check" data-field="excused" data-pseudo="' +
               escapeHTML(r.pseudo) +
               '"' +
               (r.excused ? ' checked' : '') +
               '><span class="check-slider"></span></label></td>';
             subPresentCell =
-              '<td class="gm-center" data-label="Sub Present"><label class="check-toggle" style="margin: auto;"><input type="checkbox" class="hist-edit-check" data-field="sub_present" data-pseudo="' +
+              '<td class="gm-center" data-label="Sub Present"><label class="u-m-auto check-toggle"><input type="checkbox" class="hist-edit-check" data-field="sub_present" data-pseudo="' +
               escapeHTML(r.pseudo) +
               '"' +
               (r.sub_present ? ' checked' : '') +
@@ -663,7 +663,7 @@ export class HistoryView {
         if (isDtr) {
           if (isAdmin) {
             appointedCell =
-              '<td class="gm-center" data-label="Appointed"><label class="check-toggle" style="margin: auto;"><input type="checkbox" class="hist-edit-check" data-field="appointed" data-pseudo="' +
+              '<td class="gm-center" data-label="Appointed"><label class="u-m-auto check-toggle"><input type="checkbox" class="hist-edit-check" data-field="appointed" data-pseudo="' +
               escapeHTML(r.pseudo) +
               '"' +
               (r.appointed ? ' checked' : '') +
@@ -706,7 +706,7 @@ export class HistoryView {
                 (total != null ? formatNumber(total) : '') +
                 '" title="' +
                 t('war_col_total_d15') +
-                '"><span class="gm-dim" style="font-size:var(--fs-2xs);"> ' +
+                '"><span class="u-fs-fs-2xs gm-dim"> ' +
                 t('war_col_total_d15') +
                 '</span></td>';
             } else {
@@ -842,7 +842,7 @@ export class HistoryView {
 
         return (
           '<tr>' +
-          '<td><div class="gm-row" style="gap:.5rem;"><div class="gm-avatar">' +
+          '<td><div class="u-gap-0_5rem gm-row"><div class="gm-avatar">' +
           escapeHTML(initial) +
           '</div><strong>' +
           escapeHTML(r.pseudo) +
@@ -862,7 +862,7 @@ export class HistoryView {
     const doneCount = sorted.reduce((s, r) => s + (r.participated > 0 ? 1 : 0), 0);
 
     const deleteBtnHtml =
-      '<button class="gm-btn gm-btn-danger" id="history-modal-delete" style="background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.25); color: var(--error);"><i class="ph ph-trash"></i> <span>' +
+      '<button class="u-bg-rgba-239-68-68-0_12 u-border-1px-solid-rgba-239-5b5d21 u-c-error gm-btn gm-btn-danger" id="history-modal-delete"><i class="ph ph-trash"></i> <span>' +
       t('delete_title') +
       '</span></button>';
 
@@ -874,7 +874,7 @@ export class HistoryView {
       size: 'lg',
       scrollBody: true,
       body:
-        '<div class="gm-row" style="gap:.5rem; flex-wrap:wrap; margin-bottom:1rem;">' +
+        '<div class="u-gap-0_5rem u-wrap-wrap u-mb-1rem gm-row">' +
         '<span class="gm-chip"><i class="ph ph-users"></i> ' +
         sorted.length +
         '</span>' +
@@ -907,7 +907,7 @@ export class HistoryView {
         '<div id="history-modal-footer-left">' +
         (isAdmin ? deleteBtnHtml : '') +
         '</div>' +
-        '<div style="display:flex; gap:0.5rem; align-items:center;">' +
+        '<div class="u-d-flex u-gap-0_5rem u-items-center">' +
         '<button type="button" class="gm-btn gm-btn-ghost" id="history-modal-footer-close" data-dialog-close>' +
         t('close_title') +
         '</button>' +

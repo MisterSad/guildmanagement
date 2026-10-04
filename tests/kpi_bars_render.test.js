@@ -60,7 +60,9 @@ describe('the Stats bars are block elements in the markup too', () => {
   });
 
   it('gives every bar a width, or it has nothing to show', () => {
-    const bars = statsView.match(/<div class="gm-kpi-bar" style="[^"]*"/g) || [];
+    // The width is computed, so it goes through styleRef() (no inline style
+    // attribute under the CSP): the reference must carry a width.
+    const bars = statsView.match(/<div class="gm-kpi-bar" data-gm-style="' \+\s*styleRef\(([^)]*)\)/g) || [];
     expect(bars.length).toBeGreaterThan(3);
     for (const bar of bars) {
       expect(bar, `a bar with no width: ${bar}`).toMatch(/width:/);

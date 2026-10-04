@@ -145,7 +145,7 @@ export class SanctionsView {
       const initial = avatarInit(s.pseudo);
       html +=
         '<div class="gm-sanction-row">' +
-        '<div class="gm-row" style="gap:.5rem;">' +
+        '<div class="u-gap-0_5rem gm-row">' +
         '<div class="gm-avatar">' +
         escapeHTML(initial) +
         '</div>' +
@@ -158,16 +158,16 @@ export class SanctionsView {
         '"</div>' +
         '<div class="gm-sanction-meta">' +
         t('sanction_by') +
-        ' <strong style="color: var(--accent);">' +
+        ' <strong class="u-c-accent">' +
         escapeHTML(author) +
         '</strong> · ' +
         dateStr +
         '</div>' +
-        '<button class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm sanction-delete-btn" data-id="' +
+        '<button class="u-c-danger gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm sanction-delete-btn" data-id="' +
         s.id +
         '" title="' +
         t('delete_title') +
-        '" style="color: var(--danger);">' +
+        '">' +
         '<i class="ph ph-trash"></i>' +
         '</button>' +
         '</div>';

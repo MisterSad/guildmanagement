@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures.js';
 
 // Guild TAG card and rename dialog, against the PRODUCTION bundle in dist/.
 // The dashboard is opened through window.GM_E2E.showAdminDashboard(), as in

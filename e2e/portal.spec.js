@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures.js';
 
 // Player Portal e2e with route interception: we stub the member-portal edge
 // function HTTP calls made by the real supabase-js client, so the portal

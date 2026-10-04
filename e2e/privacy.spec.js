@@ -8,7 +8,7 @@
 // bundle and asserts the stylesheet actually arrives and actually applies --
 // not merely that the markup references it.
 
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures.js';
 
 test('privacy.html is served, styled from legal.css, and free of console errors', async ({ page }) => {
   const errors = [];

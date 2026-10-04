@@ -43,6 +43,7 @@ import { initVersionCheck } from './modules/app/auth/version-check';
 import { initNetworkStatusMonitoring } from './core/net/network-status';
 import { initTooltips } from './components/ui/Tooltip';
 import { initSentry } from './core/monitoring/sentry';
+import { startStyleRefs } from './core/dom/style-refs';
 import { loadAdmin } from './modules/app/admin-loader';
 import { wireLoginPasswordToggle, wireSearchClearButtons } from './core/dom/form-controls';
 
@@ -55,6 +56,9 @@ if (typeof window !== 'undefined') {
   // install the multi-tenant write guard before any service runs.
   setDbClient(installDbWriteGuard(createClient(SUPABASE_URL, SUPABASE_KEY)));
   initAppState();
+  // Computed styles of string-built markup, applied through the CSSOM: the CSP
+  // has no 'unsafe-inline' for styles (core/dom/style-refs.ts). Before anything renders.
+  startStyleRefs();
 
   // The app's ONLY global (owner decision, 2026-10-04). The e2e suite runs
   // against the real production bundle and needs to open a screen without a

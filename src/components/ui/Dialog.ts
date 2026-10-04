@@ -307,9 +307,7 @@ export function createDialog(opts: DialogOptions): HTMLElement {
       const actions =
         (hasConfirm
           ? '<button type="button" class="gm-btn gm-ui-dialog-confirm' +
-            (opts.tone === 'danger'
-              ? ' gm-btn-danger" style="background:rgba(239,68,68,0.14); border:1px solid rgba(239,68,68,0.3); color:var(--danger);'
-              : '" style="margin-left:auto;') +
+            (opts.tone === 'danger' ? ' gm-btn-danger gm-ui-dialog-confirm-danger' : ' u-ml-auto') +
             '"><span>' +
             escapeHTML(opts.confirmLabel) +
             '</span></button>'

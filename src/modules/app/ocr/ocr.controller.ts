@@ -1172,7 +1172,7 @@ export async function commitOcrUpdates(): Promise<void> {
       checkedRemovalPseudos.length +
       ' member(s)</strong> (' +
       listPreview +
-      ')?<br><br><span style="color:#f87171; font-size: var(--fs-base);">This permanently deletes the member and their event participations, shadowfront squads, weekly scores and sanctions.</span>';
+      ')?<br><br><span class="u-c-hexf87171 u-fs-fs-base">This permanently deletes the member and their event participations, shadowfront squads, weekly scores and sanctions.</span>';
     if (btnCommit) btnCommit.disabled = true;
     showConfirm(
       'Confirm Roster Removals',

@@ -74,7 +74,7 @@ export class GloryView {
     const totalGlory = Object.values(currMap).reduce((s: number, v: any) => s + (v || 0), 0);
 
     let html =
-      '<div class="gm-stat-grid" style="margin-bottom: 1.5rem;">' +
+      '<div class="u-mb-1_5rem gm-stat-grid">' +
       '<div class="gm-stat-tile stat-theme-lime">' +
       '<div class="gm-task-icon-squircle"><i class="ph ph-users"></i></div>' +
       '<div class="gm-stat-label">' +
@@ -96,9 +96,9 @@ export class GloryView {
       '<div class="gm-stat-meta">Guild Total This Week</div>' +
       '</div>' +
       '</div>' +
-      '<div class="gm-section-head" style="margin-bottom: 1rem; flex-wrap: wrap;">' +
+      '<div class="u-mb-1rem u-wrap-wrap gm-section-head">' +
       '<div class="gm-section-title"><i class="ph ph-list-numbers"></i> Members Glory Log</div>' +
-      '<div class="gm-input-with-icon" style="min-width: 220px; max-width: 320px;">' +
+      '<div class="u-minw-220px u-maxw-320px gm-input-with-icon">' +
       '<i class="ph ph-magnifying-glass gm-icon"></i>' +
       '<input type="text" class="gm-input glory-search-input" aria-label="' +
       escapeHTML(t('search_placeholder')) +
@@ -154,7 +154,7 @@ export class GloryView {
         '<td class="gm-right" data-label="' +
         t('glory_input') +
         '">' +
-        '<div class="glory-input-wrapper" style="position:relative; display:inline-flex; align-items:center;">' +
+        '<div class="u-pos-relative u-d-inline-flex u-items-center glory-input-wrapper">' +
         '<input type="text" inputmode="numeric" class="gm-glory-input glory-input"' +
         ' value="' +
         (curr !== '' ? formatNumber(curr) : '') +
@@ -168,7 +168,7 @@ export class GloryView {
         ' data-prev="' +
         (prev !== null ? prev : '') +
         '">' +
-        '<i class="ph ph-circle-notch ph-spin saving-icon hidden" style="position:absolute; right:.6rem;"></i>' +
+        '<i class="u-pos-absolute u-right-0_6rem ph ph-circle-notch ph-spin saving-icon hidden"></i>' +
         '</div>' +
         '</td>' +
         '<td class="gm-right glory-pct-cell" data-label="' +
@@ -237,9 +237,9 @@ export class GloryView {
     const cls = pct > 0 ? 'gm-chip-success' : pct < 0 ? 'gm-chip-danger' : '';
     const sign = pct > 0 ? '+' : '';
     return (
-      '<span class="gm-chip ' +
+      '<span class="u-ff-font-display u-fw-700 u-fs-fs-sm u-p-2px-10px u-rounded-radius-pill gm-chip ' +
       cls +
-      '" style="font-family: var(--font-display); font-weight: 700; font-size: var(--fs-sm); padding: 2px 10px; border-radius: var(--radius-pill);">' +
+      '">' +
       sign +
       pct.toFixed(1) +
       '%</span>'

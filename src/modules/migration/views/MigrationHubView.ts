@@ -5,6 +5,7 @@
  * for cross-server migrations with dual Guild and Server scopes.
  */
 
+import { styleRef } from '../../../core/dom/style-refs';
 import { escapeHTML } from '../../../core/utils/text';
 import { debounce } from '../../../core/utils/async';
 import { getActiveGuild, currentAccountId, getCurrentPseudo, roleFromStorage } from '../../../core/auth/roles';
@@ -410,10 +411,10 @@ export class MigrationHubView {
 
     if (filtered.length === 0) {
       container.innerHTML = `
-        <div class="gm-empty" style="padding:1.5rem 0.5rem;">
+        <div class="u-p-1_5rem-0_5rem gm-empty">
           <i class="ph ph-newspaper-clipping gm-icon"></i>
-          <div class="gm-empty-title" style="font-size:0.88rem;">No pages found</div>
-          <p style="font-size:0.75rem; color:var(--text-muted); margin-top:0.25rem;">Click "New Wiki Page" to create one.</p>
+          <div class="u-fs-0_88rem gm-empty-title">No pages found</div>
+          <p class="u-fs-0_75rem u-c-text-muted u-mt-0_25rem">Click "New Wiki Page" to create one.</p>
         </div>
       `;
       return;
@@ -428,17 +429,17 @@ export class MigrationHubView {
       const dateStr = new Date(page.updated_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
 
       html += `
-        <div class="gm-card gm-card-padded gm-wiki-nav-item ${isActive ? 'active' : ''}" data-page-id="${escapeHTML(page.id)}" style="padding:0.75rem; cursor:pointer; border:1px solid ${isActive ? 'var(--accent)' : 'var(--border-soft)'}; background:${isActive ? 'rgba(var(--accent-rgb, 59, 130, 246), 0.12)' : 'var(--bg-card)'}; border-radius:6px; transition:all 0.15s;">
-          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.25rem;">
-            <div style="font-weight:700; font-size:0.88rem; color:var(--fg); line-height:1.3; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">
-              ${page.is_pinned ? '<i class="ph ph-push-pin" style="color:var(--warning); margin-right:3px;"></i>' : ''}
+        <div class="gm-card gm-card-padded gm-wiki-nav-item ${isActive ? 'active' : ''}" data-page-id="${escapeHTML(page.id)}" data-gm-style="${styleRef(`padding:0.75rem; cursor:pointer; border:1px solid ${isActive ? 'var(--accent)' : 'var(--border-soft)'}; background:${isActive ? 'rgba(var(--accent-rgb, 59, 130, 246), 0.12)' : 'var(--bg-card)'}; border-radius:6px; transition:all 0.15s;`)}">
+          <div class="u-d-flex u-justify-space-between u-items-flex-start u-mb-0_25rem">
+            <div class="u-fw-700 u-fs-0_88rem u-c-fg u-lh-1_3 u-overflow-hidden u-to-ellipsis u-d-webkit-box u-wclamp-2 u-wbox-vertical">
+              ${page.is_pinned ? '<i class="u-c-warning u-mr-3px ph ph-push-pin"></i>' : ''}
               ${escapeHTML(page.title)}
             </div>
-            <span class="gm-chip ${catClass}" style="font-size:0.68rem; padding:1px 6px; flex-shrink:0; margin-left:0.4rem;">${escapeHTML(catLabel)}</span>
+            <span class="u-fs-0_68rem u-p-1px-6px u-shrink-0 u-ml-0_4rem gm-chip ${catClass}">${escapeHTML(catLabel)}</span>
           </div>
-          <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.72rem; color:var(--text-muted); margin-top:0.4rem;">
+          <div class="u-d-flex u-justify-space-between u-items-center u-fs-0_72rem u-c-text-muted u-mt-0_4rem">
             <span>${escapeHTML(page.updated_by_pseudo || page.created_by_pseudo)} · ${escapeHTML(dateStr)}</span>
-            ${attachCount > 0 ? `<span style="display:flex; align-items:center; gap:2px;"><i class="ph ph-image"></i> ${attachCount}</span>` : ''}
+            ${attachCount > 0 ? `<span class="u-d-flex u-items-center u-gap-2px"><i class="ph ph-image"></i> ${attachCount}</span>` : ''}
           </div>
         </div>
       `;
@@ -567,9 +568,9 @@ export class MigrationHubView {
         attachments.forEach((att) => {
           const sizeKb = Math.round(att.sizeBytes / 1024);
           attachHtml += `
-            <div class="gm-wiki-thumbnail-card" style="width:140px; border:1px solid var(--border-soft); border-radius:6px; overflow:hidden; background:var(--bg-1); cursor:pointer; transition:transform 0.15s;" data-full-url="${escapeHTML(att.url)}" title="Click to view screenshot">
-              <img src="${escapeHTML(att.url)}" style="width:100%; height:95px; object-fit:cover; display:block;" alt="${escapeHTML(att.name)}">
-              <div style="padding:0.35rem 0.5rem; font-size:0.7rem; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+            <div class="u-w-140px u-border-1px-solid-border-soft u-rounded-6px u-overflow-hidden u-bg-bg-1 u-cursor-pointer u-transition-transform-0_15s gm-wiki-thumbnail-card" data-full-url="${escapeHTML(att.url)}" title="Click to view screenshot">
+              <img src="${escapeHTML(att.url)}" class="u-w-100pct u-h-95px u-fit-cover u-d-block" alt="${escapeHTML(att.name)}">
+              <div class="u-p-0_35rem-0_5rem u-fs-0_7rem u-c-text-muted u-ws-nowrap u-overflow-hidden u-to-ellipsis">
                 ${escapeHTML(att.name)} (${sizeKb} KB)
               </div>
             </div>
@@ -890,7 +891,7 @@ export class MigrationHubView {
 
     if (this.activeComments.length === 0) {
       listEl.innerHTML = `
-        <div style="font-size:0.8rem; color:var(--text-muted); font-style:italic; padding:0.5rem 0;">
+        <div class="u-fs-0_8rem u-c-text-muted u-fst-italic u-p-0_5rem-0">
           No comments yet. Be the first leader to add intel.
         </div>
       `;
@@ -910,35 +911,35 @@ export class MigrationHubView {
       });
       const canDelete = isSuperAdmin || (c.author_account_id && c.author_account_id === currentAccId);
       const guildBadge = c.author_guild_id
-        ? `<span class="gm-chip gm-chip-blue" style="font-size:0.68rem; padding:1px 5px;">[${escapeHTML(c.author_guild_id)}]</span>`
+        ? `<span class="u-fs-0_68rem u-p-1px-5px gm-chip gm-chip-blue">[${escapeHTML(c.author_guild_id)}]</span>`
         : '';
       const roleLabel = c.author_role
-        ? `<span style="font-size:0.7rem; color:var(--text-muted);">(${escapeHTML(c.author_role.replace('_', ' '))})</span>`
+        ? `<span class="u-fs-0_7rem u-c-text-muted">(${escapeHTML(c.author_role.replace('_', ' '))})</span>`
         : '';
 
       html += `
-        <div class="gm-card" style="padding:0.75rem; background:var(--bg-1); border:1px solid var(--border-soft); border-radius:6px;" data-comment-id="${escapeHTML(c.id)}">
-          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.4rem;">
-            <div style="display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap;">
-              <div style="width:24px; height:24px; border-radius:50%; background:var(--accent); color:#fff; display:flex; align-items:center; justify-content:center; font-size:0.72rem; font-weight:700;">
+        <div class="u-p-0_75rem u-bg-bg-1 u-border-1px-solid-border-soft u-rounded-6px gm-card" data-comment-id="${escapeHTML(c.id)}">
+          <div class="u-d-flex u-justify-space-between u-items-flex-start u-mb-0_4rem">
+            <div class="u-d-flex u-items-center u-gap-0_4rem u-wrap-wrap">
+              <div class="u-w-24px u-h-24px u-rounded-50pct u-bg-accent u-c-hexfff u-d-flex u-items-center u-justify-center u-fs-0_72rem u-fw-700">
                 ${escapeHTML((c.author_pseudo || 'L').charAt(0).toUpperCase())}
               </div>
-              <span style="font-weight:700; font-size:0.85rem; color:var(--fg);">${escapeHTML(c.author_pseudo)}</span>
+              <span class="u-fw-700 u-fs-0_85rem u-c-fg">${escapeHTML(c.author_pseudo)}</span>
               ${guildBadge}
               ${roleLabel}
-              <span style="font-size:0.72rem; color:var(--text-muted); margin-left:0.25rem;">· ${escapeHTML(dateStr)}</span>
+              <span class="u-fs-0_72rem u-c-text-muted u-ml-0_25rem">· ${escapeHTML(dateStr)}</span>
             </div>
             ${
               canDelete
                 ? `
-              <button type="button" class="gm-btn gm-btn-ghost gm-btn-sm btn-delete-comment" data-id="${escapeHTML(c.id)}" title="Delete comment" style="color:var(--danger); padding:2px 6px; font-size:0.75rem;">
+              <button type="button" class="u-c-danger u-p-2px-6px u-fs-0_75rem gm-btn gm-btn-ghost gm-btn-sm btn-delete-comment" data-id="${escapeHTML(c.id)}" title="Delete comment">
                 <i class="ph ph-trash"></i>
               </button>
             `
                 : ''
             }
           </div>
-          <div style="font-size:0.85rem; line-height:1.5; color:var(--text-normal); white-space:pre-wrap; word-break:break-word; padding-left:1.8rem;">${escapeHTML(c.content)}</div>
+          <div class="u-fs-0_85rem u-lh-1_5 u-c-text-normal u-ws-pre-wrap u-wb-break-word u-pl-1_8rem">${escapeHTML(c.content)}</div>
         </div>
       `;
     });
@@ -1071,12 +1072,12 @@ export class MigrationHubView {
     this.pendingAttachments.forEach((att, idx) => {
       const sizeKb = Math.round(att.sizeBytes / 1024);
       html += `
-        <div style="position:relative; width:100px; height:80px; border-radius:6px; overflow:hidden; border:1px solid var(--border-soft); background:var(--bg-1);">
-          <img src="${escapeHTML(att.url)}" style="width:100%; height:100%; object-fit:cover;" alt="preview">
-          <button type="button" class="gm-remove-att-btn" data-att-idx="${idx}" style="position:absolute; top:2px; right:2px; background:rgba(0,0,0,0.7); border:none; color:#ff4d4f; border-radius:50%; width:20px; height:20px; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center;" title="Remove screenshot">
+        <div class="u-pos-relative u-w-100px u-h-80px u-rounded-6px u-overflow-hidden u-border-1px-solid-border-soft u-bg-bg-1">
+          <img src="${escapeHTML(att.url)}" class="u-w-100pct u-h-100pct u-fit-cover" alt="preview">
+          <button type="button" class="u-pos-absolute u-top-2px u-right-2px u-bg-rgba-0-0-0-0_7 u-border-none u-c-hexff4d4f u-rounded-50pct u-w-20px u-h-20px u-fs-12px u-cursor-pointer u-d-flex u-items-center u-justify-center gm-remove-att-btn" data-att-idx="${idx}" title="Remove screenshot">
             <i class="ph ph-x"></i>
           </button>
-          <div style="position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,0.65); font-size:9px; color:#fff; text-align:center; padding:1px;">
+          <div class="u-pos-absolute u-bottom-0 u-left-0 u-right-0 u-bg-rgba-0-0-0-0_65 u-fs-9px u-c-hexfff u-text-center u-p-1px">
             ${sizeKb} KB
           </div>
         </div>
@@ -1170,27 +1171,21 @@ export class MigrationHubView {
     let html = escapeHTML(raw);
 
     // Step 2: Headings
-    html = html.replace(
-      /^### (.*$)/gim,
-      '<h3 style="margin:1.1rem 0 0.4rem; font-size:1.05rem; font-weight:700; color:var(--fg);">$1</h3>'
-    );
+    html = html.replace(/^### (.*$)/gim, '<h3 class="u-m-1_1rem-0-0_4rem u-fs-1_05rem u-fw-700 u-c-fg">$1</h3>');
     html = html.replace(
       /^## (.*$)/gim,
-      '<h2 style="margin:1.3rem 0 0.5rem; font-size:1.22rem; font-weight:700; color:var(--fg); border-bottom:1px solid var(--border-soft); padding-bottom:0.25rem;">$1</h2>'
+      '<h2 class="u-m-1_3rem-0-0_5rem u-fs-1_22rem u-fw-700 u-c-fg u-bb-1px-solid-border-soft u-pb-0_25rem">$1</h2>'
     );
-    html = html.replace(
-      /^# (.*$)/gim,
-      '<h1 style="margin:1.5rem 0 0.6rem; font-size:1.4rem; font-weight:700; color:var(--fg);">$1</h1>'
-    );
+    html = html.replace(/^# (.*$)/gim, '<h1 class="u-m-1_5rem-0-0_6rem u-fs-1_4rem u-fw-700 u-c-fg">$1</h1>');
 
     // Step 3: Blockquotes
     html = html.replace(
       /^&gt; (.*$)/gim,
-      '<blockquote style="border-left:3px solid var(--accent); padding-left:0.75rem; margin:0.6rem 0; color:var(--text-muted); font-style:italic;">$1</blockquote>'
+      '<blockquote class="u-bl-3px-solid-accent u-pl-0_75rem u-m-0_6rem-0 u-c-text-muted u-fst-italic">$1</blockquote>'
     );
     html = html.replace(
       /^> (.*$)/gim,
-      '<blockquote style="border-left:3px solid var(--accent); padding-left:0.75rem; margin:0.6rem 0; color:var(--text-muted); font-style:italic;">$1</blockquote>'
+      '<blockquote class="u-bl-3px-solid-accent u-pl-0_75rem u-m-0_6rem-0 u-c-text-muted u-fst-italic">$1</blockquote>'
     );
 
     // Step 4: Tables
@@ -1205,7 +1200,7 @@ export class MigrationHubView {
         if (!inTable) {
           inTable = true;
           processedLines.push(
-            '<table style="width:100%; border-collapse:collapse; margin:1rem 0; font-size:0.85rem; border:1px solid var(--border-soft);">'
+            '<table class="u-w-100pct u-bcol-collapse u-m-1rem-0 u-fs-0_85rem u-border-1px-solid-border-soft">'
           );
         }
 
@@ -1218,18 +1213,14 @@ export class MigrationHubView {
         const isHeader = !processedLines.some((l) => l.includes('<tbody>'));
 
         if (isHeader) {
-          processedLines.push(
-            '<thead style="background:var(--bg-1); border-bottom:2px solid var(--border-soft);"><tr>'
-          );
+          processedLines.push('<thead class="u-bg-bg-1 u-bb-2px-solid-border-soft"><tr>');
           cells.forEach((c) =>
-            processedLines.push(
-              `<th style="padding:0.5rem 0.75rem; text-align:left; font-weight:600;">${c.trim()}</th>`
-            )
+            processedLines.push(`<th class="u-p-0_5rem-0_75rem u-text-left u-fw-600">${c.trim()}</th>`)
           );
           processedLines.push('</tr></thead><tbody>');
         } else {
-          processedLines.push('<tr style="border-bottom:1px solid var(--border-soft);">');
-          cells.forEach((c) => processedLines.push(`<td style="padding:0.45rem 0.75rem;">${c.trim()}</td>`));
+          processedLines.push('<tr class="u-bb-1px-solid-border-soft">');
+          cells.forEach((c) => processedLines.push(`<td class="u-p-0_45rem-0_75rem">${c.trim()}</td>`));
           processedLines.push('</tr>');
         }
       } else {
@@ -1250,14 +1241,14 @@ export class MigrationHubView {
     // Step 6: Inline code (handles both raw and escaped backticks from escapeHTML)
     html = html.replace(
       /(?:`|&#96;)(.*?)(?:`|&#96;)/g,
-      '<code style="background:rgba(0,0,0,0.25); padding:2px 5px; border-radius:4px; font-family:monospace; font-size:0.85em; color:var(--accent);">$1</code>'
+      '<code class="u-bg-rgba-0-0-0-0_25 u-p-2px-5px u-rounded-4px u-ff-monospace u-fs-0_85em u-c-accent">$1</code>'
     );
 
     // Step 7: Bullet lists
-    html = html.replace(/^- (.*$)/gim, '<li style="margin-left:1.25rem; margin-bottom:0.25rem;">$1</li>');
+    html = html.replace(/^- (.*$)/gim, '<li class="u-ml-1_25rem u-mb-0_25rem">$1</li>');
 
     // Step 8: Newlines to <br> (outside tables)
-    html = html.replace(/\n\n/g, '<div style="margin-bottom:0.75rem;"></div>');
+    html = html.replace(/\n\n/g, '<div class="u-mb-0_75rem"></div>');
     html = html.replace(/\n/g, '<br>');
 
     return html;
@@ -1278,8 +1269,8 @@ export class MigrationHubView {
 
     aiBox.style.display = 'block';
     aiContent.innerHTML = `
-      <div style="display:flex; align-items:center; gap:0.5rem; color:var(--text-muted); font-size:0.85rem;">
-        <i class="ph ph-spinner ph-spin" style="font-size:1.1rem; color:var(--accent);"></i>
+      <div class="u-d-flex u-items-center u-gap-0_5rem u-c-text-muted u-fs-0_85rem">
+        <i class="u-fs-1_1rem u-c-accent ph ph-spinner ph-spin"></i>
         <span>Analyzing note with Gemini AI...</span>
       </div>
     `;
@@ -1301,7 +1292,7 @@ export class MigrationHubView {
 
       if (error || !data || !data.ok) {
         const errMsg = error?.message || data?.message || 'Failed to generate summary';
-        aiContent.innerHTML = `<span style="color:var(--danger);"><i class="ph ph-warning"></i> ${escapeHTML(errMsg)}</span>`;
+        aiContent.innerHTML = `<span class="u-c-danger"><i class="ph ph-warning"></i> ${escapeHTML(errMsg)}</span>`;
         showToast('AI summary failed: ' + errMsg, 'error');
         return;
       }
@@ -1311,7 +1302,7 @@ export class MigrationHubView {
       showToast('AI summary generated!', 'success');
     } catch (err: any) {
       console.error('[MigrationHub] generatePageSummary exception', err);
-      aiContent.innerHTML = `<span style="color:var(--danger);"><i class="ph ph-warning"></i> Error calling AI service</span>`;
+      aiContent.innerHTML = `<span class="u-c-danger"><i class="ph ph-warning"></i> Error calling AI service</span>`;
       showToast('AI service error', 'error');
     } finally {
       if (summaryBtn) {
@@ -1343,10 +1334,10 @@ export class MigrationHubView {
 
     modal.style.display = 'flex';
     modalContent.innerHTML = `
-      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:3rem 1rem; color:var(--text-muted);">
-        <i class="ph ph-spinner ph-spin" style="font-size:2.5rem; color:var(--accent); margin-bottom:1rem;"></i>
-        <div style="font-weight:600; font-size:1rem; color:var(--fg); margin-bottom:0.25rem;">Synthesizing Migration Intelligence...</div>
-        <div style="font-size:0.82rem;">Gemini AI is analyzing ${this.pages.length} active note(s) and agreement(s) for ${scopeLabel}.</div>
+      <div class="u-d-flex u-dir-column u-items-center u-justify-center u-p-3rem-1rem u-c-text-muted">
+        <i class="u-fs-2_5rem u-c-accent u-mb-1rem ph ph-spinner ph-spin"></i>
+        <div class="u-fw-600 u-fs-1rem u-c-fg u-mb-0_25rem">Synthesizing Migration Intelligence...</div>
+        <div class="u-fs-0_82rem">Gemini AI is analyzing ${this.pages.length} active note(s) and agreement(s) for ${scopeLabel}.</div>
       </div>
     `;
 
@@ -1362,8 +1353,8 @@ export class MigrationHubView {
       if (error || !data || !data.ok) {
         const errMsg = error?.message || data?.message || 'Failed to generate briefing';
         modalContent.innerHTML = `
-          <div style="padding:1.5rem; background:rgba(239, 68, 68, 0.1); border:1px solid rgba(239, 68, 68, 0.3); border-radius:8px; color:var(--danger);">
-            <i class="ph ph-warning" style="margin-right:0.35rem;"></i> ${escapeHTML(errMsg)}
+          <div class="u-p-1_5rem u-bg-rgba-239-68-68-0_1 u-border-1px-solid-rgba-239-68-68-0_3 u-rounded-8px u-c-danger">
+            <i class="u-mr-0_35rem ph ph-warning"></i> ${escapeHTML(errMsg)}
           </div>
         `;
         showToast('Failed to generate briefing', 'error');
@@ -1376,8 +1367,8 @@ export class MigrationHubView {
     } catch (err: any) {
       console.error('[MigrationHub] generateScopeBriefing exception', err);
       modalContent.innerHTML = `
-        <div style="padding:1.5rem; background:rgba(239, 68, 68, 0.1); border:1px solid rgba(239, 68, 68, 0.3); border-radius:8px; color:var(--danger);">
-          <i class="ph ph-warning" style="margin-right:0.35rem;"></i> Error communicating with Gemini AI service
+        <div class="u-p-1_5rem u-bg-rgba-239-68-68-0_1 u-border-1px-solid-rgba-239-68-68-0_3 u-rounded-8px u-c-danger">
+          <i class="u-mr-0_35rem ph ph-warning"></i> Error communicating with Gemini AI service
         </div>
       `;
       showToast('AI service error', 'error');

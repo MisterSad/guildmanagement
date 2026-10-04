@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures.js';
 
 // Boot integrity of the PRODUCTION bundle in dist/ (see playwright.config.js):
 //  - index.html loads and shows the auth screen with no uncaught JS exception;

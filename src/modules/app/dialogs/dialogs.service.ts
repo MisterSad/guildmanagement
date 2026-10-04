@@ -13,6 +13,7 @@
  * This module never assigns any `window.GM_*` variable (bridge lives in main.ts).
  */
 
+import { styleRef } from '../../../core/dom/style-refs';
 import { renderToast } from '../../../core/dom/toast';
 import { drawScoreTrendChart } from '../../../core/dom/ui';
 import { escapeHTML } from '../../../core/utils/text';
@@ -96,20 +97,20 @@ export async function showPlayerHistoryDialog(uid: string, pseudo: string): Prom
 
   const html =
     '<div id="player-history-overlay" class="gm-modal-overlay">' +
-    '<div class="gm-modal-card" style="max-width: 640px; width: 92%; position: relative;">' +
-    '<div class="gm-modal-header" style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 1rem;">' +
-    '<div style="display:flex; align-items:center; gap:0.5rem;">' +
-    '<i class="ph ph-chart-line-up" style="font-size: var(--fs-3xl); color: var(--accent);"></i>' +
-    '<h3 style="margin:0; font-size: var(--fs-xl);">' +
+    '<div class="u-maxw-640px u-w-92pct u-pos-relative gm-modal-card">' +
+    '<div class="u-d-flex u-items-center u-justify-space-between u-mb-1rem gm-modal-header">' +
+    '<div class="u-d-flex u-items-center u-gap-0_5rem">' +
+    '<i class="u-fs-fs-3xl u-c-accent ph ph-chart-line-up"></i>' +
+    '<h3 class="u-m-0 u-fs-fs-xl">' +
     esc(pseudo) +
     ' — Player History</h3>' +
     '</div>' +
     '<button type="button" class="gm-mini-btn gm-close-modal" aria-label="Close"><i class="ph ph-x" aria-hidden="true"></i></button>' +
     '</div>' +
-    '<div class="gm-modal-body" id="player-history-body" style="display:flex; flex-direction:column; gap:1.25rem; max-height:70vh; overflow-y:auto;">' +
-    '<div class="gm-empty" style="padding:2rem;"><i class="ph ph-circle-notch ph-spin gm-icon"></i><div class="gm-empty-title">Loading history...</div></div>' +
+    '<div class="u-d-flex u-dir-column u-gap-1_25rem u-maxh-70vh u-oy-auto gm-modal-body" id="player-history-body">' +
+    '<div class="u-p-2rem gm-empty"><i class="ph ph-circle-notch ph-spin gm-icon"></i><div class="gm-empty-title">Loading history...</div></div>' +
     '</div>' +
-    '<div class="gm-modal-footer" style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top: 1.5rem;">' +
+    '<div class="u-d-flex u-justify-flex-end u-gap-0_5rem u-mt-1_5rem gm-modal-footer">' +
     '<button type="button" class="gm-btn gm-btn-ghost gm-close-modal">Close</button>' +
     '</div>' +
     '</div>' +
@@ -140,14 +141,14 @@ export async function showPlayerHistoryDialog(uid: string, pseudo: string): Prom
   if (!body) return;
   if (!uid) {
     body.innerHTML =
-      '<div class="gm-empty" style="padding:2rem;"><div class="gm-empty-title">No UID on file for this player.</div></div>';
+      '<div class="u-p-2rem gm-empty"><div class="gm-empty-title">No UID on file for this player.</div></div>';
     return;
   }
 
   const db: any = getClient();
   if (!db) {
     body.innerHTML =
-      '<div class="gm-empty" style="padding:2rem;"><div class="gm-empty-title">Failed to load player history.</div></div>';
+      '<div class="u-p-2rem gm-empty"><div class="gm-empty-title">Failed to load player history.</div></div>';
     return;
   }
 
@@ -166,10 +167,10 @@ export async function showPlayerHistoryDialog(uid: string, pseudo: string): Prom
     if (powerHistory.length > 0) {
       sections +=
         '<div>' +
-        '<h4 style="margin:0 0 .5rem; font-size: var(--fs-md); color:var(--fg-dim); font-weight:600;">Power trend (last ' +
+        '<h4 class="u-m-0-0-0_5rem u-fs-fs-md u-c-fg-dim u-fw-600">Power trend (last ' +
         powerHistory.length +
         ' weeks)</h4>' +
-        '<canvas id="player-history-power-canvas" style="width:100%; display:block;"></canvas>' +
+        '<canvas id="player-history-power-canvas" class="u-w-100pct u-d-block"></canvas>' +
         '</div>';
     }
 
@@ -179,21 +180,21 @@ export async function showPlayerHistoryDialog(uid: string, pseudo: string): Prom
     if (eventKeys.length > 0) {
       sections +=
         '<div>' +
-        '<h4 style="margin:0 0 .5rem; font-size: var(--fs-md); color:var(--fg-dim); font-weight:600;">Event participation</h4>' +
-        '<div style="display:flex; flex-direction:column; gap:.5rem;">' +
+        '<h4 class="u-m-0-0-0_5rem u-fs-fs-md u-c-fg-dim u-fw-600">Event participation</h4>' +
+        '<div class="u-d-flex u-dir-column u-gap-0_5rem">' +
         eventKeys
           .sort()
           .map((evKey) => {
             const ev = events[evKey] || {};
             const rateColor = ev.rate >= 80 ? '#34d399' : ev.rate >= 50 ? '#fbbf24' : 'var(--fg-dim)';
             return (
-              '<div style="display:flex; align-items:center; justify-content:space-between; padding:.6rem .8rem; background:rgba(255,255,255,0.03); border-radius:8px; border:1px solid rgba(255,255,255,0.06);">' +
-              '<span style="font-weight:600;">' +
+              '<div class="u-d-flex u-items-center u-justify-space-between u-p-0_6rem-0_8rem u-bg-rgba-255-255-255-0_03 u-rounded-8px u-border-1px-solid-rgba-255-d07d4b">' +
+              '<span class="u-fw-600">' +
               esc(evKey) +
               '</span>' +
-              '<span style="font-size: var(--fs-base); color:' +
-              rateColor +
-              '; font-weight:700;">' +
+              '<span data-gm-style="' +
+              styleRef('font-size: var(--fs-base); color:' + rateColor + '; font-weight:700;') +
+              '">' +
               ev.attended +
               '/' +
               ev.count +
@@ -210,7 +211,7 @@ export async function showPlayerHistoryDialog(uid: string, pseudo: string): Prom
 
     if (!sections) {
       body.innerHTML =
-        '<div class="gm-empty" style="padding:2rem;"><div class="gm-empty-title">No history available for this player.</div></div>';
+        '<div class="u-p-2rem gm-empty"><div class="gm-empty-title">No history available for this player.</div></div>';
       return;
     }
 
@@ -230,7 +231,7 @@ export async function showPlayerHistoryDialog(uid: string, pseudo: string): Prom
   } catch (err) {
     console.error('Failed to load player history', err);
     body.innerHTML =
-      '<div class="gm-empty" style="padding:2rem;"><div class="gm-empty-title">Failed to load player history.</div></div>';
+      '<div class="u-p-2rem gm-empty"><div class="gm-empty-title">Failed to load player history.</div></div>';
   }
 }
 
@@ -396,7 +397,7 @@ export async function openCustomMsgModal(eventPrefix: string): Promise<void> {
   tabsHtml += '</div>';
 
   // Build Left Panes for Each Reminder
-  let panesHtml = '<div class="discord-edit-column" style="display: flex; flex-direction: column; gap: 1rem;">';
+  let panesHtml = '<div class="u-d-flex u-dir-column u-gap-1rem discord-edit-column">';
   reminders.forEach((reminder, index) => {
     const defContent = getDefaultTpl(eventPrefix, reminder.key, 'content');
     const defTitle = getDefaultTpl(eventPrefix, reminder.key, 'title');
@@ -428,16 +429,16 @@ export async function openCustomMsgModal(eventPrefix: string): Promise<void> {
     panesHtml +=
       '<div class="discord-pane" id="pane-' +
       reminder.key +
-      '" style="display: ' +
-      (index === 0 ? 'flex' : 'none') +
-      '; flex-direction: column; gap: 0.9rem;">' +
+      '" data-gm-style="' +
+      styleRef('display: ' + (index === 0 ? 'flex' : 'none') + '; flex-direction: column; gap: 0.9rem;') +
+      '">' +
       // Field 1: Ping / Notification Text
-      '<div class="gm-col" style="gap: 0.3rem;">' +
+      '<div class="u-gap-0_3rem gm-col">' +
       '<label for="tpl-' +
       reminder.key +
-      '-content" style="font-size: var(--fs-sm); font-weight: 600; color: var(--fg); display: flex; justify-content: space-between; align-items: center;">' +
+      '-content" class="u-fs-fs-sm u-fw-600 u-c-fg u-d-flex u-justify-space-between u-items-center">' +
       '<span>Notification Text (Ping)</span>' +
-      '<span style="font-size: var(--fs-xs); color: var(--fg-dim); font-weight: 400;">Triggers sound alert</span>' +
+      '<span class="u-fs-fs-xs u-c-fg-dim u-fw-400">Triggers sound alert</span>' +
       '</label>' +
       '<div class="discord-pills-bar">' +
       '<button type="button" class="discord-pill-btn" data-insert="{guild_tag}" data-target="tpl-' +
@@ -456,19 +457,21 @@ export async function openCustomMsgModal(eventPrefix: string): Promise<void> {
       '</div>' +
       '<input type="text" id="tpl-' +
       reminder.key +
-      '-content" class="gm-input gm-input-sm" style="font-size: var(--fs-sm);" placeholder="' +
+      '-content" class="gm-input gm-input-sm" data-gm-style="' +
+      styleRef('font-size: var(--fs-sm);') +
+      '" placeholder="' +
       esc(defContent) +
       '" value="' +
       esc(valContent) +
       '">' +
       '</div>' +
       // Field 2: Embed Title
-      '<div class="gm-col" style="gap: 0.3rem;">' +
+      '<div class="u-gap-0_3rem gm-col">' +
       '<label for="tpl-' +
       reminder.key +
-      '-title" style="font-size: var(--fs-sm); font-weight: 600; color: var(--fg); display: flex; justify-content: space-between; align-items: center;">' +
+      '-title" class="u-fs-fs-sm u-fw-600 u-c-fg u-d-flex u-justify-space-between u-items-center">' +
       '<span>Embed Title</span>' +
-      '<span style="font-size: var(--fs-xs); color: var(--fg-dim); font-weight: 400;">Bold title</span>' +
+      '<span class="u-fs-fs-xs u-c-fg-dim u-fw-400">Bold title</span>' +
       '</label>' +
       '<div class="discord-pills-bar">' +
       '<button type="button" class="discord-pill-btn" data-insert="{event_name}" data-target="tpl-' +
@@ -481,19 +484,21 @@ export async function openCustomMsgModal(eventPrefix: string): Promise<void> {
       '</div>' +
       '<input type="text" id="tpl-' +
       reminder.key +
-      '-title" class="gm-input gm-input-sm" style="font-size: var(--fs-sm);" placeholder="' +
+      '-title" class="gm-input gm-input-sm" data-gm-style="' +
+      styleRef('font-size: var(--fs-sm);') +
+      '" placeholder="' +
       esc(defTitle) +
       '" value="' +
       esc(valTitle) +
       '">' +
       '</div>' +
       // Field 3: Embed Description
-      '<div class="gm-col" style="gap: 0.3rem;">' +
+      '<div class="u-gap-0_3rem gm-col">' +
       '<label for="tpl-' +
       reminder.key +
-      '-desc" style="font-size: var(--fs-sm); font-weight: 600; color: var(--fg); display: flex; justify-content: space-between; align-items: center;">' +
+      '-desc" class="u-fs-fs-sm u-fw-600 u-c-fg u-d-flex u-justify-space-between u-items-center">' +
       '<span>Embed Description</span>' +
-      '<span style="font-size: var(--fs-xs); color: var(--fg-dim); font-weight: 400;">Main body</span>' +
+      '<span class="u-fs-fs-xs u-c-fg-dim u-fw-400">Main body</span>' +
       '</label>' +
       '<div class="discord-pills-bar">' +
       '<button type="button" class="discord-pill-btn" data-insert="{event_name}" data-target="tpl-' +
@@ -506,17 +511,19 @@ export async function openCustomMsgModal(eventPrefix: string): Promise<void> {
       '</div>' +
       '<textarea id="tpl-' +
       reminder.key +
-      '-desc" class="gm-input" style="font-size: var(--fs-sm); height: 65px; resize: vertical;" placeholder="' +
+      '-desc" class="gm-input" data-gm-style="' +
+      styleRef('font-size: var(--fs-sm); height: 65px; resize: vertical;') +
+      '" placeholder="' +
       esc(defDesc) +
       '">' +
       esc(valDesc) +
       '</textarea>' +
       '</div>' +
       // Reset to Default button
-      '<div style="display: flex; justify-content: flex-start; margin-top: 0.2rem;">' +
-      '<button type="button" class="gm-btn gm-btn-ghost gm-btn-sm discord-reset-btn" data-reset="' +
+      '<div class="u-d-flex u-justify-flex-start u-mt-0_2rem">' +
+      '<button type="button" class="u-gap-0_35rem u-fs-fs-xs u-c-fg-muted gm-btn gm-btn-ghost gm-btn-sm discord-reset-btn" data-reset="' +
       esc(reminder.key) +
-      '" style="gap: 0.35rem; font-size: var(--fs-xs); color: var(--fg-muted);">' +
+      '">' +
       '<i class="ph ph-arrow-counter-clockwise"></i> Reset to default template' +
       '</button>' +
       '</div>' +
@@ -528,9 +535,9 @@ export async function openCustomMsgModal(eventPrefix: string): Promise<void> {
   const previewHtml =
     '<div class="discord-preview-column">' +
     '<div class="discord-preview-wrap">' +
-    '<div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: #949ba4; font-weight: 700; border-bottom: 1px solid rgba(255, 255, 255, 0.06); padding-bottom: 0.4rem;">' +
+    '<div class="u-d-flex u-items-center u-justify-space-between u-fs-0_72rem u-tt-uppercase u-tracking-0_05em u-c-hex949ba4 u-fw-700 u-bb-1px-solid-rgba-255-d07d4b u-pb-0_4rem">' +
     '<span><i class="ph ph-discord-logo"></i> Discord Live Preview</span>' +
-    '<span style="font-size: 0.65rem; background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 4px;">Real-time</span>' +
+    '<span class="u-fs-0_65rem u-bg-rgba-255-255-255-0_08 u-p-2px-6px u-rounded-4px">Real-time</span>' +
     '</div>' +
     '<div class="discord-msg-header">' +
     '<div class="discord-avatar">🤖</div>' +
@@ -561,20 +568,20 @@ export async function openCustomMsgModal(eventPrefix: string): Promise<void> {
     '</div>';
 
   const html =
-    '<div class="gm-modal-card discord-custom-modal" style="text-align: left;">' +
-    '<div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-soft); padding-bottom: 0.75rem;">' +
-    '<h3 style="font-family: var(--font-display); font-size: var(--fs-xl); margin: 0; display: flex; align-items: center; gap: 0.5rem; color: var(--fg);">' +
-    '<i class="ph ph-note-pencil" style="color: var(--accent);"></i> Personalization - ' +
+    '<div class="u-text-left gm-modal-card discord-custom-modal">' +
+    '<div class="u-d-flex u-items-center u-justify-space-between u-bb-1px-solid-border-soft u-pb-0_75rem">' +
+    '<h3 class="u-ff-font-display u-fs-fs-xl u-m-0 u-d-flex u-items-center u-gap-0_5rem u-c-fg">' +
+    '<i class="u-c-accent ph ph-note-pencil"></i> Personalization - ' +
     esc(eventTitle) +
     '</h3>' +
-    '<button type="button" class="gm-btn gm-btn-ghost gm-btn-icon" id="custom-msg-modal-close" aria-label="Close" style="padding: 0.25rem;"><i class="ph ph-x" aria-hidden="true"></i></button>' +
+    '<button type="button" class="u-p-0_25rem gm-btn gm-btn-ghost gm-btn-icon" id="custom-msg-modal-close" aria-label="Close"><i class="ph ph-x" aria-hidden="true"></i></button>' +
     '</div>' +
     tabsHtml +
     '<div class="discord-custom-body">' +
     panesHtml +
     previewHtml +
     '</div>' +
-    '<div style="display: flex; gap: 0.75rem; justify-content: flex-end; border-top: 1px solid var(--border-soft); padding-top: 0.75rem;">' +
+    '<div class="u-d-flex u-gap-0_75rem u-justify-flex-end u-bt-1px-solid-border-soft u-pt-0_75rem">' +
     '<button type="button" class="gm-btn gm-btn-ghost" id="custom-msg-modal-cancel">Cancel</button>' +
     '<button type="button" class="gm-btn gm-btn-primary" id="custom-msg-modal-save">' +
     '<i class="ph ph-check"></i> Save' +

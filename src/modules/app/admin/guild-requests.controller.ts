@@ -46,7 +46,7 @@ export async function fetchGuildRequests(): Promise<void> {
     renderGuildRequestsList(requests);
   } catch (_err) {
     listEl.innerHTML =
-      '<div class="gm-empty" style="padding:2rem 1rem;"><p style="color:var(--text-muted);">Failed to load guild requests.</p></div>';
+      '<div class="u-p-2rem-1rem gm-empty"><p class="u-c-text-muted">Failed to load guild requests.</p></div>';
   }
 }
 
@@ -56,7 +56,7 @@ export function renderGuildRequestsList(requests: any[]): void {
 
   if (!requests.length) {
     listEl.innerHTML =
-      '<div class="gm-empty" style="padding:2rem 1rem;"><i class="ph ph-tray gm-icon"></i><div class="gm-empty-title">No guild requests yet</div></div>';
+      '<div class="u-p-2rem-1rem gm-empty"><i class="ph ph-tray gm-icon"></i><div class="gm-empty-title">No guild requests yet</div></div>';
     return;
   }
 
@@ -66,9 +66,7 @@ export function renderGuildRequestsList(requests: any[]): void {
       const dateStr = r.created_at
         ? new Date(r.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
         : '-';
-      const noteHtml = r.note
-        ? '<div style="color:var(--text-muted); font-size: var(--fs-sm); margin-top:.25rem;">' + esc(r.note) + '</div>'
-        : '';
+      const noteHtml = r.note ? '<div class="u-c-text-muted u-fs-fs-sm u-mt-0_25rem">' + esc(r.note) + '</div>' : '';
       let actionsHtml = '';
       if (r.status === 'pending') {
         actionsHtml =
@@ -83,21 +81,20 @@ export function renderGuildRequestsList(requests: any[]): void {
           '<i class="ph ph-x"></i><span>Reject</span>' +
           '</button>';
       } else if (r.reject_reason) {
-        actionsHtml =
-          '<span style="color:var(--text-muted); font-size: var(--fs-sm);">' + esc(r.reject_reason) + '</span>';
+        actionsHtml = '<span class="u-c-text-muted u-fs-fs-sm">' + esc(r.reject_reason) + '</span>';
       }
 
       return (
-        '<div class="gm-card gm-card-padded" style="margin-bottom:.75rem;" data-request-id="' +
+        '<div class="u-mb-0_75rem gm-card gm-card-padded" data-request-id="' +
         esc(r.id) +
         '">' +
-        '<div class="gm-row" style="justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:.5rem;">' +
+        '<div class="u-justify-space-between u-items-flex-start u-wrap-wrap u-gap-0_5rem gm-row">' +
         '<div>' +
-        '<div class="gm-row" style="gap:.5rem; align-items:center;">' +
+        '<div class="u-gap-0_5rem u-items-center gm-row">' +
         '<strong>' +
         esc(r.guild_tag) +
         '</strong>' +
-        '<span style="color:var(--text-muted); font-size: var(--fs-base);">#' +
+        '<span class="u-c-text-muted u-fs-fs-base">#' +
         esc(r.server_number) +
         '</span>' +
         '<span class="gm-chip ' +
@@ -106,7 +103,7 @@ export function renderGuildRequestsList(requests: any[]): void {
         esc(meta.label) +
         '</span>' +
         '</div>' +
-        '<div style="color:var(--text-muted); font-size: var(--fs-base); margin-top:.25rem;">' +
+        '<div class="u-c-text-muted u-fs-fs-base u-mt-0_25rem">' +
         'Admin login: <strong>' +
         esc(r.admin_id) +
         '</strong> &middot; Discord: ' +
@@ -115,9 +112,9 @@ export function renderGuildRequestsList(requests: any[]): void {
         dateStr +
         '</div>' +
         noteHtml +
-        '<div class="gm-guild-req-result" style="margin-top:.5rem;"></div>' +
+        '<div class="u-mt-0_5rem gm-guild-req-result"></div>' +
         '</div>' +
-        '<div class="gm-row" style="gap:.5rem;">' +
+        '<div class="u-gap-0_5rem gm-row">' +
         actionsHtml +
         '</div>' +
         '</div>' +
@@ -150,7 +147,7 @@ export function wireGuildRequestListeners(container: HTMLElement): void {
             const resultEl = card ? card.querySelector('.gm-guild-req-result') : null;
             if (resultEl) {
               resultEl.innerHTML =
-                '<div class="gm-cred-pass" style="display:inline-flex;">' +
+                '<div class="u-d-inline-flex gm-cred-pass">' +
                 '<span class="gm-pwd-text">' +
                 esc(res.password) +
                 '</span>' +
@@ -511,7 +508,7 @@ export async function renderPendingRegistrations(activeG?: string | null): Promi
   if (adminCount) adminCount.textContent = String(pending.length);
 
   const emptyHtml =
-    '<div class="gm-empty" style="padding:1.25rem;"><i class="ph ph-hourglass gm-icon"></i><div class="gm-empty-title">No pending registrations</div></div>';
+    '<div class="u-p-1_25rem gm-empty"><i class="ph ph-hourglass gm-icon"></i><div class="gm-empty-title">No pending registrations</div></div>';
 
   const renderListTo = (container: HTMLElement | null): void => {
     if (!container) return;
@@ -529,13 +526,13 @@ export async function renderPendingRegistrations(activeG?: string | null): Promi
         '<div class="gm-cred-card" data-acc-id="' +
         esc(acc.id) +
         '">' +
-        '<div class="gm-row" style="justify-content:space-between; margin-bottom: 0.25rem;">' +
-        '<div class="gm-cred-name" style="font-weight:700; color:var(--fg);">' +
+        '<div class="u-justify-space-between u-mb-0_25rem gm-row">' +
+        '<div class="u-fw-700 u-c-fg gm-cred-name">' +
         esc(acc.id) +
         '</div>' +
         '<span class="gm-chip gm-chip-warning">Pending</span>' +
         '</div>' +
-        '<div class="gm-row gm-dim" style="font-size: var(--fs-sm); gap: 0.75rem;">' +
+        '<div class="u-fs-fs-sm u-gap-0_75rem gm-row gm-dim">' +
         '<span><i class="ph ph-identification-badge"></i> UID ' +
         esc(acc.uid || '?') +
         '</span>' +
@@ -543,7 +540,7 @@ export async function renderPendingRegistrations(activeG?: string | null): Promi
         dateStr +
         '</span>' +
         '</div>' +
-        '<div class="gm-row" style="gap: 0.5rem; margin-top: 0.6rem;">' +
+        '<div class="u-gap-0_5rem u-mt-0_6rem gm-row">' +
         '<button class="gm-btn gm-btn-sm gm-btn-success gm-pending-approve" data-id="' +
         esc(acc.id) +
         '">' +

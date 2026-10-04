@@ -14,6 +14,7 @@
  * - This module never assigns any `window.GM_*` variable.
  */
 
+import { styleRef } from '../../../core/dom/style-refs';
 import { PortalService } from '../portal.service';
 import { escapeHTML, avatarInit, formatPower, formatNumber, parseNumber } from '../../../core/utils/text';
 import { logout, loginWithDiscord } from '../../../core/auth/session';
@@ -164,7 +165,7 @@ export class PortalView {
     const root = document.getElementById('portal-dashboard-root');
     if (!root) return;
     root.innerHTML =
-      '<div class="gm-empty" style="padding:2rem 0;"><i class="ph ph-circle-notch ph-spin gm-icon"></i><div class="gm-empty-title">Loading your portal...</div></div>';
+      '<div class="u-p-2rem-0 gm-empty"><i class="ph ph-circle-notch ph-spin gm-icon"></i><div class="gm-empty-title">Loading your portal...</div></div>';
 
     const [profile, history, kpis] = await Promise.all([
       this.invoke('get-active-sessions', {}),
@@ -183,13 +184,13 @@ export class PortalView {
         displayMsg = 'Session expired or player account not active. Please reconnect.';
       }
       root.innerHTML =
-        '<div class="gm-empty" style="padding: 3rem 1.5rem; text-align: center; max-width: 480px; margin: 2rem auto; background: var(--bg-1); border-radius: var(--radius-xl); border: 1px solid var(--border-soft);">' +
-        '<i class="ph ph-warning-circle gm-icon" style="font-size: var(--fs-5xl); color: #ef4444; margin-bottom: 1rem; display: block;"></i>' +
-        '<div class="gm-empty-title" style="font-size: var(--fs-xl); font-weight: 700; color: var(--fg); margin-bottom: 0.5rem;">Unable to load your portal</div>' +
-        '<div class="gm-empty-sub" style="color: var(--fg-dim); font-size: var(--fs-md); margin: 0 auto 1.5rem auto;">' +
+        '<div class="u-p-3rem-1_5rem u-text-center u-maxw-480px u-m-2rem-auto u-bg-bg-1 u-rounded-radius-xl u-border-1px-solid-border-soft gm-empty">' +
+        '<i class="u-fs-fs-5xl u-c-hexef4444 u-mb-1rem u-d-block ph ph-warning-circle gm-icon"></i>' +
+        '<div class="u-fs-fs-xl u-fw-700 u-c-fg u-mb-0_5rem gm-empty-title">Unable to load your portal</div>' +
+        '<div class="u-c-fg-dim u-fs-fs-md u-m-0-auto-1_5rem-auto gm-empty-sub">' +
         escapeHTML(displayMsg) +
         '</div>' +
-        '<div style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;">' +
+        '<div class="u-d-flex u-gap-0_75rem u-justify-center u-wrap-wrap">' +
         '<button class="gm-btn gm-btn-primary" data-portal-error-signout><i class="ph ph-sign-out"></i> Reconnect / Sign Out</button>' +
         '<button class="gm-btn gm-btn-outline" data-portal-error-retry><i class="ph ph-arrows-clockwise"></i> Retry</button>' +
         '</div>' +
@@ -313,10 +314,10 @@ export class PortalView {
       '</nav>' +
       '<div class="gm-sidebar-sub-card">' +
       '<div class="gm-sub-card-badge-avatar"><i class="ph ph-crosshair"></i></div>' +
-      '<div style="font-size: var(--fs-sm); font-weight:700; color:var(--fg);">' +
+      '<div class="u-fs-fs-sm u-fw-700 u-c-fg">' +
       escapeHTML(p.guild) +
       '</div>' +
-      '<div style="font-size: var(--fs-xs); color:var(--fg-dim); margin-top:.25rem;">Foundation Galactic Frontier</div>' +
+      '<div class="u-fs-fs-xs u-c-fg-dim u-mt-0_25rem">Foundation Galactic Frontier</div>' +
       '</div>' +
       '</aside>' +
       '<div class="gm-main">' +
@@ -565,14 +566,14 @@ export class PortalView {
         '<div class="portal-kpi-rank">' +
         escapeHTML(breakdown || 'Nothing ran for you yet') +
         '</div>' +
-        '<div class="portal-kpi-bar"><div class="portal-kpi-bar-fill" style="width:' +
-        (myPct || 0) +
-        '%;"></div></div>' +
+        '<div class="portal-kpi-bar"><div class="portal-kpi-bar-fill" data-gm-style="' +
+        styleRef('width:' + (myPct || 0) + '%;') +
+        '"></div></div>' +
         '<div class="portal-kpi-sub">' +
         (delta === null
           ? 'Over the last ' + escapeHTML(rel.weeks || 0) + ' weeks'
           : escapeHTML((delta >= 0 ? '+' : '') + delta + '% vs your guild (' + guildPct + '%)')) +
-        '<br><span style="opacity:.7;">Weighted by event type, standard weights</span>' +
+        '<br><span class="u-opacity-0_7">Weighted by event type, standard weights</span>' +
         '</div>' +
         '</div>' +
         '<div class="portal-kpi-card portal-kpi-power">' +
@@ -584,9 +585,9 @@ export class PortalView {
         '<div class="portal-kpi-rank">' +
         escapeHTML(powerPct) +
         '% of the strongest in your guild</div>' +
-        '<div class="portal-kpi-bar"><div class="portal-kpi-bar-fill" style="width:' +
-        powerPct +
-        '%;"></div></div>' +
+        '<div class="portal-kpi-bar"><div class="portal-kpi-bar-fill" data-gm-style="' +
+        styleRef('width:' + powerPct + '%;') +
+        '"></div></div>' +
         '<div class="portal-kpi-sub">Guild average: ' +
         escapeHTML(formatPower(guildAvg.overall_power || 0)) +
         '</div>' +
@@ -602,23 +603,23 @@ export class PortalView {
           (glory.weeks_recorded || 0) + ' week' + ((glory.weeks_recorded || 0) === 1 ? '' : 's') + ' recorded'
         ) +
         '</div>' +
-        '<div class="portal-kpi-bar"><div class="portal-kpi-bar-fill" style="width:100%;"></div></div>' +
+        '<div class="portal-kpi-bar"><div class="u-w-100pct portal-kpi-bar-fill"></div></div>' +
         '<div class="portal-kpi-sub">Guild average: ' +
         escapeHTML(formatNumber(guildAvg.glory_score || 0)) +
         '</div>' +
         '</div>' +
         '<div class="portal-kpi-card portal-kpi-tenure">' +
         '<div class="portal-kpi-icon"><i class="ph ph-lightning"></i></div>' +
-        '<div class="portal-kpi-value" style="color:#fbbf24;">⚡ ' +
+        '<div class="u-c-hexfbbf24 portal-kpi-value">⚡ ' +
         escapeHTML(rallyGrade) +
         '/100</div>' +
         '<div class="portal-kpi-label">Rally Grade</div>' +
         '<div class="portal-kpi-rank">Combat Density: ' +
         density +
         '%</div>' +
-        '<div class="portal-kpi-bar"><div class="portal-kpi-bar-fill" style="width:' +
-        escapeHTML(rallyGrade) +
-        '%; background:#fbbf24;"></div></div>' +
+        '<div class="portal-kpi-bar"><div class="portal-kpi-bar-fill" data-gm-style="' +
+        styleRef('width:' + escapeHTML(rallyGrade) + '%; background:#fbbf24;') +
+        '"></div></div>' +
         '<div class="portal-kpi-sub">Combativity: ' +
         combativity +
         'x &middot; ' +
@@ -671,7 +672,7 @@ export class PortalView {
 
     if (chartKeys.length === 0) {
       chartsHtml =
-        '<div class="gm-empty" style="padding:2rem 0;"><i class="ph ph-chart-bar gm-icon"></i><div class="gm-empty-title">No scored events for this period.</div><div class="gm-empty-sub">Progression charts appear for events with scores (SvS, GvG, Glory).</div></div>';
+        '<div class="u-p-2rem-0 gm-empty"><i class="ph ph-chart-bar gm-icon"></i><div class="gm-empty-title">No scored events for this period.</div><div class="gm-empty-sub">Progression charts appear for events with scores (SvS, GvG, Glory).</div></div>';
     } else {
       chartKeys.forEach((key, idx) => {
         chartsHtml += this.renderChartCard(key, hist[key], idx);
@@ -699,20 +700,20 @@ export class PortalView {
     }
 
     const tacticalBreakdownHtml =
-      '<div class="portal-card" style="margin-bottom: 1.25rem; background: var(--md-sys-color-surface-container, #1e1f20); border: 1px solid var(--md-sys-color-outline-variant, rgba(255, 255, 255, 0.08)); border-radius: var(--md-sys-shape-corner-large, 16px); padding: 1.35rem; box-shadow: var(--md-sys-elevation-level1, 0 1px 3px rgba(0,0,0,0.2));">' +
-      '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.15rem; flex-wrap:wrap; gap:0.6rem;">' +
-      '<div style="display:flex; align-items:center; gap:0.55rem;">' +
-      '<i class="ph ph-sword" style="color:var(--md-sys-color-primary, #a8c7fa); font-size: var(--fs-3xl);"></i>' +
-      '<span style="font-weight:800; font-size: var(--fs-xl); color:var(--md-sys-color-on-surface, #e3e3e3);">Military Force Breakdown &amp; Guild Benchmarks</span>' +
+      '<div class="u-mb-1_25rem u-bg-md-sys-color-surfa-55e0df u-border-1px-solid-md-sys-c-cffda2 u-rounded-md-sys-shape-corne-188f9a u-p-1_35rem u-shadow-md-sys-elevation-l-fc991d portal-card">' +
+      '<div class="u-d-flex u-justify-space-between u-items-center u-mb-1_15rem u-wrap-wrap u-gap-0_6rem">' +
+      '<div class="u-d-flex u-items-center u-gap-0_55rem">' +
+      '<i class="u-c-md-sys-color-prima-062269 u-fs-fs-3xl ph ph-sword"></i>' +
+      '<span class="u-fw-800 u-fs-fs-xl u-c-md-sys-color-on-su-fb0b34">Military Force Breakdown &amp; Guild Benchmarks</span>' +
       '</div>' +
-      '<div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">' +
-      '<span class="gm-chip" style="font-size: var(--fs-sm); font-weight:700; color:#a8c7fa; background:rgba(168,199,250,0.12); border:1px solid rgba(168,199,250,0.25); border-radius:var(--md-sys-shape-corner-full);"><i class="ph ph-shield-check"></i> Density: ' +
+      '<div class="u-d-flex u-gap-0_5rem u-items-center u-wrap-wrap">' +
+      '<span class="u-fs-fs-sm u-fw-700 u-c-hexa8c7fa u-bg-rgba-168-199-250-0_12 u-border-1px-solid-rgba-168-4e521a u-rounded-md-sys-shape-corner-full gm-chip"><i class="ph ph-shield-check"></i> Density: ' +
       Math.min(100, Math.round(density)) +
       '%</span>' +
-      '<span class="gm-chip" style="font-size: var(--fs-sm); font-weight:700; color:#6dd58c; background:rgba(109,213,140,0.12); border:1px solid rgba(109,213,140,0.25); border-radius:var(--md-sys-shape-corner-full);"><i class="ph ph-crosshair"></i> Combativity: ' +
+      '<span class="u-fs-fs-sm u-fw-700 u-c-hex6dd58c u-bg-rgba-109-213-140-0_12 u-border-1px-solid-rgba-109-97f39c u-rounded-md-sys-shape-corner-full gm-chip"><i class="ph ph-crosshair"></i> Combativity: ' +
       combativity +
       'x</span>' +
-      '<span class="gm-chip" style="font-size: var(--fs-sm); font-weight:700; color:#ffe088; background:rgba(255,224,136,0.12); border:1px solid rgba(255,224,136,0.25); border-radius:var(--md-sys-shape-corner-full);"><i class="ph ph-barricade"></i> Volatile: ' +
+      '<span class="u-fs-fs-sm u-fw-700 u-c-hexffe088 u-bg-rgba-255-224-136-0_12 u-border-1px-solid-rgba-255-c9aa50 u-rounded-md-sys-shape-corner-full gm-chip"><i class="ph ph-barricade"></i> Volatile: ' +
       escapeHTML(formatPower(residual)) +
       '</span>' +
       '</div>' +
@@ -774,12 +775,12 @@ export class PortalView {
       const diffPct = Math.round(((pVal - aVal) / aVal) * 1000) / 10;
       if (diffPct >= 0) {
         deltaHtml =
-          '<span class="gm-chip" style="font-size: var(--fs-xs); padding:0.1rem 0.38rem; color:#6dd58c; background:rgba(109,213,140,0.14); border:1px solid rgba(109,213,140,0.25); border-radius:var(--md-sys-shape-corner-full, 9999px); white-space:nowrap;">+' +
+          '<span class="u-fs-fs-xs u-p-0_1rem-0_38rem u-c-hex6dd58c u-bg-rgba-109-213-140-0_14 u-border-1px-solid-rgba-109-97f39c u-rounded-md-sys-shape-corne-273ba0 u-ws-nowrap gm-chip">+' +
           diffPct +
           '%</span>';
       } else {
         deltaHtml =
-          '<span class="gm-chip" style="font-size: var(--fs-xs); padding:0.1rem 0.38rem; color:#ffe088; background:rgba(255,224,136,0.14); border:1px solid rgba(255,224,136,0.25); border-radius:var(--md-sys-shape-corner-full, 9999px); white-space:nowrap;">' +
+          '<span class="u-fs-fs-xs u-p-0_1rem-0_38rem u-c-hexffe088 u-bg-rgba-255-224-136-0_14 u-border-1px-solid-rgba-255-c9aa50 u-rounded-md-sys-shape-corne-273ba0 u-ws-nowrap gm-chip">' +
           diffPct +
           '%</span>';
       }
@@ -800,9 +801,9 @@ export class PortalView {
       deltaHtml +
       '</div>' +
       '</div>' +
-      '<div class="portal-military-tile-value" style="color:' +
-      color +
-      ';">' +
+      '<div class="portal-military-tile-value" data-gm-style="' +
+      styleRef('color:' + color + ';') +
+      '">' +
       escapeHTML(formatPower(pVal)) +
       '</div>' +
       '<div class="portal-military-tile-footer">' +
@@ -832,20 +833,20 @@ export class PortalView {
     const accent = this.eventAccent(eventKey);
     return (
       '<div class="portal-chart-card">' +
-      '<div class="portal-chart-accent" style="background:' +
-      accent +
-      ';"></div>' +
+      '<div class="portal-chart-accent" data-gm-style="' +
+      styleRef('background:' + accent + ';') +
+      '"></div>' +
       '<div class="portal-chart-head">' +
       '<div class="portal-chart-title"><i class="ph ' +
       icon +
-      '" style="color:' +
-      accent +
-      ';"></i> ' +
+      '" data-gm-style="' +
+      styleRef('color:' + accent + ';') +
+      '"></i> ' +
       escapeHTML(eventKey) +
       '</div>' +
       '<div class="portal-chart-legend">' +
-      '<span style="display:inline-flex; align-items:center; gap:0.4rem; color:#6dd58c; font-weight:700;"><span style="width:12px; height:3px; background:#6dd58c; border-radius:2px; display:inline-block;"></span> You</span>' +
-      '<span style="display:inline-flex; align-items:center; gap:0.4rem; color:#ffe088; font-weight:700;"><span style="width:14px; height:0; border-top:2.5px dashed #ffe088; display:inline-block;"></span> Guild Avg (dashed)</span>' +
+      '<span class="u-d-inline-flex u-items-center u-gap-0_4rem u-c-hex6dd58c u-fw-700"><span class="u-w-12px u-h-3px u-bg-hex6dd58c u-rounded-2px u-d-inline-block"></span> You</span>' +
+      '<span class="u-d-inline-flex u-items-center u-gap-0_4rem u-c-hexffe088 u-fw-700"><span class="u-w-14px u-h-0 u-bt-2_5px-dashed-hexffe088 u-d-inline-block"></span> Guild Avg (dashed)</span>' +
       '</div>' +
       '</div>' +
       '<canvas class="portal-chart-canvas" data-chart-key="' +
@@ -866,23 +867,23 @@ export class PortalView {
     (ev.history || []).slice(0, 4).forEach((h: any) => {
       recentBadges +=
         h.participated || h.sub_present
-          ? '<span class="portal-badge" style="background:rgba(109,213,140,0.18); color:#6dd58c; border-color:rgba(109,213,140,0.4);">P</span>'
+          ? '<span class="u-bg-rgba-109-213-140-0_18 u-c-hex6dd58c u-bc-rgba-109-213-140-0_4 portal-badge">P</span>'
           : h.excused
-            ? '<span class="portal-badge" style="background:rgba(255,224,136,0.15); color:#ffe088; border-color:rgba(255,224,136,0.4);">E</span>'
-            : '<span class="portal-badge" style="background:rgba(248,113,113,0.15); color:#f87171; border-color:rgba(248,113,113,0.4);">A</span>';
+            ? '<span class="u-bg-rgba-255-224-136-0_15 u-c-hexffe088 u-bc-rgba-255-224-136-0_4 portal-badge">E</span>'
+            : '<span class="u-bg-rgba-248-113-113-0_15 u-c-hexf87171 u-bc-rgba-248-113-113-0_4 portal-badge">A</span>';
     });
 
     return (
       '<div class="portal-participation-tile">' +
-      '<div class="portal-chart-accent" style="background:' +
-      accent +
-      ';"></div>' +
+      '<div class="portal-chart-accent" data-gm-style="' +
+      styleRef('background:' + accent + ';') +
+      '"></div>' +
       '<div class="portal-participation-body">' +
       '<div class="portal-participation-title"><i class="ph ' +
       icon +
-      '" style="color:' +
-      accent +
-      ';"></i> ' +
+      '" data-gm-style="' +
+      styleRef('color:' + accent + ';') +
+      '"></i> ' +
       escapeHTML(eventKey) +
       '</div>' +
       '<div class="portal-participation-rate">' +
@@ -918,7 +919,7 @@ export class PortalView {
       '<p class="gm-page-subtitle">Weekly goals and your season progress</p>' +
       '</div>' +
       '</header>' +
-      '<div id="portal-challenges-body"><div class="gm-empty" style="padding:2rem 0;"><i class="ph ph-circle-notch ph-spin gm-icon"></i><div class="gm-empty-title">Loading challenges...</div></div></div>';
+      '<div id="portal-challenges-body"><div class="u-p-2rem-0 gm-empty"><i class="ph ph-circle-notch ph-spin gm-icon"></i><div class="gm-empty-title">Loading challenges...</div></div></div>';
     this.loadChallengesPanel();
   }
 
@@ -936,15 +937,13 @@ export class PortalView {
       '<div class="portal-challenge-name">' +
       escapeHTML(challenge.label) +
       '</div>' +
-      '<div class="portal-challenge-progress"><div class="portal-challenge-progress-fill" style="width:' +
-      pct +
-      '%; background:' +
-      (challenge.done ? 'var(--success)' : 'var(--accent)') +
-      ';"></div></div>' +
+      '<div class="portal-challenge-progress"><div class="portal-challenge-progress-fill" data-gm-style="' +
+      styleRef('width:' + pct + '%; background:' + (challenge.done ? 'var(--success)' : 'var(--accent)') + ';') +
+      '"></div></div>' +
       '</div>' +
       '<div class="portal-challenge-state">' +
       (challenge.done
-        ? '<i class="ph ph-check-circle" style="color:var(--success);"></i>'
+        ? '<i class="u-c-success ph ph-check-circle"></i>'
         : '<span class="portal-challenge-count">' + challenge.progress + '/' + challenge.target + '</span>') +
       '</div>' +
       '</div>'
@@ -957,7 +956,7 @@ export class PortalView {
     const res = await this.invoke('get-weekly-challenges', {});
     if (!res.ok) {
       body.innerHTML =
-        '<div class="gm-empty" style="padding:2rem 0;"><i class="ph ph-warning-circle gm-icon"></i><div class="gm-empty-title">Unable to load challenges.</div><div class="gm-empty-sub">' +
+        '<div class="u-p-2rem-0 gm-empty"><i class="ph ph-warning-circle gm-icon"></i><div class="gm-empty-title">Unable to load challenges.</div><div class="gm-empty-sub">' +
         escapeHTML(res.error || 'unknown error') +
         '</div></div>';
       return;
@@ -980,14 +979,14 @@ export class PortalView {
       '/' +
       res.total +
       '</span><span class="portal-challenges-summary-label">challenges done this week</span></div>' +
-      '<div class="portal-challenges-summary-item"><span class="portal-challenges-summary-value" style="color:' +
-      meta.color +
-      ';">' +
+      '<div class="portal-challenges-summary-item"><span class="portal-challenges-summary-value" data-gm-style="' +
+      styleRef('color:' + meta.color + ';') +
+      '">' +
       res.season.events +
       '</span><span class="portal-challenges-summary-label">events over the season</span></div>' +
-      '<div class="portal-challenges-summary-item"><span class="portal-challenges-summary-value" style="color:' +
-      meta.color +
-      ';">' +
+      '<div class="portal-challenges-summary-item"><span class="portal-challenges-summary-value" data-gm-style="' +
+      styleRef('color:' + meta.color + ';') +
+      '">' +
       meta.label +
       '</span><span class="portal-challenges-summary-label">season</span></div>' +
       '</div>' +
@@ -1007,7 +1006,7 @@ export class PortalView {
       '<p class="gm-page-subtitle">Achievements that unlock as you grow in the guild</p>' +
       '</div>' +
       '</header>' +
-      '<div id="portal-badges-body"><div class="gm-empty" style="padding:2rem 0;"><i class="ph ph-circle-notch ph-spin gm-icon"></i><div class="gm-empty-title">Loading badges...</div></div></div>';
+      '<div id="portal-badges-body"><div class="u-p-2rem-0 gm-empty"><i class="ph ph-circle-notch ph-spin gm-icon"></i><div class="gm-empty-title">Loading badges...</div></div></div>';
     this.loadBadgesPanel();
   }
 
@@ -1035,14 +1034,12 @@ export class PortalView {
       : '<div class="portal-badge-state"><i class="ph ph-lock-key"></i> Locked</div>';
 
     const progressHtml = badge.earned
-      ? '<div class="portal-badge-progress"><div class="portal-badge-progress-fill" style="width:100%; background:' +
-        badge.color +
-        ';"></div></div>'
-      : '<div class="portal-badge-progress"><div class="portal-badge-progress-fill" style="width:' +
-        badge.progress +
-        '%; background:' +
-        badge.color +
-        ';"></div></div>';
+      ? '<div class="portal-badge-progress"><div class="portal-badge-progress-fill" data-gm-style="' +
+        styleRef('width:100%; background:' + badge.color + ';') +
+        '"></div></div>'
+      : '<div class="portal-badge-progress"><div class="portal-badge-progress-fill" data-gm-style="' +
+        styleRef('width:' + badge.progress + '%; background:' + badge.color + ';') +
+        '"></div></div>';
 
     const metricHtml = badge.earned
       ? ''
@@ -1058,10 +1055,14 @@ export class PortalView {
       '">' +
       '<div class="' +
       iconCls +
-      '" style="color:' +
-      badge.color +
-      ';' +
-      (badge.earned ? ' border-color:' + badge.color + '; box-shadow:0 0 18px ' + badge.color + '55;' : '') +
+      '" data-gm-style="' +
+      styleRef(
+        'color:' +
+          badge.color +
+          ';' +
+          (badge.earned ? ' border-color:' + badge.color + '; box-shadow:0 0 18px ' + badge.color + '55;' : '') +
+          ''
+      ) +
       '">' +
       '<i class="ph ' +
       badge.icon +
@@ -1103,9 +1104,9 @@ export class PortalView {
           '<div class="portal-badge-section">' +
           '<div class="portal-badge-section-title"><i class="ph ' +
           cat.icon +
-          '" style="color:' +
-          cat.color +
-          ';"></i> ' +
+          '" data-gm-style="' +
+          styleRef('color:' + cat.color + ';') +
+          '"></i> ' +
           escapeHTML(cat.label) +
           '</div>' +
           '<div class="portal-badge-grid">' +
@@ -1126,7 +1127,7 @@ export class PortalView {
     const res = await this.invoke('get-badges', {});
     if (!res.ok) {
       body.innerHTML =
-        '<div class="gm-empty" style="padding:2rem 0;"><i class="ph ph-warning-circle gm-icon"></i><div class="gm-empty-title">Unable to load your badges.</div><div class="gm-empty-sub">' +
+        '<div class="u-p-2rem-0 gm-empty"><i class="ph ph-warning-circle gm-icon"></i><div class="gm-empty-title">Unable to load your badges.</div><div class="gm-empty-sub">' +
         escapeHTML(res.error || 'unknown error') +
         '</div></div>';
       return;
@@ -1162,7 +1163,7 @@ export class PortalView {
     if (!sessions || sessions.length === 0) {
       panel.innerHTML =
         headerHtml +
-        '<div class="gm-empty" style="padding:2rem 0;"><i class="ph ph-calendar-blank gm-icon"></i><div class="gm-empty-title">No active events right now.</div><div class="gm-empty-sub">When your guild starts an event, it will show up here for you to fill in.</div></div>';
+        '<div class="u-p-2rem-0 gm-empty"><i class="ph ph-calendar-blank gm-icon"></i><div class="gm-empty-title">No active events right now.</div><div class="gm-empty-sub">When your guild starts an event, it will show up here for you to fill in.</div></div>';
       return;
     }
 
@@ -1292,11 +1293,9 @@ export class PortalView {
       escapeHTML(sess.session_id) +
       '">' +
       '<div class="portal-event-head">' +
-      '<div class="portal-event-icon" style="background:' +
-      accent +
-      '1f; color:' +
-      accent +
-      ';"><i class="ph ' +
+      '<div class="portal-event-icon" data-gm-style="' +
+      styleRef('background:' + accent + '1f; color:' + accent + ';') +
+      '"><i class="ph ' +
       icon +
       '"></i></div>' +
       '<div class="portal-event-head-info">' +
@@ -1437,7 +1436,7 @@ export class PortalView {
       return (
         '<div class="portal-card">' +
         title +
-        '<div class="portal-msg" style="display:block; color: var(--success);"><i class="ph ph-check-circle"></i> Linked to Discord.</div>' +
+        '<div class="u-d-block u-c-success portal-msg"><i class="ph ph-check-circle"></i> Linked to Discord.</div>' +
         '<div class="portal-timezone-hint"><i class="ph ph-info"></i> You sign in with <strong>Continue with Discord</strong>, and bot commands like <code>/myinfo</code> and <code>/mystats</code> know who you are.</div>' +
         '</div>'
       );
@@ -1463,43 +1462,43 @@ export class PortalView {
       '</div>' +
       '</header>' +
       '<div class="portal-settings-grid">' +
-      '<div class="portal-card" style="grid-column: 1 / -1;">' +
-      '<div class="portal-card-title" style="display:flex; justify-content:space-between; align-items:center;">' +
+      '<div class="u-gcol-1-neg1 portal-card">' +
+      '<div class="u-d-flex u-justify-space-between u-items-center portal-card-title">' +
       '<span><i class="ph ph-shield-chevron"></i> My Military Force Metrics</span>' +
       '<button class="gm-help-btn" data-help-id="help-portal-power" aria-label="Help: My Military Metrics"><i class="ph ph-info"></i></button>' +
       '</div>' +
-      '<div class="portal-settings-sub" style="font-size: var(--fs-base); color:var(--text-muted); margin-bottom:1rem;">' +
+      '<div class="u-fs-fs-base u-c-text-muted u-mb-1rem portal-settings-sub">' +
       'Keep your combat metrics up to date to help your officers build optimal squads for SvS, GvG, and Shadowfront.' +
       '</div>' +
-      '<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.85rem; margin-bottom: 1rem;">' +
-      '<div class="portal-field"><label for="portal-user-power" style="font-size: var(--fs-sm); font-weight:600; color:var(--fg); margin-bottom:0.25rem; display:block;">Overall Total Power</label><input type="text" id="portal-user-power" class="gm-input" placeholder="e.g. 100000000" value="' +
+      '<div class="u-d-grid u-cols-repeat-auto-fit-mi-f8f7e9 u-gap-0_85rem u-mb-1rem">' +
+      '<div class="portal-field"><label for="portal-user-power" class="u-fs-fs-sm u-fw-600 u-c-fg u-mb-0_25rem u-d-block">Overall Total Power</label><input type="text" id="portal-user-power" class="gm-input" placeholder="e.g. 100000000" value="' +
       escapeHTML(this.state.player.overall_power || '') +
       '"></div>' +
-      '<div class="portal-field"><label for="portal-user-fleet" style="font-size: var(--fs-sm); font-weight:600; color:#60a5fa; margin-bottom:0.25rem; display:block;">⚔️ Fleet Rating (March 1)</label><input type="text" id="portal-user-fleet" class="gm-input" placeholder="e.g. 2000000" value="' +
+      '<div class="portal-field"><label for="portal-user-fleet" class="u-fs-fs-sm u-fw-600 u-c-hex60a5fa u-mb-0_25rem u-d-block">⚔️ Fleet Rating (March 1)</label><input type="text" id="portal-user-fleet" class="gm-input" placeholder="e.g. 2000000" value="' +
       escapeHTML(this.state.player.fleet_rating || '') +
       '"></div>' +
-      '<div class="portal-field"><label for="portal-user-tech" style="font-size: var(--fs-sm); font-weight:600; color:#a78bfa; margin-bottom:0.25rem; display:block;">🔬 Technology Power</label><input type="text" id="portal-user-tech" class="gm-input" placeholder="e.g. 15000000" value="' +
+      '<div class="portal-field"><label for="portal-user-tech" class="u-fs-fs-sm u-fw-600 u-c-hexa78bfa u-mb-0_25rem u-d-block">🔬 Technology Power</label><input type="text" id="portal-user-tech" class="gm-input" placeholder="e.g. 15000000" value="' +
       escapeHTML(this.state.player.tech_power || '') +
       '"></div>' +
-      '<div class="portal-field"><label for="portal-user-flagship" style="font-size: var(--fs-sm); font-weight:600; color:#fbbf24; margin-bottom:0.25rem; display:block;">🚀 Flagship Power</label><input type="text" id="portal-user-flagship" class="gm-input" placeholder="e.g. 10000000" value="' +
+      '<div class="portal-field"><label for="portal-user-flagship" class="u-fs-fs-sm u-fw-600 u-c-hexfbbf24 u-mb-0_25rem u-d-block">🚀 Flagship Power</label><input type="text" id="portal-user-flagship" class="gm-input" placeholder="e.g. 10000000" value="' +
       escapeHTML(this.state.player.flagship_power || '') +
       '"></div>' +
-      '<div class="portal-field"><label for="portal-user-champion" style="font-size: var(--fs-sm); font-weight:600; color:#f472b6; margin-bottom:0.25rem; display:block;">👑 Champions Total Power</label><input type="text" id="portal-user-champion" class="gm-input" placeholder="e.g. 30000000" value="' +
+      '<div class="portal-field"><label for="portal-user-champion" class="u-fs-fs-sm u-fw-600 u-c-hexf472b6 u-mb-0_25rem u-d-block">👑 Champions Total Power</label><input type="text" id="portal-user-champion" class="gm-input" placeholder="e.g. 30000000" value="' +
       escapeHTML(this.state.player.champion_power || '') +
       '"></div>' +
-      '<div class="portal-field"><label for="portal-user-crew" style="font-size: var(--fs-sm); font-weight:600; color:#38bdf8; margin-bottom:0.25rem; display:block;">👥 Crew Total Power</label><input type="text" id="portal-user-crew" class="gm-input" placeholder="e.g. 5000000" value="' +
+      '<div class="portal-field"><label for="portal-user-crew" class="u-fs-fs-sm u-fw-600 u-c-hex38bdf8 u-mb-0_25rem u-d-block">👥 Crew Total Power</label><input type="text" id="portal-user-crew" class="gm-input" placeholder="e.g. 5000000" value="' +
       escapeHTML(this.state.player.crew_power || '') +
       '"></div>' +
-      '<div class="portal-field"><label for="portal-user-glory" style="font-size: var(--fs-sm); font-weight:600; color:#34d399; margin-bottom:0.25rem; display:block;">🏆 Glory Score</label><input type="text" id="portal-user-glory" class="gm-input" placeholder="e.g. 50000000" value="' +
+      '<div class="portal-field"><label for="portal-user-glory" class="u-fs-fs-sm u-fw-600 u-c-hex34d399 u-mb-0_25rem u-d-block">🏆 Glory Score</label><input type="text" id="portal-user-glory" class="gm-input" placeholder="e.g. 50000000" value="' +
       escapeHTML(this.state.player.glory_score || this.state.player.glory || '') +
       '"></div>' +
       '</div>' +
-      '<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">' +
-      '<div id="portal-metrics-summary" style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">' +
-      '<span class="gm-chip" id="portal-density-chip" style="color:#818cf8; background:rgba(99,102,241,0.12); border:1px solid rgba(99,102,241,0.3); font-size: var(--fs-sm);"><i class="ph ph-shield-check"></i> Density: ' +
+      '<div class="u-d-flex u-justify-space-between u-items-center u-wrap-wrap u-gap-0_75rem">' +
+      '<div id="portal-metrics-summary" class="u-d-flex u-gap-0_5rem u-items-center u-wrap-wrap">' +
+      '<span class="u-c-hex818cf8 u-bg-rgba-99-102-241-0_12 u-border-1px-solid-rgba-99-2a6e71 u-fs-fs-sm gm-chip" id="portal-density-chip"><i class="ph ph-shield-check"></i> Density: ' +
       calculateCombatDensity(this.state.player) +
       '%</span>' +
-      '<span class="gm-chip" id="portal-combativity-chip" style="color:#34d399; background:rgba(52,211,153,0.12); border:1px solid rgba(52,211,153,0.3); font-size: var(--fs-sm);"><i class="ph ph-crosshair"></i> Combativity: ' +
+      '<span class="u-c-hex34d399 u-bg-rgba-52-211-153-0_12 u-border-1px-solid-rgba-52-09067f u-fs-fs-sm gm-chip" id="portal-combativity-chip"><i class="ph ph-crosshair"></i> Combativity: ' +
       calculateCombativity(this.state.player) +
       'x</span>' +
       '</div>' +
@@ -1808,7 +1807,7 @@ export class PortalView {
       '<p class="gm-page-subtitle">Let your officers know you will be away or less active. This is visible to your guild admins.</p>' +
       '</div>' +
       '</header>' +
-      '<div id="portal-absence-body"><div class="gm-empty" style="padding:2rem 0;"><i class="ph ph-circle-notch ph-spin gm-icon"></i><div class="gm-empty-title">Loading...</div></div></div>';
+      '<div id="portal-absence-body"><div class="u-p-2rem-0 gm-empty"><i class="ph ph-circle-notch ph-spin gm-icon"></i><div class="gm-empty-title">Loading...</div></div></div>';
 
     this.loadAbsencePanel();
   }
@@ -1820,7 +1819,7 @@ export class PortalView {
     const res = await this.invoke('get-absences', {});
     if (!res.ok) {
       body.innerHTML =
-        '<div class="gm-empty" style="padding:2rem 0;"><i class="ph ph-warning-circle gm-icon"></i><div class="gm-empty-title">Unable to load your absences.</div></div>';
+        '<div class="u-p-2rem-0 gm-empty"><i class="ph ph-warning-circle gm-icon"></i><div class="gm-empty-title">Unable to load your absences.</div></div>';
       return;
     }
 
@@ -1849,7 +1848,7 @@ export class PortalView {
     let listHtml = '';
     if (absences.length === 0) {
       listHtml =
-        '<div class="gm-empty" style="padding:1.5rem 0;"><i class="ph ph-calendar-blank gm-icon"></i><div class="gm-empty-title">No declared absences.</div></div>';
+        '<div class="u-p-1_5rem-0 gm-empty"><i class="ph ph-calendar-blank gm-icon"></i><div class="gm-empty-title">No declared absences.</div></div>';
     } else {
       listHtml =
         '<div class="portal-absence-list">' +

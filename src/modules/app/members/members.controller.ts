@@ -7,6 +7,7 @@
  * dialogs service.
  */
 
+import { styleRef } from '../../../core/dom/style-refs';
 import { adoptDialog } from '../../../components/ui/Dialog';
 import { eventsViewLazy, armsRaceViewLazy, shadowfrontViewLazy } from '../lazy-views';
 import { t, esc, byId } from '../admin/utils';
@@ -237,28 +238,28 @@ export function renderPendingTransfers(): void {
     const mode = transferActionFor(tr, currentG);
     const approverGuild = tr.requested_by === 'admin' ? tr.source_guild : tr.target_guild;
     const directionBadge = isIncoming
-      ? '<span class="gm-chip gm-chip-success" style="font-size: var(--fs-xs);"><i class="ph ph-arrow-down-left"></i> IN</span>'
-      : '<span class="gm-chip" style="font-size: var(--fs-xs); background:rgba(251,191,36,0.12); color:#fbbf24; border:1px solid rgba(251,191,36,0.3);"><i class="ph ph-arrow-up-right"></i> OUT</span>';
+      ? '<span class="u-fs-fs-xs gm-chip gm-chip-success"><i class="ph ph-arrow-down-left"></i> IN</span>'
+      : '<span class="u-fs-fs-xs u-bg-rgba-251-191-36-0_12 u-c-hexfbbf24 u-border-1px-solid-rgba-251-52ad40 gm-chip"><i class="ph ph-arrow-up-right"></i> OUT</span>';
     const actions =
       mode === 'decide'
-        ? '<button type="button" class="gm-btn gm-btn-sm gm-btn-success" data-transfer-action="approve" data-transfer-dir="' +
+        ? '<button type="button" class="u-mr-0_25rem gm-btn gm-btn-sm gm-btn-success" data-transfer-action="approve" data-transfer-dir="' +
           (isIncoming ? 'in' : 'out') +
           '" data-transfer-id="' +
           esc(tr.id) +
-          '" style="margin-right: 0.25rem;" title="Approve Transfer"><i class="ph ph-check"></i></button>' +
+          '" title="Approve Transfer"><i class="ph ph-check"></i></button>' +
           '<button type="button" class="gm-btn gm-btn-sm gm-btn-danger" data-transfer-action="reject" data-transfer-dir="' +
           (isIncoming ? 'in' : 'out') +
           '" data-transfer-id="' +
           esc(tr.id) +
           '" title="Reject Transfer"><i class="ph ph-x"></i></button>'
         : mode === 'withdraw'
-          ? '<span style="font-size: var(--fs-xs); color:var(--text-dim); margin-right: 0.35rem;"><i class="ph ph-hourglass"></i> Awaiting approval from ' +
+          ? '<span class="u-fs-fs-xs u-c-text-dim u-mr-0_35rem"><i class="ph ph-hourglass"></i> Awaiting approval from ' +
             esc(approverGuild) +
             '</span>' +
             '<button type="button" class="gm-btn gm-btn-sm gm-btn-ghost" data-transfer-action="reject" data-transfer-dir="withdraw" data-transfer-id="' +
             esc(tr.id) +
             '" title="Withdraw your request"><i class="ph ph-x"></i></button>'
-          : '<span style="font-size: var(--fs-xs); color:var(--text-dim);"><i class="ph ph-hourglass"></i> Awaiting approval from ' +
+          : '<span class="u-fs-fs-xs u-c-text-dim"><i class="ph ph-hourglass"></i> Awaiting approval from ' +
             esc(approverGuild) +
             '</span>';
 
@@ -280,7 +281,7 @@ export function renderPendingTransfers(): void {
       ' &rarr; ' +
       esc(tr.target_guild) +
       '</td>' +
-      '<td class="gm-center" data-label="Actions" style="white-space: nowrap;">' +
+      '<td class="u-ws-nowrap gm-center" data-label="Actions">' +
       actions +
       '</td>' +
       '</tr>';
@@ -348,21 +349,21 @@ export async function showUidTakenDialog(typedPseudo: string, uid: string, info:
   const history = info.name_history || [];
   const historyHtml =
     history.length > 0
-      ? '<div style="margin-top:0.75rem; border-top:1px solid var(--border-soft); padding-top:0.65rem;">' +
-        '<div style="font-size: var(--fs-xs); font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--text-muted); margin-bottom:0.35rem;">Name history</div>' +
-        '<div style="display:flex; flex-direction:column; gap:0.2rem;">' +
+      ? '<div class="u-mt-0_75rem u-bt-1px-solid-border-soft u-pt-0_65rem">' +
+        '<div class="u-fs-fs-xs u-fw-700 u-tracking-0_05em u-tt-uppercase u-c-text-muted u-mb-0_35rem">Name history</div>' +
+        '<div class="u-d-flex u-dir-column u-gap-0_2rem">' +
         history
           .slice(0, 5)
           .map(
             (h: any) =>
-              '<div style="font-size: var(--fs-sm); color:var(--text-dim);">' +
-              '<span style="color:var(--text-muted); text-decoration:line-through;">' +
+              '<div class="u-fs-fs-sm u-c-text-dim">' +
+              '<span class="u-c-text-muted u-td-line-through">' +
               esc(h.old_pseudo) +
               '</span>' +
-              ' &rarr; <span style="color:var(--accent); font-weight:600;">' +
+              ' &rarr; <span class="u-c-accent u-fw-600">' +
               esc(h.new_pseudo) +
               '</span>' +
-              '<span style="margin-left:0.5rem; font-size: var(--fs-xs);">(' +
+              '<span class="u-ml-0_5rem u-fs-fs-xs">(' +
               esc(String(h.changed_at || '').slice(0, 10)) +
               ')</span>' +
               '</div>'
@@ -382,10 +383,10 @@ export async function showUidTakenDialog(typedPseudo: string, uid: string, info:
   let footerHtml = '';
 
   const detailRow = (label: string, value: string, strong = false): string =>
-    '<div style="display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap;"><span style="color:var(--text-muted);">' +
+    '<div class="u-d-flex u-justify-space-between u-gap-1rem u-wrap-wrap"><span class="u-c-text-muted">' +
     esc(label) +
     '</span>' +
-    (strong ? '<strong style="color:var(--fg);">' + esc(value) + '</strong>' : '<span>' + esc(value) + '</span>') +
+    (strong ? '<strong class="u-c-fg">' + esc(value) + '</strong>' : '<span>' + esc(value) + '</span>') +
     '</div>';
 
   if (isSameGuild) {
@@ -398,9 +399,9 @@ export async function showUidTakenDialog(typedPseudo: string, uid: string, info:
     const displayRole = (extraData && extraData.role) || p.role || (localExisting ? localExisting.role : 'R1');
 
     titleHtml =
-      '<div style="display:flex; align-items:center; gap:0.5rem;"><i class="ph ph-user-switch" style="font-size: var(--fs-3xl); color:var(--accent);"></i><h3 style="margin:0; font-size: var(--fs-xl);">Player Already in Guild</h3></div>';
+      '<div class="u-d-flex u-items-center u-gap-0_5rem"><i class="u-fs-fs-3xl u-c-accent ph ph-user-switch"></i><h3 class="u-m-0 u-fs-fs-xl">Player Already in Guild</h3></div>';
     bodyHtml =
-      '<div style="background: rgba(255,255,255,0.03); border:1px solid var(--border-soft); border-radius:8px; padding:0.9rem; display:flex; flex-direction:column; gap:0.4rem;">' +
+      '<div class="u-bg-rgba-255-255-255-0_03 u-border-1px-solid-border-soft u-rounded-8px u-p-0_9rem u-d-flex u-dir-column u-gap-0_4rem">' +
       detailRow('Current Name', existingPseudo, true) +
       detailRow('New Name', typedPseudo, true) +
       detailRow('Player ID', uid) +
@@ -411,8 +412,8 @@ export async function showUidTakenDialog(typedPseudo: string, uid: string, info:
       historyHtml +
       '</div>';
     noticeHtml =
-      '<div style="background: var(--info-soft); color: var(--info); padding:0.75rem; border-radius:6px; font-size: var(--fs-sm); line-height:1.45; margin-top:0.85rem;">' +
-      '<i class="ph ph-info" style="margin-right:4px;"></i>This player (<strong>' +
+      '<div class="u-bg-info-soft u-c-info u-p-0_75rem u-rounded-6px u-fs-fs-sm u-lh-1_45 u-mt-0_85rem">' +
+      '<i class="u-mr-4px ph ph-info"></i>This player (<strong>' +
       esc(existingPseudo) +
       '</strong>) already belongs to <strong>' +
       esc(p.guild || currentG) +
@@ -421,15 +422,15 @@ export async function showUidTakenDialog(typedPseudo: string, uid: string, info:
       '</strong>?' +
       '</div>';
     footerHtml =
-      '<div class="gm-modal-footer" style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1.4rem;">' +
+      '<div class="u-d-flex u-justify-flex-end u-gap-0_5rem u-mt-1_4rem gm-modal-footer">' +
       '<button type="button" class="gm-btn gm-btn-ghost gm-close-uid">Cancel</button>' +
       '<button type="button" id="uid-rename-btn" class="gm-btn gm-btn-primary"><i class="ph ph-pencil-simple"></i> <span>Update Player Name</span></button>' +
       '</div>';
   } else {
     titleHtml =
-      '<div style="display:flex; align-items:center; gap:0.5rem;"><i class="ph ph-user-circle-gear" style="font-size: var(--fs-3xl); color:var(--accent);"></i><h3 style="margin:0; font-size: var(--fs-xl);">Player ID already exists</h3></div>';
+      '<div class="u-d-flex u-items-center u-gap-0_5rem"><i class="u-fs-fs-3xl u-c-accent ph ph-user-circle-gear"></i><h3 class="u-m-0 u-fs-fs-xl">Player ID already exists</h3></div>';
     bodyHtml =
-      '<div style="background: rgba(255,255,255,0.03); border:1px solid var(--border-soft); border-radius:8px; padding:0.9rem; display:flex; flex-direction:column; gap:0.4rem;">' +
+      '<div class="u-bg-rgba-255-255-255-0_03 u-border-1px-solid-border-soft u-rounded-8px u-p-0_9rem u-d-flex u-dir-column u-gap-0_4rem">' +
       detailRow('Player', p.pseudo || typedPseudo, true) +
       detailRow('Player ID', uid) +
       detailRow('Current Guild', p.guild || '?', true) +
@@ -438,29 +439,29 @@ export async function showUidTakenDialog(typedPseudo: string, uid: string, info:
       historyHtml +
       '</div>';
     noticeHtml =
-      '<div style="background: var(--info-soft); color: var(--info); padding:0.75rem; border-radius:6px; font-size: var(--fs-sm); line-height:1.45; margin-top:0.85rem;">' +
-      '<i class="ph ph-info" style="margin-right:4px;"></i>This player already belongs to <strong>' +
+      '<div class="u-bg-info-soft u-c-info u-p-0_75rem u-rounded-6px u-fs-fs-sm u-lh-1_45 u-mt-0_85rem">' +
+      '<i class="u-mr-4px ph ph-info"></i>This player already belongs to <strong>' +
       esc(p.guild || 'another guild') +
       '</strong>. You cannot add them directly here. You can send a transfer request so an admin approves moving them to <strong>' +
       esc(currentG) +
       '</strong>.' +
       '</div>' +
-      '<label style="display:flex; align-items:flex-start; gap:0.5rem; margin-top:0.85rem; cursor:pointer; font-size: var(--fs-sm); color:var(--text-muted);">' +
-      '<input type="checkbox" id="uid-taken-confirm" style="margin-top:2px; accent-color: var(--accent);">' +
+      '<label class="u-d-flex u-items-flex-start u-gap-0_5rem u-mt-0_85rem u-cursor-pointer u-fs-fs-sm u-c-text-muted">' +
+      '<input type="checkbox" id="uid-taken-confirm" class="u-mt-2px u-accent-accent">' +
       "<span>I understand this process cannot be undone without reporting an issue or bug, and that the transfer must be approved by the player's current guild.</span>" +
       '</label>';
     footerHtml =
-      '<div class="gm-modal-footer" style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1.4rem;">' +
+      '<div class="u-d-flex u-justify-flex-end u-gap-0_5rem u-mt-1_4rem gm-modal-footer">' +
       '<button type="button" class="gm-btn gm-btn-ghost gm-close-uid">Cancel</button>' +
       '<button type="button" id="uid-taken-request-btn" class="gm-btn gm-btn-primary" disabled><i class="ph ph-arrows-left-right"></i> <span>Request Transfer</span></button>' +
       '</div>';
   }
 
   overlay.innerHTML =
-    '<div class="gm-modal-card" style="max-width: 520px; width: 92%; position: relative; text-align:left;">' +
-    '<div class="gm-modal-header" style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">' +
+    '<div class="u-maxw-520px u-w-92pct u-pos-relative u-text-left gm-modal-card">' +
+    '<div class="u-d-flex u-items-center u-justify-space-between u-mb-1rem gm-modal-header">' +
     titleHtml +
-    '<button type="button" class="gm-mini-btn gm-close-uid" style="cursor:pointer;" aria-label="Close"><i class="ph ph-x" aria-hidden="true"></i></button>' +
+    '<button type="button" class="u-cursor-pointer gm-mini-btn gm-close-uid" aria-label="Close"><i class="ph ph-x" aria-hidden="true"></i></button>' +
     '</div>' +
     bodyHtml +
     noticeHtml +
@@ -915,32 +916,32 @@ export async function showTransferMemberDialog(member: any): Promise<void> {
 
   const html =
     '<div id="transfer-member-overlay" class="gm-modal-overlay">' +
-    '<div class="gm-modal-card" style="max-width: 480px; width: 90%; position: relative;">' +
-    '<div class="gm-modal-header" style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 1rem;">' +
-    '<div style="display:flex; align-items:center; gap:0.5rem;"><i class="ph ph-arrows-left-right" style="font-size: var(--fs-3xl); color: var(--accent);"></i><h3 style="margin:0; font-size: var(--fs-xl);">Transfer Member</h3></div>' +
+    '<div class="u-maxw-480px u-w-90pct u-pos-relative gm-modal-card">' +
+    '<div class="u-d-flex u-items-center u-justify-space-between u-mb-1rem gm-modal-header">' +
+    '<div class="u-d-flex u-items-center u-gap-0_5rem"><i class="u-fs-fs-3xl u-c-accent ph ph-arrows-left-right"></i><h3 class="u-m-0 u-fs-fs-xl">Transfer Member</h3></div>' +
     '<button type="button" class="gm-mini-btn gm-close-modal" aria-label="Close"><i class="ph ph-x" aria-hidden="true"></i></button>' +
     '</div>' +
-    '<div class="gm-modal-body" style="display:flex; flex-direction:column; gap:1rem;">' +
-    '<div style="background: rgba(255,255,255,0.03); padding: 0.75rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.08);">' +
-    '<div><strong>Player:</strong> <span style="color: var(--accent); font-weight: 700;">' +
+    '<div class="u-d-flex u-dir-column u-gap-1rem gm-modal-body">' +
+    '<div class="u-bg-rgba-255-255-255-0_03 u-p-0_75rem u-rounded-6px u-border-1px-solid-rgba-255-fbc4d8">' +
+    '<div><strong>Player:</strong> <span class="u-c-accent u-fw-700">' +
     esc(member.pseudo) +
     '</span> (UID: ' +
     esc(member.uid) +
     ')</div>' +
-    '<div style="font-size: var(--fs-base); color: var(--text-dim); margin-top: 0.25rem;">Current Guild: <strong>' +
+    '<div class="u-fs-fs-base u-c-text-dim u-mt-0_25rem">Current Guild: <strong>' +
     esc(currentG) +
     '</strong> (Server #' +
     esc(currentServer) +
     ')</div>' +
     '</div>' +
     '<div class="gm-form-group">' +
-    '<label class="gm-label" for="transfer-target-guild" style="font-size: var(--fs-base); font-weight: 600; margin-bottom: 0.35rem; display:block;">Select Target Guild:</label>' +
+    '<label class="u-fs-fs-base u-fw-600 u-mb-0_35rem u-d-block gm-label" for="transfer-target-guild">Select Target Guild:</label>' +
     '<select id="transfer-target-guild" class="gm-select gm-input">' +
     optionsHtml +
     '</select>' +
     '</div>' +
     '</div>' +
-    '<div class="gm-modal-footer" style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top: 1.5rem;">' +
+    '<div class="u-d-flex u-justify-flex-end u-gap-0_5rem u-mt-1_5rem gm-modal-footer">' +
     '<button type="button" class="gm-btn gm-btn-ghost gm-close-modal">Cancel</button>' +
     '<button type="button" id="confirm-transfer-btn" class="gm-btn gm-btn-primary"><i class="ph ph-arrows-left-right"></i><span>Confirm Transfer</span></button>' +
     '</div>' +
@@ -1016,11 +1017,11 @@ export async function showEditMemberDialog(member: any): Promise<void> {
 
   const historyHtml =
     nameHistory.length > 0
-      ? '<div style="margin-top: 1rem; border-top: 1px solid var(--border-soft); padding-top: 1rem; text-align: left;">' +
-        '<h4 style="margin: 0 0 0.5rem 0; font-size: var(--fs-md); color: var(--text-muted);"><i class="ph ph-clock-counter-clockwise"></i> ' +
+      ? '<div class="u-mt-1rem u-bt-1px-solid-border-soft u-pt-1rem u-text-left">' +
+        '<h4 class="u-m-0-0-0_5rem-0 u-fs-fs-md u-c-text-muted"><i class="ph ph-clock-counter-clockwise"></i> ' +
         t('Name History') +
         '</h4>' +
-        '<div style="max-height: 120px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.35rem;">' +
+        '<div class="u-maxh-120px u-oy-auto u-d-flex u-dir-column u-gap-0_35rem">' +
         nameHistory
           .map((h) => {
             const date = new Date(h.changed_at).toLocaleDateString('en-GB', {
@@ -1029,19 +1030,19 @@ export async function showEditMemberDialog(member: any): Promise<void> {
               year: 'numeric',
             });
             return (
-              '<div style="display: flex; justify-content: space-between; align-items: center; font-size: var(--fs-sm); background: var(--bg-dim); border: 1px solid var(--border-soft); padding: 0.35rem 0.5rem; border-radius: var(--radius-sm);">' +
+              '<div class="u-d-flex u-justify-space-between u-items-center u-fs-fs-sm u-bg-bg-dim u-border-1px-solid-border-soft u-p-0_35rem-0_5rem u-rounded-radius-sm">' +
               '<span><strong>' +
               esc(h.old_pseudo) +
               '</strong> ➔ <strong>' +
               esc(h.new_pseudo) +
-              '</strong> <span class="gm-dim" style="font-size: var(--fs-sm);">(' +
+              '</strong> <span class="u-fs-fs-sm gm-dim">(' +
               date +
               ' by ' +
               esc(h.changed_by) +
               ')</span></span>' +
-              '<button type="button" class="delete-history-btn" data-id="' +
+              '<button type="button" class="u-bg-none u-border-none u-c-error u-cursor-pointer u-p-2px delete-history-btn" data-id="' +
               esc(h.id) +
-              '" aria-label="Delete this name change" style="background: none; border: none; color: var(--error); cursor: pointer; padding: 2px;"><i class="ph ph-trash" aria-hidden="true"></i></button>' +
+              '" aria-label="Delete this name change"><i class="ph ph-trash" aria-hidden="true"></i></button>' +
               '</div>'
             );
           })
@@ -1052,7 +1053,7 @@ export async function showEditMemberDialog(member: any): Promise<void> {
   const uidStat = getUidStatus(member.uid);
   const isTempUid = !uidStat.valid;
   const uidHelperHtml = isTempUid
-    ? '<div id="edit-uid-helper" style="font-size: var(--fs-sm); color:#f87171; margin-top:0.35rem; display:flex; align-items:center; gap:0.25rem;"><i class="ph ph-warning"></i> ' +
+    ? '<div id="edit-uid-helper" class="u-fs-fs-sm u-c-hexf87171 u-mt-0_35rem u-d-flex u-items-center u-gap-0_25rem"><i class="ph ph-warning"></i> ' +
       esc(uidStat.label || '') +
       ' (' +
       esc(uidStat.reason || 'Enter real 6-10 digit game UID') +
@@ -1062,16 +1063,16 @@ export async function showEditMemberDialog(member: any): Promise<void> {
   const metricInput = (id: string, label: string, value: unknown, placeholder: string): string =>
     '<div class="input-group"><label for="' +
     id +
-    '" style="font-size: var(--fs-sm);">' +
+    '" class="u-fs-fs-sm">' +
     label +
     '</label>' +
     '<input type="number" id="' +
     id +
-    '" class="gm-input" value="' +
+    '" class="u-p-0_35rem-0_5rem u-fs-fs-sm gm-input" value="' +
     esc(value || '') +
     '" placeholder="' +
     placeholder +
-    '" style="padding:0.35rem 0.5rem; font-size: var(--fs-sm);"></div>';
+    '"></div>';
 
   const memberTz = member.timezone || '';
   const tzRegions = Array.from(new Set(COMMON_TIMEZONES.map((z) => z.region)));
@@ -1109,7 +1110,7 @@ export async function showEditMemberDialog(member: any): Promise<void> {
       : '');
 
   overlay.innerHTML =
-    '<div class="gm-modal-card" style="max-width: 480px; width: 95vw;">' +
+    '<div class="u-maxw-480px u-w-95vw gm-modal-card">' +
     '<div class="confirm-icon"><i class="ph ph-pencil-simple text-accent"></i></div>' +
     '<h3>' +
     t('edit_member_title') +
@@ -1117,7 +1118,7 @@ export async function showEditMemberDialog(member: any): Promise<void> {
     '<p>' +
     t('edit_member_body') +
     '</p>' +
-    '<form id="edit-member-form" style="display:flex; flex-direction:column; gap: 1rem; margin-top: 1rem;">' +
+    '<form id="edit-member-form" class="u-d-flex u-dir-column u-gap-1rem u-mt-1rem">' +
     '<div class="input-group"><label for="edit-pseudo">' +
     t('label_pseudo') +
     '</label><div class="input-wrapper"><i class="ph ph-game-controller"></i>' +
@@ -1128,37 +1129,37 @@ export async function showEditMemberDialog(member: any): Promise<void> {
     '<input type="text" id="edit-uid" value="' +
     esc(member.uid || '') +
     '" placeholder="e.g. 1917131" ' +
-    (isTempUid ? 'style="border-color:rgba(239,68,68,0.7);"' : '') +
+    (isTempUid ? 'data-gm-style="' + styleRef('border-color:rgba(239,68,68,0.7);') + '"' : '') +
     '></div>' +
     uidHelperHtml +
     '</div>' +
-    '<div style="display: flex; gap: 1rem;">' +
-    '<div class="input-group" style="flex: 1;"><label for="edit-power">Overall Power</label><div class="input-wrapper"><i class="ph ph-sword"></i>' +
+    '<div class="u-d-flex u-gap-1rem">' +
+    '<div class="u-flex-1 input-group"><label for="edit-power">Overall Power</label><div class="input-wrapper"><i class="ph ph-sword"></i>' +
     '<input type="number" id="edit-power" value="' +
     esc(member.overall_power || '') +
     '" placeholder="e.g. 80000000"></div></div>' +
-    '<div class="input-group" style="flex: 1;"><label for="edit-role"><i class="ph ph-crown"></i> Role</label>' +
-    '<select id="edit-role" style="background: var(--bg-1); border: 1px solid var(--border-soft); color: var(--text-normal); width: 100%; border-radius: var(--radius-md); padding: 0.65rem 0.75rem;">' +
+    '<div class="u-flex-1 input-group"><label for="edit-role"><i class="ph ph-crown"></i> Role</label>' +
+    '<select id="edit-role" class="u-bg-bg-1 u-border-1px-solid-border-soft u-c-text-normal u-w-100pct u-rounded-radius-md u-p-0_65rem-0_75rem">' +
     ['R1', 'R2', 'R3', 'R4', 'R5']
       .map((r) => '<option value="' + r + '"' + (member.role === r ? ' selected' : '') + '>' + r + '</option>')
       .join('') +
     '</select></div>' +
     '</div>' +
     '<div class="input-group">' +
-    '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">' +
-    '<label for="edit-timezone" style="font-size: var(--fs-sm);"><i class="ph ph-clock"></i> Timezone</label>' +
-    '<button type="button" id="edit-detect-tz-btn" class="gm-btn gm-btn-ghost" style="padding: 0.15rem 0.4rem; font-size: var(--fs-xs); display: inline-flex; align-items: center; gap: 0.25rem;" title="Detect browser timezone">' +
+    '<div class="u-d-flex u-justify-space-between u-items-center u-mb-0_25rem">' +
+    '<label for="edit-timezone" class="u-fs-fs-sm"><i class="ph ph-clock"></i> Timezone</label>' +
+    '<button type="button" id="edit-detect-tz-btn" class="u-p-0_15rem-0_4rem u-fs-fs-xs u-d-inline-flex u-items-center u-gap-0_25rem gm-btn gm-btn-ghost" title="Detect browser timezone">' +
     '<i class="ph ph-crosshair"></i> Auto-detect' +
     '</button>' +
     '</div>' +
     '<div class="input-wrapper"><i class="ph ph-globe"></i>' +
-    '<select id="edit-timezone" style="background: var(--bg-1); border: 1px solid var(--border-soft); color: var(--text-normal); width: 100%; border-radius: var(--radius-md); padding: 0.65rem 0.75rem;">' +
+    '<select id="edit-timezone" class="u-bg-bg-1 u-border-1px-solid-border-soft u-c-text-normal u-w-100pct u-rounded-radius-md u-p-0_65rem-0_75rem">' +
     tzOptionsHtml +
     '</select></div>' +
     '</div>' +
-    '<div style="background: var(--bg-dim); border: 1px solid var(--border-soft); border-radius: var(--radius-md); padding: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem;">' +
-    '<div style="font-size: var(--fs-sm); font-weight: 700; color: var(--accent);"><i class="ph ph-crosshair"></i> Tactical Military Scores</div>' +
-    '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.5rem;">' +
+    '<div class="u-bg-bg-dim u-border-1px-solid-border-soft u-rounded-radius-md u-p-0_75rem u-d-flex u-dir-column u-gap-0_5rem">' +
+    '<div class="u-fs-fs-sm u-fw-700 u-c-accent"><i class="ph ph-crosshair"></i> Tactical Military Scores</div>' +
+    '<div class="u-d-grid u-cols-repeat-auto-fit-mi-12e1ba u-gap-0_5rem">' +
     metricInput('edit-fleet', '⚔️ Fleet Rating', member.fleet_rating, 'e.g. 2000000') +
     metricInput('edit-tech', '🔬 Tech Power', member.tech_power, 'e.g. 15000000') +
     metricInput('edit-flagship', '🚀 Flagship Power', member.flagship_power, 'e.g. 10000000') +

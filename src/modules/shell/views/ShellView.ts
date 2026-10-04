@@ -18,6 +18,7 @@
  *   - This module never assigns any `window.GM_*` variable.
  */
 
+import { styleRef } from '../../../core/dom/style-refs';
 import { adoptDialog } from '../../../components/ui/Dialog';
 import { armsRaceViewLazy, shadowfrontViewLazy, overviewViewLazy } from '../../app/lazy-views';
 import {
@@ -313,13 +314,17 @@ export class ShellView {
     document.querySelectorAll('[data-gm-events-tabs]').forEach((slot) => {
       const ownerPanel = slot.closest('.tab-panel');
       const ownerId = ownerPanel ? ownerPanel.id : '';
-      let html = '<div class="gm-tabs-pill" style="margin-bottom:1rem; flex-wrap:nowrap; overflow-x:auto;">';
+      let html = '<div class="u-mb-1rem u-wrap-nowrap u-ox-auto gm-tabs-pill">';
       EVENT_TABS.forEach((e) => {
         const active = e.id === ownerId;
         const phIcon = e.icon || 'ph-sword';
         const iconStyle = active
-          ? 'style="color:' + e.colorVar + '; font-size: var(--fs-xl); margin-right:0.35rem; vertical-align:middle;"'
-          : 'style="font-size: var(--fs-xl); margin-right:0.35rem; vertical-align:middle;"';
+          ? 'data-gm-style="' +
+            styleRef(
+              'color:' + e.colorVar + '; font-size: var(--fs-xl); margin-right:0.35rem; vertical-align:middle;'
+            ) +
+            '"'
+          : 'data-gm-style="' + styleRef('font-size: var(--fs-xl); margin-right:0.35rem; vertical-align:middle;') + '"';
         html +=
           '<button class="gm-tab-pill' +
           (active ? ' gm-active' : '') +
@@ -602,9 +607,9 @@ export class ShellView {
             '<button type="button" class="gm-btn gm-btn-ghost gm-btn-sm gm-sidebar-report-bug" data-gm-nav-item="' +
             item.id +
             '">' +
-            '<i class="ph ' +
+            '<i class="u-fs-fs-xl ph ' +
             (item.icon || 'ph-circle') +
-            '" style="font-size: var(--fs-xl);"></i>' +
+            '"></i>' +
             '<span>' +
             t(item.labelKey) +
             '</span>' +
@@ -614,7 +619,7 @@ export class ShellView {
         .join('') +
       (canReportBug
         ? '<button type="button" class="gm-btn gm-btn-ghost gm-btn-sm gm-sidebar-report-bug" data-gm-report-bug>' +
-          '<i class="ph ph-bug" style="font-size: var(--fs-xl);"></i>' +
+          '<i class="u-fs-fs-xl ph ph-bug"></i>' +
           '<span>' +
           t('ticket_report_bug') +
           '</span>' +
@@ -738,17 +743,17 @@ export class ShellView {
     const html =
       brandHtml +
       '<div class="gm-topbar-actions">' +
-      '<select id="guild-selector" class="gm-select" aria-label="Active guild" style="' +
-      selectStyle +
+      '<select id="guild-selector" class="gm-select" aria-label="Active guild" data-gm-style="' +
+      styleRef('' + selectStyle + '') +
       '">' +
       guildOptions +
       '</select>' +
       (canReportBug
-        ? '<button class="gm-btn gm-btn-ghost gm-btn-sm" data-gm-report-bug title="' +
+        ? '<button class="u-gap-0_3rem gm-btn gm-btn-ghost gm-btn-sm" data-gm-report-bug title="' +
           t('ticket_report_bug') +
-          '" style="gap:0.3rem;">' +
-          '<i class="ph ph-bug" style="font-size: var(--fs-lg);"></i>' +
-          '<span class="gm-report-bug-label" style="font-size: var(--fs-sm); font-weight:600;">' +
+          '">' +
+          '<i class="u-fs-fs-lg ph ph-bug"></i>' +
+          '<span class="u-fs-fs-sm u-fw-600 gm-report-bug-label">' +
           t('ticket_report_bug') +
           '</span>' +
           '</button>'
@@ -817,10 +822,10 @@ export class ShellView {
         item.innerHTML =
           '<img src="' +
           dataUrl +
-          '" style="width:100%; height:100%; object-fit:cover;">' +
-          '<button type="button" class="gm-btn gm-btn-ghost gm-btn-icon" data-remove="' +
+          '" class="u-w-100pct u-h-100pct u-fit-cover">' +
+          '<button type="button" class="u-pos-absolute u-top-2px u-right-2px u-w-20px u-h-20px u-minw-20px u-bg-rgba-0-0-0-0_7 u-rounded-999px u-c-hexfff u-p-0 u-lh-1 u-fs-fs-sm gm-btn gm-btn-ghost gm-btn-icon" data-remove="' +
           idx +
-          '" style="position:absolute; top:2px; right:2px; width:20px; height:20px; min-width:20px; background:rgba(0,0,0,0.7); border-radius:999px; color:#fff; padding:0; line-height:1; font-size: var(--fs-sm);" title="Remove">×</button>';
+          '" title="Remove">×</button>';
         const removeBtn = item.querySelector('[data-remove]');
         if (removeBtn) {
           removeBtn.addEventListener('click', (e) => {
@@ -948,8 +953,7 @@ export class ShellView {
         });
 
         submit.disabled = true;
-        submit.innerHTML =
-          '<i class="ph ph-arrows-clockwise" style="font-size: var(--fs-lg);"></i> ' + t_('ticket_submitting');
+        submit.innerHTML = '<i class="u-fs-fs-lg ph ph-arrows-clockwise"></i> ' + t_('ticket_submitting');
         if (msgEl) msgEl.textContent = '';
         try {
           const db = getClient() as any;
@@ -992,17 +996,17 @@ export class ShellView {
 
   private bugReportModalHtml(esc: (v: unknown) => string, t_: (k: string) => string, env: any): string {
     return (
-      '<div class="gm-modal-card" style="max-width:580px; width:94%; max-height:90vh; overflow-y:auto; text-align:left;">' +
-      '<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.9rem; position:sticky; top:0; background:var(--bg-card); z-index:2; padding-bottom:0.4rem; border-bottom:1px solid var(--border-soft);">' +
-      '<div style="display:flex; align-items:center; gap:0.55rem;">' +
-      '<i class="ph ph-bug" style="color:var(--accent); font-size: var(--fs-2xl);"></i>' +
-      '<strong id="bug-report-title" style="font-size: var(--fs-xl);">' +
+      '<div class="u-maxw-580px u-w-94pct u-maxh-90vh u-oy-auto u-text-left gm-modal-card">' +
+      '<div class="u-d-flex u-items-center u-justify-space-between u-mb-0_9rem u-pos-sticky u-top-0 u-bg-bg-card u-z-2 u-pb-0_4rem u-bb-1px-solid-border-soft">' +
+      '<div class="u-d-flex u-items-center u-gap-0_55rem">' +
+      '<i class="u-c-accent u-fs-fs-2xl ph ph-bug"></i>' +
+      '<strong id="bug-report-title" class="u-fs-fs-xl">' +
       t_('ticket_report_bug') +
       '</strong>' +
       '</div>' +
       '<button type="button" class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm bug-report-close" title="Close" aria-label="Close"><i class="ph ph-x" aria-hidden="true"></i></button>' +
       '</div>' +
-      '<div class="gm-modal-body" style="display:flex; flex-direction:column; gap:0.85rem;">' +
+      '<div class="u-d-flex u-dir-column u-gap-0_85rem gm-modal-body">' +
       '<div class="gm-form-group">' +
       '<label class="gm-label" for="ticket-title">' +
       t_('ticket_title') +
@@ -1011,8 +1015,8 @@ export class ShellView {
       t_('ticket_title_ph') +
       '">' +
       '</div>' +
-      '<div style="display:flex; gap:0.8rem; flex-wrap:wrap;">' +
-      '<div class="gm-form-group" style="flex:1; min-width:140px;">' +
+      '<div class="u-d-flex u-gap-0_8rem u-wrap-wrap">' +
+      '<div class="u-flex-1 u-minw-140px gm-form-group">' +
       '<label class="gm-label" for="ticket-category">' +
       t_('ticket_category') +
       '</label>' +
@@ -1028,7 +1032,7 @@ export class ShellView {
       '</option>' +
       '</select>' +
       '</div>' +
-      '<div class="gm-form-group" style="flex:1; min-width:140px;">' +
+      '<div class="u-flex-1 u-minw-140px gm-form-group">' +
       '<label class="gm-label" for="ticket-severity">' +
       t_('ticket_severity') +
       '</label>' +
@@ -1052,72 +1056,72 @@ export class ShellView {
       '<label class="gm-label" for="ticket-current-behavior">' +
       t_('ticket_current_behavior') +
       ' *</label>' +
-      '<textarea id="ticket-current-behavior" class="gm-input" rows="3" maxlength="2000" placeholder="' +
+      '<textarea id="ticket-current-behavior" class="u-resize-vertical u-minh-75px gm-input" rows="3" maxlength="2000" placeholder="' +
       t_('ticket_current_behavior_ph') +
-      '" style="resize:vertical; min-height:75px;"></textarea>' +
+      '"></textarea>' +
       '</div>' +
       '<div class="gm-form-group">' +
       '<label class="gm-label" for="ticket-expected-behavior">' +
       t_('ticket_expected_behavior') +
       ' *</label>' +
-      '<textarea id="ticket-expected-behavior" class="gm-input" rows="3" maxlength="2000" placeholder="' +
+      '<textarea id="ticket-expected-behavior" class="u-resize-vertical u-minh-75px gm-input" rows="3" maxlength="2000" placeholder="' +
       t_('ticket_expected_behavior_ph') +
-      '" style="resize:vertical; min-height:75px;"></textarea>' +
+      '"></textarea>' +
       '</div>' +
       '<div class="gm-form-group">' +
       '<label class="gm-label" for="ticket-steps">' +
       t_('ticket_steps') +
       '</label>' +
-      '<textarea id="ticket-steps" class="gm-input" rows="3" maxlength="2000" placeholder="' +
+      '<textarea id="ticket-steps" class="u-resize-vertical u-minh-70px gm-input" rows="3" maxlength="2000" placeholder="' +
       t_('ticket_steps_ph') +
-      '" style="resize:vertical; min-height:70px;"></textarea>' +
+      '"></textarea>' +
       '</div>' +
       '<div class="gm-form-group">' +
       '<label class="gm-label" for="ticket-additional-context">' +
       t_('ticket_additional_context') +
       '</label>' +
-      '<textarea id="ticket-additional-context" class="gm-input" rows="2" maxlength="2000" placeholder="' +
+      '<textarea id="ticket-additional-context" class="u-resize-vertical u-minh-60px gm-input" rows="2" maxlength="2000" placeholder="' +
       t_('ticket_additional_context_ph') +
-      '" style="resize:vertical; min-height:60px;"></textarea>' +
+      '"></textarea>' +
       '</div>' +
       '<div class="gm-form-group">' +
-      '<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.25rem;">' +
-      '<label class="gm-label" style="margin:0;">' +
+      '<div class="u-d-flex u-items-center u-justify-space-between u-mb-0_25rem">' +
+      '<label class="u-m-0 gm-label">' +
       esc(t_('ticket_screenshots_title')) +
       '</label>' +
-      '<span style="font-size: var(--fs-xs); color:var(--text-muted);"><span id="ticket-screenshots-count">0</span>/3</span>' +
+      '<span class="u-fs-fs-xs u-c-text-muted"><span id="ticket-screenshots-count">0</span>/3</span>' +
       '</div>' +
-      '<div id="ticket-dropzone" style="border:1px dashed var(--border-soft); border-radius:var(--radius-sm); padding:0.75rem; text-align:center; cursor:pointer; background:rgba(255,255,255,0.02); transition:border-color 0.2s, background 0.2s;">' +
-      '<input type="file" id="ticket-file-input" accept="image/png,image/jpeg,image/webp" multiple aria-label="Attach screenshots" style="display:none;">' +
-      '<div style="display:flex; align-items:center; justify-content:center; gap:0.4rem; color:var(--text-muted); font-size: var(--fs-sm);">' +
-      '<i class="ph ph-image-square" style="font-size: var(--fs-xl); color:var(--accent);"></i>' +
+      '<div id="ticket-dropzone" class="u-border-1px-dashed-border-soft u-rounded-radius-sm u-p-0_75rem u-text-center u-cursor-pointer u-bg-rgba-255-255-255-0_02 u-transition-border-color-0_2s-323113">' +
+      '<input type="file" id="ticket-file-input" accept="image/png,image/jpeg,image/webp" multiple aria-label="Attach screenshots" class="u-d-none">' +
+      '<div class="u-d-flex u-items-center u-justify-center u-gap-0_4rem u-c-text-muted u-fs-fs-sm">' +
+      '<i class="u-fs-fs-xl u-c-accent ph ph-image-square"></i>' +
       '<span>' +
       esc(t_('ticket_screenshots_hint')) +
       '</span>' +
       '</div>' +
       '</div>' +
-      '<div id="ticket-screenshots-preview" style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.5rem;"></div>' +
+      '<div id="ticket-screenshots-preview" class="u-d-flex u-wrap-wrap u-gap-0_5rem u-mt-0_5rem"></div>' +
       '</div>' +
-      '<div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-soft); border-radius:var(--radius-sm); padding:0.55rem 0.75rem; font-size: var(--fs-sm);">' +
-      '<div style="font-weight:700; color:var(--text-muted); text-transform:uppercase; font-size: var(--fs-xs); letter-spacing:0.05em; margin-bottom:0.35rem; display:flex; align-items:center; gap:0.3rem;">' +
-      '<i class="ph ph-devices" style="font-size: var(--fs-md);"></i> ' +
+      '<div class="u-bg-rgba-255-255-255-0_03 u-border-1px-solid-border-soft u-rounded-radius-sm u-p-0_55rem-0_75rem u-fs-fs-sm">' +
+      '<div class="u-fw-700 u-c-text-muted u-tt-uppercase u-fs-fs-xs u-tracking-0_05em u-mb-0_35rem u-d-flex u-items-center u-gap-0_3rem">' +
+      '<i class="u-fs-fs-md ph ph-devices"></i> ' +
       esc(t_('ticket_env_title')) +
       '</div>' +
-      '<div style="display:flex; flex-wrap:wrap; gap:0.4rem;">' +
-      '<span class="gm-chip" style="font-size: var(--fs-xs); padding:2px 8px; border-radius:6px; background:var(--bg-soft); border:1px solid var(--border-soft);">FGF: <strong style="color:var(--fg);">' +
+      '<div class="u-d-flex u-wrap-wrap u-gap-0_4rem">' +
+      '<span class="u-fs-fs-xs u-p-2px-8px u-rounded-6px u-bg-bg-soft u-border-1px-solid-border-soft gm-chip">FGF: <strong class="u-c-fg">' +
       esc(env.appVersion) +
       '</strong></span>' +
-      '<span class="gm-chip" style="font-size: var(--fs-xs); padding:2px 8px; border-radius:6px; background:var(--bg-soft); border:1px solid var(--border-soft);">OS: <strong style="color:var(--fg);">' +
+      '<span class="u-fs-fs-xs u-p-2px-8px u-rounded-6px u-bg-bg-soft u-border-1px-solid-border-soft gm-chip">OS: <strong class="u-c-fg">' +
       esc(env.os) +
       '</strong></span>' +
-      '<span class="gm-chip" style="font-size: var(--fs-xs); padding:2px 8px; border-radius:6px; background:var(--bg-soft); border:1px solid var(--border-soft);">Browser: <strong style="color:var(--fg);">' +
+      '<span class="u-fs-fs-xs u-p-2px-8px u-rounded-6px u-bg-bg-soft u-border-1px-solid-border-soft gm-chip">Browser: <strong class="u-c-fg">' +
       esc(env.browser) +
       '</strong></span>' +
       '</div>' +
       '</div>' +
       '</div>' +
-      '<div id="bug-report-msg" class="gm-dim" style="min-height:1rem; margin-top:0.6rem; font-size: var(--fs-sm);"></div>' +
-      '<div style="display:flex; justify-content:flex-end; gap:0.6rem; margin-top:1rem; position:sticky; bottom:0; background:var(--bg-card); z-index:2; padding-top:0.4rem; border-top:1px solid var(--border-soft);">' +
+      '<div id="bug-report-msg" class="u-minh-1rem u-mt-0_6rem u-fs-fs-sm gm-dim"></div>' +
+      '<div class="u-d-flex u-justify-flex-end u-gap-0_6rem u-mt-1rem u-pos-sticky u-bottom-0 u-bg-bg-card u-z-2 u-pt-0_4rem u-bt-1px-solid-border-soft">' +
       '<button type="button" class="gm-btn gm-btn-ghost bug-report-close">' +
       t_('cancel') +
       '</button>' +
@@ -1200,7 +1204,7 @@ export class ShellView {
         '</button>';
     });
     html +=
-      '<div class="gm-sidebar-legal-footer" style="grid-column: 1 / -1; margin-top: 0.5rem; border-top: 1px solid var(--border-soft); padding: 0.75rem 0.5rem 0.25rem 0.5rem;">' +
+      '<div class="u-gcol-1-neg1 u-mt-0_5rem u-bt-1px-solid-border-soft u-p-0_75rem-0_5rem-0_2-9a8e78 gm-sidebar-legal-footer">' +
       '<div class="gm-app-version">' +
       escapeHTML(APP_VERSION) +
       '</div>' +

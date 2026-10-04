@@ -85,21 +85,18 @@ export async function renderMigrationGroupsList(): Promise<void> {
       const servers = (serversByGroup[g.id] || []).slice().sort();
       const serversHtml = servers
         .map(
-          (s) =>
-            '<span class="gm-chip" style="font-size: var(--fs-sm); margin-right:4px;"><i class="ph ph-hard-drives"></i> #' +
-            esc(s) +
-            '</span>'
+          (s) => '<span class="u-fs-fs-sm u-mr-4px gm-chip"><i class="ph ph-hard-drives"></i> #' + esc(s) + '</span>'
         )
         .join('');
       const statusBadge = isOpen
-        ? '<span class="gm-chip gm-chip-success" style="font-weight:700;"><i class="ph ph-lock-open"></i> Open</span>'
-        : '<span class="gm-chip" style="background:rgba(100,116,139,0.15); color:#94a3b8; border:1px solid rgba(100,116,139,0.3); font-weight:700;"><i class="ph ph-lock"></i> Closed</span>';
+        ? '<span class="u-fw-700 gm-chip gm-chip-success"><i class="ph ph-lock-open"></i> Open</span>'
+        : '<span class="u-bg-rgba-100-116-139-0_15 u-c-hex94a3b8 u-border-1px-solid-rgba-100-335175 u-fw-700 gm-chip"><i class="ph ph-lock"></i> Closed</span>';
 
       html +=
-        '<div class="gm-card glass-card" style="margin-bottom:0.75rem; padding:0.9rem 1.1rem;">' +
-        '<div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem;">' +
-        '<div style="display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap;">' +
-        '<strong style="font-size: var(--fs-md);">' +
+        '<div class="u-mb-0_75rem u-p-0_9rem-1_1rem gm-card glass-card">' +
+        '<div class="u-d-flex u-items-center u-justify-space-between u-wrap-wrap u-gap-0_5rem">' +
+        '<div class="u-d-flex u-items-center u-gap-0_6rem u-wrap-wrap">' +
+        '<strong class="u-fs-fs-md">' +
         esc(g.name) +
         '</strong>' +
         statusBadge +
@@ -118,8 +115,8 @@ export async function renderMigrationGroupsList(): Promise<void> {
         '</span>' +
         '</button>' +
         '</div>' +
-        '<div style="margin-top:0.5rem;">' +
-        (serversHtml || '<span style="font-size: var(--fs-sm); color:var(--text-dim);">No servers linked</span>') +
+        '<div class="u-mt-0_5rem">' +
+        (serversHtml || '<span class="u-fs-fs-sm u-c-text-dim">No servers linked</span>') +
         '</div>' +
         '</div>';
     });
@@ -154,7 +151,7 @@ export async function renderMigrationGroupsList(): Promise<void> {
     });
   } catch (err: any) {
     container.innerHTML =
-      '<div class="gm-empty"><i class="ph ph-warning-octagon gm-icon" style="color:var(--danger);"></i><div class="gm-empty-title">Error: ' +
+      '<div class="gm-empty"><i class="u-c-danger ph ph-warning-octagon gm-icon"></i><div class="gm-empty-title">Error: ' +
       esc(err.message) +
       '</div></div>';
   }

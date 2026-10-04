@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures.js';
 
 // The login screen is fully static (no Supabase call on load), so these tests
 // run without any backend. They verify the page boots and the auth form is

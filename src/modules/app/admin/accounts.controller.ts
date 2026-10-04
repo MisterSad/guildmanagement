@@ -173,14 +173,14 @@ export function wireAdminInvite(): void {
 
       if (result) {
         result.innerHTML =
-          '<div class="gm-cred-pass" style="display:inline-flex;">' +
+          '<div class="u-d-inline-flex gm-cred-pass">' +
           '<span class="gm-pwd-text">' +
           esc(res.invite_code) +
           '</span>' +
           '<button class="gm-mini-btn gm-invite-copy" title="Copy invitation code"><i class="ph ph-copy"></i></button>' +
           '<button class="gm-mini-btn gm-invite-link-copy" title="Copy invite link"><i class="ph ph-link"></i></button>' +
           '</div>' +
-          '<div style="margin-top:.4rem; font-size:.78rem; color:var(--text-dim);">' +
+          '<div class="u-mt-0_4rem u-fs-0_78rem u-c-text-dim">' +
           esc(String(res.open_codes)) +
           ' of ' +
           esc(String(res.max_open_codes)) +
@@ -532,7 +532,7 @@ export async function loadRecoveryCodesCard(): Promise<void> {
     const tone = remaining === 0 ? 'error' : remaining <= 2 ? 'warning' : 'success';
     statusEl.className = '';
     statusEl.innerHTML =
-      '<div class="gm-row" style="gap:.6rem; align-items:center;">' +
+      '<div class="u-gap-0_6rem u-items-center gm-row">' +
       '<span class="gm-badge gm-badge-' +
       tone +
       '">' +
@@ -540,7 +540,7 @@ export async function loadRecoveryCodesCard(): Promise<void> {
       ' / ' +
       total +
       '</span>' +
-      '<span style="color: var(--text-muted); font-size: var(--fs-sm);">' +
+      '<span class="u-c-text-muted u-fs-fs-sm">' +
       (remaining === 0
         ? 'No codes left. Issue a new set now.'
         : remaining <= 2
@@ -579,20 +579,20 @@ async function regenerateRecoveryCodes(): Promise<void> {
     const codes: string[] = res.codes;
     out.classList.remove('hidden');
     out.innerHTML =
-      '<div class="terms-callout warning" style="margin-bottom:.75rem; font-size: var(--fs-sm); line-height:1.45;">' +
+      '<div class="u-mb-0_75rem u-fs-fs-sm u-lh-1_45 terms-callout warning">' +
       '<i class="ph ph-warning"></i> Save these now. They are shown once and cannot be recovered.' +
       '</div>' +
-      '<div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap:.4rem;">' +
+      '<div class="u-d-grid u-cols-repeat-auto-fill-m-9579a7 u-gap-0_4rem">' +
       codes
         .map(
           (c) =>
-            '<code class="gm-code-chip" style="padding:.45rem .6rem; border-radius:8px; background: var(--bg-2, #1a1b1e); font-family: var(--font-mono, monospace);">' +
+            '<code class="u-p-0_45rem-0_6rem u-rounded-8px u-bg-bg-2-or-hex1a1b1e u-ff-font-mono-or-monospace gm-code-chip">' +
             esc(c) +
             '</code>'
         )
         .join('') +
       '</div>' +
-      '<div class="gm-row" style="gap:.5rem; margin-top:.75rem;">' +
+      '<div class="u-gap-0_5rem u-mt-0_75rem gm-row">' +
       '<button type="button" class="gm-btn gm-btn-ghost gm-btn-sm" id="recovery-codes-copy"><i class="ph ph-copy"></i> Copy all</button>' +
       '<button type="button" class="gm-btn gm-btn-ghost gm-btn-sm" id="recovery-codes-download"><i class="ph ph-download-simple"></i> Download</button>' +
       '</div>';

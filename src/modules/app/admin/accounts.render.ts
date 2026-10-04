@@ -7,6 +7,7 @@
  * role/guild selects). All dynamic values go through esc().
  */
 
+import { styleRef } from '../../../core/dom/style-refs';
 import { t, esc, byId } from './utils';
 import { getActiveGuild, roleFromStorage } from '../../../core/auth/roles';
 import { adminAccounts } from '../../../core/auth/session';
@@ -130,28 +131,32 @@ export function renderSuperAdminGroupedAccounts(
     const isFirst = index === 0;
 
     html +=
-      '<div class="gm-card glass-card" style="margin-bottom:1rem; padding:0; overflow:hidden;">' +
-      '<div class="gm-accordion-header" style="padding:0.9rem 1.2rem; display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none; background:rgba(255,255,255,0.03); border-bottom:1px solid var(--border-soft); transition:background 0.2s ease;">' +
-      '<div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">' +
-      '<span style="background:rgba(59, 130, 246, 0.15); color:#60a5fa; border:1px solid rgba(59, 130, 246, 0.3); border-radius:6px; padding:3px 10px; font-weight:800; font-size: var(--fs-base); font-family:var(--font-display);">' +
-      '<i class="ph ph-hard-drives" style="margin-right:4px;"></i>' +
+      '<div class="u-mb-1rem u-p-0 u-overflow-hidden gm-card glass-card">' +
+      '<div class="u-p-0_9rem-1_2rem u-d-flex u-items-center u-justify-space-between u-cursor-pointer u-select-none u-bg-rgba-255-255-255-0_03 u-bb-1px-solid-border-soft u-transition-background-0_2s-ease gm-accordion-header">' +
+      '<div class="u-d-flex u-items-center u-gap-0_75rem u-wrap-wrap">' +
+      '<span class="u-bg-rgba-59-130-246-0_15 u-c-hex60a5fa u-border-1px-solid-rgba-59-b76fa4 u-rounded-6px u-p-3px-10px u-fw-800 u-fs-fs-base u-ff-font-display">' +
+      '<i class="u-mr-4px ph ph-hard-drives"></i>' +
       esc(sKey) +
       '</span>' +
-      '<span style="font-weight:700; color:var(--fg); font-size: var(--fs-md);">' +
+      '<span class="u-fw-700 u-c-fg u-fs-fs-md">' +
       esc(guildsListStr || 'All Tenants') +
       '</span>' +
-      '<span class="gm-badge" style="background:var(--accent-soft); color:var(--accent); font-weight:700; font-size: var(--fs-sm);">' +
+      '<span class="u-bg-accent-soft u-c-accent u-fw-700 u-fs-fs-sm gm-badge">' +
       accCount +
       ' admin' +
       (accCount > 1 ? 's' : '') +
       '</span>' +
       '</div>' +
-      '<i class="ph ph-caret-down gm-accordion-arrow" style="font-size: var(--fs-xl); color:var(--fg-dim); transition:transform 0.25s ease;' +
-      (isFirst ? ' transform:rotate(180deg);' : '') +
+      '<i class="ph ph-caret-down gm-accordion-arrow" data-gm-style="' +
+      styleRef(
+        'font-size: var(--fs-xl); color:var(--fg-dim); transition:transform 0.25s ease;' +
+          (isFirst ? ' transform:rotate(180deg);' : '') +
+          ''
+      ) +
       '"></i>' +
       '</div>' +
-      '<div class="gm-accordion-body" style="padding:1rem 1.25rem;' +
-      (isFirst ? ' display:block;' : ' display:none;') +
+      '<div class="gm-accordion-body" data-gm-style="' +
+      styleRef('padding:1rem 1.25rem;' + (isFirst ? ' display:block;' : ' display:none;') + '') +
       '">' +
       '<div id="acc-grid-' +
       index +
@@ -241,7 +246,7 @@ export function renderAccountCardsToContainer(
         '</div>';
     } else {
       passHtml =
-        '<div class="gm-cred-pass gm-masked" style="opacity: 0.6; cursor: not-allowed;" title="Protected Super Admin Account">' +
+        '<div class="u-opacity-0_6 u-cursor-not-allowed gm-cred-pass gm-masked" title="Protected Super Admin Account">' +
         '<span class="gm-pwd-text">••••••••••••</span>' +
         '</div>';
     }
@@ -249,11 +254,11 @@ export function renderAccountCardsToContainer(
     let deleteHtml = '';
     if (canDelete) {
       deleteHtml =
-        '<button class="gm-mini-btn gm-danger gm-cred-delete" data-id="' +
+        '<button class="u-ml-auto gm-mini-btn gm-danger gm-cred-delete" data-id="' +
         esc(acc.id) +
         '" title="' +
         t('delete_title') +
-        '" style="margin-left:auto;">' +
+        '">' +
         '<i class="ph ph-trash"></i>' +
         '</button>';
     }
@@ -262,11 +267,11 @@ export function renderAccountCardsToContainer(
     let guildSelectHtml = '';
     if (superAdmin) {
       roleSelectHtml =
-        '<select class="gm-select gm-select-sm gm-account-role-select" data-id="' +
+        '<select class="u-fs-fs-sm u-p-0_15rem-0_4rem u-h-auto u-w-auto u-minw-105px u-rounded-4px u-lh-1_2 u-fw-600 gm-select gm-select-sm gm-account-role-select" data-id="' +
         esc(acc.id) +
         '" aria-label="' +
         esc('Role of ' + acc.id) +
-        '" style="font-size: var(--fs-sm); padding: 0.15rem 0.4rem; height: auto; width: auto; min-width: 105px; border-radius: 4px; line-height: 1.2; font-weight: 600;">' +
+        '">' +
         '<option value="guild_admin"' +
         (role === 'guild_admin' ? ' selected' : '') +
         '>Guild Admin</option>' +
@@ -286,34 +291,33 @@ export function renderAccountCardsToContainer(
         options += '<option value="' + esc(g) + '"' + (acc.guild === g ? ' selected' : '') + '>' + esc(g) + '</option>';
       });
       guildSelectHtml =
-        '<select class="gm-select gm-select-sm gm-account-guild-select" data-id="' +
+        '<select class="u-fs-fs-sm u-p-0_15rem-0_4rem u-h-auto u-w-auto u-minw-90px u-rounded-4px u-lh-1_2 gm-select gm-select-sm gm-account-guild-select" data-id="' +
         esc(acc.id) +
         '" aria-label="' +
         esc('Guild of ' + acc.id) +
-        '" style="font-size: var(--fs-sm); padding: 0.15rem 0.4rem; height: auto; width: auto; min-width: 90px; border-radius: 4px; line-height: 1.2;">' +
+        '">' +
         options +
         '</select>';
     } else {
       roleSelectHtml = '<span class="gm-chip ' + chipCls + '">' + esc(roleLabel) + '</span>';
-      guildSelectHtml =
-        '<span class="gm-chip ' + guildCls + '" style="font-size: var(--fs-xs);">' + esc(guildLabel) + '</span>';
+      guildSelectHtml = '<span class="u-fs-fs-xs gm-chip ' + guildCls + '">' + esc(guildLabel) + '</span>';
     }
 
     html +=
       '<div class="gm-cred-card" data-acc-id="' +
       esc(acc.id) +
       '">' +
-      '<div class="gm-row" style="justify-content:space-between; margin-bottom: 0.25rem;">' +
+      '<div class="u-justify-space-between u-mb-0_25rem gm-row">' +
       '<div class="gm-cred-name">' +
       esc(acc.id) +
       '</div>' +
-      '<div class="gm-row" style="gap: 0.25rem; align-items: center;">' +
+      '<div class="u-gap-0_25rem u-items-center gm-row">' +
       roleSelectHtml +
       guildSelectHtml +
       '</div>' +
       '</div>' +
       passHtml +
-      '<div class="gm-row gm-dim" style="font-size: var(--fs-sm);">' +
+      '<div class="u-fs-fs-sm gm-row gm-dim">' +
       '<i class="ph ph-calendar-blank"></i>' +
       '<span>' +
       t('cred_created') +

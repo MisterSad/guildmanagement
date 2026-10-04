@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures.js';
 
 // Session & navigation coverage against the PRODUCTION bundle in dist/.
 // The real login needs the Supabase backend, so the session is injected the

@@ -13,6 +13,7 @@
  *  - User feedback delegates to dialogs.service.
  */
 
+import { styleRef } from '../../../core/dom/style-refs';
 import { adoptDialog } from '../../../components/ui/Dialog';
 import { loadAdmin } from '../admin-loader';
 import { portalViewLazy } from '../lazy-views';
@@ -741,27 +742,27 @@ export function openRecoveryCodeDialog(): void {
 
   const html =
     '<div id="recovery-code-overlay" class="gm-modal-overlay">' +
-    '<div class="gm-modal-card" style="max-width: 420px; width: 94%;">' +
-    '<div class="gm-modal-header" style="display:flex; align-items:center; gap:.5rem; margin-bottom:.6rem;">' +
-    '<i class="ph ph-key" style="font-size: var(--fs-2xl); color: var(--md-sys-color-primary);"></i>' +
-    '<h3 style="margin:0; font-size: var(--fs-xl);">Recovery code</h3>' +
+    '<div class="u-maxw-420px u-w-94pct gm-modal-card">' +
+    '<div class="u-d-flex u-items-center u-gap-0_5rem u-mb-0_6rem gm-modal-header">' +
+    '<i class="u-fs-fs-2xl u-c-md-sys-color-primary ph ph-key"></i>' +
+    '<h3 class="u-m-0 u-fs-fs-xl">Recovery code</h3>' +
     '</div>' +
-    '<p style="margin:0 0 .8rem; color: var(--fg-dim); font-size: var(--fs-md); line-height:1.45;">' +
+    '<p class="u-m-0-0-0_8rem u-c-fg-dim u-fs-fs-md u-lh-1_45">' +
     'For the platform owner, when Discord sign-in is unavailable. Each code works once.' +
     '</p>' +
     '<div class="gm-login-field">' +
     '<label for="recovery-id">Identifier</label>' +
     '<input id="recovery-id" class="gm-input" type="text" autocomplete="username" autocapitalize="off" spellcheck="false">' +
     '</div>' +
-    '<div class="gm-login-field" style="margin-top:.6rem;">' +
+    '<div class="u-mt-0_6rem gm-login-field">' +
     '<label for="recovery-code">Recovery code</label>' +
     '<input id="recovery-code" class="gm-input" type="text" autocomplete="one-time-code" ' +
     'autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX">' +
     '</div>' +
-    '<div id="recovery-error" class="gm-login-error hidden" style="margin-top:.6rem;">' +
+    '<div id="recovery-error" class="u-mt-0_6rem gm-login-error hidden">' +
     '<i class="ph ph-warning-circle"></i><span></span>' +
     '</div>' +
-    '<div class="gm-modal-footer" style="display:flex; justify-content:flex-end; gap:.5rem; margin-top:1rem;">' +
+    '<div class="u-d-flex u-justify-flex-end u-gap-0_5rem u-mt-1rem gm-modal-footer">' +
     '<button type="button" class="gm-btn gm-btn-ghost" id="recovery-cancel">Cancel</button>' +
     '<button type="button" class="gm-btn gm-btn-primary" id="recovery-submit">Sign in</button>' +
     '</div>' +
@@ -899,15 +900,19 @@ export function openAccountChooser(
     '<button type="button" class="gm-btn gm-btn-ghost gm-choose-account" data-account="' +
     escapeDialogText(a.id) +
     '" ' +
-    'style="width:100%; justify-content:flex-start; gap:.6rem; padding:.7rem .75rem; margin-top:.4rem; text-align:left;">' +
-    '<i class="ph ' +
+    'data-gm-style="' +
+    styleRef(
+      'width:100%; justify-content:flex-start; gap:.6rem; padding:.7rem .75rem; margin-top:.4rem; text-align:left;'
+    ) +
+    '">' +
+    '<i class="u-fs-fs-xl ph ' +
     iconFor(a) +
-    '" style="font-size: var(--fs-xl);"></i>' +
-    '<span style="display:flex; flex-direction:column; gap:.1rem;">' +
-    '<span style="font-weight:600;">' +
+    '"></i>' +
+    '<span class="u-d-flex u-dir-column u-gap-0_1rem">' +
+    '<span class="u-fw-600">' +
     escapeDialogText(a.id) +
     '</span>' +
-    '<span style="font-size:.78rem; color: var(--fg-dim);">' +
+    '<span class="u-fs-0_78rem u-c-fg-dim">' +
     describe(a) +
     '</span>' +
     '</span>' +
@@ -915,21 +920,21 @@ export function openAccountChooser(
 
   const html =
     '<div id="discord-choose-overlay" class="gm-modal-overlay">' +
-    '<div class="gm-modal-card" style="max-width: 430px; width: 94%;">' +
-    '<div class="gm-modal-header" style="display:flex; align-items:center; gap:.5rem; margin-bottom:.6rem;">' +
-    '<i class="ph ph-discord-logo" style="font-size: var(--fs-2xl); color:#5865F2;"></i>' +
-    '<h3 style="margin:0; font-size: var(--fs-xl);">' +
+    '<div class="u-maxw-430px u-w-94pct gm-modal-card">' +
+    '<div class="u-d-flex u-items-center u-gap-0_5rem u-mb-0_6rem gm-modal-header">' +
+    '<i class="u-fs-fs-2xl u-c-hex5865f2 ph ph-discord-logo"></i>' +
+    '<h3 class="u-m-0 u-fs-fs-xl">' +
     greeting +
     '</h3>' +
     '</div>' +
-    '<p style="margin:0 0 .4rem; color: var(--fg-dim); font-size: var(--fs-md); line-height:1.45;">' +
+    '<p class="u-m-0-0-0_4rem u-c-fg-dim u-fs-fs-md u-lh-1_45">' +
     'You signed in' +
     who +
     '. This Discord account holds more than one account here — which one do you want to open?' +
     '</p>' +
     accounts.map(row).join('') +
-    '<div id="discord-choose-error" class="gm-login-error hidden" style="margin-top:.6rem;"></div>' +
-    '<div class="gm-modal-footer" style="display:flex; justify-content:flex-end; margin-top:.9rem;">' +
+    '<div id="discord-choose-error" class="u-mt-0_6rem gm-login-error hidden"></div>' +
+    '<div class="u-d-flex u-justify-flex-end u-mt-0_9rem gm-modal-footer">' +
     '<button type="button" class="gm-btn gm-btn-ghost" id="discord-choose-cancel">Cancel</button>' +
     '</div>' +
     '</div>' +
@@ -1093,7 +1098,7 @@ export function openLinkAccountDialog(
 
   const html =
     '<div id="discord-link-overlay" class="gm-modal-overlay">' +
-    '<div class="gm-modal-card gm-onboard" style="max-width: 480px; width: 94%;">' +
+    '<div class="u-maxw-480px u-w-94pct gm-modal-card gm-onboard">' +
     '<div class="gm-modal-header gm-onboard-header">' +
     '<button type="button" class="gm-onboard-back hidden" id="discord-link-back" aria-label="Back">' +
     '<i class="ph ph-arrow-left" aria-hidden="true"></i>' +
@@ -1186,7 +1191,7 @@ export function openLinkAccountDialog(
     '<p class="gm-onboard-note"><i class="ph ph-info"></i> You become its first admin and land in the Command Center.</p>' +
     '</div>' +
     '</div>' +
-    '<div id="discord-link-error" class="gm-login-error hidden" role="alert" style="margin-top:.8rem;">' +
+    '<div id="discord-link-error" class="u-mt-0_8rem gm-login-error hidden" role="alert">' +
     '<i class="ph ph-warning-circle"></i><span></span>' +
     '</div>' +
     '<div class="gm-modal-footer gm-onboard-footer">' +
@@ -1632,27 +1637,22 @@ function linkErrorMessage(code: string, path: 'claim' | 'code' | 'join' | 'creat
 function showBackupCodesOnce(codes: string[]): void {
   if (typeof document === 'undefined') return;
   const list = codes
-    .map(
-      (c) =>
-        '<li style="font-family: var(--font-mono, monospace); font-size: var(--fs-md);">' +
-        escapeDialogText(c) +
-        '</li>'
-    )
+    .map((c) => '<li class="u-ff-font-mono-or-monospace u-fs-fs-md">' + escapeDialogText(c) + '</li>')
     .join('');
   const html =
     '<div id="backup-codes-once-overlay" class="gm-modal-overlay">' +
-    '<div class="gm-modal-card" style="max-width: 420px; width: 92%;">' +
-    '<div class="gm-modal-header" style="display:flex; align-items:center; gap:.5rem; margin-bottom:.75rem;">' +
-    '<i class="ph ph-key" style="font-size: var(--fs-2xl); color: var(--accent);"></i>' +
-    '<h3 style="margin:0; font-size: var(--fs-xl);">Save your backup codes</h3>' +
+    '<div class="u-maxw-420px u-w-92pct gm-modal-card">' +
+    '<div class="u-d-flex u-items-center u-gap-0_5rem u-mb-0_75rem gm-modal-header">' +
+    '<i class="u-fs-fs-2xl u-c-accent ph ph-key"></i>' +
+    '<h3 class="u-m-0 u-fs-fs-xl">Save your backup codes</h3>' +
     '</div>' +
-    '<p style="margin:0 0 .8rem; color: var(--fg-dim); font-size: var(--fs-md); line-height:1.45;">' +
+    '<p class="u-m-0-0-0_8rem u-c-fg-dim u-fs-fs-md u-lh-1_45">' +
     'These are your only way back in if Discord becomes unavailable. They are <strong>shown once</strong> — store them somewhere safe now.' +
     '</p>' +
-    '<ul style="margin:0; padding-left:1.2rem; line-height:1.9;">' +
+    '<ul class="u-m-0 u-pl-1_2rem u-lh-1_9">' +
     list +
     '</ul>' +
-    '<div class="gm-modal-footer" style="display:flex; justify-content:flex-end; gap:.5rem; margin-top:1rem;">' +
+    '<div class="u-d-flex u-justify-flex-end u-gap-0_5rem u-mt-1rem gm-modal-footer">' +
     '<button type="button" class="gm-btn gm-btn-ghost" id="backup-codes-once-copy">Copy</button>' +
     '<button type="button" class="gm-btn gm-btn-primary" id="backup-codes-once-done">I have saved them</button>' +
     '</div>' +

@@ -9,8 +9,6 @@
  */
 import { describe, it, expect } from 'vitest';
 import { appHtml } from './helpers/app-html.js';
-import fs from 'fs';
-import path from 'path';
 
 const html = appHtml();
 

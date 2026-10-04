@@ -16,6 +16,7 @@
  * choosing it failed the save.
  */
 
+import { styleRef } from '../../../core/dom/style-refs';
 import { t, esc, byId, getDb, ls } from './utils';
 import { fetchGuilds } from './accounts.controller';
 import { showToast, showConfirm } from '../dialogs/dialogs.service';
@@ -71,28 +72,32 @@ export async function renderGuildsList(): Promise<void> {
       const isFirst = index === 0;
 
       html +=
-        '<div class="gm-card glass-card" style="margin-bottom:1rem; padding:0; overflow:hidden;">' +
-        '<div class="gm-accordion-header" style="padding:0.9rem 1.2rem; display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none; background:rgba(255,255,255,0.03); border-bottom:1px solid var(--border-soft); transition:background 0.2s ease;">' +
-        '<div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">' +
-        '<span style="background:rgba(59, 130, 246, 0.15); color:#60a5fa; border:1px solid rgba(59, 130, 246, 0.3); border-radius:6px; padding:3px 10px; font-weight:800; font-size: var(--fs-base); font-family:var(--font-display);">' +
-        '<i class="ph ph-hard-drives" style="margin-right:4px;"></i>' +
+        '<div class="u-mb-1rem u-p-0 u-overflow-hidden gm-card glass-card">' +
+        '<div class="u-p-0_9rem-1_2rem u-d-flex u-items-center u-justify-space-between u-cursor-pointer u-select-none u-bg-rgba-255-255-255-0_03 u-bb-1px-solid-border-soft u-transition-background-0_2s-ease gm-accordion-header">' +
+        '<div class="u-d-flex u-items-center u-gap-0_75rem u-wrap-wrap">' +
+        '<span class="u-bg-rgba-59-130-246-0_15 u-c-hex60a5fa u-border-1px-solid-rgba-59-b76fa4 u-rounded-6px u-p-3px-10px u-fw-800 u-fs-fs-base u-ff-font-display">' +
+        '<i class="u-mr-4px ph ph-hard-drives"></i>' +
         esc(sKey) +
         '</span>' +
-        '<span style="font-weight:700; color:var(--fg); font-size: var(--fs-md);">' +
+        '<span class="u-fw-700 u-c-fg u-fs-fs-md">' +
         esc(guildsListStr) +
         '</span>' +
-        '<span class="gm-badge" style="background:var(--accent-soft); color:var(--accent); font-weight:700; font-size: var(--fs-sm);">' +
+        '<span class="u-bg-accent-soft u-c-accent u-fw-700 u-fs-fs-sm gm-badge">' +
         gCount +
         ' guild' +
         (gCount > 1 ? 's' : '') +
         '</span>' +
         '</div>' +
-        '<i class="ph ph-caret-down gm-accordion-arrow" style="font-size: var(--fs-xl); color:var(--fg-dim); transition:transform 0.25s ease;' +
-        (isFirst ? ' transform:rotate(180deg);' : '') +
+        '<i class="ph ph-caret-down gm-accordion-arrow" data-gm-style="' +
+        styleRef(
+          'font-size: var(--fs-xl); color:var(--fg-dim); transition:transform 0.25s ease;' +
+            (isFirst ? ' transform:rotate(180deg);' : '') +
+            ''
+        ) +
         '"></i>' +
         '</div>' +
-        '<div class="gm-accordion-body" style="padding:1rem 1.25rem;' +
-        (isFirst ? ' display:block;' : ' display:none;') +
+        '<div class="gm-accordion-body" data-gm-style="' +
+        styleRef('padding:1rem 1.25rem;' + (isFirst ? ' display:block;' : ' display:none;') + '') +
         '">' +
         '<div class="gm-cred-grid">';
 
@@ -101,46 +106,44 @@ export async function renderGuildsList(): Promise<void> {
         const serverNum = g.server_number || knownServerNumber(guildId) || '';
 
         const serverTag = serverNum
-          ? ' <span style="font-size: var(--fs-sm); font-weight:500; color:var(--fg-dim);">(Server #' +
-            esc(serverNum) +
-            ')</span>'
-          : ' <span class="gm-chip gm-chip-warning" style="font-size: var(--fs-sm); font-weight:700;">No server number</span>';
+          ? ' <span class="u-fs-fs-sm u-fw-500 u-c-fg-dim">(Server #' + esc(serverNum) + ')</span>'
+          : ' <span class="u-fs-fs-sm u-fw-700 gm-chip gm-chip-warning">No server number</span>';
 
         html +=
           '<div class="gm-cred-card" data-guild-id="' +
           esc(guildId) +
           '">' +
-          '<div class="gm-row" style="justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">' +
-          '<div class="gm-cred-name" style="font-size: var(--fs-xl); display: flex; align-items: center; gap: 0.5rem; margin-bottom:0; font-weight:600;">' +
+          '<div class="u-justify-space-between u-items-center u-mb-0_75rem gm-row">' +
+          '<div class="u-fs-fs-xl u-d-flex u-items-center u-gap-0_5rem u-mb-0 u-fw-600 gm-cred-name">' +
           '<i class="ph ph-shield"></i> ' +
           esc(guildId) +
           serverTag +
           '</div>' +
           '</div>' +
-          '<div class="gm-row" style="gap: 0.5rem; align-items: center; flex-wrap: wrap;">' +
-          '<div class="gm-col" style="flex: 1; gap: 0.25rem; min-width:100px;">' +
-          '<label class="gm-dim" style="font-size: var(--fs-sm); margin-bottom:0;">Server #</label>' +
-          '<input type="text" maxlength="4" pattern="\\d{4}" class="gm-input gm-input-sm guild-server-number" data-guild="' +
+          '<div class="u-gap-0_5rem u-items-center u-wrap-wrap gm-row">' +
+          '<div class="u-flex-1 u-gap-0_25rem u-minw-100px gm-col">' +
+          '<label class="u-fs-fs-sm u-mb-0 gm-dim">Server #</label>' +
+          '<input type="text" maxlength="4" pattern="\\d{4}" class="u-p-0_25rem-0_5rem u-fs-fs-sm u-h-auto gm-input gm-input-sm guild-server-number" data-guild="' +
           esc(guildId) +
           '" aria-label="' +
           esc('Server number of ' + guildId) +
           '" value="' +
           esc(serverNum) +
-          '" style="padding: 0.25rem 0.5rem; font-size: var(--fs-sm); height: auto;" placeholder="e.g. 1089">' +
+          '" placeholder="e.g. 1089">' +
           '</div>' +
-          '<button class="gm-btn gm-btn-primary save-guild-btn" data-guild="' +
+          '<button class="u-mt-1_15rem u-p-0_35rem-0_65rem u-fs-fs-sm u-d-flex u-items-center u-gap-0_25rem u-h-auto u-lh-1_2 gm-btn gm-btn-primary save-guild-btn" data-guild="' +
           esc(guildId) +
-          '" style="margin-top: 1.15rem; padding: 0.35rem 0.65rem; font-size: var(--fs-sm); display:flex; align-items:center; gap:0.25rem; height: auto; line-height: 1.2;">' +
+          '">' +
           '<i class="ph ph-floppy-disk"></i> Save' +
           '</button>' +
-          '<button class="gm-btn gm-btn-ghost rename-guild-btn" data-guild="' +
+          '<button class="u-mt-1_15rem u-p-0_35rem-0_65rem u-fs-fs-sm u-d-flex u-items-center u-gap-0_25rem u-h-auto u-lh-1_2 gm-btn gm-btn-ghost rename-guild-btn" data-guild="' +
           esc(guildId) +
-          '" style="margin-top: 1.15rem; padding: 0.35rem 0.65rem; font-size: var(--fs-sm); display:flex; align-items:center; gap:0.25rem; height: auto; line-height: 1.2;">' +
+          '">' +
           '<i class="ph ph-tag"></i> Rename' +
           '</button>' +
-          '<button class="gm-btn gm-btn-danger-ghost delete-guild-btn" data-guild="' +
+          '<button class="u-mt-1_15rem u-p-0_35rem-0_65rem u-fs-fs-sm u-d-flex u-items-center u-gap-0_25rem u-h-auto u-lh-1_2 gm-btn gm-btn-danger-ghost delete-guild-btn" data-guild="' +
           esc(guildId) +
-          '" style="margin-top: 1.15rem; padding: 0.35rem 0.65rem; font-size: var(--fs-sm); display:flex; align-items:center; gap:0.25rem; height: auto; line-height: 1.2;">' +
+          '">' +
           '<i class="ph ph-trash"></i> Delete' +
           '</button>' +
           '</div>' +
@@ -263,7 +266,7 @@ export async function renderGuildsList(): Promise<void> {
     });
   } catch (err: any) {
     container.innerHTML =
-      '<div class="gm-empty"><i class="ph ph-warning-octagon gm-icon" style="color:var(--danger);"></i><div class="gm-empty-title">Error: ' +
+      '<div class="gm-empty"><i class="u-c-danger ph ph-warning-octagon gm-icon"></i><div class="gm-empty-title">Error: ' +
       esc(err.message) +
       '</div></div>';
   }

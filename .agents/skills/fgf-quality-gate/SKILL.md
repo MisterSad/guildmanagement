@@ -17,7 +17,7 @@ npm run build          # production build into dist/
 npx playwright test    # e2e, against the REAL built bundle in dist/
 ```
 
-The e2e suite is not optional and not a nicety. `playwright.config.js` runs `npm run build && npx serve dist`, so it exercises the actual production artifact — it is the only check in this repo that would catch a CSP violation, a 404 stylesheet, or a bundling regression. Several defects in the 2026-09 audit were invisible to `tsc` and to Vitest and visible only there.
+The e2e suite is not optional and not a nicety. `playwright.config.js` runs `npm run build`, then serves `dist/` with the headers `vercel.json` gives production (`scripts/e2e-serve-config.mjs` generates the serve config), and `e2e/fixtures.js` fails any test on a CSP violation the browser reports. It exercises the actual production artifact — it is the only check in this repo that would catch a CSP violation, a 404 stylesheet, or a bundling regression. Several defects in the 2026-09 audit were invisible to `tsc` and to Vitest and visible only there.
 
 `npm test` enforces a coverage floor (`vitest.config.js` → `coverage.thresholds`). It is a **ratchet**: raise it when real coverage rises comfortably above it, never set it to the current value (it then fails on noise) and never set it aspirationally (it fails immediately and gets deleted).
 

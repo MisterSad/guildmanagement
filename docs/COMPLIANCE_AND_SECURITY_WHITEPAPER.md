@@ -100,7 +100,7 @@ The repository and the deployed bundle contain **no** game textures, hero or shi
 | Charts | Hand-written canvas/SVG rendering (`src/modules/portal/components/PortalChart.ts`) | Original work |
 | Game assets | None | — |
 
-The CSP allows fonts and scripts from the app's own origin only (`font-src 'self' data:`, `script-src 'self'`): there is no external font or script CDN.
+The CSP allows fonts, scripts and styles from the app's own origin only (`font-src 'self' data:`, `script-src 'self'`, `style-src 'self'`): there is no external font or script CDN, and no `'unsafe-inline'` — the app carries no inline script or style attribute (since 2026-10-04).
 
 ### 3.3 OCR Processing
 Officers can upload screenshots or a screen recording of in-game lists so they do not retype them. The OCR runs in the `ocr-guild-members` Edge Function with Google Gemini.

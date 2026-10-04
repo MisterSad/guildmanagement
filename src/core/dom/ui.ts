@@ -70,7 +70,7 @@ export function pickEventStart(
   overlay.id = 'evt-start-overlay';
   overlay.className = 'gm-modal-overlay';
   overlay.innerHTML =
-    '<div class="gm-modal-card" style="max-width: 400px; width: 90%; text-align: center;">' +
+    '<div class="u-maxw-400px u-w-90pct u-text-center gm-modal-card">' +
     '<div class="confirm-icon"><i class="ph ph-calendar-plus text-accent"></i></div>' +
     '<h3>' +
     t('event_start_when_title') +
@@ -79,17 +79,17 @@ export function pickEventStart(
     (o.eventLabel ? '<strong>' + escapeHTML(o.eventLabel) + '</strong> - ' : '') +
     t('event_start_when_body') +
     '</p>' +
-    '<div class="gm-col" style="gap:.75rem; text-align:left; margin:.25rem 0 1.2rem;">' +
-    '<div class="gm-col" style="gap:.3rem;">' +
-    '<label for="evt-start-date" class="gm-dim" style="font-size:.8rem;">' +
+    '<div class="u-gap-0_75rem u-text-left u-m-0_25rem-0-1_2rem gm-col">' +
+    '<div class="u-gap-0_3rem gm-col">' +
+    '<label for="evt-start-date" class="u-fs-0_8rem gm-dim">' +
     t('event_start_date') +
     '</label>' +
     '<input type="date" id="evt-start-date" class="gm-input" value="' +
     defDate +
     '">' +
     '</div>' +
-    '<div class="gm-col" style="gap:.3rem;">' +
-    '<label for="evt-start-time" class="gm-dim" style="font-size:.8rem;">' +
+    '<div class="u-gap-0_3rem gm-col">' +
+    '<label for="evt-start-time" class="u-fs-0_8rem gm-dim">' +
     t('event_start_time') +
     '</label>' +
     '<input type="time" id="evt-start-time" class="gm-input" value="' +
@@ -97,7 +97,7 @@ export function pickEventStart(
     '">' +
     '</div>' +
     '</div>' +
-    '<div class="confirm-actions" style="gap:1rem;">' +
+    '<div class="u-gap-1rem confirm-actions">' +
     '<button id="evt-start-cancel" class="gm-btn gm-btn-ghost">' +
     t('confirm_cancel') +
     '</button>' +

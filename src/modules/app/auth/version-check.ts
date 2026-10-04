@@ -54,16 +54,16 @@ export function showNewVersionBanner(newVersion: string): void {
     'background:var(--bg-soft, #1a1a24); border:1px solid rgba(99,102,241,0.4); border-radius:12px; ' +
     'padding:1rem 1.1rem; box-shadow:0 8px 24px rgba(0,0,0,0.4); display:flex; flex-direction:column; gap:.6rem;';
   banner.innerHTML =
-    '<div style="display:flex; align-items:flex-start; gap:.6rem;">' +
-    '<i class="ph ph-arrows-clockwise" style="font-size: var(--fs-2xl); color:var(--accent); flex-shrink:0; margin-top:.1rem;"></i>' +
+    '<div class="u-d-flex u-items-flex-start u-gap-0_6rem">' +
+    '<i class="u-fs-fs-2xl u-c-accent u-shrink-0 u-mt-0_1rem ph ph-arrows-clockwise"></i>' +
     '<div>' +
-    '<div style="font-weight:600; margin-bottom:.15rem;">Update available (' +
+    '<div class="u-fw-600 u-mb-0_15rem">Update available (' +
     esc(newVersion) +
     ')</div>' +
-    '<div style="font-size: var(--fs-sm); color:var(--fg-dim);">This tab is running an older version. Refresh to get the latest fixes.</div>' +
+    '<div class="u-fs-fs-sm u-c-fg-dim">This tab is running an older version. Refresh to get the latest fixes.</div>' +
     '</div>' +
     '</div>' +
-    '<div style="display:flex; gap:.5rem; justify-content:flex-end;">' +
+    '<div class="u-d-flex u-gap-0_5rem u-justify-flex-end">' +
     '<button type="button" id="new-version-later" class="gm-btn gm-btn-ghost gm-btn-sm">Later</button>' +
     '<button type="button" id="new-version-refresh" class="gm-btn gm-btn-primary gm-btn-sm">Refresh</button>' +
     '</div>';

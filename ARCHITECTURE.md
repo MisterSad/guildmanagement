@@ -299,7 +299,7 @@ The Leader Hall feature (1:1 and group Signal-Protocol messaging between guild l
 ### 8. Deployment & Infrastructure Topology
 
 - **Production Frontend**: Hosted on Vercel at `https://guildmanagement.vercel.app` (branch `main`).
-- **Content Security Policy (CSP)**: Hardened policy with `frame-ancestors 'none'`, `object-src 'none'`, `media-src 'self' blob:` (see §6 — omitting this blocks any blob-backed `<video>`/`<audio>` identically on every browser), Sentry APM ingest (`*.ingest.sentry.io`), and **zero external CDN scripts** (`cdn.jsdelivr.net` and `unpkg.com` eliminated; `@phosphor-icons/web` packaged locally).
+- **Content Security Policy (CSP)**: Hardened policy with `script-src 'self'` and `style-src 'self'` — no `'unsafe-inline'` anywhere since 2026-10-04: static styles are `u-*` utility classes (`utilities.css`), computed ones are applied through the CSSOM by `src/core/dom/style-refs.ts` (the markup carries a reference to a declaration the app registered, never CSS) — `frame-ancestors 'none'`, `object-src 'none'`, `media-src 'self' blob:` (see §6 — omitting this blocks any blob-backed `<video>`/`<audio>` identically on every browser), Sentry APM ingest (`*.ingest.sentry.io`), and **zero external CDN scripts** (`cdn.jsdelivr.net` and `unpkg.com` eliminated; `@phosphor-icons/web` packaged locally).
 - **CORS Allowlist**: Strictly locked to `https://guildmanagement.vercel.app`, `http://localhost:5173`, `http://127.0.0.1:5173`, `http://localhost:3000`, and authorized `https://*.vercel.app` preview environments.
 
 ---

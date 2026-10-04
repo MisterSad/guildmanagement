@@ -26,10 +26,10 @@ export interface PendingApprovalContext {
 export function pendingApprovalHtml(pseudo: string | undefined, isPending: unknown): string {
   if (!isPending || !pseudo) return '';
   return (
-    '<span class="gm-chip gm-chip-warning" style="font-size: var(--fs-2xs); padding:0.05rem 0.3rem;" title="Submitted by the player from the Player Portal">Pending</span>' +
-    '<button type="button" class="gm-btn gm-btn-success gm-btn-sm pending-approve-btn" data-pseudo="' +
+    '<span class="u-fs-fs-2xs u-p-0_05rem-0_3rem gm-chip gm-chip-warning" title="Submitted by the player from the Player Portal">Pending</span>' +
+    '<button type="button" class="u-p-0_1rem-0_45rem u-fs-fs-xs gm-btn gm-btn-success gm-btn-sm pending-approve-btn" data-pseudo="' +
     escapeHTML(pseudo) +
-    '" style="padding:0.1rem 0.45rem; font-size: var(--fs-xs);">Approve</button>'
+    '">Approve</button>'
   );
 }
 

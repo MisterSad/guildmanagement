@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures.js';
 
 // Regression & E2E coverage for Discord custom message customization modal:
 // - Verifies the 6 custom message buttons in index.html carry aria-label="Customize messages"

@@ -16,6 +16,7 @@
  *   - This module never assigns any `window.GM_*` variable.
  */
 
+import { styleRef } from '../../../core/dom/style-refs';
 import {
   ARMSRACE_STAGE_KEYS,
   ARMSRACE_STAGE_EVENTS,
@@ -369,46 +370,50 @@ export class ArmsRaceView {
       '</div>';
 
     html +=
-      '<div class="gm-event-banner" style="display: flex; margin-bottom: 1.5rem; background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--radius-lg); padding: 1rem 1.5rem; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">' +
-      '<div class="gm-event-meta" style="display: flex; align-items: center; gap: 1rem; flex: 1; min-width: 250px;">' +
-      '<div class="gm-event-icon" style="width: 48px; height: 48px; border-radius: 50%; background: ' +
-      (isActive ? 'var(--primary-soft)' : 'rgba(255,255,255,0.05)') +
-      '; color: ' +
-      (isActive ? 'var(--primary)' : 'var(--text-muted)') +
-      '; display: flex; align-items: center; justify-content: center; font-size: var(--fs-3xl);"><i class="ph ph-target"></i></div>' +
-      '<div class="gm-grow" style="display: flex; flex-direction: column; gap: 0.25rem;">' +
-      '<div class="gm-event-name" style="font-size: var(--fs-xl); font-weight: 700; font-family: var(--font-family-title);">Arms Race ' +
+      '<div class="u-d-flex u-mb-1_5rem u-bg-card-bg u-border-1px-solid-card-border u-rounded-radius-lg u-p-1rem-1_5rem u-justify-space-between u-items-center u-wrap-wrap u-gap-1rem gm-event-banner">' +
+      '<div class="u-d-flex u-items-center u-gap-1rem u-flex-1 u-minw-250px gm-event-meta">' +
+      '<div class="gm-event-icon" data-gm-style="' +
+      styleRef(
+        'width: 48px; height: 48px; border-radius: 50%; background: ' +
+          (isActive ? 'var(--primary-soft)' : 'rgba(255,255,255,0.05)') +
+          '; color: ' +
+          (isActive ? 'var(--primary)' : 'var(--text-muted)') +
+          '; display: flex; align-items: center; justify-content: center; font-size: var(--fs-3xl);'
+      ) +
+      '"><i class="ph ph-target"></i></div>' +
+      '<div class="u-d-flex u-dir-column u-gap-0_25rem gm-grow">' +
+      '<div class="u-fs-fs-xl u-fw-700 u-ff-font-family-title gm-event-name">Arms Race ' +
       escapeHTML(stgLabel) +
       '</div>' +
-      '<div class="gm-event-status-line" style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">' +
-      '<span class="event-status-badge gm-chip ' +
+      '<div class="u-d-flex u-items-center u-gap-0_5rem u-wrap-wrap gm-event-status-line">' +
+      '<span class="u-d-inline-flex u-items-center u-gap-0_35rem u-fs-fs-sm event-status-badge gm-chip ' +
       statusBadgeClass +
-      '" style="display: inline-flex; align-items: center; gap: 0.35rem; font-size: var(--fs-sm);"><span class="gm-dot" style="background: ' +
-      dotColor +
-      '; width: 8px; height: 8px; border-radius: 50%;"></span> ' +
+      '"><span class="gm-dot" data-gm-style="' +
+      styleRef('background: ' + dotColor + '; width: 8px; height: 8px; border-radius: 50%;') +
+      '"></span> ' +
       statusText +
       '</span>' +
-      '<span class="gm-dim" style="font-size: var(--fs-sm); color: var(--text-muted);">' +
+      '<span class="u-fs-fs-sm u-c-text-muted gm-dim">' +
       escapeHTML(subText) +
       '</span>' +
       '</div>' +
       '</div>' +
       '</div>' +
-      '<div class="gm-event-actions" style="display: flex; gap: 0.5rem;">' +
+      '<div class="u-d-flex u-gap-0_5rem gm-event-actions">' +
       (isActive
-        ? '<button class="gm-btn gm-btn-danger event-end-btn ar-stage-end-btn" data-stage="' +
+        ? '<button class="u-mr-0_25rem gm-btn gm-btn-danger event-end-btn ar-stage-end-btn" data-stage="' +
           this.activeStage +
-          '" style="margin-right: 0.25rem;"><i class="ph ph-stop-circle"></i> <span>' +
+          '"><i class="ph ph-stop-circle"></i> <span>' +
           t('event_end') +
           '</span></button>' +
-          '<button class="gm-btn ar-stage-edit-btn" style="background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.3); color: #a5b4fc; margin-right: 0.25rem;" data-stage="' +
+          '<button class="u-bg-rgba-99-102-241-0_15 u-border-1px-solid-rgba-99-2a6e71 u-c-hexa5b4fc u-mr-0_25rem gm-btn ar-stage-edit-btn" data-stage="' +
           this.activeStage +
           '" title="' +
           t('edit_title') +
           '"><i class="ph ph-calendar"></i> <span>' +
           t('edit_title') +
           '</span></button>' +
-          '<button class="gm-btn ar-stage-delete-btn" style="background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.25); color: var(--error);" data-stage="' +
+          '<button class="u-bg-rgba-239-68-68-0_12 u-border-1px-solid-rgba-239-5b5d21 u-c-error gm-btn ar-stage-delete-btn" data-stage="' +
           this.activeStage +
           '" title="' +
           t('delete_title') +
@@ -428,7 +433,7 @@ export class ArmsRaceView {
 
     if (!isActive) {
       html +=
-        '<div class="gm-empty" style="margin-top: 2rem;">' +
+        '<div class="u-mt-2rem gm-empty">' +
         '<i class="ph ph-rocket-launch gm-icon"></i>' +
         '<div class="gm-empty-title">' +
         t('event_not_active') +
@@ -456,8 +461,8 @@ export class ArmsRaceView {
     const stats = computeArmsRaceStats(participants);
 
     html +=
-      '<div class="gm-row" style="gap:.5rem; margin-bottom:1rem; flex-wrap:wrap; justify-content:space-between;">' +
-      '<div class="gm-row event-stats" style="gap:.5rem; flex-wrap:wrap;">' +
+      '<div class="u-gap-0_5rem u-mb-1rem u-wrap-wrap u-justify-space-between gm-row">' +
+      '<div class="u-gap-0_5rem u-wrap-wrap gm-row event-stats">' +
       '<span class="gm-chip"><i class="ph ph-users"></i> ' +
       stats.total +
       ' ' +
@@ -474,7 +479,7 @@ export class ArmsRaceView {
       t('event_absent') +
       '</span>' +
       '</div>' +
-      '<div class="gm-input-with-icon" style="min-width: 220px; max-width: 320px;">' +
+      '<div class="u-minw-220px u-maxw-320px gm-input-with-icon">' +
       '<i class="ph ph-magnifying-glass gm-icon"></i>' +
       '<input type="text" class="gm-input event-search-input" aria-label="' +
       escapeHTML(t('search_placeholder')) +
@@ -507,7 +512,7 @@ export class ArmsRaceView {
         '<td data-label="' +
         t('col_member') +
         '">' +
-        '<div class="gm-row" style="gap:.6rem;">' +
+        '<div class="u-gap-0_6rem gm-row">' +
         '<div class="gm-avatar">' +
         escapeHTML(initial) +
         '</div>' +

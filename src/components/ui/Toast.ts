@@ -46,7 +46,7 @@ export class ToastNotification {
     };
 
     toast.innerHTML = `
-      <i class="ph ${iconMap[type]}" style="font-size: 1.25rem;"></i>
+      <i class="u-fs-1_25rem ph ${iconMap[type]}"></i>
       <span>${escapeHTML(message)}</span>
     `;
 

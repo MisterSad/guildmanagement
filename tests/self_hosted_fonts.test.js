@@ -22,7 +22,7 @@ describe('self-hosted fonts', () => {
     const csp = read('vercel.json');
     expect(csp).not.toMatch(/fonts\.(googleapis|gstatic)\.com/);
     expect(csp).toContain("font-src 'self' data:;");
-    expect(csp).toContain("style-src 'self' 'unsafe-inline';");
+    expect(csp).toContain("style-src 'self';");
   });
 
   it('every face in fonts.css points at a woff2 that exists, under the OFL', () => {

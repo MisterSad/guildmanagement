@@ -7,6 +7,7 @@
  * escaped via esc().
  */
 
+import { styleRef } from '../../../core/dom/style-refs';
 import { shadowfrontViewLazy } from '../lazy-views';
 import { esc, byId } from '../admin/utils';
 import {
@@ -84,11 +85,15 @@ export function renderOcrCoverage(coverage: OcrVideoCoverage | null): void {
     : 'background:rgba(245,158,11,0.12); border:1px solid rgba(245,158,11,0.3); color:#fbbf24;';
   const icon = complete ? 'ph-check-circle' : 'ph-warning';
   banner.innerHTML =
-    '<div style="' +
-    tone +
-    ' padding:0.5rem 0.75rem; border-radius:6px; font-size: var(--fs-sm); display:flex; align-items:center; gap:0.4rem;"><i class="ph ' +
+    '<div data-gm-style="' +
+    styleRef(
+      '' +
+        tone +
+        ' padding:0.5rem 0.75rem; border-radius:6px; font-size: var(--fs-sm); display:flex; align-items:center; gap:0.4rem;'
+    ) +
+    '"><i class="u-fs-fs-xl u-shrink-0 ph ' +
     icon +
-    '" style="font-size: var(--fs-xl); flex-shrink:0;"></i><span>' +
+    '"></i><span>' +
     esc(text) +
     '</span></div>';
   banner.style.display = 'block';
@@ -100,7 +105,7 @@ export function renderOcrRankCell(
   currentRole?: string | null
 ): string {
   if (currentRole === 'R5') {
-    return '<td class="ocr-cell-rank"><span class="gm-chip" style="background:rgba(100,116,139,0.15); color:#94a3b8; border:1px solid rgba(100,116,139,0.3); font-size: var(--fs-xs); white-space:nowrap;" title="R5 Leader is protected from bulk rank changes"><i class="ph ph-shield-star"></i> R5</span></td>';
+    return '<td class="ocr-cell-rank"><span class="u-bg-rgba-100-116-139-0_15 u-c-hex94a3b8 u-border-1px-solid-rgba-100-335175 u-fs-fs-xs u-ws-nowrap gm-chip" title="R5 Leader is protected from bulk rank changes"><i class="ph ph-shield-star"></i> R5</span></td>';
   }
   const noChangeLabel = currentRole ? 'Keep (' + currentRole + ')' : 'R1 (default)';
   let opts = '<option value="">' + esc(noChangeLabel) + '</option>';
@@ -112,7 +117,9 @@ export function renderOcrRankCell(
     idx +
     '" aria-label="' +
     esc('Rank, row ' + (Number(idx) + 1)) +
-    '" style="padding:0.2rem 0.35rem; font-size: var(--fs-sm); font-weight:600; width:100%; max-width:118px;">' +
+    '" data-gm-style="' +
+    styleRef('padding:0.2rem 0.35rem; font-size: var(--fs-sm); font-weight:600; width:100%; max-width:118px;') +
+    '">' +
     opts +
     '</select></td>'
   );
@@ -146,7 +153,7 @@ export function renderOcrResults(players: any[]): void {
       tbody.innerHTML =
         '<tr><td colspan="' +
         cs +
-        '" style="text-align:center; padding:2rem; color:var(--text-muted);"><i class="ph ph-warning-circle" style="font-size: var(--fs-3xl); display:block; margin-bottom:0.5rem; color:#facc15;"></i>No player usernames or ' +
+        '" class="u-text-center u-p-2rem u-c-text-muted"><i class="u-fs-fs-3xl u-d-block u-mb-0_5rem u-c-hexfacc15 ph ph-warning-circle"></i>No player usernames or ' +
         esc(meta.header) +
         ' values were detected in the uploaded image(s). Please try clearer screenshots.</td></tr>';
     }
@@ -154,7 +161,7 @@ export function renderOcrResults(players: any[]): void {
     if (tbodyRemoved) tbodyRemoved.innerHTML = '';
     if (summaryBadges)
       summaryBadges.innerHTML =
-        '<span class="gm-chip" style="background:rgba(239,68,68,0.15); color:#f87171; border:1px solid rgba(239,68,68,0.3);"><i class="ph ph-x-circle"></i> 0 Detected</span>';
+        '<span class="u-bg-rgba-239-68-68-0_15 u-c-hexf87171 u-border-1px-solid-rgba-239-68-68-0_3 gm-chip"><i class="ph ph-x-circle"></i> 0 Detected</span>';
     updateCommitButtonCount();
     return;
   }
@@ -197,13 +204,13 @@ export function renderOcrResults(players: any[]): void {
         otherGuildCount++;
         isChecked = false;
         badgeHtml =
-          '<span class="gm-chip" style="background:rgba(100,116,139,0.15); color:#94a3b8; border:1px solid rgba(100,116,139,0.3);"><i class="ph ph-shield-slash"></i> Other Guild / Non-Member</span>';
+          '<span class="u-bg-rgba-100-116-139-0_15 u-c-hex94a3b8 u-border-1px-solid-rgba-100-335175 gm-chip"><i class="ph ph-shield-slash"></i> Other Guild / Non-Member</span>';
       } else if (meta.eventType === 'shadowfront') {
         updateCount++;
         const a = sfAssignments.find((x) => x.pseudo && x.pseudo.toLowerCase() === existing.pseudo.toLowerCase());
         if (a && a.role === 'reserve')
           badgeHtml =
-            '<span class="gm-chip" style="background:rgba(168,85,247,0.15); color:#c084fc; border:1px solid rgba(168,85,247,0.3);"><i class="ph ph-clock-countdown"></i> Substitute &rarr; [Sub Present ✓] + [Participated ✓]</span>';
+            '<span class="u-bg-rgba-168-85-247-0_15 u-c-hexc084fc u-border-1px-solid-rgba-168-1a8dde gm-chip"><i class="ph ph-clock-countdown"></i> Substitute &rarr; [Sub Present ✓] + [Participated ✓]</span>';
         else if (a && a.role === 'participant')
           badgeHtml =
             '<span class="gm-chip gm-chip-success"><i class="ph ph-shield-check"></i> Main Squad &rarr; [Participated ✓]</span>';
@@ -230,13 +237,13 @@ export function renderOcrResults(players: any[]): void {
       ) {
         updateCount++;
         badgeHtml =
-          '<span class="gm-chip" style="background:rgba(245,158,11,0.15); color:#f59e0b; border:1px solid rgba(245,158,11,0.3);"><i class="ph ph-sword"></i> Prep Score: ' +
+          '<span class="u-bg-rgba-245-158-11-0_15 u-c-hexf59e0b u-border-1px-solid-rgba-245-cac11c gm-chip"><i class="ph ph-sword"></i> Prep Score: ' +
           fmtNum(pScore) +
           ' &rarr; [Participated ✓]</span>';
       } else if (getCurrentOcrMetric() === 'svs_pvp' || getCurrentOcrMetric() === 'gvg_pvp') {
         updateCount++;
         badgeHtml =
-          '<span class="gm-chip" style="background:rgba(249,115,22,0.15); color:#f97316; border:1px solid rgba(249,115,22,0.3);"><i class="ph ph-fire"></i> PvP Score: ' +
+          '<span class="u-bg-rgba-249-115-22-0_15 u-c-hexf97316 u-border-1px-solid-rgba-249-068e25 gm-chip"><i class="ph ph-fire"></i> PvP Score: ' +
           fmtNum(pScore) +
           ' &rarr; [Participated ✓]</span>';
       } else {
@@ -253,7 +260,7 @@ export function renderOcrResults(players: any[]): void {
         '<tr class="ocr-row" data-pseudo="' +
         esc(effectivePseudo.toLowerCase()) +
         '">' +
-        '<td class="ocr-cell-check" style="text-align: center;"><input type="checkbox" class="ocr-row-cb" data-index="' +
+        '<td class="u-text-center ocr-cell-check"><input type="checkbox" class="ocr-row-cb" data-index="' +
         idx +
         '" aria-label="' +
         esc('Import row ' + (Number(idx) + 1)) +
@@ -266,7 +273,9 @@ export function renderOcrResults(players: any[]): void {
         esc('Player name, row ' + (Number(idx) + 1)) +
         '" value="' +
         esc(effectivePseudo) +
-        '" placeholder="Player Username" style="padding:0.25rem 0.5rem; font-size: var(--fs-base); font-weight:600; width:100%; max-width:180px;"></td>' +
+        '" placeholder="Player Username" data-gm-style="' +
+        styleRef('padding:0.25rem 0.5rem; font-size: var(--fs-base); font-weight:600; width:100%; max-width:180px;') +
+        '"></td>' +
         '<td class="ocr-cell-metric"><span class="ocr-metric-label"><i class="ph ' +
         esc(meta.icon || 'ph-hash') +
         '"></i> ' +
@@ -278,9 +287,13 @@ export function renderOcrResults(players: any[]): void {
         esc('Score, row ' + (Number(idx) + 1)) +
         '" value="' +
         pScore +
-        '" style="padding:0.25rem 0.5rem; font-size: var(--fs-base); font-weight:600; color:' +
-        esc(meta.color) +
-        '; width:100%; max-width:140px;"></td>' +
+        '" data-gm-style="' +
+        styleRef(
+          'padding:0.25rem 0.5rem; font-size: var(--fs-base); font-weight:600; color:' +
+            esc(meta.color) +
+            '; width:100%; max-width:140px;'
+        ) +
+        '"></td>' +
         '<td class="ocr-cell-status">' +
         badgeHtml +
         '</td>' +
@@ -289,16 +302,16 @@ export function renderOcrResults(players: any[]): void {
 
     if (summaryBadges) {
       summaryBadges.innerHTML =
-        '<span class="gm-chip" style="background:rgba(99,102,241,0.15); color:#818cf8; border:1px solid rgba(99,102,241,0.3);"><i class="ph ph-arrows-clockwise"></i> ' +
+        '<span class="u-bg-rgba-99-102-241-0_15 u-c-hex818cf8 u-border-1px-solid-rgba-99-2a6e71 gm-chip"><i class="ph ph-arrows-clockwise"></i> ' +
         updateCount +
         ' Ready to Apply</span>' +
         (reconciledCount > 0
-          ? '<span class="gm-chip" style="background:rgba(234,179,8,0.15); color:#facc15; border:1px solid rgba(234,179,8,0.3);"><i class="ph ph-sparkle"></i> ' +
+          ? '<span class="u-bg-rgba-234-179-8-0_15 u-c-hexfacc15 u-border-1px-solid-rgba-234-179-8-0_3 gm-chip"><i class="ph ph-sparkle"></i> ' +
             reconciledCount +
             ' Reconciled</span>'
           : '') +
         (otherGuildCount > 0
-          ? '<span class="gm-chip" style="background:rgba(100,116,139,0.15); color:#94a3b8; border:1px solid rgba(100,116,139,0.3);"><i class="ph ph-shield-slash"></i> ' +
+          ? '<span class="u-bg-rgba-100-116-139-0_15 u-c-hex94a3b8 u-border-1px-solid-rgba-100-335175 gm-chip"><i class="ph ph-shield-slash"></i> ' +
             otherGuildCount +
             ' Ignored / Non-Tenant</span>'
           : '');
@@ -336,29 +349,31 @@ export function renderOcrResults(players: any[]): void {
         let badgeHtml: string;
         if (item.status === 'reconciled')
           badgeHtml =
-            '<span class="gm-chip" style="background:rgba(234,179,8,0.15); color:#facc15; border:1px solid rgba(234,179,8,0.3);"><i class="ph ph-sparkle"></i> Reconciled ("' +
+            '<span class="u-bg-rgba-234-179-8-0_15 u-c-hexfacc15 u-border-1px-solid-rgba-234-179-8-0_3 gm-chip"><i class="ph ph-sparkle"></i> Reconciled ("' +
             esc(item.member.pseudo) +
             '") &rarr; ' +
             fmtNum(pScore) +
             '</span>';
         else if (item.status === 'update')
           badgeHtml =
-            '<span class="gm-chip" style="background:rgba(99,102,241,0.15); color:' +
-            esc(meta.color) +
-            '; border:1px solid rgba(99,102,241,0.3);"><i class="ph ph-arrows-clockwise"></i> Update (' +
+            '<span class="gm-chip" data-gm-style="' +
+            styleRef(
+              'background:rgba(99,102,241,0.15); color:' + esc(meta.color) + '; border:1px solid rgba(99,102,241,0.3);'
+            ) +
+            '"><i class="ph ph-arrows-clockwise"></i> Update (' +
             fmtNum(item.currentVal) +
             ' &rarr; ' +
             fmtNum(pScore) +
             ')</span>';
         else
           badgeHtml =
-            '<span class="gm-chip" style="background:rgba(255,255,255,0.05); color:var(--text-muted);"><i class="ph ph-check"></i> Unchanged</span>';
+            '<span class="u-bg-rgba-255-255-255-0_05 u-c-text-muted gm-chip"><i class="ph ph-check"></i> Unchanged</span>';
 
         existingHtml +=
           '<tr class="ocr-row ocr-row--existing" data-pseudo="' +
           esc(effPseudo.toLowerCase()) +
           '">' +
-          '<td class="ocr-cell-check" style="text-align: center;"><input type="checkbox" class="ocr-row-cb" data-index="' +
+          '<td class="u-text-center ocr-cell-check"><input type="checkbox" class="ocr-row-cb" data-index="' +
           idx +
           '" aria-label="' +
           esc('Import row ' + (Number(idx) + 1)) +
@@ -369,7 +384,9 @@ export function renderOcrResults(players: any[]): void {
           esc('Player name, row ' + (Number(idx) + 1)) +
           '" value="' +
           esc(effPseudo) +
-          '" placeholder="Player Username" style="padding:0.25rem 0.5rem; font-size: var(--fs-base); font-weight:600; width:100%; max-width:180px;"></td>' +
+          '" placeholder="Player Username" data-gm-style="' +
+          styleRef('padding:0.25rem 0.5rem; font-size: var(--fs-base); font-weight:600; width:100%; max-width:180px;') +
+          '"></td>' +
           '<td class="ocr-cell-uid"><span class="ocr-readonly-uid">' +
           esc(uid || '—') +
           '</span></td>' +
@@ -387,9 +404,13 @@ export function renderOcrResults(players: any[]): void {
           esc('Score, row ' + (Number(idx) + 1)) +
           '" value="' +
           pScore +
-          '" style="padding:0.25rem 0.5rem; font-size: var(--fs-base); font-weight:600; color:' +
-          esc(meta.color) +
-          '; width:100%; max-width:140px;"></td>' +
+          '" data-gm-style="' +
+          styleRef(
+            'padding:0.25rem 0.5rem; font-size: var(--fs-base); font-weight:600; color:' +
+              esc(meta.color) +
+              '; width:100%; max-width:140px;'
+          ) +
+          '"></td>' +
           '<td class="ocr-cell-status">' +
           badgeHtml +
           '</td>' +
@@ -417,14 +438,14 @@ export function renderOcrResults(players: any[]): void {
             ? 'padding:0.25rem 0.5rem; font-size: var(--fs-sm); width:100%; max-width:120px; border-color:rgba(239,68,68,0.7); background:rgba(239,68,68,0.06);'
             : 'padding:0.25rem 0.5rem; font-size: var(--fs-sm); width:100%; max-width:120px;';
           const badgeHtml = isOtherGuild
-            ? '<span class="gm-chip" style="background:rgba(100,116,139,0.15); color:#94a3b8; border:1px solid rgba(100,116,139,0.3);"><i class="ph ph-shield-slash"></i> Other Guild (Unchecked)</span>'
+            ? '<span class="u-bg-rgba-100-116-139-0_15 u-c-hex94a3b8 u-border-1px-solid-rgba-100-335175 gm-chip"><i class="ph ph-shield-slash"></i> Other Guild (Unchecked)</span>'
             : '<span class="gm-chip gm-chip-success"><i class="ph ph-user-plus"></i> New Player</span>';
 
           newHtml +=
             '<tr class="ocr-row ocr-row--new" data-pseudo="' +
             esc(effPseudo.toLowerCase()) +
             '">' +
-            '<td class="ocr-cell-check" style="text-align: center;"><input type="checkbox" class="ocr-row-cb" data-index="' +
+            '<td class="u-text-center ocr-cell-check"><input type="checkbox" class="ocr-row-cb" data-index="' +
             idx +
             '" aria-label="' +
             esc('Import row ' + (Number(idx) + 1)) +
@@ -437,15 +458,19 @@ export function renderOcrResults(players: any[]): void {
             esc('Player name, row ' + (Number(idx) + 1)) +
             '" value="' +
             esc(effPseudo) +
-            '" placeholder="Player Username" style="padding:0.25rem 0.5rem; font-size: var(--fs-base); font-weight:600; width:100%; max-width:180px;"></td>' +
+            '" placeholder="Player Username" data-gm-style="' +
+            styleRef(
+              'padding:0.25rem 0.5rem; font-size: var(--fs-base); font-weight:600; width:100%; max-width:180px;'
+            ) +
+            '"></td>' +
             '<td class="ocr-cell-uid"><input type="text" class="ocr-edit-uid gm-input" data-index="' +
             idx +
             '" aria-label="' +
             esc('Player UID, row ' + (Number(idx) + 1)) +
             '" value="' +
             esc(uid) +
-            '" placeholder="TEMP (auto)" style="' +
-            uidInputStyle +
+            '" placeholder="TEMP (auto)" data-gm-style="' +
+            styleRef('' + uidInputStyle + '') +
             '"></td>' +
             renderOcrRankCell(idx, item.ocrPlayer && item.ocrPlayer.rank, null) +
             '<td class="ocr-cell-metric"><span class="ocr-metric-label"><i class="ph ' +
@@ -459,9 +484,13 @@ export function renderOcrResults(players: any[]): void {
             esc('Score, row ' + (Number(idx) + 1)) +
             '" value="' +
             pScore +
-            '" style="padding:0.25rem 0.5rem; font-size: var(--fs-base); font-weight:600; color:' +
-            esc(meta.color) +
-            '; width:100%; max-width:140px;"></td>' +
+            '" data-gm-style="' +
+            styleRef(
+              'padding:0.25rem 0.5rem; font-size: var(--fs-base); font-weight:600; color:' +
+                esc(meta.color) +
+                '; width:100%; max-width:140px;'
+            ) +
+            '"></td>' +
             '<td class="ocr-cell-status">' +
             badgeHtml +
             '</td>' +
@@ -470,7 +499,7 @@ export function renderOcrResults(players: any[]): void {
       }
     } else if (diff.unknown && diff.unknown.length > 0) {
       newHtml +=
-        '<tr class="ocr-section-header ocr-section-header--unknown"><td colspan="5"><div class="ocr-section-title" style="color:#fbbf24;"><i class="ph ph-user-focus"></i> Not in Roster <span class="gm-badge" style="background:rgba(245,158,11,0.2); color:#fbbf24;">' +
+        '<tr class="ocr-section-header ocr-section-header--unknown"><td colspan="5"><div class="u-c-hexfbbf24 ocr-section-title"><i class="ph ph-user-focus"></i> Not in Roster <span class="u-bg-rgba-245-158-11-0_2 u-c-hexfbbf24 gm-badge">' +
         diff.unknown.length +
         '</span></div></td></tr>';
       diff.unknown.forEach((item: any) => {
@@ -478,10 +507,12 @@ export function renderOcrResults(players: any[]): void {
           '<tr class="ocr-row ocr-row--unknown" data-pseudo="' +
           esc(String(item.effectivePseudo).toLowerCase()) +
           '">' +
-          '<td class="ocr-cell-check" style="text-align: center;"><input type="checkbox" class="ocr-row-cb" disabled aria-label="' +
+          '<td class="u-text-center ocr-cell-check"><input type="checkbox" class="ocr-row-cb" disabled aria-label="' +
           esc('Cannot import ' + item.effectivePseudo) +
-          '" style="opacity:0.4; cursor:not-allowed;"></td>' +
-          '<td class="ocr-cell-pseudo"><span style="font-weight:600; color:var(--text-muted);">' +
+          '" data-gm-style="' +
+          styleRef('opacity:0.4; cursor:not-allowed;') +
+          '"></td>' +
+          '<td class="ocr-cell-pseudo"><span class="u-fw-600 u-c-text-muted">' +
           esc(item.effectivePseudo) +
           '</span></td>' +
           '<td class="ocr-cell-uid"><span class="ocr-readonly-uid">—</span></td>' +
@@ -490,10 +521,10 @@ export function renderOcrResults(players: any[]): void {
           '"></i> ' +
           esc(metricLabel) +
           ':</span>' +
-          '<span style="font-size: var(--fs-base); font-weight:600; color:var(--text-muted);">' +
+          '<span class="u-fs-fs-base u-fw-600 u-c-text-muted">' +
           fmtNum(item.newVal) +
           '</span></td>' +
-          '<td class="ocr-cell-status"><span class="gm-chip" style="background:rgba(234,179,8,0.15); color:#facc15; border:1px solid rgba(234,179,8,0.3);"><i class="ph ph-warning"></i> Use Members OCR to add</span></td>' +
+          '<td class="ocr-cell-status"><span class="u-bg-rgba-234-179-8-0_15 u-c-hexfacc15 u-border-1px-solid-rgba-234-179-8-0_3 gm-chip"><i class="ph ph-warning"></i> Use Members OCR to add</span></td>' +
           '</tr>';
       });
     }
@@ -521,9 +552,11 @@ export function renderOcrResults(players: any[]): void {
         ')</span>';
       summaryBadges.innerHTML =
         coverageBadge +
-        '<span class="gm-chip" style="background:rgba(99,102,241,0.15); color:' +
-        esc(meta.color) +
-        '; border:1px solid rgba(99,102,241,0.3);"><i class="ph ph-users"></i> ' +
+        '<span class="gm-chip" data-gm-style="' +
+        styleRef(
+          'background:rgba(99,102,241,0.15); color:' + esc(meta.color) + '; border:1px solid rgba(99,102,241,0.3);'
+        ) +
+        '"><i class="ph ph-users"></i> ' +
         diff.existing.length +
         ' Existing</span>' +
         (diff.new.length > 0
@@ -539,7 +572,7 @@ export function renderOcrResults(players: any[]): void {
     if (isMembersMode && diff.removed.length > 0) {
       if (isPartialRosterScan) {
         removedHtml +=
-          '<tr class="ocr-warning-row"><td colspan="6"><div class="ocr-removed-warning" style="background:rgba(245,158,11,0.12); border:1px solid rgba(245,158,11,0.35); color:#fbbf24; padding:0.5rem 0.75rem; border-radius:6px; margin:0.35rem 0; font-size: var(--fs-sm); display:flex; align-items:center; gap:0.4rem;"><i class="ph ph-shield-warning" style="font-size: var(--fs-xl); flex-shrink:0;"></i><span>Partial scan detected (' +
+          '<tr class="ocr-warning-row"><td colspan="6"><div class="u-bg-rgba-245-158-11-0_12 u-border-1px-solid-rgba-245-0b87d1 u-c-hexfbbf24 u-p-0_5rem-0_75rem u-rounded-6px u-m-0_35rem-0 u-fs-fs-sm u-d-flex u-items-center u-gap-0_4rem ocr-removed-warning"><i class="u-fs-fs-xl u-shrink-0 ph ph-shield-warning"></i><span>Partial scan detected (' +
           Math.round(coverageRatio * 100) +
           '% coverage: ' +
           existingDetectedCount +
@@ -548,12 +581,12 @@ export function renderOcrResults(players: any[]): void {
           ' members found). To protect active members, missing players are unchecked by default. Check members manually or click "Remove All" if departure is intentional.</span></div></td></tr>';
       } else if (members.length > 0 && diff.removed.length > members.length * 0.5) {
         removedHtml +=
-          '<tr class="ocr-warning-row"><td colspan="6"><div class="ocr-removed-warning" style="background:rgba(245,158,11,0.12); border:1px solid rgba(245,158,11,0.3); color:#fbbf24; padding:0.5rem 0.75rem; border-radius:6px; margin:0.35rem 0; font-size: var(--fs-sm); display:flex; align-items:center; gap:0.4rem;"><i class="ph ph-warning" style="font-size: var(--fs-xl); flex-shrink:0;"></i><span>More than half your roster would be removed. If this screenshot is partial, uncheck the members to keep.</span></div></td></tr>';
+          '<tr class="ocr-warning-row"><td colspan="6"><div class="u-bg-rgba-245-158-11-0_12 u-border-1px-solid-rgba-245-cac11c u-c-hexfbbf24 u-p-0_5rem-0_75rem u-rounded-6px u-m-0_35rem-0 u-fs-fs-sm u-d-flex u-items-center u-gap-0_4rem ocr-removed-warning"><i class="u-fs-fs-xl u-shrink-0 ph ph-warning"></i><span>More than half your roster would be removed. If this screenshot is partial, uncheck the members to keep.</span></div></td></tr>';
       }
       removedHtml +=
-        '<tr class="ocr-section-header ocr-section-header--removed"><td colspan="6"><div style="display:flex; justify-content:space-between; align-items:center; width:100%;"><div class="ocr-section-title"><i class="ph ph-user-minus"></i> Removed Members <span class="gm-badge gm-badge--danger">' +
+        '<tr class="ocr-section-header ocr-section-header--removed"><td colspan="6"><div class="u-d-flex u-justify-space-between u-items-center u-w-100pct"><div class="ocr-section-title"><i class="ph ph-user-minus"></i> Removed Members <span class="gm-badge gm-badge--danger">' +
         diff.removed.length +
-        '</span></div><div style="font-size: var(--fs-sm); color:var(--text-muted);"><button type="button" class="gm-btn-text" id="ocr-btn-keep-all" style="font-size: var(--fs-sm); color:var(--accent); cursor:pointer; background:none; border:none; padding:0 0.4rem;">Keep All</button> | <button type="button" class="gm-btn-text" id="ocr-btn-remove-all" style="font-size: var(--fs-sm); color:#f87171; cursor:pointer; background:none; border:none; padding:0 0.4rem;">Remove All</button></div></div></td></tr>';
+        '</span></div><div class="u-fs-fs-sm u-c-text-muted"><button type="button" class="u-fs-fs-sm u-c-accent u-cursor-pointer u-bg-none u-border-none u-p-0-0_4rem gm-btn-text" id="ocr-btn-keep-all">Keep All</button> | <button type="button" class="u-fs-fs-sm u-c-hexf87171 u-cursor-pointer u-bg-none u-border-none u-p-0-0_4rem gm-btn-text" id="ocr-btn-remove-all">Remove All</button></div></div></td></tr>';
       diff.removed.forEach((item: any) => {
         const pseudo = item.pseudo;
         removedHtml +=
@@ -562,31 +595,31 @@ export function renderOcrResults(players: any[]): void {
           '" data-removal-pseudo="' +
           esc(pseudo) +
           '">' +
-          '<td class="ocr-cell-check" style="text-align: center;"><input type="checkbox" class="ocr-row-cb ocr-removal-cb" data-removal-pseudo="' +
+          '<td class="u-text-center ocr-cell-check"><input type="checkbox" class="ocr-row-cb ocr-removal-cb" data-removal-pseudo="' +
           esc(pseudo) +
           '" aria-label="' +
           esc('Remove ' + pseudo) +
           '" data-section="removed"' +
           (removalDefaultChecked ? ' checked' : '') +
           '></td>' +
-          '<td class="ocr-cell-pseudo"><span style="font-weight:600; color:var(--text-muted);">' +
+          '<td class="ocr-cell-pseudo"><span class="u-fw-600 u-c-text-muted">' +
           esc(pseudo) +
           '</span></td>' +
           '<td class="ocr-cell-uid"><span class="ocr-readonly-uid">' +
           esc(item.uid || '—') +
           '</span></td>' +
-          '<td class="ocr-cell-rank"><span class="gm-chip" style="background:rgba(100,116,139,0.15); color:#94a3b8; border:1px solid rgba(100,116,139,0.3); font-size: var(--fs-xs); white-space:nowrap;">' +
+          '<td class="ocr-cell-rank"><span class="u-bg-rgba-100-116-139-0_15 u-c-hex94a3b8 u-border-1px-solid-rgba-100-335175 u-fs-fs-xs u-ws-nowrap gm-chip">' +
           esc(item.role || 'R1') +
           '</span></td>' +
-          '<td class="ocr-cell-metric"><span style="color:var(--text-muted); font-size: var(--fs-base);"><i class="ph ' +
+          '<td class="ocr-cell-metric"><span class="u-c-text-muted u-fs-fs-base"><i class="ph ' +
           esc(meta.icon || 'ph-hash') +
           '"></i> ' +
           fmtNum(item.currentPower) +
           '</span></td>' +
           '<td class="ocr-cell-status"><span class="ocr-removal-status-wrap">' +
           (removalDefaultChecked
-            ? '<span class="gm-chip ocr-chip-removal" style="background:rgba(239,68,68,0.15); color:#f87171; border:1px solid rgba(239,68,68,0.3);"><i class="ph ph-user-minus"></i> To Remove</span>'
-            : '<span class="gm-chip ocr-chip-kept" style="background:rgba(100,116,139,0.15); color:#94a3b8; border:1px solid rgba(100,116,139,0.3);"><i class="ph ph-shield-check"></i> Kept (Partial Scan)</span>') +
+            ? '<span class="u-bg-rgba-239-68-68-0_15 u-c-hexf87171 u-border-1px-solid-rgba-239-68-68-0_3 gm-chip ocr-chip-removal"><i class="ph ph-user-minus"></i> To Remove</span>'
+            : '<span class="u-bg-rgba-100-116-139-0_15 u-c-hex94a3b8 u-border-1px-solid-rgba-100-335175 gm-chip ocr-chip-kept"><i class="ph ph-shield-check"></i> Kept (Partial Scan)</span>') +
           '</span></td>' +
           '</tr>';
       });
@@ -614,8 +647,8 @@ function bindOcrResultListeners(resultsContainer: HTMLElement | null, tbodyRemov
       const wrap = row ? row.querySelector('.ocr-removal-status-wrap') : null;
       if (wrap) {
         wrap.innerHTML = input.checked
-          ? '<span class="gm-chip ocr-chip-removal" style="background:rgba(239,68,68,0.15); color:#f87171; border:1px solid rgba(239,68,68,0.3);"><i class="ph ph-user-minus"></i> To Remove</span>'
-          : '<span class="gm-chip ocr-chip-kept" style="background:rgba(100,116,139,0.15); color:#94a3b8; border:1px solid rgba(100,116,139,0.3);"><i class="ph ph-shield-check"></i> Kept</span>';
+          ? '<span class="u-bg-rgba-239-68-68-0_15 u-c-hexf87171 u-border-1px-solid-rgba-239-68-68-0_3 gm-chip ocr-chip-removal"><i class="ph ph-user-minus"></i> To Remove</span>'
+          : '<span class="u-bg-rgba-100-116-139-0_15 u-c-hex94a3b8 u-border-1px-solid-rgba-100-335175 gm-chip ocr-chip-kept"><i class="ph ph-shield-check"></i> Kept</span>';
       }
       updateCommitButtonCount();
     });
@@ -677,7 +710,7 @@ function bindOcrResultListeners(resultsContainer: HTMLElement | null, tbodyRemov
         const wrap = row ? row.querySelector('.ocr-removal-status-wrap') : null;
         if (wrap)
           wrap.innerHTML =
-            '<span class="gm-chip ocr-chip-kept" style="background:rgba(100,116,139,0.15); color:#94a3b8; border:1px solid rgba(100,116,139,0.3);"><i class="ph ph-shield-check"></i> Kept</span>';
+            '<span class="u-bg-rgba-100-116-139-0_15 u-c-hex94a3b8 u-border-1px-solid-rgba-100-335175 gm-chip ocr-chip-kept"><i class="ph ph-shield-check"></i> Kept</span>';
       });
       updateCommitButtonCount();
     });
@@ -693,7 +726,7 @@ function bindOcrResultListeners(resultsContainer: HTMLElement | null, tbodyRemov
         const wrap = row ? row.querySelector('.ocr-removal-status-wrap') : null;
         if (wrap)
           wrap.innerHTML =
-            '<span class="gm-chip ocr-chip-removal" style="background:rgba(239,68,68,0.15); color:#f87171; border:1px solid rgba(239,68,68,0.3);"><i class="ph ph-user-minus"></i> To Remove</span>';
+            '<span class="u-bg-rgba-239-68-68-0_15 u-c-hexf87171 u-border-1px-solid-rgba-239-68-68-0_3 gm-chip ocr-chip-removal"><i class="ph ph-user-minus"></i> To Remove</span>';
       });
       updateCommitButtonCount();
     });
@@ -774,7 +807,7 @@ export function updateCommitButtonCount(): void {
         '% Coverage</span>';
       summaryBadges.innerHTML =
         coverageBadge +
-        '<span class="gm-chip gm-chip-accent" style="font-weight:700;"><i class="ph ph-users-three"></i> Roster: ' +
+        '<span class="u-fw-700 gm-chip gm-chip-accent"><i class="ph ph-users-three"></i> Roster: ' +
         delta.before +
         ' &rarr; ' +
         delta.after +
@@ -783,26 +816,26 @@ export function updateCommitButtonCount(): void {
           ? '<span class="gm-chip gm-chip-success"><i class="ph ph-user-plus"></i> ' + newCount + ' New</span>'
           : '') +
         (updateCount > 0
-          ? '<span class="gm-chip" style="background:rgba(99,102,241,0.15); color:#818cf8; border:1px solid rgba(99,102,241,0.3);"><i class="ph ph-arrows-clockwise"></i> ' +
+          ? '<span class="u-bg-rgba-99-102-241-0_15 u-c-hex818cf8 u-border-1px-solid-rgba-99-2a6e71 gm-chip"><i class="ph ph-arrows-clockwise"></i> ' +
             updateCount +
             ' Updates</span>'
           : '') +
         (reconciledCount > 0
-          ? '<span class="gm-chip" style="background:rgba(234,179,8,0.15); color:#facc15; border:1px solid rgba(234,179,8,0.3);"><i class="ph ph-sparkle"></i> ' +
+          ? '<span class="u-bg-rgba-234-179-8-0_15 u-c-hexfacc15 u-border-1px-solid-rgba-234-179-8-0_3 gm-chip"><i class="ph ph-sparkle"></i> ' +
             reconciledCount +
             ' Reconciled</span>'
           : '') +
         (removalCount > 0
-          ? '<span class="gm-chip" style="background:rgba(239,68,68,0.15); color:#f87171; border:1px solid rgba(239,68,68,0.3);"><i class="ph ph-user-minus"></i> ' +
+          ? '<span class="u-bg-rgba-239-68-68-0_15 u-c-hexf87171 u-border-1px-solid-rgba-239-68-68-0_3 gm-chip"><i class="ph ph-user-minus"></i> ' +
             removalCount +
             ' Removed</span>'
           : '') +
         (otherGuildCount > 0
-          ? '<span class="gm-chip" style="background:rgba(100,116,139,0.15); color:#94a3b8; border:1px solid rgba(100,116,139,0.3);"><i class="ph ph-shield-slash"></i> ' +
+          ? '<span class="u-bg-rgba-100-116-139-0_15 u-c-hex94a3b8 u-border-1px-solid-rgba-100-335175 gm-chip"><i class="ph ph-shield-slash"></i> ' +
             otherGuildCount +
             ' Other Guild (Unchecked)</span>'
           : '') +
-        '<span class="gm-chip" style="background:rgba(255,255,255,0.05); color:var(--text-muted);"><i class="ph ph-check"></i> ' +
+        '<span class="u-bg-rgba-255-255-255-0_05 u-c-text-muted gm-chip"><i class="ph ph-check"></i> ' +
         unchangedCount +
         ' Unchanged</span>';
     }

@@ -16,6 +16,7 @@
  *     neither reads nor assigns any `window.GM*` variable.
  */
 
+import { styleRef } from '../../../core/dom/style-refs';
 import { getWeekStart, formatWeek } from '../../../core/utils/date';
 import { formatNumber, avatarInit, escapeHTML, formatPower } from '../../../core/utils/text';
 import { getPowerTier } from '../../../core/scoring/combat';
@@ -376,7 +377,7 @@ export class StatsView {
           { key: 'Glory', label: '✨ Glory' },
         ];
         eventPickerHtml =
-          '<select class="gm-select event-select" aria-label="Event" style="width:auto; min-width:180px; font-weight:700;">' +
+          '<select class="u-w-auto u-minw-180px u-fw-700 gm-select event-select" aria-label="Event">' +
           eventsList
             .map((ev) => {
               return (
@@ -399,12 +400,12 @@ export class StatsView {
       // shows its components as columns instead of hiding them behind a choice.
 
       el.innerHTML =
-        '<div class="gm-row" style="gap:.5rem; flex-wrap:wrap; align-items:center;">' +
+        '<div class="u-gap-0_5rem u-wrap-wrap u-items-center gm-row">' +
         eventPickerHtml +
-        '<select class="gm-select week-select" aria-label="Week" style="width:auto; min-width:160px;">' +
+        '<select class="u-w-auto u-minw-160px gm-select week-select" aria-label="Week">' +
         weekOpts +
         '</select>' +
-        '<select class="gm-select period-select" aria-label="Period" style="width:auto; min-width:140px;">' +
+        '<select class="u-w-auto u-minw-140px gm-select period-select" aria-label="Period">' +
         periodOpts +
         '</select>' +
         '</div>';
@@ -470,19 +471,19 @@ export class StatsView {
     // same method the visible buttons call, so there is one path and it is the
     // one the user actually exercises.
     return (
-      '<div class="gm-tabs-pill" style="margin-bottom:1.25rem; display:flex; gap:.5rem; flex-wrap:wrap;">' +
+      '<div class="u-mb-1_25rem u-d-flex u-gap-0_5rem u-wrap-wrap gm-tabs-pill">' +
       views
         .map((v) => {
           const isActive = state.primaryView === v.key;
           return (
-            '<button class="gm-tab-pill' +
+            '<button class="u-p-0_65rem-1_15rem u-fs-fs-md u-fw-700 gm-tab-pill' +
             (isActive ? ' gm-active' : '') +
             '" data-gm-view="' +
             v.key +
-            '" style="padding:.65rem 1.15rem; font-size: var(--fs-md); font-weight:700;">' +
-            '<i class="ph ' +
+            '">' +
+            '<i class="u-fs-fs-xl ph ' +
             v.icon +
-            '" style="font-size: var(--fs-xl);"></i> ' +
+            '"></i> ' +
             esc(v.label) +
             '</button>'
           );
@@ -566,15 +567,13 @@ export class StatsView {
     const db = getClient();
     if (!db || !state.activeGuild) {
       container.innerHTML =
-        tabsHtml +
-        '<div class="gm-empty" style="padding:3rem;"><div class="gm-empty-title">Database unavailable.</div></div>';
+        tabsHtml + '<div class="u-p-3rem gm-empty"><div class="gm-empty-title">Database unavailable.</div></div>';
       this.wireModeTabs(container);
       return;
     }
 
     container.innerHTML =
-      tabsHtml +
-      '<div class="gm-empty" style="padding:3rem;"><div class="gm-empty-title">Loading guild metrics...</div></div>';
+      tabsHtml + '<div class="u-p-3rem gm-empty"><div class="gm-empty-title">Loading guild metrics...</div></div>';
 
     const g = state.activeGuild;
     try {
@@ -603,11 +602,11 @@ export class StatsView {
         tabsHtml +
         this.renderHealthHeadline(health, segments, reliability) +
         this.renderEngagementCard(segments, reliability, recentWeeks.length) +
-        '<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap:.85rem; margin-top:.85rem;">' +
+        '<div class="u-d-grid u-cols-repeat-auto-fit-mi-8c897c u-gap-0_85rem u-mt-0_85rem">' +
         this.renderWarCard(health) +
         this.renderPowerCard(health) +
         '</div>' +
-        '<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap:.85rem; margin-top:.85rem;">' +
+        '<div class="u-d-grid u-cols-repeat-auto-fit-mi-8c897c u-gap-0_85rem u-mt-0_85rem">' +
         this.renderParticipationCard(health) +
         this.renderRosterCard(roster) +
         '</div>' +
@@ -618,8 +617,7 @@ export class StatsView {
     } catch (err) {
       console.error('[GM_STATS] Health error', err);
       container.innerHTML =
-        tabsHtml +
-        '<div class="gm-empty" style="padding:3rem;"><div class="gm-empty-title">Failed to load metrics.</div></div>';
+        tabsHtml + '<div class="u-p-3rem gm-empty"><div class="gm-empty-title">Failed to load metrics.</div></div>';
       this.wireModeTabs(container);
     }
   }
@@ -681,11 +679,9 @@ export class StatsView {
           '<span class="gm-kpi-label">' +
           esc(label) +
           '</span>' +
-          '<div class="gm-kpi-bar-track"><div class="gm-kpi-bar" style="width:' +
-          pct +
-          '%; background:' +
-          colour +
-          ';"></div></div>' +
+          '<div class="gm-kpi-bar-track"><div class="gm-kpi-bar" data-gm-style="' +
+          styleRef('width:' + pct + '%; background:' + colour + ';') +
+          '"></div></div>' +
           '<span class="gm-kpi-value">' +
           n +
           '</span>' +
@@ -707,13 +703,13 @@ export class StatsView {
         : 'No weeks with data yet';
 
     return (
-      '<div class="gm-kpi-card" style="margin-top:.85rem;">' +
+      '<div class="u-mt-0_85rem gm-kpi-card">' +
       '<div class="gm-kpi-card-title"><i class="ph ph-users-three"></i> Engagement</div>' +
       '<div class="gm-kpi-card-body">' +
-      '<div style="font-size: var(--fs-sm); color:var(--fg-dim); margin-bottom:.6rem;">' +
+      '<div class="u-fs-fs-sm u-c-fg-dim u-mb-0_6rem">' +
       esc(subtitle) +
       '</div>' +
-      (bars || '<div style="color:var(--fg-dim);">Nothing to measure yet.</div>') +
+      (bars || '<div class="u-c-fg-dim">Nothing to measure yet.</div>') +
       '</div>' +
       '</div>'
     );
@@ -728,9 +724,9 @@ export class StatsView {
     const wars = health.war || [];
     if (!wars.length) {
       return (
-        '<div class="gm-kpi-card" style="margin-top:0;">' +
+        '<div class="u-mt-0 gm-kpi-card">' +
         '<div class="gm-kpi-card-title"><i class="ph ph-sword"></i> War record</div>' +
-        '<div class="gm-kpi-card-body"><div style="color:var(--fg-dim);">No war sessions recorded yet. Open one from the SvS or GvG screen to start the record.</div></div>' +
+        '<div class="gm-kpi-card-body"><div class="u-c-fg-dim">No war sessions recorded yet. Open one from the SvS or GvG screen to start the record.</div></div>' +
         '</div>'
       );
     }
@@ -743,7 +739,7 @@ export class StatsView {
           .map((d) => {
             const cell = (w.per_day || {})[String(d)];
             if (!cell || cell.won + cell.lost === 0) {
-              return '<span title="Day ' + d + ': not recorded" style="color:var(--fg-dim);">·</span>';
+              return '<span title="Day ' + d + ': not recorded" class="u-c-fg-dim">·</span>';
             }
             const won = cell.won >= cell.lost;
             return (
@@ -753,35 +749,35 @@ export class StatsView {
               cell.won +
               ' won, ' +
               cell.lost +
-              ' lost" style="color:' +
-              (won ? '#34d399' : '#f87171') +
-              '; font-weight:700;">' +
+              ' lost" data-gm-style="' +
+              styleRef('color:' + (won ? '#34d399' : '#f87171') + '; font-weight:700;') +
+              '">' +
               (won ? 'W' : 'L') +
               '</span>'
             );
           })
           .join(' ');
         return (
-          '<div style="margin-bottom:.75rem;">' +
+          '<div class="u-mb-0_75rem">' +
           '<div class="gm-kpi-row">' +
           '<span class="gm-kpi-label">' +
           esc(w.event_name) +
           '</span>' +
-          '<span class="gm-kpi-value" style="color:' +
-          colour +
-          ';">' +
+          '<span class="gm-kpi-value" data-gm-style="' +
+          styleRef('color:' + colour + ';') +
+          '">' +
           w.day_wins +
           'W - ' +
           w.day_losses +
           'L</span>' +
           '</div>' +
-          '<div style="font-size: var(--fs-sm); color:var(--fg-dim); display:flex; gap:.5rem; align-items:center;">' +
+          '<div class="u-fs-fs-sm u-c-fg-dim u-d-flex u-gap-0_5rem u-items-center">' +
           '<span>' +
           w.sessions +
           ' session' +
           (w.sessions > 1 ? 's' : '') +
           '</span>' +
-          '<span style="letter-spacing:.2em; font-family:var(--font-display);">' +
+          '<span class="u-tracking-0_2em u-ff-font-display">' +
           days +
           '</span>' +
           '</div>' +
@@ -791,11 +787,11 @@ export class StatsView {
       .join('');
 
     return (
-      '<div class="gm-kpi-card" style="margin-top:0;">' +
+      '<div class="u-mt-0 gm-kpi-card">' +
       '<div class="gm-kpi-card-title"><i class="ph ph-sword"></i> War record</div>' +
       '<div class="gm-kpi-card-body">' +
       body +
-      '<div style="font-size: var(--fs-xs); color:var(--fg-dim);">Day 1 to 5 are preparation, day 6 is the battle. A dot means that day was never recorded.</div>' +
+      '<div class="u-fs-fs-xs u-c-fg-dim">Day 1 to 5 are preparation, day 6 is the battle. A dot means that day was never recorded.</div>' +
       '</div>' +
       '</div>'
     );
@@ -811,9 +807,9 @@ export class StatsView {
     const series = (health.power && health.power.series) || [];
     if (series.length < 2) {
       return (
-        '<div class="gm-kpi-card" style="margin-top:0;">' +
+        '<div class="u-mt-0 gm-kpi-card">' +
         '<div class="gm-kpi-card-title"><i class="ph ph-trend-up"></i> Power progression</div>' +
-        '<div class="gm-kpi-card-body"><div style="color:var(--fg-dim);">' +
+        '<div class="gm-kpi-card-body"><div class="u-c-fg-dim">' +
         (series.length === 1
           ? 'Only one snapshot so far. A second weekly scan will start the curve.'
           : 'No power snapshots yet. They are written when you run a power or roster scan.') +
@@ -834,9 +830,9 @@ export class StatsView {
           '<span class="gm-kpi-label">' +
           esc(formatWeek(p.week_start).split(' ')[0]) +
           '</span>' +
-          '<div class="gm-kpi-bar-track"><div class="gm-kpi-bar" style="width:' +
-          pct +
-          '%; background:#60a5fa;"></div></div>' +
+          '<div class="gm-kpi-bar-track"><div class="gm-kpi-bar" data-gm-style="' +
+          styleRef('width:' + pct + '%; background:#60a5fa;') +
+          '"></div></div>' +
           '<span class="gm-kpi-value" title="' +
           p.players +
           ' players scanned that week">' +
@@ -848,16 +844,16 @@ export class StatsView {
       .join('');
 
     return (
-      '<div class="gm-kpi-card" style="margin-top:0;">' +
+      '<div class="u-mt-0 gm-kpi-card">' +
       '<div class="gm-kpi-card-title"><i class="ph ph-trend-up"></i> Power progression</div>' +
       '<div class="gm-kpi-card-body">' +
-      '<div style="font-size: var(--fs-sm); color:var(--fg-dim); margin-bottom:.6rem;">' +
+      '<div class="u-fs-fs-sm u-c-fg-dim u-mb-0_6rem">' +
       'Median member power, ' +
       series.length +
       ' snapshots. ' +
-      '<strong style="color:' +
-      (growth >= 0 ? '#34d399' : '#f87171') +
-      ';">' +
+      '<strong data-gm-style="' +
+      styleRef('color:' + (growth >= 0 ? '#34d399' : '#f87171') + ';') +
+      '">' +
       (growth >= 0 ? '+' : '') +
       growth +
       '%</strong> since ' +
@@ -879,9 +875,9 @@ export class StatsView {
     const roster = health.roster_size || 0;
     if (!weeks.length) {
       return (
-        '<div class="gm-kpi-card" style="margin-top:0;">' +
+        '<div class="u-mt-0 gm-kpi-card">' +
         '<div class="gm-kpi-card-title"><i class="ph ph-chart-line-up"></i> Members turning up each week</div>' +
-        '<div class="gm-kpi-card-body"><div style="color:var(--fg-dim);">No weeks with data yet.</div></div>' +
+        '<div class="gm-kpi-card-body"><div class="u-c-fg-dim">No weeks with data yet.</div></div>' +
         '</div>'
       );
     }
@@ -898,11 +894,9 @@ export class StatsView {
           '<span class="gm-kpi-label">' +
           esc(formatWeek(w.week_start).split(' ')[0]) +
           '</span>' +
-          '<div class="gm-kpi-bar-track"><div class="gm-kpi-bar" style="width:' +
-          pct +
-          '%; background:' +
-          colour +
-          ';"></div></div>' +
+          '<div class="gm-kpi-bar-track"><div class="gm-kpi-bar" data-gm-style="' +
+          styleRef('width:' + pct + '%; background:' + colour + ';') +
+          '"></div></div>' +
           '<span class="gm-kpi-value" title="' +
           w.opportunities +
           ' events ran that week">' +
@@ -914,11 +908,11 @@ export class StatsView {
       .join('');
 
     return (
-      '<div class="gm-kpi-card" style="margin-top:0;">' +
+      '<div class="u-mt-0 gm-kpi-card">' +
       '<div class="gm-kpi-card-title"><i class="ph ph-chart-line-up"></i> Members turning up each week</div>' +
       '<div class="gm-kpi-card-body">' +
       bars +
-      '<div style="font-size: var(--fs-xs); color:var(--fg-dim); margin-top:.5rem;">' +
+      '<div class="u-fs-fs-xs u-c-fg-dim u-mt-0_5rem">' +
       'Distinct members present. The colour compares against today’s roster of ' +
       roster +
       '; the count itself does not, because the schema keeps no roster history.' +
@@ -951,11 +945,9 @@ export class StatsView {
           '<span class="gm-kpi-label">Tier ' +
           t +
           '</span>' +
-          '<div class="gm-kpi-bar-track"><div class="gm-kpi-bar" style="width:' +
-          Math.round((tiers[t] / peak) * 100) +
-          '%; background:' +
-          tierColours[t] +
-          ';"></div></div>' +
+          '<div class="gm-kpi-bar-track"><div class="gm-kpi-bar" data-gm-style="' +
+          styleRef('width:' + Math.round((tiers[t] / peak) * 100) + '%; background:' + tierColours[t] + ';') +
+          '"></div></div>' +
           '<span class="gm-kpi-value">' +
           tiers[t] +
           '</span>' +
@@ -978,9 +970,9 @@ export class StatsView {
           '<span class="gm-kpi-label">' +
           esc(r) +
           '</span>' +
-          '<div class="gm-kpi-bar-track"><div class="gm-kpi-bar" style="width:' +
-          Math.round((roles[r] / rolePeak) * 100) +
-          '%; background:var(--accent);"></div></div>' +
+          '<div class="gm-kpi-bar-track"><div class="gm-kpi-bar" data-gm-style="' +
+          styleRef('width:' + Math.round((roles[r] / rolePeak) * 100) + '%; background:var(--accent);') +
+          '"></div></div>' +
           '<span class="gm-kpi-value">' +
           roles[r] +
           '</span>' +
@@ -989,17 +981,17 @@ export class StatsView {
       .join('');
 
     return (
-      '<div class="gm-kpi-card" style="margin-top:0;">' +
+      '<div class="u-mt-0 gm-kpi-card">' +
       '<div class="gm-kpi-card-title"><i class="ph ph-user-list"></i> Roster</div>' +
       '<div class="gm-kpi-card-body">' +
-      '<div class="gm-kpi-inline" style="margin-bottom:.85rem;">' +
+      '<div class="u-mb-0_85rem gm-kpi-inline">' +
       kpiMini('Members', roster.length) +
       kpiMini('With power', withPower.length) +
       kpiMini('No power', roster.length - withPower.length) +
       '</div>' +
-      '<div style="font-weight:700; font-size: var(--fs-sm); margin-bottom:.35rem; color:var(--fg-dim);">Power tiers</div>' +
+      '<div class="u-fw-700 u-fs-fs-sm u-mb-0_35rem u-c-fg-dim">Power tiers</div>' +
       tierBars +
-      '<div style="font-weight:700; font-size: var(--fs-sm); margin:.75rem 0 .35rem; color:var(--fg-dim);">Roles</div>' +
+      '<div class="u-fw-700 u-fs-fs-sm u-m-0_75rem-0-0_35rem u-c-fg-dim">Roles</div>' +
       roleBars +
       '</div>' +
       '</div>'
@@ -1028,10 +1020,10 @@ export class StatsView {
     };
 
     return (
-      '<div class="gm-kpi-card" style="margin-top:.85rem;">' +
+      '<div class="u-mt-0_85rem gm-kpi-card">' +
       '<div class="gm-kpi-card-title"><i class="ph ph-seal-check"></i> How complete is this data?</div>' +
       '<div class="gm-kpi-card-body">' +
-      '<div class="gm-kpi-inline" style="margin-bottom:.6rem;">' +
+      '<div class="u-mb-0_6rem gm-kpi-inline">' +
       kpiMini('Weeks recorded', q.weeks_with_data) +
       kpiMini('Last week', q.last_week ? String(q.last_week) : '—') +
       kpiMini('Awaiting approval', q.pending_rows) +
@@ -1039,10 +1031,10 @@ export class StatsView {
       ((q.scheduled_ahead || 0) > 0 ? kpiMini('Scheduled ahead', q.scheduled_ahead as number) : '') +
       '</div>' +
       (sparse.length
-        ? '<div style="font-size: var(--fs-sm); color:var(--fg-dim);">Scanned for fewer than 60% of members, so they are left off the cards above: ' +
+        ? '<div class="u-fs-fs-sm u-c-fg-dim">Scanned for fewer than 60% of members, so they are left off the cards above: ' +
           sparse.map((x) => esc(label[x.k] || x.k) + ' (' + Math.round((x.n / members) * 100) + '%)').join(', ') +
           '.</div>'
-        : '<div style="font-size: var(--fs-sm); color:var(--fg-dim);">Every metric is scanned for most of the roster.</div>') +
+        : '<div class="u-fs-fs-sm u-c-fg-dim">Every metric is scanned for most of the roster.</div>') +
       '</div>' +
       '</div>'
     );
@@ -1224,12 +1216,12 @@ export class StatsView {
 
         container.innerHTML =
           tabsHtml +
-          '<div class="gm-empty gm-leaderboard-empty" style="padding:3.5rem 1.5rem; text-align:center; background:var(--bg-1); border-radius:var(--radius-xl); border:1px dashed var(--border-soft); margin-top:1rem;">' +
-          '<i class="ph ph-trophy gm-icon" style="font-size: var(--fs-5xl); color:var(--fg-dim); margin-bottom:.75rem; display:block; opacity:0.6;"></i>' +
-          '<div class="gm-empty-title" style="font-size: var(--fs-xl); font-weight:700; color:var(--fg); margin-bottom:.5rem;">' +
+          '<div class="u-p-3_5rem-1_5rem u-text-center u-bg-bg-1 u-rounded-radius-xl u-border-1px-dashed-border-soft u-mt-1rem gm-empty gm-leaderboard-empty">' +
+          '<i class="u-fs-fs-5xl u-c-fg-dim u-mb-0_75rem u-d-block u-opacity-0_6 ph ph-trophy gm-icon"></i>' +
+          '<div class="u-fs-fs-xl u-fw-700 u-c-fg u-mb-0_5rem gm-empty-title">' +
           esc(emptyTitle) +
           '</div>' +
-          '<div class="gm-empty-hint" style="font-size: var(--fs-sm); color:var(--fg-dim); max-width:480px; margin:0 auto; line-height:1.5;">' +
+          '<div class="u-fs-fs-sm u-c-fg-dim u-maxw-480px u-m-0-auto u-lh-1_5 gm-empty-hint">' +
           esc(emptyDesc) +
           '</div>' +
           '</div>';
@@ -1284,8 +1276,7 @@ export class StatsView {
         (state.primaryView === 'events' && currentEvent === 'Arms Race') || state.currentMode === 'Arms Race';
 
       // Table Headers
-      let theadCols =
-        '<th class="gm-center" style="width:65px;">#</th>' + '<th>' + (t('col_member') || 'Member') + '</th>';
+      let theadCols = '<th class="u-w-65px gm-center">#</th>' + '<th>' + (t('col_member') || 'Member') + '</th>';
 
       // The "Late / Excused" column was removed on 2026-09-27. Measured in
       // production: `late` is set on 0.09% of the 55,739 participation rows and
@@ -1341,9 +1332,9 @@ export class StatsView {
       }
 
       let tableHtml =
-        '<div class="gm-card glass-card" style="padding:1.25rem;">' +
-        '<div class="gm-table-wrapper" style="overflow-x:auto;">' +
-        '<table class="gm-table gm-resp-table" style="width:100%; border-collapse:collapse;">' +
+        '<div class="u-p-1_25rem gm-card glass-card">' +
+        '<div class="u-ox-auto gm-table-wrapper">' +
+        '<table class="u-w-100pct u-bcol-collapse gm-table gm-resp-table">' +
         '<thead><tr>' +
         theadCols +
         '</tr></thead><tbody>';
@@ -1363,15 +1354,15 @@ export class StatsView {
         const scoreDisplay = m.score > 0 ? fmt(m.score) + ' pts' : m.events_done > 0 ? m.events_done + ' pts' : '0 pts';
 
         let rowCells =
-          '<td class="gm-center" style="font-weight:700;">' +
+          '<td class="u-fw-700 gm-center">' +
           rankBadge +
           '</td>' +
           '<td data-label="Player">' +
-          '<div class="gm-member-id" style="display:flex; align-items:center; gap:.75rem;">' +
-          '<div class="gm-avatar gm-avatar-squircle" style="width:38px; height:38px; font-size: var(--fs-lg); font-weight:700;">' +
+          '<div class="u-d-flex u-items-center u-gap-0_75rem gm-member-id">' +
+          '<div class="u-w-38px u-h-38px u-fs-fs-lg u-fw-700 gm-avatar gm-avatar-squircle">' +
           esc(initial) +
           '</div>' +
-          '<strong class="gm-member-pseudo" style="color:var(--fg); font-weight:700;">' +
+          '<strong class="u-c-fg u-fw-700 gm-member-pseudo">' +
           esc(m.pseudo) +
           '</strong>' +
           '</div>' +
@@ -1381,10 +1372,10 @@ export class StatsView {
           const ratePct = Math.round((m.attendance_rate || 0) * 100);
           const rateBadge =
             ratePct >= 80
-              ? '<span style="color:#34d399; font-weight:700;">' + ratePct + '%</span>'
+              ? '<span class="u-c-hex34d399 u-fw-700">' + ratePct + '%</span>'
               : ratePct >= 50
-                ? '<span style="color:#fbbf24; font-weight:700;">' + ratePct + '%</span>'
-                : '<span style="color:var(--fg-dim);">' + ratePct + '%</span>';
+                ? '<span class="u-c-hexfbbf24 u-fw-700">' + ratePct + '%</span>'
+                : '<span class="u-c-fg-dim">' + ratePct + '%</span>';
 
           const squadBreakdown =
             m.assigned_count > 0
@@ -1392,13 +1383,13 @@ export class StatsView {
                 ' squad' +
                 (m.assigned_count > 1 ? 's' : '') +
                 (m.commander_count > 0 ? ' <span title="Commander">👑</span>' : '') +
-                '<div style="font-size: var(--fs-sm); font-weight:400; color:var(--fg-dim);">' +
+                '<div class="u-fs-fs-sm u-fw-400 u-c-fg-dim">' +
                 'S1: ' +
                 m.squad1_count +
                 ' · S2: ' +
                 m.squad2_count +
                 '</div>' +
-                '<div style="font-size: var(--fs-sm); font-weight:400; color:var(--fg-dim);">' +
+                '<div class="u-fs-fs-sm u-fw-400 u-c-fg-dim">' +
                 m.participant_count +
                 ' main · ' +
                 m.reserve_count +
@@ -1407,55 +1398,55 @@ export class StatsView {
                 '</div>'
               : '-';
           rowCells +=
-            '<td data-label="Squads" class="gm-center" style="font-family:var(--font-display); font-weight:600;">' +
+            '<td data-label="Squads" class="u-ff-font-display u-fw-600 gm-center">' +
             squadBreakdown +
             '</td>' +
-            '<td data-label="Done" class="gm-center" style="font-family:var(--font-display); font-weight:600;">' +
+            '<td data-label="Done" class="u-ff-font-display u-fw-600 gm-center">' +
             (m.events_done > 0
-              ? '<span style="color:#34d399; font-weight:700;">✅ ' + m.events_done + '</span>'
-              : '<span style="color:var(--fg-dim);">0</span>') +
+              ? '<span class="u-c-hex34d399 u-fw-700">✅ ' + m.events_done + '</span>'
+              : '<span class="u-c-fg-dim">0</span>') +
             '</td>' +
-            '<td data-label="Subs" class="gm-center" style="font-family:var(--font-display); font-weight:600;">' +
-            (m.sub_count > 0 ? '<span style="color:#fbbf24; font-weight:700;">🔁 ' + m.sub_count + '</span>' : '-') +
+            '<td data-label="Subs" class="u-ff-font-display u-fw-600 gm-center">' +
+            (m.sub_count > 0 ? '<span class="u-c-hexfbbf24 u-fw-700">🔁 ' + m.sub_count + '</span>' : '-') +
             '</td>' +
-            '<td data-label="Rate" class="gm-center" style="font-family:var(--font-display);">' +
+            '<td data-label="Rate" class="u-ff-font-display gm-center">' +
             rateBadge +
             '</td>' +
-            '<td data-label="Score" class="gm-right" style="font-family:var(--font-display); font-weight:800; color:var(--accent-lime); font-size: var(--fs-lg);"><span class="gm-score-display">' +
+            '<td data-label="Score" class="u-ff-font-display u-fw-800 u-c-accent-lime u-fs-fs-lg gm-right"><span class="gm-score-display">' +
             esc(scoreDisplay) +
             '</span></td>';
         } else if (isArmsRaceMode) {
           rowCells +=
             '<td data-label="Stage A" class="gm-center">' +
             (m.ara_count > 0
-              ? '<span style="color:#34d399; font-weight:700;">✅ ' + m.ara_count + '</span>'
-              : '<span style="color:var(--fg-dim);">-</span>') +
+              ? '<span class="u-c-hex34d399 u-fw-700">✅ ' + m.ara_count + '</span>'
+              : '<span class="u-c-fg-dim">-</span>') +
             '</td>' +
             '<td data-label="Stage B" class="gm-center">' +
             (m.arb_count > 0
-              ? '<span style="color:#34d399; font-weight:700;">✅ ' + m.arb_count + '</span>'
-              : '<span style="color:var(--fg-dim);">-</span>') +
+              ? '<span class="u-c-hex34d399 u-fw-700">✅ ' + m.arb_count + '</span>'
+              : '<span class="u-c-fg-dim">-</span>') +
             '</td>' +
-            '<td data-label="Events" class="gm-center" style="font-family:var(--font-display); font-weight:600;">' +
+            '<td data-label="Events" class="u-ff-font-display u-fw-600 gm-center">' +
             m.events_done +
             (m.events_total > 0 ? '/' + m.events_total : '') +
             '</td>' +
-            '<td data-label="Score" class="gm-right" style="font-family:var(--font-display); font-weight:800; color:var(--accent-lime); font-size: var(--fs-lg);"><span class="gm-score-display">' +
+            '<td data-label="Score" class="u-ff-font-display u-fw-800 u-c-accent-lime u-fs-fs-lg gm-right"><span class="gm-score-display">' +
             esc(scoreDisplay) +
             '</span></td>';
         } else if (isBattleEventMode) {
           rowCells +=
-            '<td data-label="Events" class="gm-center" style="font-family:var(--font-display); font-weight:600;">' +
+            '<td data-label="Events" class="u-ff-font-display u-fw-600 gm-center">' +
             m.events_done +
             (m.events_total > 0 ? '/' + m.events_total : '') +
             '</td>' +
-            '<td data-label="Day 1-5" class="gm-center" style="font-family:var(--font-display); font-weight:600; color:var(--fg-dim); font-variant-numeric:tabular-nums;">' +
+            '<td data-label="Day 1-5" class="u-ff-font-display u-fw-600 u-c-fg-dim u-fvn-tabular-nums gm-center">' +
             fmt(m.score_prep || 0) +
             '</td>' +
-            '<td data-label="Day 6" class="gm-center" style="font-family:var(--font-display); font-weight:600; color:var(--fg-dim); font-variant-numeric:tabular-nums;">' +
+            '<td data-label="Day 6" class="u-ff-font-display u-fw-600 u-c-fg-dim u-fvn-tabular-nums gm-center">' +
             fmt(m.score_pvp || 0) +
             '</td>' +
-            '<td data-label="Score" class="gm-right" style="font-family:var(--font-display); font-weight:800; color:var(--accent-lime); font-size: var(--fs-lg);"><span class="gm-score-display">' +
+            '<td data-label="Score" class="u-ff-font-display u-fw-800 u-c-accent-lime u-fs-fs-lg gm-right"><span class="gm-score-display">' +
             esc(scoreDisplay) +
             '</span></td>';
         } else {
@@ -1463,19 +1454,19 @@ export class StatsView {
             '<td data-label="By event" class="gm-center">' +
             this.renderBucketChips(m) +
             '</td>' +
-            '<td data-label="Attended" class="gm-center" style="font-family:var(--font-display); font-weight:600;">' +
+            '<td data-label="Attended" class="u-ff-font-display u-fw-600 gm-center">' +
             m.events_done +
             (m.events_total > 0 ? '/' + m.events_total : '') +
             '</td>' +
             (state.trendWeeks > 0 ? '<td data-label="Trend" class="gm-center">' + this.renderTrend(m) + '</td>' : '') +
-            '<td data-label="Reliability" class="gm-right" style="font-family:var(--font-display); font-weight:800; font-size: var(--fs-lg);">' +
+            '<td data-label="Reliability" class="u-ff-font-display u-fw-800 u-fs-fs-lg gm-right">' +
             this.renderReliability(m) +
             '</td>';
         }
 
         const rowUid = (state.uidMap && state.uidMap[m.pseudo]) || '';
         tableHtml +=
-          '<tr class="gm-stats-row-clickable" style="border-bottom:1px solid var(--border-soft); cursor:pointer;" data-player-uid="' +
+          '<tr class="u-bb-1px-solid-border-soft u-cursor-pointer gm-stats-row-clickable" data-player-uid="' +
           esc(rowUid) +
           '" data-player-pseudo="' +
           esc(m.pseudo) +
@@ -1527,15 +1518,15 @@ export class StatsView {
           .map((d) => {
             const r = (w.results || {})[d];
             if (r !== 'won' && r !== 'lost')
-              return '<span title="Day ' + d + ': not recorded" style="color:var(--fg-dim);">·</span>';
+              return '<span title="Day ' + d + ': not recorded" class="u-c-fg-dim">·</span>';
             return (
               '<span title="Day ' +
               d +
               ': ' +
               r +
-              '" style="color:' +
-              (r === 'won' ? '#34d399' : '#f87171') +
-              '; font-weight:700;">' +
+              '" data-gm-style="' +
+              styleRef('color:' + (r === 'won' ? '#34d399' : '#f87171') + '; font-weight:700;') +
+              '">' +
               (r === 'won' ? 'W' : 'L') +
               '</span>'
             );
@@ -1548,12 +1539,12 @@ export class StatsView {
           '<span class="gm-kpi-label">' +
           esc(w.opponent || 'Unknown opponent') +
           '</span>' +
-          '<span style="letter-spacing:.2em; font-family:var(--font-display);">' +
+          '<span class="u-tracking-0_2em u-ff-font-display">' +
           days +
           '</span>' +
-          '<span class="gm-kpi-value" style="color:' +
-          (won >= lost ? '#34d399' : '#f87171') +
-          ';">' +
+          '<span class="gm-kpi-value" data-gm-style="' +
+          styleRef('color:' + (won >= lost ? '#34d399' : '#f87171') + ';') +
+          '">' +
           won +
           'W - ' +
           lost +
@@ -1564,11 +1555,11 @@ export class StatsView {
       .join('');
 
     return (
-      '<div class="gm-kpi-card" style="margin-bottom:.85rem;">' +
+      '<div class="u-mb-0_85rem gm-kpi-card">' +
       '<div class="gm-kpi-card-title"><i class="ph ph-sword"></i> War record</div>' +
       '<div class="gm-kpi-card-body">' +
       rows +
-      '<div style="font-size: var(--fs-xs); color:var(--fg-dim); margin-top:.4rem;">Days 1 to 5 are preparation, day 6 is the battle. A dot means that day was never recorded.</div>' +
+      '<div class="u-fs-fs-xs u-c-fg-dim u-mt-0_4rem">Days 1 to 5 are preparation, day 6 is the battle. A dot means that day was never recorded.</div>' +
       '</div>' +
       '</div>'
     );
@@ -1577,15 +1568,15 @@ export class StatsView {
   private renderBucketChips(m: any): string {
     const buckets = (m && m.buckets) || [];
     if (!buckets.length) {
-      return '<span style="color:var(--fg-dim);" title="No events ran for this member in this window">—</span>';
+      return '<span class="u-c-fg-dim" title="No events ran for this member in this window">—</span>';
     }
     return (
-      '<div style="display:flex; gap:.35rem; flex-wrap:wrap; justify-content:center;">' +
+      '<div class="u-d-flex u-gap-0_35rem u-wrap-wrap u-justify-center">' +
       buckets
         .map((b: any) => {
           if (!b.opp) {
             return (
-              '<span class="gm-chip" style="font-size: var(--fs-xs); color:var(--fg-dim);" title="' +
+              '<span class="u-fs-fs-xs u-c-fg-dim gm-chip" title="' +
               esc(b.bucket) +
               ': not run for this member in this window">' +
               esc(b.bucket) +
@@ -1595,9 +1586,9 @@ export class StatsView {
           const pct = b.rate === null ? 0 : b.rate;
           const colour = pct >= 80 ? '#34d399' : pct >= 50 ? '#fbbf24' : '#f87171';
           return (
-            '<span class="gm-chip" style="font-size: var(--fs-xs); color:' +
-            colour +
-            ';" title="' +
+            '<span class="gm-chip" data-gm-style="' +
+            styleRef('font-size: var(--fs-xs); color:' + colour + ';') +
+            '" title="' +
             esc(b.bucket) +
             ': ' +
             b.att +
@@ -1624,7 +1615,7 @@ export class StatsView {
   /** The headline, or an em dash when the member had no opportunities at all. */
   private renderReliability(m: any): string {
     if (!m || m.reliability === null || m.reliability === undefined) {
-      return '<span style="color:var(--fg-dim); font-weight:600;" title="Nothing ran for this member in this window">—</span>';
+      return '<span class="u-c-fg-dim u-fw-600" title="Nothing ran for this member in this window">—</span>';
     }
     const pct = m.reliability;
     const colour = pct >= 80 ? 'var(--accent-lime)' : pct >= 50 ? '#fbbf24' : '#f87171';
@@ -1637,7 +1628,13 @@ export class StatsView {
       Math.round(m.weighted_opp) +
       " opportunities, weighted by this guild's event coefficients";
     return (
-      '<span class="gm-score-display" style="color:' + colour + ';" title="' + esc(title) + '">' + pct + '%</span>'
+      '<span class="gm-score-display" data-gm-style="' +
+      styleRef('color:' + colour + ';') +
+      '" title="' +
+      esc(title) +
+      '">' +
+      pct +
+      '%</span>'
     );
   }
 
@@ -1645,17 +1642,17 @@ export class StatsView {
   private renderTrend(m: any): string {
     const t = (m && m.trend) || null;
     if (!t || !t.eligible || t.delta === null) {
-      return '<span style="color:var(--fg-dim);" title="Not enough history on both sides to compare">—</span>';
+      return '<span class="u-c-fg-dim" title="Not enough history on both sides to compare">—</span>';
     }
     const d = t.delta;
     if (Math.abs(d) < 5) {
-      return '<span style="color:var(--fg-dim);" title="' + esc(t.prior + '% → ' + t.recent + '%') + '">steady</span>';
+      return '<span class="u-c-fg-dim" title="' + esc(t.prior + '% → ' + t.recent + '%') + '">steady</span>';
     }
     const up = d > 0;
     return (
-      '<span style="color:' +
-      (up ? '#34d399' : '#f87171') +
-      '; font-weight:700;" title="' +
+      '<span data-gm-style="' +
+      styleRef('color:' + (up ? '#34d399' : '#f87171') + '; font-weight:700;') +
+      '" title="' +
       esc(t.prior + '% → ' + t.recent + '% over the last 4 weeks vs the 4 before') +
       '">' +
       (up ? '▲ +' : '▼ ') +

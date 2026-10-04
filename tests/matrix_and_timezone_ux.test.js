@@ -82,17 +82,18 @@ describe('Ticket 2.2 — Tactical Force Matrix Alignment & Timezone Collapsible 
 
       numericCols.forEach((col) => {
         const thRegex = new RegExp(
-          `<th[^>]*class="[^"]*gm-matrix-num tabular-nums[^"]*"[^>]*text-align:\\s*right[^>]*font-variant-numeric:\\s*tabular-nums[^>]*>[^<]*${col === 'Rally Score' ? '⚡ Rally Score' : col}`
+          // Alignment and figures come from utilities (no inline style under the CSP).
+          `<th[^>]*class="[^"]*\\bu-text-right\\b[^"]*\\bu-fvn-tabular-nums\\b[^"]*gm-matrix-num tabular-nums[^"]*"[^>]*>[^<]*${col === 'Rally Score' ? '⚡ Rally Score' : col}`
         );
         expect(membersRender).toMatch(thRegex);
 
         const tdRegex = new RegExp(
-          `<td data-label="${col}"[^>]*class="[^"]*gm-matrix-num tabular-nums[^"]*"[^>]*text-align:\\s*right[^>]*font-variant-numeric:\\s*tabular-nums`
+          `<td data-label="${col}"[^>]*class="[^"]*\\bu-text-right\\b[^"]*\\bu-fvn-tabular-nums\\b[^"]*gm-matrix-num tabular-nums`
         );
         expect(membersRender).toMatch(tdRegex);
       });
 
-      expect(membersRender).toMatch(/data-label="Rally Score"[\s\S]*?justify-content:\s*flex-end;/);
+      expect(membersRender).toMatch(/data-label="Rally Score"[\s\S]*?\bu-justify-flex-end\b/);
     });
 
     it('defines initTimezoneCollapsible (ocr controller) and buildMilitaryMatrixHtml (members renderer)', () => {
@@ -178,12 +179,12 @@ describe('Ticket 2.2 — Tactical Force Matrix Alignment & Timezone Collapsible 
         if (isNumeric) {
           expect(th.classList.contains('gm-matrix-num')).toBe(true);
           expect(th.classList.contains('tabular-nums')).toBe(true);
-          expect(th.style.textAlign).toBe('right');
-          expect(th.style.fontVariantNumeric).toBe('tabular-nums');
+          expect(th.classList.contains('u-text-right')).toBe(true);
+          expect(th.classList.contains('u-fvn-tabular-nums')).toBe(true);
         } else if (text.includes('Player')) {
-          expect(th.style.textAlign).toBe('left');
+          expect(th.classList.contains('u-text-left')).toBe(true);
         } else {
-          expect(th.style.textAlign).toBe('center');
+          expect(th.classList.contains('u-text-center')).toBe(true);
         }
       });
 
@@ -198,15 +199,15 @@ describe('Ticket 2.2 — Tactical Force Matrix Alignment & Timezone Collapsible 
           expect(td, `Cell ${label} should exist`).not.toBeNull();
           expect(td.classList.contains('gm-matrix-num')).toBe(true);
           expect(td.classList.contains('tabular-nums')).toBe(true);
-          expect(td.style.textAlign).toBe('right');
-          expect(td.style.fontVariantNumeric).toBe('tabular-nums');
+          expect(td.classList.contains('u-text-right')).toBe(true);
+          expect(td.classList.contains('u-fvn-tabular-nums')).toBe(true);
 
           if (label === 'Rally Score') {
             const chip = td.querySelector('.gm-chip');
             if (chip) {
-              expect(chip.style.display).toBe('inline-flex');
-              expect(chip.style.justifyContent).toBe('flex-end');
-              expect(chip.style.fontVariantNumeric).toBe('tabular-nums');
+              expect(chip.classList.contains('u-d-inline-flex')).toBe(true);
+              expect(chip.classList.contains('u-justify-flex-end')).toBe(true);
+              expect(chip.classList.contains('u-fvn-tabular-nums')).toBe(true);
             }
           }
         });
@@ -214,9 +215,9 @@ describe('Ticket 2.2 — Tactical Force Matrix Alignment & Timezone Collapsible 
         const rallyTd = row.querySelector('td[data-label="Rally"]');
         const roleTd = row.querySelector('td[data-label="Role"]');
         const actionTd = row.querySelector('td[data-label="Action"]');
-        expect(rallyTd.style.textAlign).toBe('center');
-        expect(roleTd.style.textAlign).toBe('center');
-        expect(actionTd.style.textAlign).toBe('center');
+        expect(rallyTd.classList.contains('u-text-center')).toBe(true);
+        expect(roleTd.classList.contains('u-text-center')).toBe(true);
+        expect(actionTd.classList.contains('u-text-center')).toBe(true);
       });
     });
   });

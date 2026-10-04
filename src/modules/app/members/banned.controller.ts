@@ -101,21 +101,21 @@ export function renderBannedPlayers(): void {
       esc(bp.uid) +
       '">' +
       '<div class="gm-member-id">' +
-      '<div class="gm-avatar" style="background: var(--danger-soft); color: var(--danger); border-color: var(--danger-soft);">' +
+      '<div class="u-bg-danger-soft u-c-danger u-bc-danger-soft gm-avatar">' +
       esc(initial) +
       '</div>' +
       '<div class="gm-grow gm-truncate">' +
-      '<div class="gm-mono gm-truncate" style="color: var(--danger); font-weight: 700; font-size: var(--fs-xl);">' +
+      '<div class="u-c-danger u-fw-700 u-fs-fs-xl gm-mono gm-truncate">' +
       esc(uidPrefix) +
       ' ' +
       esc(bp.uid) +
       '</div>' +
-      '<div class="gm-member-pseudo gm-dim gm-truncate" style="font-weight: 500; font-size: var(--fs-base); margin-top: 2px;">' +
+      '<div class="u-fw-500 u-fs-fs-base u-mt-2px gm-member-pseudo gm-dim gm-truncate">' +
       esc(bp.pseudo || '-') +
       '</div>' +
       '</div>' +
       '</div>' +
-      '<div class="gm-col gm-dim" style="gap:.2rem; font-size: var(--fs-sm); flex: 1.5; min-width: 150px;">' +
+      '<div class="u-gap-0_2rem u-fs-fs-sm u-flex-1_5 u-minw-150px gm-col gm-dim">' +
       '<span><strong>' +
       esc(reasonLabel) +
       '</strong> ' +
@@ -132,11 +132,11 @@ export function renderBannedPlayers(): void {
       '</span>' +
       '</div>' +
       '<div class="gm-member-actions">' +
-      '<button class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm banned-delete-btn" data-uid="' +
+      '<button class="u-c-danger gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm banned-delete-btn" data-uid="' +
       esc(bp.uid) +
       '" title="' +
       t('delete_title') +
-      '" style="color: var(--danger);"><i class="ph ph-trash"></i></button>' +
+      '"><i class="ph ph-trash"></i></button>' +
       '</div>' +
       '</div>';
   });
@@ -190,7 +190,7 @@ export async function handleAddBannedPlayer(): Promise<void> {
       '<strong>' +
         esc(onRoster.pseudo) +
         '</strong> is on your member list. Banning removes them from it.<br><br>' +
-        '<span style="color:#f87171;">' +
+        '<span class="u-c-hexf87171">' +
         esc(t('confirm_remove_member_cascade')) +
         '</span><br><br>' +
         'To keep a record without losing their history, give a sanction instead.',

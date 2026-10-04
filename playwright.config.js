@@ -21,8 +21,10 @@ export default defineConfig({
   },
   webServer: {
     // Build the production bundle, then serve dist/ at the root so `/sw.js`,
-    // `/terms.html` and `/assets/*` all resolve exactly as in production.
-    command: 'npm run build && npx --no-install serve dist -l 4173 --no-clipboard',
+    // `/terms.html` and `/assets/*` all resolve exactly as in production, with
+    // production's headers -- the CSP above all (scripts/e2e-serve-config.mjs).
+    command:
+      'npm run build && node scripts/e2e-serve-config.mjs && npx --no-install serve dist -l 4173 --no-clipboard -c ../node_modules/.cache/e2e/serve.json',
     url: 'http://localhost:4173',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

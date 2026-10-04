@@ -9,6 +9,7 @@
  * This module never assigns `window.GM_EVENTS` (bridge added at cutover).
  */
 
+import { styleRef } from '../../../core/dom/style-refs';
 import {
   TAB_TO_DB_EVENTS,
   PANEL_MAP,
@@ -491,31 +492,31 @@ export class EventsView {
 
     const mode = this.warMode(tabKey);
     const modeSwitch =
-      '<div class="gm-row war-mode-switch" role="group" aria-label="' +
+      '<div class="u-gap-0_5rem u-wrap-wrap u-items-center u-justify-flex-end gm-row war-mode-switch" role="group" aria-label="' +
       escapeHTML(t('war_mode_detailed')) +
       '/' +
       escapeHTML(t('war_mode_aggregate')) +
-      '" style="gap:.5rem; flex-wrap:wrap; align-items:center; justify-content:flex-end;">' +
-      '<span class="gm-chip" style="white-space:nowrap;">' +
+      '">' +
+      '<span class="u-ws-nowrap gm-chip">' +
       t('war_day_total_prep') +
       '</span>' +
-      '<button type="button" class="war-mode-btn gm-btn gm-btn-sm' +
+      '<button type="button" class="u-p-0_3rem-0_6rem war-mode-btn gm-btn gm-btn-sm' +
       (mode === 'detailed' ? ' gm-active' : '') +
-      '" data-war-mode="detailed" style="padding:0.3rem 0.6rem;"><i class="ph ph-list-numbers"></i> ' +
+      '" data-war-mode="detailed"><i class="ph ph-list-numbers"></i> ' +
       escapeHTML(t('war_mode_detailed')) +
       '</button>' +
-      '<button type="button" class="war-mode-btn gm-btn gm-btn-sm' +
+      '<button type="button" class="u-p-0_3rem-0_6rem war-mode-btn gm-btn gm-btn-sm' +
       (mode === 'aggregate' ? ' gm-active' : '') +
-      '" data-war-mode="aggregate" style="padding:0.3rem 0.6rem;"><i class="ph ph-plus-minus"></i> ' +
+      '" data-war-mode="aggregate"><i class="ph ph-plus-minus"></i> ' +
       escapeHTML(t('war_mode_aggregate')) +
       '</button>' +
       '</div>';
 
     host.innerHTML =
-      '<div class="gm-card gm-card-padded" style="margin-bottom:1rem;">' +
-      '<div class="gm-row" style="gap:1rem; flex-wrap:wrap; align-items:center; justify-content:space-between;">' +
-      '<div class="gm-row" style="gap:.5rem; align-items:center; flex:1 1 260px; min-width:220px;">' +
-      '<span class="gm-chip" style="white-space:nowrap;">' +
+      '<div class="u-mb-1rem gm-card gm-card-padded">' +
+      '<div class="u-gap-1rem u-wrap-wrap u-items-center u-justify-space-between gm-row">' +
+      '<div class="u-gap-0_5rem u-items-center u-flex-1-1-260px u-minw-220px gm-row">' +
+      '<span class="u-ws-nowrap gm-chip">' +
       t('war_opponent_label') +
       '</span>' +
       '<input type="text" class="gm-input war-opponent-input" aria-label="' +
@@ -533,14 +534,14 @@ export class EventsView {
       options +
       '</datalist>' +
       '</div>' +
-      '<div class="gm-row war-day-results" style="gap:.45rem; flex-wrap:wrap;" data-event="' +
+      '<div class="u-gap-0_45rem u-wrap-wrap gm-row war-day-results" data-event="' +
       escapeHTML(s.activeEventName || '') +
       '">' +
       dayChips +
       '</div>' +
       '</div>' +
-      '<div class="gm-row" style="gap:.5rem; flex-wrap:wrap; align-items:center; justify-content:space-between; margin-top:.6rem;">' +
-      '<span class="gm-dim" style="font-size:var(--fs-2xs);">' +
+      '<div class="u-gap-0_5rem u-wrap-wrap u-items-center u-justify-space-between u-mt-0_6rem gm-row">' +
+      '<span class="u-fs-fs-2xs gm-dim">' +
       escapeHTML(t(mode === 'aggregate' ? 'war_col_total_d15' : 'war_ocr_granular_hint')) +
       '</span>' +
       modeSwitch +
@@ -1056,19 +1057,19 @@ export class EventsView {
       const eventNameAttr = tabKey;
       if (s.isActive) {
         actionsDiv.innerHTML =
-          '<button class="gm-btn gm-btn-danger event-end-btn" data-event="' +
+          '<button class="u-mr-0_25rem gm-btn gm-btn-danger event-end-btn" data-event="' +
           escapeHTML(eventNameAttr) +
-          '" style="margin-right: 0.25rem;"><i class="ph ph-stop-circle"></i> <span>' +
+          '"><i class="ph ph-stop-circle"></i> <span>' +
           t('event_end') +
           '</span></button>' +
-          '<button class="gm-btn event-edit-sched-btn" style="background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.3); color: #a5b4fc; margin-right: 0.25rem;" data-event="' +
+          '<button class="u-bg-rgba-99-102-241-0_15 u-border-1px-solid-rgba-99-2a6e71 u-c-hexa5b4fc u-mr-0_25rem gm-btn event-edit-sched-btn" data-event="' +
           escapeHTML(eventNameAttr) +
           '" title="' +
           t('edit_title') +
           '"><i class="ph ph-calendar"></i> <span>' +
           t('edit_title') +
           '</span></button>' +
-          '<button class="gm-btn event-delete-session-btn" style="background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.25); color: var(--error);" data-event="' +
+          '<button class="u-bg-rgba-239-68-68-0_12 u-border-1px-solid-rgba-239-5b5d21 u-c-error gm-btn event-delete-session-btn" data-event="' +
           escapeHTML(eventNameAttr) +
           '" title="' +
           t('delete_title') +
@@ -1091,9 +1092,9 @@ export class EventsView {
           });
       } else {
         actionsDiv.innerHTML =
-          '<button class="gm-btn gm-btn-success event-start-btn" data-event="' +
+          '<button class="u-mr-0_25rem gm-btn gm-btn-success event-start-btn" data-event="' +
           escapeHTML(eventNameAttr) +
-          '" style="margin-right: 0.25rem;"><i class="ph ph-play"></i> <span>' +
+          '"><i class="ph ph-play"></i> <span>' +
           t('event_start') +
           '</span></button>' +
           '<button class="gm-btn gm-btn-danger event-end-btn" data-event="' +
@@ -1170,14 +1171,14 @@ export class EventsView {
     const pendingCount = participants.reduce((a, p) => a + (p.is_pending ? 1 : 0), 0);
     const approveAllBtn =
       pendingCount > 0
-        ? '<button type="button" class="gm-btn gm-btn-sm gm-btn-success approve-all-btn" style="margin-left: auto; font-size: var(--fs-sm); padding: 0.25rem 0.5rem;"><i class="ph ph-check-square"></i> Approve All (' +
+        ? '<button type="button" class="u-ml-auto u-fs-fs-sm u-p-0_25rem-0_5rem gm-btn gm-btn-sm gm-btn-success approve-all-btn"><i class="ph ph-check-square"></i> Approve All (' +
           pendingCount +
           ')</button>'
         : '';
 
     let html =
-      '<div class="gm-row" style="gap:.5rem; margin-bottom:1rem; flex-wrap:wrap; justify-content:space-between; align-items: center;">' +
-      '<div class="gm-row event-stats" style="gap:.5rem; flex-wrap:wrap; align-items: center; flex: 1;">' +
+      '<div class="u-gap-0_5rem u-mb-1rem u-wrap-wrap u-justify-space-between u-items-center gm-row">' +
+      '<div class="u-gap-0_5rem u-wrap-wrap u-items-center u-flex-1 gm-row event-stats">' +
       '<span class="gm-chip"><i class="ph ph-users"></i> ' +
       participants.length +
       ' ' +
@@ -1209,7 +1210,7 @@ export class EventsView {
         : '') +
       approveAllBtn +
       '</div>' +
-      '<div class="gm-input-with-icon" style="min-width: 220px; max-width: 320px;">' +
+      '<div class="u-minw-220px u-maxw-320px gm-input-with-icon">' +
       '<i class="ph ph-magnifying-glass gm-icon"></i>' +
       '<input type="text" class="gm-input event-search-input" aria-label="' +
       escapeHTML(t('search_placeholder')) +
@@ -1341,30 +1342,30 @@ export class EventsView {
         : '';
 
       const actionBtn = p.is_pending
-        ? '<button type="button" class="gm-btn gm-btn-success approve-single-btn" data-pseudo="' +
+        ? '<button type="button" class="u-fs-fs-sm u-p-0_2rem-0_4rem u-d-inline-flex u-items-center u-gap-0_25rem gm-btn gm-btn-success approve-single-btn" data-pseudo="' +
           escapeHTML(p.pseudo) +
-          '" style="font-size: var(--fs-sm); padding:0.2rem 0.4rem; display:inline-flex; align-items:center; gap:0.25rem;"><i class="ph ph-check"></i> Approve</button>'
+          '"><i class="ph ph-check"></i> Approve</button>'
         : '';
 
       html +=
         '<tr class="' +
         rowClass +
-        '" style="' +
-        rowStyle +
+        '" data-gm-style="' +
+        styleRef('' + rowStyle + '') +
         '" data-pseudo="' +
         escapeHTML(p.pseudo) +
         '">' +
         '<td data-label="' +
         t('col_member') +
         '">' +
-        '<div class="gm-row" style="gap:.6rem;">' +
+        '<div class="u-gap-0_6rem gm-row">' +
         '<div class="gm-avatar">' +
         escapeHTML(initial) +
         '</div>' +
-        '<strong style="display:inline-flex; align-items:center; gap:0.4rem;">' +
+        '<strong class="u-d-inline-flex u-items-center u-gap-0_4rem">' +
         escapeHTML(p.pseudo) +
         (p.is_pending
-          ? '<span class="gm-chip" style="font-size: var(--fs-2xs); padding:0.05rem 0.25rem; background:rgba(245,158,11,0.1); color:var(--warning); border:1px solid rgba(245,158,11,0.25);">Pending</span>'
+          ? '<span class="u-fs-fs-2xs u-p-0_05rem-0_25rem u-bg-rgba-245-158-11-0_1 u-c-warning u-border-1px-solid-rgba-245-ca3cc2 gm-chip">Pending</span>'
           : '') +
         '</strong>' +
         '</div>' +

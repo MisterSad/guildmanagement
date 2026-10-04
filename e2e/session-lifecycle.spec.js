@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures.js';
 
 // Regression & E2E coverage for session lifecycle and expiration:
 // - Verifies that dispatching 'gm:session-expired' triggers doLogout()

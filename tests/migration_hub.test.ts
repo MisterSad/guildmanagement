@@ -7,8 +7,6 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { appHtml } from './helpers/app-html.js';
 import { MigrationHubView } from '../src/modules/migration/views/MigrationHubView';
 import { NAV_ITEMS } from '../src/modules/shell/views/ShellView';
-import fs from 'fs';
-import path from 'path';
 
 describe('Migration Hub', () => {
   let view: MigrationHubView;

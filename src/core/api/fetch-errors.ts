@@ -185,14 +185,14 @@ function ensureRetryBanner(retryFn: () => void, label: string): void {
     'box-shadow:0 8px 24px rgba(0,0,0,0.4);';
 
   banner.innerHTML =
-    '<div style="flex:1; font-size:var(--fs-sm); line-height:1.35;">' +
-    '<span style="font-weight:700;">Failed to load ' +
+    '<div class="u-flex-1 u-fs-fs-sm u-lh-1_35">' +
+    '<span class="u-fw-700">Failed to load ' +
     escapeAttr(label) +
     '.</span> ' +
-    '<span style="opacity:.85;">Please retry when the network allows.</span>' +
+    '<span class="u-opacity-0_85">Please retry when the network allows.</span>' +
     '</div>' +
-    '<button type="button" data-fetch-retry-action="retry" class="gm-btn gm-btn-primary gm-btn-sm" style="flex-shrink:0;">Retry</button>' +
-    '<button type="button" data-fetch-retry-action="dismiss" class="gm-btn gm-btn-ghost gm-btn-sm" style="flex-shrink:0;" aria-label="Dismiss">&times;</button>';
+    '<button type="button" data-fetch-retry-action="retry" class="u-shrink-0 gm-btn gm-btn-primary gm-btn-sm">Retry</button>' +
+    '<button type="button" data-fetch-retry-action="dismiss" class="u-shrink-0 gm-btn gm-btn-ghost gm-btn-sm" aria-label="Dismiss">&times;</button>';
 
   document.body.appendChild(banner);
 

@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures.js';
 
 // Regression & a11y coverage for TICKET-11 [A11Y-01] & TICKET-13 [TEST-01]:
 // Tests WCAG 2.2 AA compliance on modal dialogs:

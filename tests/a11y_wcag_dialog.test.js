@@ -1,7 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { appHtml } from './helpers/app-html.js';
-import fs from 'fs';
-import path from 'path';
 import { createDialog, openDialog, closeDialog } from '../src/components/ui/Dialog';
 
 describe('WCAG 2.2 AA Accessibility & Focus Management (TICKET-11 / A11Y-01)', () => {

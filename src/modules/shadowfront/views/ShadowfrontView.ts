@@ -16,6 +16,7 @@
  *   - This module never assigns any `window.GM_*` variable.
  */
 
+import { styleRef } from '../../../core/dom/style-refs';
 import {
   SHADOWFRONT_EVENT_NAME,
   SHADOWFRONT_SQUAD_EVENT,
@@ -610,46 +611,50 @@ export class ShadowfrontView {
       '</div>';
 
     html +=
-      '<div class="gm-event-banner" style="display: flex; margin-bottom: 1.5rem; background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--radius-lg); padding: 1rem 1.5rem; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">' +
-      '<div class="gm-event-meta" style="display: flex; align-items: center; gap: 1rem; flex: 1; min-width: 250px;">' +
-      '<div class="gm-event-icon" style="width: 48px; height: 48px; border-radius: 50%; background: ' +
-      (isActive ? 'var(--primary-soft)' : 'rgba(255,255,255,0.05)') +
-      '; color: ' +
-      (isActive ? 'var(--primary)' : 'var(--text-muted)') +
-      '; display: flex; align-items: center; justify-content: center; font-size: var(--fs-3xl);"><i class="ph ph-ghost"></i></div>' +
-      '<div class="gm-grow" style="display: flex; flex-direction: column; gap: 0.25rem;">' +
-      '<div class="gm-event-name" style="font-size: var(--fs-xl); font-weight: 700; font-family: var(--font-family-title);">' +
+      '<div class="u-d-flex u-mb-1_5rem u-bg-card-bg u-border-1px-solid-card-border u-rounded-radius-lg u-p-1rem-1_5rem u-justify-space-between u-items-center u-wrap-wrap u-gap-1rem gm-event-banner">' +
+      '<div class="u-d-flex u-items-center u-gap-1rem u-flex-1 u-minw-250px gm-event-meta">' +
+      '<div class="gm-event-icon" data-gm-style="' +
+      styleRef(
+        'width: 48px; height: 48px; border-radius: 50%; background: ' +
+          (isActive ? 'var(--primary-soft)' : 'rgba(255,255,255,0.05)') +
+          '; color: ' +
+          (isActive ? 'var(--primary)' : 'var(--text-muted)') +
+          '; display: flex; align-items: center; justify-content: center; font-size: var(--fs-3xl);'
+      ) +
+      '"><i class="ph ph-ghost"></i></div>' +
+      '<div class="u-d-flex u-dir-column u-gap-0_25rem gm-grow">' +
+      '<div class="u-fs-fs-xl u-fw-700 u-ff-font-family-title gm-event-name">' +
       escapeHTML(sqLabel) +
       '</div>' +
-      '<div class="gm-event-status-line" style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">' +
-      '<span class="event-status-badge gm-chip ' +
+      '<div class="u-d-flex u-items-center u-gap-0_5rem u-wrap-wrap gm-event-status-line">' +
+      '<span class="u-d-inline-flex u-items-center u-gap-0_35rem u-fs-fs-sm event-status-badge gm-chip ' +
       statusBadgeClass +
-      '" style="display: inline-flex; align-items: center; gap: 0.35rem; font-size: var(--fs-sm);"><span class="gm-dot" style="background: ' +
-      dotColor +
-      '; width: 8px; height: 8px; border-radius: 50%;"></span> ' +
+      '"><span class="gm-dot" data-gm-style="' +
+      styleRef('background: ' + dotColor + '; width: 8px; height: 8px; border-radius: 50%;') +
+      '"></span> ' +
       statusText +
       '</span>' +
-      '<span class="gm-dim" style="font-size: var(--fs-sm); color: var(--text-muted);">' +
+      '<span class="u-fs-fs-sm u-c-text-muted gm-dim">' +
       escapeHTML(subText) +
       '</span>' +
       '</div>' +
       '</div>' +
       '</div>' +
-      '<div class="gm-event-actions" style="display: flex; gap: 0.5rem;">' +
+      '<div class="u-d-flex u-gap-0_5rem gm-event-actions">' +
       (isActive
-        ? '<button class="gm-btn gm-btn-danger event-end-btn sf-squad-end-btn" data-squad="' +
+        ? '<button class="u-mr-0_25rem gm-btn gm-btn-danger event-end-btn sf-squad-end-btn" data-squad="' +
           this.activeSquad +
-          '" style="margin-right: 0.25rem;"><i class="ph ph-stop-circle"></i> <span>' +
+          '"><i class="ph ph-stop-circle"></i> <span>' +
           t('event_end') +
           '</span></button>' +
-          '<button class="gm-btn sf-squad-edit-btn" style="background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.3); color: #a5b4fc; margin-right: 0.25rem;" data-squad="' +
+          '<button class="u-bg-rgba-99-102-241-0_15 u-border-1px-solid-rgba-99-2a6e71 u-c-hexa5b4fc u-mr-0_25rem gm-btn sf-squad-edit-btn" data-squad="' +
           this.activeSquad +
           '" title="' +
           t('edit_title') +
           '"><i class="ph ph-calendar"></i> <span>' +
           t('edit_title') +
           '</span></button>' +
-          '<button class="gm-btn sf-squad-delete-btn" style="background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.25); color: var(--error);" data-squad="' +
+          '<button class="u-bg-rgba-239-68-68-0_12 u-border-1px-solid-rgba-239-5b5d21 u-c-error gm-btn sf-squad-delete-btn" data-squad="' +
           this.activeSquad +
           '" title="' +
           t('delete_title') +
@@ -669,7 +674,7 @@ export class ShadowfrontView {
 
     if (sq.ended) {
       html +=
-        '<div class="gm-empty" style="margin-top: 2rem;">' +
+        '<div class="u-mt-2rem gm-empty">' +
         '<i class="ph ph-ghost gm-icon"></i>' +
         '<div class="gm-empty-title">' +
         t('event_not_active') +
@@ -711,14 +716,14 @@ export class ShadowfrontView {
     };
 
     html +=
-      '<div class="sf-stepper" style="margin-bottom: 1.5rem;">' +
+      '<div class="u-mb-1_5rem sf-stepper">' +
       stepBtn('composition', 'ph-users-three', t('sf_step_composition'), true) +
       '<span class="sf-step-sep"></span>' +
       stepBtn('tracking', 'ph-chart-bar', t('sf_step_tracking'), hasTrackableSession) +
       '</div>';
 
     html +=
-      '<div class="input-wrapper" style="margin-bottom: 1.5rem;">' +
+      '<div class="u-mb-1_5rem input-wrapper">' +
       '<i class="ph ph-magnifying-glass"></i>' +
       '<input type="text" class="sf-search-input" aria-label="' +
       escapeHTML(t('search_placeholder')) +
@@ -785,7 +790,7 @@ export class ShadowfrontView {
         '</span>' +
         '</div>' +
         '<div class="sf-compose-controls">' +
-        '<div class="sf-sort-toggle" style="display:flex; gap:0.25rem;">' +
+        '<div class="u-d-flex u-gap-0_25rem sf-sort-toggle">' +
         '<button class="gm-btn gm-btn-xs sf-sort-btn' +
         (this.sort === 'rate' ? ' sf-sort-active' : '') +
         '" data-sort="rate" title="' +
@@ -801,7 +806,7 @@ export class ShadowfrontView {
         t('sf_sort_power') +
         '</button>' +
         '</div>' +
-        '<button class="gm-btn sf-share-discord-btn" style="margin-left: auto;"><i class="ph ph-paper-plane-tilt"></i> ' +
+        '<button class="u-ml-auto gm-btn sf-share-discord-btn"><i class="ph ph-paper-plane-tilt"></i> ' +
         t('sf_share_discord') +
         '</button>' +
         '</div>' +
@@ -817,7 +822,7 @@ export class ShadowfrontView {
         '</span></div>';
 
       html +=
-        '<div class="sf-filter-tabs" style="padding: 0.5rem; justify-content: center; gap: 0.2rem;">' +
+        '<div class="u-p-0_5rem u-justify-center u-gap-0_2rem sf-filter-tabs">' +
         '<button class="sf-filter-btn' +
         (this.filter === 'all' ? ' active' : '') +
         '" data-filter="all">' +
@@ -871,7 +876,7 @@ export class ShadowfrontView {
         return this.filter === 'all' ? true : this.categorise(p) === this.filter;
       });
 
-      html += '<div class="sf-col-body" style="max-height: 480px; overflow-y: auto;">';
+      html += '<div class="u-maxh-480px u-oy-auto sf-col-body">';
       if (filteredPool.length === 0) {
         html +=
           '<div class="sf-empty">' +
@@ -901,13 +906,17 @@ export class ShadowfrontView {
 
           const powerBadge =
             powerVal > 0
-              ? '<span class="gm-chip" style="font-size: var(--fs-xs); padding:0.05rem 0.2rem; color:' +
-                pMeta.color +
-                '; border:1px solid ' +
-                pMeta.color +
-                '22; background:' +
-                pMeta.color +
-                '05; display:inline-flex; align-items:center; gap:0.15rem; margin-left:0.25rem;"><span style="font-size: var(--fs-sm);">' +
+              ? '<span class="gm-chip" data-gm-style="' +
+                styleRef(
+                  'font-size: var(--fs-xs); padding:0.05rem 0.2rem; color:' +
+                    pMeta.color +
+                    '; border:1px solid ' +
+                    pMeta.color +
+                    '22; background:' +
+                    pMeta.color +
+                    '05; display:inline-flex; align-items:center; gap:0.15rem; margin-left:0.25rem;'
+                ) +
+                '"><span class="u-fs-fs-sm">' +
                 pMeta.icon +
                 '</span> ' +
                 formattedPower +
@@ -935,26 +944,30 @@ export class ShadowfrontView {
           html +=
             '<div class="sf-member-row sf-member-' +
             cat +
-            '" style="border-left: 3px solid ' +
-            (cat === 'excellent'
-              ? 'var(--success)'
-              : cat === 'good'
-                ? '#60a5fa'
-                : cat === 'average'
-                  ? '#fb923c'
-                  : cat === 'poor'
-                    ? 'var(--error)'
-                    : 'var(--text-muted)') +
-            ';">' +
-            '<div class="sf-member-info" style="display: flex; align-items: center; gap: 0.4rem; min-width: 0; overflow: hidden; flex: 1;">' +
-            '<span class="sf-rate-badge ' +
+            '" data-gm-style="' +
+            styleRef(
+              'border-left: 3px solid ' +
+                (cat === 'excellent'
+                  ? 'var(--success)'
+                  : cat === 'good'
+                    ? '#60a5fa'
+                    : cat === 'average'
+                      ? '#fb923c'
+                      : cat === 'poor'
+                        ? 'var(--error)'
+                        : 'var(--text-muted)') +
+                ';'
+            ) +
+            '">' +
+            '<div class="u-d-flex u-items-center u-gap-0_4rem u-minw-0 u-overflow-hidden u-flex-1 sf-member-info">' +
+            '<span class="u-fs-fs-xs u-p-0_15rem-0_45rem sf-rate-badge ' +
             meta.cls +
-            '" style="font-size: var(--fs-xs); padding: 0.15rem 0.45rem;">' +
+            '">' +
             rateText +
             '</span>' +
-            '<span class="sf-pseudo" title="' +
+            '<span class="u-ml-0_2rem u-fs-fs-base u-fw-600 u-ws-nowrap u-overflow-hidden u-to-ellipsis sf-pseudo" title="' +
             escapeHTML(tooltipText) +
-            '" style="margin-left: 0.2rem; font-size: var(--fs-base); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">' +
+            '">' +
             escapeHTML(pseudo) +
             '</span>' +
             powerBadge +
@@ -977,7 +990,7 @@ export class ShadowfrontView {
     else if (this.activeTab === 'tracking') {
       if (!sq || !sq.sessionId) {
         html +=
-          '<div class="gm-empty" style="margin-top: 2rem;">' +
+          '<div class="u-mt-2rem gm-empty">' +
           '<i class="ph ph-rocket-launch gm-icon"></i>' +
           '<div class="gm-empty-title">' +
           t('event_not_active') +
@@ -1027,15 +1040,15 @@ export class ShadowfrontView {
       '">' +
       '<i class="ph ph-shield-check"></i> ' +
       t('sf_participants') +
-      ' <span class="sf-cap ' +
+      ' <span class="u-ml-auto sf-cap ' +
       (pFull ? 'full' : '') +
-      '" style="margin-left: auto;">' +
+      '">' +
       participants.length +
       '/' +
       SHADOWFRONT_PARTICIPANTS_MAX +
       '</span>' +
       '</div>' +
-      '<div class="sf-col-body" style="max-height: 520px; overflow-y: auto;">';
+      '<div class="u-maxh-520px u-oy-auto sf-col-body">';
 
     if (participants.length === 0) {
       html += '<div class="sf-empty">' + t('sf_no_one') + '</div>';
@@ -1050,20 +1063,20 @@ export class ShadowfrontView {
       '<div class="sf-column sf-squad-col' +
       (sq.active ? '' : ' sf-squad-off') +
       '">' +
-      '<div class="sf-col-header squad-header ' +
+      '<div class="u-filter-brightness-0_95 sf-col-header squad-header ' +
       squad +
-      '" style="filter: brightness(0.95);">' +
+      '">' +
       '<i class="ph ph-clock-countdown"></i> ' +
       t('sf_reserves') +
-      ' <span class="sf-cap ' +
+      ' <span class="u-ml-auto sf-cap ' +
       (rFull ? 'full' : '') +
-      '" style="margin-left: auto;">' +
+      '">' +
       reserves.length +
       '/' +
       SHADOWFRONT_RESERVES_MAX +
       '</span>' +
       '</div>' +
-      '<div class="sf-col-body" style="max-height: 520px; overflow-y: auto;">';
+      '<div class="u-maxh-520px u-oy-auto sf-col-body">';
 
     if (reserves.length === 0) {
       html += '<div class="sf-empty">' + t('sf_no_one') + '</div>';
@@ -1099,12 +1112,12 @@ export class ShadowfrontView {
       cmdBtn =
         '<button class="sf-commander-btn" data-pseudo="' +
         escapeHTML(pseudo) +
-        '" title="Toggle Commander" style="background: none; border: none; padding: 0.2rem; margin-right: 0.25rem;' +
-        starColor +
+        '" title="Toggle Commander" data-gm-style="' +
+        styleRef('background: none; border: none; padding: 0.2rem; margin-right: 0.25rem;' + starColor + '') +
         '">' +
-        '<i class="' +
+        '<i class="u-fs-fs-xl ' +
         iconClass +
-        '" style="font-size: var(--fs-xl);"></i>' +
+        '"></i>' +
         '</button>';
     }
 
@@ -1115,13 +1128,17 @@ export class ShadowfrontView {
     const formattedPower = powerVal > 0 ? formatPower(powerVal) : '';
     const powerBadge =
       powerVal > 0
-        ? '<span class="gm-chip" style="font-size: var(--fs-xs); padding:0.05rem 0.2rem; color:' +
-          pMeta.color +
-          '; border:1px solid ' +
-          pMeta.color +
-          '22; background:' +
-          pMeta.color +
-          '05; display:inline-flex; align-items:center; gap:0.15rem; margin-right: 0.25rem;"><span style="font-size: var(--fs-sm);">' +
+        ? '<span class="gm-chip" data-gm-style="' +
+          styleRef(
+            'font-size: var(--fs-xs); padding:0.05rem 0.2rem; color:' +
+              pMeta.color +
+              '; border:1px solid ' +
+              pMeta.color +
+              '22; background:' +
+              pMeta.color +
+              '05; display:inline-flex; align-items:center; gap:0.15rem; margin-right: 0.25rem;'
+          ) +
+          '"><span class="u-fs-fs-sm">' +
           pMeta.icon +
           '</span> ' +
           formattedPower +
@@ -1132,22 +1149,22 @@ export class ShadowfrontView {
       'display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0.6rem; border-radius: 6px; background: rgba(0,0,0,0.15); border: 1px solid transparent; gap: 0.4rem; font-size: var(--fs-base);';
 
     return (
-      '<div class="sf-assigned-row" style="' +
-      rowStyle +
+      '<div class="sf-assigned-row" data-gm-style="' +
+      styleRef('' + rowStyle + '') +
       '">' +
-      '<span class="sf-rate-badge ' +
+      '<span class="u-fs-fs-xs u-p-0_1rem-0_35rem u-mr-0_25rem sf-rate-badge ' +
       meta.cls +
-      '" style="font-size: var(--fs-xs); padding: 0.1rem 0.35rem; margin-right: 0.25rem;">' +
+      '">' +
       rateText +
       '</span>' +
-      '<span class="sf-pseudo" title="' +
+      '<span class="u-fw-500 u-fs-fs-base u-flex-1 u-ws-nowrap u-overflow-hidden u-to-ellipsis u-d-flex u-items-center u-gap-0_25rem sf-pseudo" title="' +
       escapeHTML(tooltipText) +
-      '" style="font-weight: 500; font-size: var(--fs-base); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 0.25rem;">' +
+      '">' +
       escapeHTML(pseudo) +
       '</span>' +
       powerBadge +
       stats +
-      '<div style="display: flex; align-items: center; gap: 0.2rem;">' +
+      '<div class="u-d-flex u-items-center u-gap-0_2rem">' +
       cmdBtn +
       '<button class="sf-remove-btn" data-pseudo="' +
       escapeHTML(pseudo) +
@@ -1167,7 +1184,7 @@ export class ShadowfrontView {
       '<div class="sf-tracking-header"><i class="ph ph-chart-bar"></i> ' +
       t('sf_tracking_title') +
       '</div>' +
-      '<div class="event-stats" style="margin-bottom: 1rem; display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem;">' +
+      '<div class="u-mb-1rem u-d-flex u-items-center u-wrap-wrap u-gap-0_5rem event-stats">' +
       '<span class="stat-chip"><i class="ph ph-users"></i> ' +
       participants.length +
       ' ' +
@@ -1178,13 +1195,13 @@ export class ShadowfrontView {
       ' ' +
       t('event_participated') +
       '</span>' +
-      '<button type="button" class="gm-btn gm-btn-sm sf-all-present-btn" style="font-size: var(--fs-sm); padding: 0.25rem 0.5rem;"><i class="ph ph-check-square"></i> ' +
+      '<button type="button" class="u-fs-fs-sm u-p-0_25rem-0_5rem gm-btn gm-btn-sm sf-all-present-btn"><i class="ph ph-check-square"></i> ' +
       t('sf_all_present') +
       '</button>' +
-      '<button type="button" class="gm-btn gm-btn-sm sf-all-absent-btn" style="font-size: var(--fs-sm); padding: 0.25rem 0.5rem;"><i class="ph ph-square"></i> ' +
+      '<button type="button" class="u-fs-fs-sm u-p-0_25rem-0_5rem gm-btn gm-btn-sm sf-all-absent-btn"><i class="ph ph-square"></i> ' +
       t('sf_all_absent') +
       '</button>' +
-      '<span class="sf-saved-flash" style="opacity:0; transition: opacity 0.3s; font-size: var(--fs-sm); color:var(--success);"></span>' +
+      '<span class="u-opacity-0 u-transition-opacity-0_3s u-fs-fs-sm u-c-success sf-saved-flash"></span>' +
       '</div>' +
       '<div class="participants-table-wrap"><table class="participants-table"><thead><tr>' +
       '<th>' +
@@ -1199,7 +1216,7 @@ export class ShadowfrontView {
       '<th class="center">Late</th>' +
       '<th class="center">Excused</th>' +
       '<th class="center">Sub Present</th>' +
-      '<th style="width: 60px; text-align: right;">Actions</th>' +
+      '<th class="u-w-60px u-text-right">Actions</th>' +
       '</tr></thead><tbody>';
 
     participants.forEach((p) => {
@@ -1225,13 +1242,13 @@ export class ShadowfrontView {
         '<tr class="' +
         rowClass +
         '">' +
-        '<td class="pseudo-cell" style="display: flex; align-items: center; gap: 0.5rem;">' +
-        '<span class="sf-rate-badge ' +
+        '<td class="u-d-flex u-items-center u-gap-0_5rem pseudo-cell">' +
+        '<span class="u-fs-fs-xs u-p-0_1rem-0_35rem sf-rate-badge ' +
         meta.cls +
-        '" style="font-size: var(--fs-xs); padding: 0.1rem 0.35rem;">' +
+        '">' +
         rateText +
         '</span>' +
-        '<strong style="font-size: var(--fs-base);">' +
+        '<strong class="u-fs-fs-base">' +
         escapeHTML(p.pseudo) +
         '</strong>' +
         pendingApprovalHtml(p.pseudo, p.is_pending) +
@@ -1281,7 +1298,7 @@ export class ShadowfrontView {
         '<span class="check-slider"></span>' +
         '</label>' +
         '</td>' +
-        '<td style="white-space: nowrap; text-align: right;"><button class="delete-btn sf-delete-participant-btn" data-pseudo="' +
+        '<td class="u-ws-nowrap u-text-right"><button class="delete-btn sf-delete-participant-btn" data-pseudo="' +
         escapeHTML(p.pseudo) +
         '" title="' +
         t('delete_title') +

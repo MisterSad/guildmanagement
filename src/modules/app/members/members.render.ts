@@ -7,6 +7,7 @@
  * timezone coverage. All values escaped via esc().
  */
 
+import { styleRef } from '../../../core/dom/style-refs';
 import { t, esc, byId } from '../admin/utils';
 import { getActiveGuild } from '../../../core/auth/roles';
 import { getAppState, patchAppState, type CollapsedRoles } from '../../../core/state/app-state';
@@ -38,12 +39,12 @@ function emptyStateHtml(): string {
   const members = getGuildMembers();
   if (members.length === 0) {
     return (
-      '<div class="gm-empty gm-empty--coldstart" style="padding:3rem 1rem; text-align:center;">' +
-      '<i class="ph ph-scan gm-icon" style="font-size: var(--fs-5xl); color:var(--accent); margin-bottom:1rem; display:inline-block;"></i>' +
-      '<div class="gm-empty-title" style="font-size: var(--fs-xl); font-weight:700; margin-bottom:0.5rem;">' +
+      '<div class="u-p-3rem-1rem u-text-center gm-empty gm-empty--coldstart">' +
+      '<i class="u-fs-fs-5xl u-c-accent u-mb-1rem u-d-inline-block ph ph-scan gm-icon"></i>' +
+      '<div class="u-fs-fs-xl u-fw-700 u-mb-0_5rem gm-empty-title">' +
       t('empty_members_roster_title') +
       '</div>' +
-      '<div class="gm-empty-desc" style="color:var(--text-muted); font-size: var(--fs-base); max-width:460px; margin:0 auto 1.5rem auto; line-height:1.4;">' +
+      '<div class="u-c-text-muted u-fs-fs-base u-maxw-460px u-m-0-auto-1_5rem-auto u-lh-1_4 gm-empty-desc">' +
       t('empty_members_roster_desc') +
       '</div>' +
       '<button type="button" class="btn-ocr-trigger gm-btn gm-btn-primary" data-metric="members"><i class="ph ph-scan"></i> ' +
@@ -63,15 +64,15 @@ function emptyStateHtml(): string {
 
 export function membersSkeletonHtml(): string {
   const row = (w: string) =>
-    '<div class="gm-card gm-card-padded gm-skeleton-card" aria-hidden="true" style="display:flex; gap:12px; align-items:center; margin-bottom:10px; min-height:56px;">' +
-    '<div class="gm-skeleton" style="width:44px; height:44px; border-radius:12px; flex-shrink:0;"></div>' +
-    '<div style="flex:1;"><div class="gm-skeleton gm-skeleton-title" style="width:' +
-    w +
-    '; height:1rem; margin-bottom:.4rem;"></div>' +
-    '<div class="gm-skeleton gm-skeleton-text" style="width:65%; height:.75rem;"></div></div>' +
+    '<div class="u-d-flex u-gap-12px u-items-center u-mb-10px u-minh-56px gm-card gm-card-padded gm-skeleton-card" aria-hidden="true">' +
+    '<div class="u-w-44px u-h-44px u-rounded-12px u-shrink-0 gm-skeleton"></div>' +
+    '<div class="u-flex-1"><div class="gm-skeleton gm-skeleton-title" data-gm-style="' +
+    styleRef('width:' + w + '; height:1rem; margin-bottom:.4rem;') +
+    '"></div>' +
+    '<div class="u-w-65pct u-h-0_75rem gm-skeleton gm-skeleton-text"></div></div>' +
     '</div>';
   return (
-    '<div class="gm-members-skeleton-list" aria-busy="true" aria-label="Loading members" style="padding:.25rem 0;">' +
+    '<div class="u-p-0_25rem-0 gm-members-skeleton-list" aria-busy="true" aria-label="Loading members">' +
     row('55%') +
     row('70%') +
     row('48%') +
@@ -167,13 +168,9 @@ export function absenceBadgeHtml(m: GuildMember): string {
   const border = active ? 'rgba(248,113,113,0.35)' : 'rgba(251,191,36,0.35)';
   const range = esc(match.start_date) + ' → ' + esc(match.end_date);
   return (
-    '<span class="gm-absence-chip" style="color:' +
-    color +
-    '; border: 1px solid ' +
-    border +
-    '; background:' +
-    bg +
-    ';" title="' +
+    '<span class="gm-absence-chip" data-gm-style="' +
+    styleRef('color:' + color + '; border: 1px solid ' + border + '; background:' + bg + ';') +
+    '" title="' +
     kindLabel +
     ' ' +
     range +
@@ -244,13 +241,9 @@ export function memberTileHtml(
 
   const rMeta = ROLE_STYLES[roleVal] || ROLE_STYLES.R1;
   const roleBadgeHtml =
-    '<span class="gm-role-chip" style="color:' +
-    rMeta.color +
-    '; border: 1px solid ' +
-    rMeta.border +
-    '; background:' +
-    rMeta.bg +
-    ';" title="Role ' +
+    '<span class="gm-role-chip" data-gm-style="' +
+    styleRef('color:' + rMeta.color + '; border: 1px solid ' + rMeta.border + '; background:' + rMeta.bg + ';') +
+    '" title="Role ' +
     roleVal +
     '">' +
     rMeta.icon +
@@ -258,13 +251,9 @@ export function memberTileHtml(
     roleVal +
     '</span>';
   const tierBadge =
-    '<span class="gm-power-tier-chip" style="color:' +
-    meta.color +
-    '; border: 1px solid ' +
-    meta.color +
-    '33; background: ' +
-    meta.color +
-    '12;" title="' +
+    '<span class="gm-power-tier-chip" data-gm-style="' +
+    styleRef('color:' + meta.color + '; border: 1px solid ' + meta.color + '33; background: ' + meta.color + '12;') +
+    '" title="' +
     meta.label +
     ' Tier"><span>' +
     meta.icon +
@@ -277,13 +266,13 @@ export function memberTileHtml(
 
   const hasPortal = portalUids && uidVal !== '-' && !!portalUids[String(uidVal)];
   const portalBadge = hasPortal
-    ? '<span class="gm-portal-chip" title="Player Portal account (validated)" style="color:#34d399; border:1px solid rgba(52,211,153,0.35); background:rgba(52,211,153,0.10); border-radius:999px; padding:0.05rem 0.35rem; font-size: var(--fs-xs); display:inline-flex; align-items:center; gap:0.2rem;"><i class="ph ph-user-check"></i> Portal</span>'
+    ? '<span class="u-c-hex34d399 u-border-1px-solid-rgba-52-ceb161 u-bg-rgba-52-211-153-0_10 u-rounded-999px u-p-0_05rem-0_35rem u-fs-fs-xs u-d-inline-flex u-items-center u-gap-0_2rem gm-portal-chip" title="Player Portal account (validated)"><i class="ph ph-user-check"></i> Portal</span>'
     : '';
 
   const tacticalChips: string[] = [];
   if (m.fleet_rating)
     tacticalChips.push(
-      '<span class="gm-chip" style="font-size: var(--fs-xs); color:#60a5fa; background:rgba(96,165,250,0.12); border:1px solid rgba(96,165,250,0.3); padding:0.05rem 0.35rem; border-radius:4px;" title="Fleet Rating: ' +
+      '<span class="u-fs-fs-xs u-c-hex60a5fa u-bg-rgba-96-165-250-0_12 u-border-1px-solid-rgba-96-320e91 u-p-0_05rem-0_35rem u-rounded-4px gm-chip" title="Fleet Rating: ' +
         formatNumber(m.fleet_rating) +
         '">⚔️ ' +
         formatPower(m.fleet_rating) +
@@ -291,7 +280,7 @@ export function memberTileHtml(
     );
   if (m.tech_power)
     tacticalChips.push(
-      '<span class="gm-chip" style="font-size: var(--fs-xs); color:#a78bfa; background:rgba(167,139,250,0.12); border:1px solid rgba(167,139,250,0.3); padding:0.05rem 0.35rem; border-radius:4px;" title="Tech Power: ' +
+      '<span class="u-fs-fs-xs u-c-hexa78bfa u-bg-rgba-167-139-250-0_12 u-border-1px-solid-rgba-167-b55ab8 u-p-0_05rem-0_35rem u-rounded-4px gm-chip" title="Tech Power: ' +
         formatNumber(m.tech_power) +
         '">🔬 ' +
         formatPower(m.tech_power) +
@@ -299,7 +288,7 @@ export function memberTileHtml(
     );
   if (m.flagship_power)
     tacticalChips.push(
-      '<span class="gm-chip" style="font-size: var(--fs-xs); color:#fbbf24; background:rgba(251,191,36,0.12); border:1px solid rgba(251,191,36,0.3); padding:0.05rem 0.35rem; border-radius:4px;" title="Flagship Power: ' +
+      '<span class="u-fs-fs-xs u-c-hexfbbf24 u-bg-rgba-251-191-36-0_12 u-border-1px-solid-rgba-251-52ad40 u-p-0_05rem-0_35rem u-rounded-4px gm-chip" title="Flagship Power: ' +
         formatNumber(m.flagship_power) +
         '">🚀 ' +
         formatPower(m.flagship_power) +
@@ -307,7 +296,7 @@ export function memberTileHtml(
     );
   if (m.glory_score)
     tacticalChips.push(
-      '<span class="gm-chip" style="font-size: var(--fs-xs); color:#34d399; background:rgba(52,211,153,0.12); border:1px solid rgba(52,211,153,0.3); padding:0.05rem 0.35rem; border-radius:4px;" title="Glory Score: ' +
+      '<span class="u-fs-fs-xs u-c-hex34d399 u-bg-rgba-52-211-153-0_12 u-border-1px-solid-rgba-52-09067f u-p-0_05rem-0_35rem u-rounded-4px gm-chip" title="Glory Score: ' +
         formatNumber(m.glory_score) +
         '">🏆 ' +
         formatPower(m.glory_score) +
@@ -315,13 +304,17 @@ export function memberTileHtml(
     );
 
   const tacticalHtml = tacticalChips.length
-    ? '<div class="gm-member-tactical-row" style="display:flex; gap:0.35rem; flex-wrap:wrap; margin-top:0.25rem;">' +
+    ? '<div class="u-d-flex u-gap-0_35rem u-wrap-wrap u-mt-0_25rem gm-member-tactical-row">' +
       tacticalChips.join('') +
       '</div>'
     : withActions
-      ? '<div class="gm-member-tactical-row" style="display:flex; gap:0.35rem; flex-wrap:wrap; margin-top:0.25rem;"><button type="button" class="guild-edit-btn" data-pseudo="' +
+      ? '<div class="u-d-flex u-gap-0_35rem u-wrap-wrap u-mt-0_25rem gm-member-tactical-row"><button type="button" class="guild-edit-btn" data-pseudo="' +
         esc(m.pseudo) +
-        '" style="font-size: var(--fs-xs); color:var(--accent); background:rgba(99,102,241,0.08); border:1px dashed rgba(99,102,241,0.3); border-radius:4px; padding:0.05rem 0.4rem; cursor:pointer; display:inline-flex; align-items:center; gap:0.25rem;"><i class="ph ph-plus-circle"></i> + Declare Military Stats</button></div>'
+        '" data-gm-style="' +
+        styleRef(
+          'font-size: var(--fs-xs); color:var(--accent); background:rgba(99,102,241,0.08); border:1px dashed rgba(99,102,241,0.3); border-radius:4px; padding:0.05rem 0.4rem; cursor:pointer; display:inline-flex; align-items:center; gap:0.25rem;'
+        ) +
+        '"><i class="ph ph-plus-circle"></i> + Declare Military Stats</button></div>'
       : '';
 
   const uidStatus = getUidStatus(m.uid);
@@ -354,8 +347,8 @@ export function memberTileHtml(
     absenceBadge +
     timezoneChip +
     '</div>' +
-    '<div class="gm-member-sub-info" style="display:flex; flex-direction:column; gap:0.2rem; align-items:flex-start;">' +
-    '<div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">' +
+    '<div class="u-d-flex u-dir-column u-gap-0_2rem u-items-flex-start gm-member-sub-info">' +
+    '<div class="u-d-flex u-gap-0_5rem u-items-center u-wrap-wrap">' +
     uidDisplayHtml +
     tierBadge +
     '</div>' +
@@ -368,21 +361,21 @@ export function memberTileHtml(
     '</span></div>' +
     (withActions
       ? '<div class="gm-member-actions">' +
-        '<button class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm guild-transfer-btn" data-pseudo="' +
+        '<button class="u-c-accent gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm guild-transfer-btn" data-pseudo="' +
         esc(m.pseudo) +
         '" data-uid="' +
         esc(uidVal) +
-        '" title="Transfer member to another eligible guild" style="color: var(--accent);"><i class="ph ph-arrows-left-right"></i></button>' +
+        '" title="Transfer member to another eligible guild"><i class="ph ph-arrows-left-right"></i></button>' +
         '<button class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm guild-edit-btn" data-pseudo="' +
         esc(m.pseudo) +
         '" title="' +
         t('edit_title') +
         '"><i class="ph ph-pencil-simple"></i></button>' +
-        '<button class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm guild-delete-btn" data-pseudo="' +
+        '<button class="u-c-danger gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm guild-delete-btn" data-pseudo="' +
         esc(m.pseudo) +
         '" title="' +
         t('delete_title') +
-        '" style="color: var(--danger);"><i class="ph ph-trash"></i></button>' +
+        '"><i class="ph ph-trash"></i></button>' +
         '</div>'
       : '') +
     '</div>'
@@ -507,23 +500,23 @@ export function buildMilitaryMatrixHtml(
   });
 
   const headerSummary =
-    '<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; margin-bottom:1rem; padding:0.85rem 1rem; background:var(--bg-1); border:1px solid var(--border-soft); border-radius:var(--radius-lg);">' +
-    '<div style="font-weight:700; font-size: var(--fs-md); color:var(--fg); display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap;">' +
-    '<i class="ph ph-shield" style="color:var(--accent);"></i> Tactical Force Matrix (' +
+    '<div class="u-d-flex u-justify-space-between u-items-center u-wrap-wrap u-gap-0_75rem u-mb-1rem u-p-0_85rem-1rem u-bg-bg-1 u-border-1px-solid-border-soft u-rounded-radius-lg">' +
+    '<div class="u-fw-700 u-fs-fs-md u-c-fg u-d-flex u-items-center u-gap-0_4rem u-wrap-wrap">' +
+    '<i class="u-c-accent ph ph-shield"></i> Tactical Force Matrix (' +
     sorted.length +
     ' players)' +
-    '<span class="gm-chip" style="color:#facc15; background:rgba(234,179,8,0.12); border:1px solid rgba(234,179,8,0.3); font-size: var(--fs-xs); margin-left:0.35rem;" title="16 Top Rally Leaders automatically assigned"><i class="ph ph-crown-simple"></i> ' +
+    '<span class="u-c-hexfacc15 u-bg-rgba-234-179-8-0_12 u-border-1px-solid-rgba-234-179-8-0_3 u-fs-fs-xs u-ml-0_35rem gm-chip" title="16 Top Rally Leaders automatically assigned"><i class="ph ph-crown-simple"></i> ' +
     leaderCount +
     ' Rally Leaders</span>' +
     '</div>' +
-    '<div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">' +
-    '<span class="gm-chip" style="color:#60a5fa; background:rgba(96,165,250,0.12); border:1px solid rgba(96,165,250,0.3); font-size: var(--fs-sm);"><i class="ph ph-sword"></i> Guild Fleet: ' +
+    '<div class="u-d-flex u-gap-0_5rem u-wrap-wrap u-items-center">' +
+    '<span class="u-c-hex60a5fa u-bg-rgba-96-165-250-0_12 u-border-1px-solid-rgba-96-320e91 u-fs-fs-sm gm-chip"><i class="ph ph-sword"></i> Guild Fleet: ' +
     formatPower(totalFleet) +
     '</span>' +
-    '<span class="gm-chip" style="color:#a78bfa; background:rgba(167,139,250,0.12); border:1px solid rgba(167,139,250,0.3); font-size: var(--fs-sm);"><i class="ph ph-atom"></i> Guild Tech: ' +
+    '<span class="u-c-hexa78bfa u-bg-rgba-167-139-250-0_12 u-border-1px-solid-rgba-167-b55ab8 u-fs-fs-sm gm-chip"><i class="ph ph-atom"></i> Guild Tech: ' +
     formatPower(totalTech) +
     '</span>' +
-    '<span class="gm-chip" style="color:#34d399; background:rgba(52,211,153,0.12); border:1px solid rgba(52,211,153,0.3); font-size: var(--fs-sm);"><i class="ph ph-trophy"></i> Total Glory: ' +
+    '<span class="u-c-hex34d399 u-bg-rgba-52-211-153-0_12 u-border-1px-solid-rgba-52-09067f u-fs-fs-sm gm-chip"><i class="ph ph-trophy"></i> Total Glory: ' +
     formatPower(totalGlory) +
     '</span>' +
     '</div>' +
@@ -546,38 +539,42 @@ export function buildMilitaryMatrixHtml(
       if (rallyInfo.isLeader) {
         if (rallyInfo.rank <= 4)
           rallyRoleChip =
-            '<span class="gm-chip" style="background:rgba(234,179,8,0.18); color:#facc15; font-size: var(--fs-xs); font-weight:700; border:1px solid rgba(234,179,8,0.35); padding:0.12rem 0.5rem;" title="Top Tier Rally Leader #' +
+            '<span class="u-bg-rgba-234-179-8-0_18 u-c-hexfacc15 u-fs-fs-xs u-fw-700 u-border-1px-solid-rgba-234-f8c743 u-p-0_12rem-0_5rem gm-chip" title="Top Tier Rally Leader #' +
             rallyInfo.rank +
             '"><i class="ph ph-crown-simple"></i> Leader #' +
             rallyInfo.rank +
             '</span>';
         else if (rallyInfo.rank <= 8)
           rallyRoleChip =
-            '<span class="gm-chip" style="background:rgba(168,85,247,0.18); color:#c084fc; font-size: var(--fs-xs); font-weight:700; border:1px solid rgba(168,85,247,0.35); padding:0.12rem 0.5rem;" title="Elite Rally Leader #' +
+            '<span class="u-bg-rgba-168-85-247-0_18 u-c-hexc084fc u-fs-fs-xs u-fw-700 u-border-1px-solid-rgba-168-d904af u-p-0_12rem-0_5rem gm-chip" title="Elite Rally Leader #' +
             rallyInfo.rank +
             '"><i class="ph ph-shield-star"></i> Leader #' +
             rallyInfo.rank +
             '</span>';
         else
           rallyRoleChip =
-            '<span class="gm-chip" style="background:rgba(59,130,246,0.18); color:#60a5fa; font-size: var(--fs-xs); font-weight:700; border:1px solid rgba(59,130,246,0.35); padding:0.12rem 0.5rem;" title="Rally Leader #' +
+            '<span class="u-bg-rgba-59-130-246-0_18 u-c-hex60a5fa u-fs-fs-xs u-fw-700 u-border-1px-solid-rgba-59-39cd06 u-p-0_12rem-0_5rem gm-chip" title="Rally Leader #' +
             rallyInfo.rank +
             '"><i class="ph ph-target"></i> Leader #' +
             rallyInfo.rank +
             '</span>';
       } else {
         rallyRoleChip =
-          '<span class="gm-chip" style="background:rgba(148,163,184,0.12); color:var(--text-muted); font-size: var(--fs-xs); border:1px solid var(--border-soft); padding:0.1rem 0.45rem;" title="Rally Reinforcement / Joiner"><i class="ph ph-users"></i> Rally Joiner</span>';
+          '<span class="u-bg-rgba-148-163-184-0_12 u-c-text-muted u-fs-fs-xs u-border-1px-solid-border-soft u-p-0_1rem-0_45rem gm-chip" title="Rally Reinforcement / Joiner"><i class="ph ph-users"></i> Rally Joiner</span>';
       }
 
       const uidStatus = getUidStatus(m.uid);
       const uidHtml = !uidStatus.valid
-        ? '<div style="font-size: var(--fs-xs); margin-top:2px;" class="gm-mono gm-uid-invalid" title="' +
+        ? '<div data-gm-style="' +
+          styleRef('font-size: var(--fs-xs); margin-top:2px;') +
+          '" class="gm-mono gm-uid-invalid" title="' +
           esc((uidStatus.label || '') + ' — ' + (uidStatus.reason || '')) +
           '"><i class="ph ph-warning-circle"></i> UID ' +
           esc(uidVal) +
           '</div>'
-        : '<div style="font-size: var(--fs-xs); color:var(--text-muted);" class="gm-mono">UID ' +
+        : '<div data-gm-style="' +
+          styleRef('font-size: var(--fs-xs); color:var(--text-muted);') +
+          '" class="gm-mono">UID ' +
           esc(uidVal) +
           '</div>';
 
@@ -597,65 +594,59 @@ export function buildMilitaryMatrixHtml(
         : '';
 
       return (
-        '<tr class="' +
+        '<tr class="u-bb-1px-solid-border-soft ' +
         (isSelected ? 'is-selected' : '') +
         '" data-pseudo="' +
         esc(m.pseudo) +
-        '" style="border-bottom:1px solid var(--border-soft);">' +
-        '<td style="padding:0.65rem 0.75rem;"><div style="display:flex; align-items:center; gap:0.5rem;">' +
+        '">' +
+        '<td class="u-p-0_65rem-0_75rem"><div class="u-d-flex u-items-center u-gap-0_5rem">' +
         chkHtml +
-        '<div class="gm-avatar gm-avatar-squircle" style="width:28px; height:28px; font-size: var(--fs-sm);">' +
+        '<div class="u-w-28px u-h-28px u-fs-fs-sm gm-avatar gm-avatar-squircle">' +
         esc(initial) +
         '</div>' +
-        '<div><div style="font-weight:600; font-size: var(--fs-base); color:var(--fg);">' +
+        '<div><div class="u-fw-600 u-fs-fs-base u-c-fg">' +
         esc(m.pseudo) +
         '</div>' +
         uidHtml +
         '</div>' +
         '</div></td>' +
-        '<td data-label="Rally" style="padding:0.65rem 0.5rem; text-align:center;">' +
+        '<td data-label="Rally" class="u-p-0_65rem-0_5rem u-text-center">' +
         rallyRoleChip +
         '</td>' +
-        '<td data-label="Role" style="padding:0.65rem 0.5rem; text-align:center;"><span class="gm-role-chip" data-role="' +
+        '<td data-label="Role" class="u-p-0_65rem-0_5rem u-text-center"><span class="u-fs-fs-xs u-p-0_1rem-0_35rem gm-role-chip" data-role="' +
         esc(roleVal) +
-        '" style="font-size: var(--fs-xs); padding:0.1rem 0.35rem;">' +
+        '">' +
         esc(roleVal) +
         '</span></td>' +
-        '<td data-label="Power" class="gm-matrix-num tabular-nums" style="padding:0.65rem 0.5rem; text-align:right; font-variant-numeric:tabular-nums; font-weight:600; font-size: var(--fs-base);">' +
+        '<td data-label="Power" class="u-p-0_65rem-0_5rem u-text-right u-fvn-tabular-nums u-fw-600 u-fs-fs-base gm-matrix-num tabular-nums">' +
         formatPower(powerVal) +
         '</td>' +
-        '<td data-label="Fleet" class="gm-matrix-num tabular-nums" style="padding:0.65rem 0.5rem; text-align:right; font-variant-numeric:tabular-nums; color:#60a5fa; font-weight:600; font-size: var(--fs-base);">' +
-        (m.fleet_rating
-          ? formatPower(m.fleet_rating)
-          : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') +
+        '<td data-label="Fleet" class="u-p-0_65rem-0_5rem u-text-right u-fvn-tabular-nums u-c-hex60a5fa u-fw-600 u-fs-fs-base gm-matrix-num tabular-nums">' +
+        (m.fleet_rating ? formatPower(m.fleet_rating) : '<span class="u-c-text-muted u-opacity-0_4">—</span>') +
         '</td>' +
-        '<td data-label="Tech" class="gm-matrix-num tabular-nums" style="padding:0.65rem 0.5rem; text-align:right; font-variant-numeric:tabular-nums; color:#a78bfa; font-weight:600; font-size: var(--fs-base);">' +
-        (m.tech_power ? formatPower(m.tech_power) : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') +
+        '<td data-label="Tech" class="u-p-0_65rem-0_5rem u-text-right u-fvn-tabular-nums u-c-hexa78bfa u-fw-600 u-fs-fs-base gm-matrix-num tabular-nums">' +
+        (m.tech_power ? formatPower(m.tech_power) : '<span class="u-c-text-muted u-opacity-0_4">—</span>') +
         '</td>' +
-        '<td data-label="Flagship" class="gm-matrix-num tabular-nums" style="padding:0.65rem 0.5rem; text-align:right; font-variant-numeric:tabular-nums; color:#fbbf24; font-weight:600; font-size: var(--fs-base);">' +
-        (m.flagship_power
-          ? formatPower(m.flagship_power)
-          : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') +
+        '<td data-label="Flagship" class="u-p-0_65rem-0_5rem u-text-right u-fvn-tabular-nums u-c-hexfbbf24 u-fw-600 u-fs-fs-base gm-matrix-num tabular-nums">' +
+        (m.flagship_power ? formatPower(m.flagship_power) : '<span class="u-c-text-muted u-opacity-0_4">—</span>') +
         '</td>' +
-        '<td data-label="Champs" class="gm-matrix-num tabular-nums" style="padding:0.65rem 0.5rem; text-align:right; font-variant-numeric:tabular-nums; color:#f472b6; font-weight:600; font-size: var(--fs-base);">' +
-        (m.champion_power
-          ? formatPower(m.champion_power)
-          : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') +
+        '<td data-label="Champs" class="u-p-0_65rem-0_5rem u-text-right u-fvn-tabular-nums u-c-hexf472b6 u-fw-600 u-fs-fs-base gm-matrix-num tabular-nums">' +
+        (m.champion_power ? formatPower(m.champion_power) : '<span class="u-c-text-muted u-opacity-0_4">—</span>') +
         '</td>' +
-        '<td data-label="Crew" class="gm-matrix-num tabular-nums" style="padding:0.65rem 0.5rem; text-align:right; font-variant-numeric:tabular-nums; color:#38bdf8; font-weight:600; font-size: var(--fs-base);">' +
-        (m.crew_power ? formatPower(m.crew_power) : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') +
+        '<td data-label="Crew" class="u-p-0_65rem-0_5rem u-text-right u-fvn-tabular-nums u-c-hex38bdf8 u-fw-600 u-fs-fs-base gm-matrix-num tabular-nums">' +
+        (m.crew_power ? formatPower(m.crew_power) : '<span class="u-c-text-muted u-opacity-0_4">—</span>') +
         '</td>' +
-        '<td data-label="Glory" class="gm-matrix-num tabular-nums" style="padding:0.65rem 0.5rem; text-align:right; font-variant-numeric:tabular-nums; color:#34d399; font-weight:600; font-size: var(--fs-base);">' +
-        (m.glory_score ? formatPower(m.glory_score) : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') +
+        '<td data-label="Glory" class="u-p-0_65rem-0_5rem u-text-right u-fvn-tabular-nums u-c-hex34d399 u-fw-600 u-fs-fs-base gm-matrix-num tabular-nums">' +
+        (m.glory_score ? formatPower(m.glory_score) : '<span class="u-c-text-muted u-opacity-0_4">—</span>') +
         '</td>' +
-        '<td data-label="Rally Score" class="gm-matrix-num tabular-nums" style="padding:0.65rem 0.5rem; text-align:right; font-variant-numeric:tabular-nums;">' +
+        '<td data-label="Rally Score" class="u-p-0_65rem-0_5rem u-text-right u-fvn-tabular-nums gm-matrix-num tabular-nums">' +
         (rallyScore > 0
-          ? '<span class="gm-chip" style="display:inline-flex; justify-content:flex-end; font-variant-numeric:tabular-nums; font-weight:700; font-size: var(--fs-sm); color:#818cf8; background:rgba(99,102,241,0.15); border:1px solid rgba(99,102,241,0.32); padding:0.15rem 0.5rem; gap:0.25rem;"><i class="ph ph-lightning"></i> ' +
+          ? '<span class="u-d-inline-flex u-justify-flex-end u-fvn-tabular-nums u-fw-700 u-fs-fs-sm u-c-hex818cf8 u-bg-rgba-99-102-241-0_15 u-border-1px-solid-rgba-99-34aac1 u-p-0_15rem-0_5rem u-gap-0_25rem gm-chip"><i class="ph ph-lightning"></i> ' +
             rallyGrade +
             '/100</span>'
-          : '<span style="color:var(--text-muted); opacity:0.4;">—</span>') +
+          : '<span class="u-c-text-muted u-opacity-0_4">—</span>') +
         '</td>' +
-        '<td data-label="Action" style="padding:0.65rem 0.75rem; text-align:center;">' +
+        '<td data-label="Action" class="u-p-0_65rem-0_75rem u-text-center">' +
         '<button type="button" class="gm-btn gm-btn-ghost gm-btn-sm guild-edit-btn" data-pseudo="' +
         esc(m.pseudo) +
         '" title="Edit Player Military Metrics"><i class="ph ph-pencil-simple"></i> Edit</button>' +
@@ -667,27 +658,27 @@ export function buildMilitaryMatrixHtml(
 
   return (
     headerSummary +
-    '<div class="gm-table-wrap" style="background:var(--bg-1); border:1px solid var(--border-soft); border-radius:var(--radius-lg); overflow-x:auto;">' +
-    '<table class="gm-table gm-resp-table" style="width:100%; border-collapse:collapse; min-width:850px;">' +
-    '<thead><tr style="background:rgba(255,255,255,0.03); border-bottom:1px solid var(--border-soft); font-size: var(--fs-xs); text-transform:uppercase; color:var(--text-muted);">' +
-    '<th style="padding:0.65rem 0.75rem; text-align:left;">' +
+    '<div class="u-bg-bg-1 u-border-1px-solid-border-soft u-rounded-radius-lg u-ox-auto gm-table-wrap">' +
+    '<table class="u-w-100pct u-bcol-collapse u-minw-850px gm-table gm-resp-table">' +
+    '<thead><tr class="u-bg-rgba-255-255-255-0_03 u-bb-1px-solid-border-soft u-fs-fs-xs u-tt-uppercase u-c-text-muted">' +
+    '<th class="u-p-0_65rem-0_75rem u-text-left">' +
     (withActions
       ? '<label class="gm-member-select-chk-wrap"><input type="checkbox" class="gm-member-select-chk admin-matrix-select-all-chk"' +
         (allSelected ? ' checked' : '') +
         '></label> '
       : '') +
     '<span>Player</span></th>' +
-    '<th style="padding:0.65rem 0.5rem; text-align:center; color:#facc15;">🎯 Rally</th>' +
-    '<th style="padding:0.65rem 0.5rem; text-align:center;">Role</th>' +
-    '<th class="gm-matrix-num tabular-nums" style="padding:0.65rem 0.5rem; text-align:right; font-variant-numeric:tabular-nums;">Power</th>' +
-    '<th class="gm-matrix-num tabular-nums" style="padding:0.65rem 0.5rem; text-align:right; font-variant-numeric:tabular-nums; color:#60a5fa;">⚔️ Fleet</th>' +
-    '<th class="gm-matrix-num tabular-nums" style="padding:0.65rem 0.5rem; text-align:right; font-variant-numeric:tabular-nums; color:#a78bfa;">🔬 Tech</th>' +
-    '<th class="gm-matrix-num tabular-nums" style="padding:0.65rem 0.5rem; text-align:right; font-variant-numeric:tabular-nums; color:#fbbf24;">🚀 Flagship</th>' +
-    '<th class="gm-matrix-num tabular-nums" style="padding:0.65rem 0.5rem; text-align:right; font-variant-numeric:tabular-nums; color:#f472b6;">👑 Champs</th>' +
-    '<th class="gm-matrix-num tabular-nums" style="padding:0.65rem 0.5rem; text-align:right; font-variant-numeric:tabular-nums; color:#38bdf8;">👥 Crew</th>' +
-    '<th class="gm-matrix-num tabular-nums" style="padding:0.65rem 0.5rem; text-align:right; font-variant-numeric:tabular-nums; color:#34d399;">🏆 Glory</th>' +
-    '<th class="gm-matrix-num tabular-nums" style="padding:0.65rem 0.5rem; text-align:right; font-variant-numeric:tabular-nums; color:#818cf8;">⚡ Rally Score</th>' +
-    '<th style="padding:0.65rem 0.75rem; text-align:center;">Action</th>' +
+    '<th class="u-p-0_65rem-0_5rem u-text-center u-c-hexfacc15">🎯 Rally</th>' +
+    '<th class="u-p-0_65rem-0_5rem u-text-center">Role</th>' +
+    '<th class="u-p-0_65rem-0_5rem u-text-right u-fvn-tabular-nums gm-matrix-num tabular-nums">Power</th>' +
+    '<th class="u-p-0_65rem-0_5rem u-text-right u-fvn-tabular-nums u-c-hex60a5fa gm-matrix-num tabular-nums">⚔️ Fleet</th>' +
+    '<th class="u-p-0_65rem-0_5rem u-text-right u-fvn-tabular-nums u-c-hexa78bfa gm-matrix-num tabular-nums">🔬 Tech</th>' +
+    '<th class="u-p-0_65rem-0_5rem u-text-right u-fvn-tabular-nums u-c-hexfbbf24 gm-matrix-num tabular-nums">🚀 Flagship</th>' +
+    '<th class="u-p-0_65rem-0_5rem u-text-right u-fvn-tabular-nums u-c-hexf472b6 gm-matrix-num tabular-nums">👑 Champs</th>' +
+    '<th class="u-p-0_65rem-0_5rem u-text-right u-fvn-tabular-nums u-c-hex38bdf8 gm-matrix-num tabular-nums">👥 Crew</th>' +
+    '<th class="u-p-0_65rem-0_5rem u-text-right u-fvn-tabular-nums u-c-hex34d399 gm-matrix-num tabular-nums">🏆 Glory</th>' +
+    '<th class="u-p-0_65rem-0_5rem u-text-right u-fvn-tabular-nums u-c-hex818cf8 gm-matrix-num tabular-nums">⚡ Rally Score</th>' +
+    '<th class="u-p-0_65rem-0_75rem u-text-center">Action</th>' +
     '</tr></thead>' +
     '<tbody>' +
     rowsHtml +
@@ -738,28 +729,22 @@ export function renderAbsenceSummary(): void {
     html +=
       '<div class="gm-absence-card">' +
       '<div class="gm-absence-card-head">' +
-      '<div class="gm-avatar gm-avatar-sm" style="background:' +
-      bg +
-      '; color:' +
-      color +
-      ';">' +
+      '<div class="gm-avatar gm-avatar-sm" data-gm-style="' +
+      styleRef('background:' + bg + '; color:' + color + ';') +
+      '">' +
       esc(avatarInit(member ? member.pseudo : a.pseudo || '?')) +
       '</div>' +
       '<div class="gm-grow"><div class="gm-absence-card-name">' +
       esc(member ? member.pseudo : a.pseudo || a.uid) +
       '</div>' +
-      '<div class="gm-absence-card-kind" style="color:' +
-      color +
-      ';">' +
+      '<div class="gm-absence-card-kind" data-gm-style="' +
+      styleRef('color:' + color + ';') +
+      '">' +
       esc(kindLabel) +
       '</div></div>' +
-      '<span class="gm-absence-card-status" style="color:' +
-      color +
-      '; border: 1px solid ' +
-      border +
-      '; background:' +
-      bg +
-      ';">' +
+      '<span class="gm-absence-card-status" data-gm-style="' +
+      styleRef('color:' + color + '; border: 1px solid ' + border + '; background:' + bg + ';') +
+      '">' +
       (active ? 'Active' : 'Upcoming') +
       '</span>' +
       '</div>' +
@@ -825,9 +810,9 @@ export function renderTimezoneCoverage(): void {
       '</span>' +
       '<div class="gm-tz-bar-track"><div class="gm-tz-bar' +
       (isPeak ? ' gm-tz-bar-peak' : '') +
-      '" style="width:' +
-      pct +
-      '%;"></div></div>' +
+      '" data-gm-style="' +
+      styleRef('width:' + pct + '%;') +
+      '"></div></div>' +
       '<span class="gm-tz-bar-count">' +
       list.length +
       '</span>' +

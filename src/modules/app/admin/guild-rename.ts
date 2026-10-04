@@ -15,6 +15,7 @@
  * decides on its own that a rename is allowed.
  */
 
+import { styleRef } from '../../../core/dom/style-refs';
 import { adoptDialog } from '../../../components/ui/Dialog';
 import { esc, byId, getDb, ls } from './utils';
 import { getActiveGuild } from '../../../core/auth/roles';
@@ -195,17 +196,19 @@ export function openRenameGuildDialog(guild: string, onRenamed?: (newTag: string
   overlay.className = 'gm-modal-overlay';
   overlay.style.zIndex = '1000001';
   overlay.innerHTML =
-    '<div class="gm-modal-card" style="max-width: 440px; width: 92%;">' +
+    '<div class="u-maxw-440px u-w-92pct gm-modal-card">' +
     '<h3 id="guild-rename-title"><i class="ph ph-tag" aria-hidden="true"></i> Change the TAG of ' +
     esc(guild) +
     '</h3>' +
-    '<label class="gm-dim" for="guild-rename-input" style="font-size: 0.85rem;">New TAG</label>' +
-    '<span class="gm-ui-input gm-ui-input-md" style="margin: 0.35rem 0 0.25rem;">' +
+    '<label class="u-fs-0_85rem gm-dim" for="guild-rename-input">New TAG</label>' +
+    '<span class="u-m-0_35rem-0-0_25rem gm-ui-input gm-ui-input-md">' +
     '<input type="text" id="guild-rename-input" class="gm-ui-input-field" maxlength="14" autocomplete="off" spellcheck="false" ' +
-    'style="font-weight: 700; text-transform: uppercase;" placeholder="e.g. PR1M">' +
+    'data-gm-style="' +
+    styleRef('font-weight: 700; text-transform: uppercase;') +
+    '" placeholder="e.g. PR1M">' +
     '</span>' +
-    '<div id="guild-rename-error" class="text-error" role="alert" style="min-height: 1.2em; font-size: 0.85rem;"></div>' +
-    '<ul class="gm-dim" style="font-size: 0.85rem; margin: 0.5rem 0 1rem; padding-left: 1.1rem; text-align: left;">' +
+    '<div id="guild-rename-error" class="u-minh-1_2em u-fs-0_85rem text-error" role="alert"></div>' +
+    '<ul class="u-fs-0_85rem u-m-0_5rem-0-1rem u-pl-1_1rem u-text-left gm-dim">' +
     '<li>Every member, score, event and setting moves to the new TAG.</li>' +
     '<li>Other admins signed in right now will need to reload the page.</li>' +
     '<li>Discord roles and channels named after the old TAG are not renamed: rename your guild role in Discord, the bot finds it by name.</li>' +

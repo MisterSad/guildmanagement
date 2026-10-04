@@ -288,3 +288,14 @@ body {
     .terms-doc-title { font-size: 1.3rem; }
     .terms-footer-inner { flex-direction: column; text-align: center; }
 }
+
+/* Former inline styles of terms.html and privacy.html (2026-10-04): the CSP no
+   longer allows style attributes. `!important` inside `:where()` keeps the
+   precedence the attributes had -- over every ordinary rule, under any
+   `!important` one. */
+:where(.legal-tight) { margin-bottom: 0 !important; }
+:where(.legal-accent) { color: #818cf8 !important; }
+:where(.legal-list) { margin: 0.4rem 0 0.65rem 1.5rem !important; padding: 0 !important; }
+:where(.legal-nav-link) { color: #818cf8 !important; text-decoration: none !important; margin-right: 1.5rem !important; }
+:where(.legal-muted-link) { color: var(--text-muted) !important; text-decoration: none !important; }
+:where(.legal-subhead) { color: #a5b4fc !important; font-size: 1.05rem !important; margin-bottom: 0.65rem !important; }

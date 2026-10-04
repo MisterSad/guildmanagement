@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures.js';
 
 // Regression coverage for commit 506078a: the OCR modal's Cancel button had
 // zero JS wiring (only the X icon closed the modal). window.GM_E2E (the app's

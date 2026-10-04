@@ -9,6 +9,7 @@
  * This module never assigns `window.GM_OVERVIEW` (bridge added at cutover).
  */
 
+import { styleRef } from '../../../core/dom/style-refs';
 import { adoptDialog } from '../../../components/ui/Dialog';
 import {
   ClockMember,
@@ -237,11 +238,11 @@ export class OverviewView {
       return;
     }
     slot.innerHTML =
-      '<div class="gm-card" role="status" style="display:flex; align-items:center; gap:0.85rem; flex-wrap:wrap; padding:0.85rem 1rem; margin-bottom:1.25rem; border-left:3px solid var(--warning);">' +
-      '<i class="ph ph-bell-slash" style="font-size: var(--fs-2xl); color: var(--warning);" aria-hidden="true"></i>' +
-      '<div style="flex:1; min-width: 200px;">' +
-      '<div style="font-weight:700;">Discord reminders are not set up</div>' +
-      '<div class="gm-dim" style="font-size: var(--fs-sm);">Add a Discord webhook so your players get event reminders, GvG daily tasks and SvS alerts automatically.</div>' +
+      '<div class="u-d-flex u-items-center u-gap-0_85rem u-wrap-wrap u-p-0_85rem-1rem u-mb-1_25rem u-bl-3px-solid-warning gm-card" role="status">' +
+      '<i class="u-fs-fs-2xl u-c-warning ph ph-bell-slash" aria-hidden="true"></i>' +
+      '<div class="u-flex-1 u-minw-200px">' +
+      '<div class="u-fw-700">Discord reminders are not set up</div>' +
+      '<div class="u-fs-fs-sm gm-dim">Add a Discord webhook so your players get event reminders, GvG daily tasks and SvS alerts automatically.</div>' +
       '</div>' +
       '<button type="button" class="gm-btn gm-btn-primary gm-btn-sm" data-gm-discord-setup-go><i class="ph ph-arrow-right"></i> <span>Set up</span></button>' +
       '</div>';
@@ -284,13 +285,13 @@ export class OverviewView {
       '</button>' +
       '</header>' +
       '<div data-gm-discord-setup></div>' +
-      '<div class="gm-section-head" style="margin-bottom: 0.75rem; align-items: center;">' +
-      '<h3 style="font-family: var(--font-display); font-size: var(--fs-xl); font-weight: 600; display: flex; align-items: center; gap: 0.5rem; margin: 0;"><i class="ph ph-clock"></i> Clocks</h3>' +
+      '<div class="u-mb-0_75rem u-items-center gm-section-head">' +
+      '<h3 class="u-ff-font-display u-fs-fs-xl u-fw-600 u-d-flex u-items-center u-gap-0_5rem u-m-0"><i class="ph ph-clock"></i> Clocks</h3>' +
       '<button class="gm-mini-btn" id="gm-manage-clocks-btn"><i class="ph ph-gear"></i> ' +
       t('manage_clocks') +
       '</button>' +
       '</div>' +
-      '<div class="gm-overview-clocks" id="gm-overview-clocks" style="margin-bottom: 2rem;"></div>' +
+      '<div class="u-mb-2rem gm-overview-clocks" id="gm-overview-clocks"></div>' +
       '<div data-gm-overview-content></div>' +
       '</div>';
 
@@ -342,9 +343,7 @@ export class OverviewView {
     this.clockMembers.forEach((m) => {
       const initials = avatarInit(m.name);
       const offsetText = formatOffsetLabel(m.offset);
-      const roleBadge = m.role
-        ? ' <span style="font-size: var(--fs-xs); opacity: 0.8;">(' + escapeHTML(m.role) + ')</span>'
-        : '';
+      const roleBadge = m.role ? ' <span class="u-fs-fs-xs u-opacity-0_8">(' + escapeHTML(m.role) + ')</span>' : '';
       html +=
         '<div class="gm-clock-card" data-offset="' +
         m.offset +
@@ -411,7 +410,11 @@ export class OverviewView {
         const currentIcon = iconSlot.querySelector('i');
         if (!currentIcon || !currentIcon.classList.contains(iconClass)) {
           iconSlot.innerHTML =
-            '<i class="ph ' + iconClass + '" style="color: ' + (isDay ? '#fbbf24' : '#a5b4fc') + ';"></i>';
+            '<i class="ph ' +
+            iconClass +
+            '" data-gm-style="' +
+            styleRef('color: ' + (isDay ? '#fbbf24' : '#a5b4fc') + ';') +
+            '"></i>';
         }
       }
     });
@@ -483,14 +486,14 @@ export class OverviewView {
       '</div>' +
       '<div class="gm-section" id="pending-accounts-card">' +
       '<div class="gm-section-head">' +
-      '<div class="gm-section-title" style="color:var(--accent-amber); font-weight:700;">' +
+      '<div class="u-c-accent-amber u-fw-700 gm-section-title">' +
       '<i class="ph ph-user-plus"></i>' +
       '<span>Pending Account Validations (Player Portal)</span>' +
       '<span class="gm-count" id="pending-account-count">0</span>' +
       '</div>' +
       '</div>' +
       '<div id="pending-account-list">' +
-      '<div class="gm-empty" style="padding:1.25rem;">' +
+      '<div class="u-p-1_25rem gm-empty">' +
       '<i class="ph ph-hourglass gm-icon"></i>' +
       '<div class="gm-empty-title">No pending registrations</div>' +
       '</div>' +
@@ -550,7 +553,7 @@ export class OverviewView {
         '<div>' +
         escapeHTML(timeStr) +
         '</div>' +
-        '<div style="font-size: var(--fs-xs); font-weight:500; opacity:0.7;">UTC</div>' +
+        '<div class="u-fs-fs-xs u-fw-500 u-opacity-0_7">UTC</div>' +
         '</div>' +
         '<div class="gm-timeline-line-col"><div class="gm-timeline-dot"></div></div>' +
         '<div>' +
@@ -683,7 +686,7 @@ export class OverviewView {
         '<div>' +
         escapeHTML(timeStr) +
         '</div>' +
-        '<div style="font-size: var(--fs-xs); font-weight:500; opacity:0.7;">UTC</div>' +
+        '<div class="u-fs-fs-xs u-fw-500 u-opacity-0_7">UTC</div>' +
         '</div>' +
         '<div class="gm-timeline-line-col"><div class="gm-timeline-dot"></div></div>' +
         '<div>' +
@@ -748,44 +751,44 @@ export class OverviewView {
     }
 
     overlay.innerHTML =
-      '<div class="gm-modal-card" style="max-width: 450px; width: 95%; text-align: left; padding: 1.5rem;">' +
-      '<h3 style="font-family: var(--font-display); margin-bottom: 1rem; text-align: center; font-size: var(--fs-xl);">' +
+      '<div class="u-maxw-450px u-w-95pct u-text-left u-p-1_5rem gm-modal-card">' +
+      '<h3 class="u-ff-font-display u-mb-1rem u-text-center u-fs-fs-xl">' +
       t('modal_manage_clocks_title') +
       '</h3>' +
-      '<div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">' +
-      '<button type="button" id="gm-sync-officers-clocks-btn" class="gm-btn gm-btn-ghost gm-btn-sm" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.4rem;">' +
+      '<div class="u-d-flex u-gap-0_5rem u-mb-1rem">' +
+      '<button type="button" id="gm-sync-officers-clocks-btn" class="u-w-100pct u-d-flex u-items-center u-justify-center u-gap-0_4rem gm-btn gm-btn-ghost gm-btn-sm">' +
       '<i class="ph ph-arrows-clockwise"></i> Auto-sync with Officers (R4/R5)' +
       '</button>' +
       '</div>' +
-      '<div id="gm-clocks-list-container" class="gm-col" style="gap: .6rem; max-height: 220px; overflow-y: auto; margin-bottom: 1.5rem; padding-right: 4px;"></div>' +
-      '<div style="border-top: 1px solid var(--border-soft); padding-top: 1.2rem;">' +
-      '<h4 style="font-size: var(--fs-base); font-weight: 600; color: var(--fg-muted); margin-bottom: 0.6rem;">' +
+      '<div id="gm-clocks-list-container" class="u-gap-0_6rem u-maxh-220px u-oy-auto u-mb-1_5rem u-pr-4px gm-col"></div>' +
+      '<div class="u-bt-1px-solid-border-soft u-pt-1_2rem">' +
+      '<h4 class="u-fs-fs-base u-fw-600 u-c-fg-muted u-mb-0_6rem">' +
       t('modal_add_clock_section') +
       '</h4>' +
-      '<div class="gm-col" style="gap: 0.6rem;">' +
+      '<div class="u-gap-0_6rem gm-col">' +
       '<input type="text" id="gm-new-clock-name" class="gm-input" placeholder="' +
       t('modal_add_clock_name_placeholder') +
       '" aria-label="' +
       escapeHTML(t('modal_add_clock_name_placeholder')) +
       '" maxlength="20">' +
-      '<select id="gm-new-clock-tz" class="gm-select" aria-label="' +
+      '<select id="gm-new-clock-tz" class="u-p-0_55rem-0_75rem gm-select" aria-label="' +
       escapeHTML(t('a11y_clock_timezone')) +
-      '" style="padding: .55rem .75rem;">' +
+      '">' +
       tzOptions +
       '</select>' +
-      '<div style="display: flex; gap: 0.5rem;">' +
-      '<select id="gm-new-clock-offset" class="gm-select" aria-label="' +
+      '<div class="u-d-flex u-gap-0_5rem">' +
+      '<select id="gm-new-clock-offset" class="u-flex-1 u-p-0_55rem-0_75rem gm-select" aria-label="' +
       escapeHTML(t('a11y_clock_offset')) +
-      '" style="flex: 1; padding: .55rem .75rem;">' +
+      '">' +
       offsetOptions +
       '</select>' +
-      '<button id="gm-add-clock-btn" class="gm-btn gm-btn-primary" style="flex-shrink: 0;"><i class="ph ph-plus"></i> ' +
+      '<button id="gm-add-clock-btn" class="u-shrink-0 gm-btn gm-btn-primary"><i class="ph ph-plus"></i> ' +
       t('modal_add_clock_btn') +
       '</button>' +
       '</div>' +
       '</div>' +
       '</div>' +
-      '<div class="confirm-actions" style="margin-top: 1.5rem; gap: 1rem; justify-content: flex-end;">' +
+      '<div class="u-mt-1_5rem u-gap-1rem u-justify-flex-end confirm-actions">' +
       '<button id="gm-clocks-modal-close" class="gm-btn gm-btn-ghost">' +
       t('modal_clocks_close') +
       '</button>' +
@@ -817,7 +820,7 @@ export class OverviewView {
 
       if (this.clockMembers.length === 0) {
         listContainer.innerHTML =
-          '<div class="gm-empty" style="padding: 1.5rem 0;"><i class="ph ph-ghost gm-icon" style="font-size: var(--fs-3xl); margin-bottom: 0.4rem;"></i><div class="gm-empty-title" style="font-size: var(--fs-base);">No clocks configured</div></div>';
+          '<div class="u-p-1_5rem-0 gm-empty"><i class="u-fs-fs-3xl u-mb-0_4rem ph ph-ghost gm-icon"></i><div class="u-fs-fs-base gm-empty-title">No clocks configured</div></div>';
         return;
       }
 
@@ -826,25 +829,25 @@ export class OverviewView {
         const initials = avatarInit(m.name);
         const offsetText = formatOffsetLabel(m.offset) + (m.timezone ? ' (' + m.timezone + ')' : '');
         html +=
-          '<div style="display: flex; align-items: center; justify-content: space-between; background: var(--bg-1); border: 1px solid var(--border-soft); padding: 0.5rem 0.75rem; border-radius: 8px; gap: 0.5rem;">' +
-          '<div style="display: flex; align-items: center; gap: 0.6rem; min-width: 0;">' +
-          '<div class="gm-avatar gm-avatar-sm gm-avatar-' +
+          '<div class="u-d-flex u-items-center u-justify-space-between u-bg-bg-1 u-border-1px-solid-border-soft u-p-0_5rem-0_75rem u-rounded-8px u-gap-0_5rem">' +
+          '<div class="u-d-flex u-items-center u-gap-0_6rem u-minw-0">' +
+          '<div class="u-shrink-0 gm-avatar gm-avatar-sm gm-avatar-' +
           m.color +
-          '" style="flex-shrink:0;">' +
+          '">' +
           escapeHTML(initials) +
           '</div>' +
-          '<div style="min-width: 0;">' +
-          '<div style="font-weight: 600; font-size: var(--fs-base); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">' +
+          '<div class="u-minw-0">' +
+          '<div class="u-fw-600 u-fs-fs-base u-overflow-hidden u-to-ellipsis u-ws-nowrap">' +
           escapeHTML(m.name) +
           '</div>' +
-          '<div style="font-size: var(--fs-xs); color: var(--fg-dim);">' +
+          '<div class="u-fs-fs-xs u-c-fg-dim">' +
           escapeHTML(offsetText) +
           '</div>' +
           '</div>' +
           '</div>' +
-          '<button class="gm-mini-btn gm-danger delete-clock-btn" data-index="' +
+          '<button class="u-shrink-0 gm-mini-btn gm-danger delete-clock-btn" data-index="' +
           idx +
-          '" title="Delete" style="flex-shrink:0;"><i class="ph ph-trash"></i></button>' +
+          '" title="Delete"><i class="ph ph-trash"></i></button>' +
           '</div>';
       });
       listContainer.innerHTML = html;

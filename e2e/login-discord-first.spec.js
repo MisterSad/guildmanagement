@@ -14,7 +14,7 @@
 // describes. They are gone, and this file makes sure they do not come back
 // without being wired.
 
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures.js';
 
 test('Discord is the one door; the password route is folded away', async ({ page }) => {
   await page.goto('/');

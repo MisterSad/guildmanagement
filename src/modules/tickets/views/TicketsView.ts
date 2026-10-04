@@ -9,6 +9,7 @@
  * (parity bridge is added at cutover in src/main.ts).
  */
 
+import { styleRef } from '../../../core/dom/style-refs';
 import { adoptDialog } from '../../../components/ui/Dialog';
 import { escapeHTML } from '../../../core/utils/text';
 import { t } from '../../../core/i18n/i18n';
@@ -43,24 +44,24 @@ export function loadingHtml(): string {
   let cards = '';
   for (let i = 0; i < 4; i++) {
     cards +=
-      '<div class="gm-card gm-card-padded gm-skeleton-card" style="margin-bottom:0.75rem;">' +
-      '<div style="display:flex; justify-content:space-between; align-items:center; gap:0.75rem; margin-bottom:0.4rem;">' +
-      '<div style="display:flex; align-items:center; gap:0.5rem;">' +
-      '<div class="gm-skeleton gm-skeleton-text" style="width:85px; height:1rem;"></div>' +
-      '<div class="gm-skeleton gm-skeleton-badge" style="width:70px; height:1.25rem;"></div>' +
-      '<div class="gm-skeleton gm-skeleton-badge" style="width:65px; height:1.25rem;"></div>' +
+      '<div class="u-mb-0_75rem gm-card gm-card-padded gm-skeleton-card">' +
+      '<div class="u-d-flex u-justify-space-between u-items-center u-gap-0_75rem u-mb-0_4rem">' +
+      '<div class="u-d-flex u-items-center u-gap-0_5rem">' +
+      '<div class="u-w-85px u-h-1rem gm-skeleton gm-skeleton-text"></div>' +
+      '<div class="u-w-70px u-h-1_25rem gm-skeleton gm-skeleton-badge"></div>' +
+      '<div class="u-w-65px u-h-1_25rem gm-skeleton gm-skeleton-badge"></div>' +
       '</div>' +
-      '<div class="gm-skeleton gm-skeleton-text" style="width:110px; height:0.8rem;"></div>' +
+      '<div class="u-w-110px u-h-0_8rem gm-skeleton gm-skeleton-text"></div>' +
       '</div>' +
-      '<div class="gm-skeleton gm-skeleton-title" style="width:' +
-      (50 + (i % 3) * 18) +
-      '%; height:1.25rem; margin-bottom:0.4rem;"></div>' +
-      '<div class="gm-skeleton gm-skeleton-text" style="width:' +
-      (75 + (i % 2) * 20) +
-      '%; height:0.85rem; margin-bottom:0.4rem;"></div>' +
-      '<div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.5rem; padding-top:0.4rem; border-top:1px solid var(--border-soft);">' +
-      '<div class="gm-skeleton gm-skeleton-text" style="width:130px; height:0.8rem;"></div>' +
-      '<div class="gm-skeleton gm-skeleton-btn" style="width:90px; height:1.85rem; border-radius:6px;"></div>' +
+      '<div class="gm-skeleton gm-skeleton-title" data-gm-style="' +
+      styleRef('width:' + (50 + (i % 3) * 18) + '%; height:1.25rem; margin-bottom:0.4rem;') +
+      '"></div>' +
+      '<div class="gm-skeleton gm-skeleton-text" data-gm-style="' +
+      styleRef('width:' + (75 + (i % 2) * 20) + '%; height:0.85rem; margin-bottom:0.4rem;') +
+      '"></div>' +
+      '<div class="u-d-flex u-justify-space-between u-items-center u-mt-0_5rem u-pt-0_4rem u-bt-1px-solid-border-soft">' +
+      '<div class="u-w-130px u-h-0_8rem gm-skeleton gm-skeleton-text"></div>' +
+      '<div class="u-w-90px u-h-1_85rem u-rounded-6px gm-skeleton gm-skeleton-btn"></div>' +
       '</div>' +
       '</div>';
   }
@@ -83,9 +84,9 @@ function statusChip(status: string): string {
           ? 'background:rgba(16,185,129,0.14); color:#34d399; border:1px solid rgba(16,185,129,0.3);'
           : 'background:rgba(100,116,139,0.14); color:#94a3b8; border:1px solid rgba(100,116,139,0.3);';
   return (
-    '<span class="gm-chip" style="font-size:0.72rem; font-weight:700; padding:2px 9px; border-radius:9999px; ' +
-    bg +
-    ';">' +
+    '<span class="gm-chip" data-gm-style="' +
+    styleRef('font-size:0.72rem; font-weight:700; padding:2px 9px; border-radius:9999px; ' + bg + ';') +
+    '">' +
     escapeHTML(label) +
     '</span>'
   );
@@ -95,9 +96,9 @@ function severityChip(sev: string): string {
   const label = sev.charAt(0).toUpperCase() + sev.slice(1);
   const bg = SEVERITY_COLOR[sev] || SEVERITY_COLOR.medium;
   return (
-    '<span class="gm-chip" style="font-size:0.72rem; font-weight:700; padding:2px 9px; border-radius:9999px; ' +
-    bg +
-    ';">' +
+    '<span class="gm-chip" data-gm-style="' +
+    styleRef('font-size:0.72rem; font-weight:700; padding:2px 9px; border-radius:9999px; ' + bg + ';') +
+    '">' +
     escapeHTML(label) +
     '</span>'
   );
@@ -155,25 +156,25 @@ export class TicketsView {
     }
 
     let html =
-      '<div class="gm-table-wrap" style="background:var(--bg-1); border:1px solid var(--border-soft); border-radius:var(--radius-lg); overflow-x:auto;">' +
-      '<table class="gm-table gm-resp-table" style="width:100%; border-collapse:collapse; min-width:820px;">' +
-      '<thead><tr style="background:rgba(255,255,255,0.03); border-bottom:1px solid var(--border-soft); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted);">' +
-      '<th style="padding:0.65rem 0.75rem; text-align:left;">#</th>' +
-      '<th style="padding:0.65rem 0.5rem; text-align:left;">' +
+      '<div class="u-bg-bg-1 u-border-1px-solid-border-soft u-rounded-radius-lg u-ox-auto gm-table-wrap">' +
+      '<table class="u-w-100pct u-bcol-collapse u-minw-820px gm-table gm-resp-table">' +
+      '<thead><tr class="u-bg-rgba-255-255-255-0_03 u-bb-1px-solid-border-soft u-fs-0_72rem u-tt-uppercase u-tracking-0_05em u-c-text-muted">' +
+      '<th class="u-p-0_65rem-0_75rem u-text-left">#</th>' +
+      '<th class="u-p-0_65rem-0_5rem u-text-left">' +
       escapeHTML(t('tickets_reporter')) +
       '</th>' +
-      '<th style="padding:0.65rem 0.5rem; text-align:left;">' +
+      '<th class="u-p-0_65rem-0_5rem u-text-left">' +
       escapeHTML(t('tickets_category')) +
       '</th>' +
-      '<th style="padding:0.65rem 0.5rem; text-align:center;">' +
+      '<th class="u-p-0_65rem-0_5rem u-text-center">' +
       escapeHTML(t('tickets_severity')) +
       '</th>' +
-      '<th style="padding:0.65rem 0.5rem; text-align:center;">Status</th>' +
-      '<th style="padding:0.65rem 0.75rem; text-align:left;">Title</th>' +
-      '<th style="padding:0.65rem 0.5rem; text-align:left;">' +
+      '<th class="u-p-0_65rem-0_5rem u-text-center">Status</th>' +
+      '<th class="u-p-0_65rem-0_75rem u-text-left">Title</th>' +
+      '<th class="u-p-0_65rem-0_5rem u-text-left">' +
       escapeHTML(t('tickets_date')) +
       '</th>' +
-      '<th style="padding:0.65rem 0.75rem; text-align:center;">Set status</th>' +
+      '<th class="u-p-0_65rem-0_75rem u-text-center">Set status</th>' +
       '</tr></thead><tbody>';
 
     tickets.forEach((tk) => {
@@ -191,36 +192,36 @@ export class TicketsView {
       const rawDesc = tk.description || '';
       const desc = escapeHTML(rawDesc).replace(
         /\*\*(.*?)\*\*/g,
-        '<strong style="color:var(--fg); font-weight:700; display:inline-block; margin-top:0.25rem;">$1</strong>'
+        '<strong class="u-c-fg u-fw-700 u-d-inline-block u-mt-0_25rem">$1</strong>'
       );
 
       let attachHtml = '';
       if (Array.isArray(tk.attachments) && tk.attachments.length > 0) {
-        attachHtml = '<div style="display:flex; flex-wrap:wrap; gap:0.4rem; margin-top:0.45rem;">';
+        attachHtml = '<div class="u-d-flex u-wrap-wrap u-gap-0_4rem u-mt-0_45rem">';
         tk.attachments.forEach((attUrl: string) => {
           attachHtml +=
             '<img src="' +
             escapeHTML(attUrl) +
-            '" class="gm-ticket-thumb" data-full="' +
+            '" class="u-w-54px u-h-42px u-fit-cover u-rounded-4px u-border-1px-solid-border-soft u-cursor-pointer u-transition-transform-0_15s gm-ticket-thumb" data-full="' +
             escapeHTML(attUrl) +
-            '" style="width:54px; height:42px; object-fit:cover; border-radius:4px; border:1px solid var(--border-soft); cursor:pointer; transition:transform 0.15s;" title="Click to view screenshot">';
+            '" title="Click to view screenshot">';
         });
         attachHtml += '</div>';
       }
       const curStatus = tk.status === 'open' ? 'waiting' : tk.status || 'waiting';
 
       html +=
-        '<tr style="border-bottom:1px solid var(--border-soft); vertical-align:top;">' +
-        '<td data-label="#" style="padding:0.65rem 0.75rem; font-weight:700; font-variant-numeric:tabular-nums;">#TICKET-' +
+        '<tr class="u-bb-1px-solid-border-soft u-va-top">' +
+        '<td data-label="#" class="u-p-0_65rem-0_75rem u-fw-700 u-fvn-tabular-nums">#TICKET-' +
         escapeHTML(pad(tk.ticket_number)) +
         '</td>' +
         '<td data-label="' +
         escapeHTML(t('tickets_reporter')) +
-        '" style="padding:0.65rem 0.5rem;">' +
-        '<div style="font-weight:600; font-size:0.85rem;">' +
+        '" class="u-p-0_65rem-0_5rem">' +
+        '<div class="u-fw-600 u-fs-0_85rem">' +
         escapeHTML(tk.reporter_account_id) +
         '</div>' +
-        '<div style="font-size:0.7rem; color:var(--text-muted);">' +
+        '<div class="u-fs-0_7rem u-c-text-muted">' +
         escapeHTML(tk.reporter_role) +
         ' · ' +
         guildLabel +
@@ -228,23 +229,23 @@ export class TicketsView {
         '</td>' +
         '<td data-label="' +
         escapeHTML(t('tickets_category')) +
-        '" style="padding:0.65rem 0.5rem; font-size:0.82rem;">' +
+        '" class="u-p-0_65rem-0_5rem u-fs-0_82rem">' +
         escapeHTML(cat) +
         '</td>' +
         '<td data-label="' +
         escapeHTML(t('tickets_severity')) +
-        '" style="padding:0.65rem 0.5rem; text-align:center;">' +
+        '" class="u-p-0_65rem-0_5rem u-text-center">' +
         severityChip(tk.severity) +
         '</td>' +
-        '<td data-label="Status" style="padding:0.65rem 0.5rem; text-align:center;">' +
+        '<td data-label="Status" class="u-p-0_65rem-0_5rem u-text-center">' +
         statusChip(tk.status) +
         '</td>' +
-        '<td data-label="Title" style="padding:0.65rem 0.5rem; min-width:260px;">' +
-        '<div style="font-weight:700; font-size:0.92rem; color:var(--fg);">' +
+        '<td data-label="Title" class="u-p-0_65rem-0_5rem u-minw-260px">' +
+        '<div class="u-fw-700 u-fs-0_92rem u-c-fg">' +
         escapeHTML(tk.title) +
         '</div>' +
         (desc
-          ? '<div style="font-size:0.8rem; color:var(--text-muted); margin-top:0.35rem; line-height:1.45; white-space:pre-wrap; background:rgba(0,0,0,0.18); padding:0.5rem 0.65rem; border-radius:6px; border:1px solid rgba(255,255,255,0.05);">' +
+          ? '<div class="u-fs-0_8rem u-c-text-muted u-mt-0_35rem u-lh-1_45 u-ws-pre-wrap u-bg-rgba-0-0-0-0_18 u-p-0_5rem-0_65rem u-rounded-6px u-border-1px-solid-rgba-255-355fe4">' +
             desc +
             '</div>'
           : '') +
@@ -252,19 +253,19 @@ export class TicketsView {
         '</td>' +
         '<td data-label="' +
         escapeHTML(t('tickets_date')) +
-        '" style="padding:0.65rem 0.5rem; font-size:0.78rem; color:var(--text-muted); white-space:nowrap;">' +
+        '" class="u-p-0_65rem-0_5rem u-fs-0_78rem u-c-text-muted u-ws-nowrap">' +
         escapeHTML(dateStr) +
         '</td>' +
         '<td data-label="' +
         escapeHTML(t('tickets_set')) +
-        '" style="padding:0.65rem 0.75rem; text-align:center;">' +
-        '<select class="gm-select gm-select-sm gm-ticket-status" data-id="' +
+        '" class="u-p-0_65rem-0_75rem u-text-center">' +
+        '<select class="u-fs-0_75rem u-p-0_15rem-0_4rem u-h-auto u-w-auto u-minw-145px u-rounded-4px gm-select gm-select-sm gm-ticket-status" data-id="' +
         escapeHTML(tk.id) +
         '" data-ticket-no="' +
         escapeHTML(tk.ticket_number) +
         '" aria-label="' +
         escapeHTML(t('tickets_set') + ', #' + tk.ticket_number) +
-        '" style="font-size:0.75rem; padding:0.15rem 0.4rem; height:auto; width:auto; min-width:145px; border-radius:4px;">' +
+        '">' +
         '<option value="waiting"' +
         (curStatus === 'waiting' ? ' selected' : '') +
         '>⏳ ' +
@@ -316,11 +317,11 @@ export class TicketsView {
     modal.className = 'gm-modal-overlay visible';
     (modal as HTMLElement).style.zIndex = '9999';
     modal.innerHTML =
-      '<div style="position:relative; max-width:92vw; max-height:92vh; display:flex; flex-direction:column; align-items:center;">' +
-      '<button type="button" class="gm-btn gm-btn-ghost gm-btn-icon" style="position:absolute; top:-38px; right:0; color:#fff; font-size:1.4rem;" title="Close" aria-label="Close">✕</button>' +
+      '<div class="u-pos-relative u-maxw-92vw u-maxh-92vh u-d-flex u-dir-column u-items-center">' +
+      '<button type="button" class="u-pos-absolute u-top-neg38px u-right-0 u-c-hexfff u-fs-1_4rem gm-btn gm-btn-ghost gm-btn-icon" title="Close" aria-label="Close">✕</button>' +
       '<img src="' +
       escapeHTML(src) +
-      '" alt="Ticket screenshot" style="max-width:100%; max-height:85vh; object-fit:contain; border-radius:8px; box-shadow:0 8px 30px rgba(0,0,0,0.8); border:1px solid rgba(255,255,255,0.1);">' +
+      '" alt="Ticket screenshot" class="u-maxw-100pct u-maxh-85vh u-fit-contain u-rounded-8px u-shadow-0-8px-30px-rgba-0-0-0-0_8 u-border-1px-solid-rgba-255-e5a8aa">' +
       '</div>';
     document.body.appendChild(modal);
     const close = (): void => {

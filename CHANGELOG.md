@@ -2,6 +2,33 @@
 
 ## [Unreleased]
 
+- **`'unsafe-inline'` leaves the CSP** (owner request, 2026-10-04; the last item M5 left open). `style-src` is now `'self'`, like `script-src`. No visible change.
+  - **The e2e suite now runs under the real CSP.**
+    - Before this, `serve` had no headers, so no violation could ever be seen.
+    - `scripts/e2e-serve-config.mjs` builds the serve configuration from `vercel.json` at each run (HSTS left out on localhost).
+    - `e2e/fixtures.js` fails any test on a CSP violation the browser reports.
+    - The 13 specs import `test` from it.
+    - Proof the detector works: with the new CSP and the old code, 35 of the 61 tests failed.
+  - **Static styles become classes.**
+    - The 778 static `style="..."` attributes of the TS templates became `u-*` classes in `utilities.css`, which grows from 315 to 676 rules.
+    - The conversion read the source through Rolldown's parser. It touched only tags whose `class` attribute it could merge without ambiguity: never one inside a conditional branch the style was not in.
+  - **Computed styles go through the CSSOM.**
+    - The 84 computed styles (a colour from a tier map, a bar's width…) now use `styleRef()` / `styleAttr()` (`src/core/dom/style-refs.ts`).
+    - The markup carries `data-gm-style="<id>"`. One `MutationObserver`, started at boot, applies the registered declaration through the CSSOM when the element is inserted, before paint.
+    - The CSS lives in the module's memory, never in the markup: injected markup can only name a style the app itself defined.
+    - The Dialog confirm button became classes.
+  - **The legal pages** carried 54 inline styles. They became six classes in `legal.css`, and `?v=2` keeps a cached copy from hiding them.
+  - **Proof of no visual change.**
+    - The computed style of every element was compared between the previous build (inline styles) and this one (strict CSP) on 17 rendered screens: sign-in, portal, 13 admin tabs with seeded members, the OCR modal and the confirm dialog. Each screen was 140 to 1,725 elements.
+    - Result: identical, with 0 violations. 45 style references applied on the admin tabs alone.
+    - The diff caught one bug, fixed before this entry: copying a shorthand that holds a `var()` property by property drops it, so references are applied through `cssText` whole. A test pins it.
+  - **Guards.**
+    - `tests/csp_strict.test.js` fails on `'unsafe-inline'`/`'unsafe-eval'` in the CSP, or on any `style` attribute, `<style>` element, `setAttribute('style')` or `createElement('style')` in what the site serves. It also checks that the observer starts before the app renders.
+    - `tests/style_refs.test.js` runs the registry: insertion, nesting, foreign ids ignored, existing styles kept, `var()` shorthands.
+    - AGENTS.md states the invariant.
+  - **Also.** An existing utility kept a negative margin under a positive-looking name. It is now `u-m-neg0_5rem-0-1rem`, and new names encode the sign.
+  - Full gate: lint, type-check, vitest, build, Playwright 61/61 under the strict CSP.
+
 - **The admin markup leaves index.html** (owner request, 2026-10-04; the item M5 left open).
   - **What moved.** The 16 admin tab panels and the OCR modal (148 KB of source) are now `src/modules/app/admin-panels.html` and `src/modules/app/ocr-modal.html`. The admin chunk imports them `?raw`.
     - A Vite plugin minifies them at build, with the same options `scripts/build.js` uses for `index.html`.

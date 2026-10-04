@@ -76,6 +76,14 @@
 
 .gm-btn-danger { background: var(--danger); color: #601410; font-weight: 600; } /* M3 on-error: white on #f2b8b5 read at 1.7:1 (axe, M5) */
 .gm-btn-danger:hover { filter: brightness(1.08); }
+/* The tinted confirm of a danger Dialog. It was an inline style; it is a class
+   under the strict CSP, specific enough to win over .gm-btn-danger as the
+   attribute did. */
+.gm-btn.gm-btn-danger.gm-ui-dialog-confirm-danger {
+    background: rgba(239, 68, 68, 0.14);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: var(--danger);
+}
 
 .gm-btn-danger-ghost {
     background: transparent;
