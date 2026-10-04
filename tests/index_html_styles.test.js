@@ -8,12 +8,13 @@
  * layout diff of all 1,380 elements in Chromium; the e2e suite runs the page.
  */
 import { describe, it, expect } from 'vitest';
+import { appHtml } from './helpers/app-html.js';
 import fs from 'fs';
 import path from 'path';
 
 const root = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
-const html = read('index.html').replace(/<!--[\s\S]*?-->/g, '');
+const html = appHtml().replace(/<!--[\s\S]*?-->/g, '');
 const css = read('utilities.css');
 
 const used = new Set(

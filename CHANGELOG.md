@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+- **The admin markup leaves index.html** (owner request, 2026-10-04; the item M5 left open).
+  - **What moved.** The 16 admin tab panels and the OCR modal (148 KB of source) are now `src/modules/app/admin-panels.html` and `src/modules/app/ocr-modal.html`. The admin chunk imports them `?raw`.
+    - A Vite plugin minifies them at build, with the same options `scripts/build.js` uses for `index.html`.
+    - `startAdmin()` mounts each fragment in place of its slot in `index.html` (`#admin-panels-slot`, `#admin-ocr-slot`), before any controller or the shell runs.
+  - **What a visitor downloads.** The served `index.html` drops from 104 KB to 10 KB (18.5 KB to 3.1 KB gzip). The admin chunk grows by 15.7 KB gzip, and only admins download it.
+  - **No visible change, proven.**
+    - Each slot sits exactly where its markup was: rebuilding the page from `index.html` and the two fragments gives the old file byte for byte.
+    - Parsed, the old page and the new page with the fragments mounted have the same DOM (1,381 elements, same serialisation).
+    - Before extracting, I checked that no code in the entry chunk looks up an element of the moved markup. Help buttons are delegated, and translations re-run after the mount.
+  - **Tests.**
+    - The 20 test files that read admin markup as text now use `appHtml()` (`tests/helpers/app-html.js`), which mounts the fragments the way the browser does.
+    - `tests/admin_shell.test.js` checks the mount: the panels are direct children of `#dashboard-view` before the controllers run, the slots are gone, and `index.html` ships no panel.
+    - The e2e spec for the Discord message editor opens the dashboard first, as an admin does.
+    - Biome skips `.html`, as it already did for `index.html`. Its HTML rules would ask for `type="button"`, which would change the buttons inside forms.
+  - Full gate: lint, type-check, 2,510 vitest tests, build, Playwright 61/61 (axe included).
+
 - **The `is_subscription_active` stub is gone** (owner request, 2026-10-04; audit REC-07). No behaviour change.
   - **Why.** Since the app became free it was a literal `SELECT true`, yet it looked like a control:
     - 45 write policies (15 tables) ANDed it onto `check_user_guild_write_access`;

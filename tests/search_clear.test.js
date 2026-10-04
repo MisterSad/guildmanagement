@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { appHtml } from './helpers/app-html.js';
 import fs from 'fs';
 import path from 'path';
 
@@ -7,7 +8,7 @@ const read = (p) => fs.readFileSync(path.resolve(root, p), 'utf-8');
 
 describe('Search Input Clear Button Feature', () => {
   it('index.html includes clear buttons on primary search inputs', () => {
-    const html = read('index.html');
+    const html = appHtml();
     expect(html).toContain('id="member-search-admin"');
     expect(html).toContain('id="banned-search"');
     expect(html).toContain('id="ocr-filter-search"');

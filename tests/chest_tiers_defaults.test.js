@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { appHtml } from './helpers/app-html.js';
 import fs from 'fs';
 import path from 'path';
 import {
@@ -10,7 +11,7 @@ import {
 
 describe('GvG & SvS 9-Tier Chests Scoring & Config', () => {
   const root = path.resolve(__dirname, '..');
-  const indexHtml = fs.readFileSync(path.resolve(root, 'index.html'), 'utf-8');
+  const indexHtml = appHtml();
   const migration = fs.readFileSync(
     path.resolve(root, 'supabase/migrations/20260915120000_widen_chest_tiers_limit.sql'),
     'utf-8'

@@ -20,6 +20,7 @@
  *   native input id stable (backward compat with byId/setChecked/submit)
  */
 import { describe, it, expect } from 'vitest';
+import { appHtml } from './helpers/app-html.js';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -27,7 +28,7 @@ const rootDir = path.resolve(__dirname, '..');
 const read = (file) => fs.readFileSync(path.join(rootDir, file), 'utf8');
 
 describe('Guild Settings retrofit — index.html integrity contract', () => {
-  const html = read('index.html');
+  const html = appHtml();
   const styles = read('styles.css');
 
   const NOTIFY_IDS = [

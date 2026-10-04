@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { appHtml } from './helpers/app-html.js';
 import fs from 'fs';
 import path from 'path';
 import { createDialog, openDialog, closeDialog } from '../src/components/ui/Dialog';
@@ -191,8 +192,8 @@ describe('WCAG 2.2 AA Accessibility & Focus Management (TICKET-11 / A11Y-01)', (
   });
 
   describe('Static Accessibility Verification on index.html', () => {
-    const htmlPath = path.resolve(__dirname, '../index.html');
-    const html = fs.readFileSync(htmlPath, 'utf-8');
+    // The admin markup ships in the admin chunk; appHtml() mounts it as startAdmin() does.
+    const html = appHtml();
 
     it('ocr-modal-overlay contains role="dialog", aria-modal="true", and aria-labelledby', () => {
       expect(html).toContain('id="ocr-modal-overlay"');

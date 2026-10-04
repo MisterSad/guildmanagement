@@ -8,10 +8,11 @@
  * (e2e/a11y.spec.js), on every screen it opens.
  */
 import { describe, it, expect } from 'vitest';
+import { appHtml } from './helpers/app-html.js';
 import fs from 'fs';
 import path from 'path';
 
-const html = fs.readFileSync(path.resolve(__dirname, '..', 'index.html'), 'utf8');
+const html = appHtml();
 
 function unnamedFields(doc) {
   return [...doc.querySelectorAll('input, select, textarea')]

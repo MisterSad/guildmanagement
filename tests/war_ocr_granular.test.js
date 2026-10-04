@@ -13,6 +13,7 @@
  *   - the OCR modal shows a day selector for svs_day / gvg_day.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { appHtml } from './helpers/app-html.js';
 
 // The controller asks for confirmation through dialogs.service; the stub
 // confirms immediately (it used to be a stub on the removed window bridge).
@@ -329,7 +330,7 @@ describe('syncWarOcrGate removal', () => {
   });
 
   it('exposes a Day N OCR trigger in both event panels', () => {
-    const html = read('index.html');
+    const html = appHtml();
     expect(html).toContain('data-metric="svs_day"');
     expect(html).toContain('data-metric="gvg_day"');
     expect(html).toContain('Day N OCR');

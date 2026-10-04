@@ -24,7 +24,8 @@
       "!playwright-report",
       "!**/__snapshots__",
       "!package-lock.json",
-      "!skills-lock.json"
+      "!skills-lock.json",
+      "!**/*.html"
     ]
   },
   "formatter": {

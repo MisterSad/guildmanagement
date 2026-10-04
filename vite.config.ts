@@ -90,9 +90,41 @@ function phosphorFontTrimPlugin(): Plugin {
   };
 }
 
+/**
+ * Minifies the HTML fragments the admin chunk imports with `?raw`
+ * (src/modules/app/admin-panels.html, ocr-modal.html). They used to sit in
+ * index.html, which the build minifies; moved into the chunk (2026-10-04) they
+ * would otherwise ship with every comment and every indentation space. Same
+ * conservative options as scripts/build.js: one space kept wherever there was
+ * whitespace, so inline text keeps its gaps. Build only: in dev the fragment is
+ * served as written, which renders the same.
+ */
+function rawHtmlMinifyPlugin(): Plugin {
+  return {
+    name: 'fgf-raw-html-minify',
+    apply: 'build',
+    async transform(code, id) {
+      if (!id.endsWith('.html?raw')) return null;
+      // Vite's raw loader emits `export default "<the file as a JSON string>"`.
+      const literal = /^export default ("(?:[^"\\]|\\.)*");?\s*$/s.exec(code);
+      if (!literal) this.error(`unexpected ?raw module shape for ${id}`);
+      const { minify } = await import('html-minifier-terser');
+      const html = await minify(JSON.parse(literal[1]) as string, {
+        removeComments: true,
+        collapseWhitespace: true,
+        conservativeCollapse: true,
+        keepClosingSlash: true,
+        minifyCSS: false,
+        minifyJS: false,
+      });
+      return { code: `export default ${JSON.stringify(html.trim())};`, map: null };
+    },
+  };
+}
+
 export default defineConfig({
   root: './',
-  plugins: [serviceWorkerDevPlugin(), phosphorFontTrimPlugin()],
+  plugins: [serviceWorkerDevPlugin(), phosphorFontTrimPlugin(), rawHtmlMinifyPlugin()],
   build: {
     outDir: 'dist',
     // Source maps disabled for production: the post-cutover invariant is that

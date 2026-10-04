@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { appHtml } from './helpers/app-html.js';
 import fs from 'fs';
 import path from 'path';
 import { initOcrDropdown } from '../src/modules/app/ocr/ocr.controller';
@@ -8,7 +9,7 @@ const read = (p) => fs.readFileSync(path.resolve(root, p), 'utf-8');
 
 describe('Ticket 2.1 — Compact OCR Scanners Dropdown Menu', () => {
   describe('1. Static Template & Markup Invariants (index.html & components.css)', () => {
-    const html = read('index.html');
+    const html = appHtml();
     const css = read('components.css');
     const app = read('src/modules/app/ocr/ocr.controller.ts');
 

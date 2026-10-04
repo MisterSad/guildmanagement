@@ -4,6 +4,7 @@
 // promotion into the 4 transfer-eligibility functions must all be present.
 
 import { describe, it, expect } from 'vitest';
+import { appHtml } from './helpers/app-html.js';
 import fs from 'fs';
 import path from 'path';
 import { edgeSource } from './helpers/edge-source.js';
@@ -97,7 +98,7 @@ describe('Cross-server migration groups UI wiring', () => {
     path.resolve(__dirname, '../src/modules/app/members/members.controller.ts'),
     'utf-8'
   );
-  const indexHtml = fs.readFileSync(path.resolve(__dirname, '../index.html'), 'utf-8');
+  const indexHtml = appHtml();
   const portalJs = fs.readFileSync(path.resolve(__dirname, '../src/modules/portal/views/PortalView.ts'), 'utf-8');
   const memberPortalFn = edgeSource('member-portal');
 

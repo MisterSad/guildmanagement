@@ -5,6 +5,7 @@
  * item 4, the silent history loss on ban, is covered in banned_controller).
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { appHtml } from './helpers/app-html.js';
 import { sqlFunctionBody } from './helpers/sql-function.js';
 import fs from 'fs';
 import path from 'path';
@@ -64,7 +65,7 @@ describe("7. event pages show the guild's own weights", () => {
   });
 
   it('no hard-coded label is left unmarked in index.html', () => {
-    const html = read('index.html');
+    const html = appHtml();
     const labels = html.match(/<span[^>]*>· coeff\. \d+×<\/span>/g) || [];
     expect(labels.length).toBeGreaterThan(0);
     labels.forEach((l) => expect(l).toContain('data-gm-event-coeff='));

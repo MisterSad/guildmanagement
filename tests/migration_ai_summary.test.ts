@@ -4,6 +4,7 @@
  * Unit tests for Migration Hub AI Summary and Executive Briefing via Gemini.
  */
 import { describe, it, expect } from 'vitest';
+import { appHtml } from './helpers/app-html.js';
 import fs from 'fs';
 import path from 'path';
 import { MigrationHubView } from '../src/modules/migration/views/MigrationHubView';
@@ -58,8 +59,8 @@ describe('Migration Hub AI Summary & Executive Briefing', () => {
 
   describe('Frontend DOM Controls & View Wiring', () => {
     it('contains all AI buttons and modals in index.html', () => {
-      const htmlPath = path.resolve(__dirname, '../index.html');
-      const htmlContent = fs.readFileSync(htmlPath, 'utf-8');
+      // The admin markup ships in the admin chunk; appHtml() mounts it as startAdmin() does.
+      const htmlContent = appHtml();
 
       expect(htmlContent).toContain('id="migration-hub-ai-digest-btn"');
       expect(htmlContent).toContain('id="migration-hub-ai-summary-btn"');

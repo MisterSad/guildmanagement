@@ -10,6 +10,7 @@
 // been fooled by prose that named the very thing it said was removed.
 
 import { describe, it, expect } from 'vitest';
+import { appHtml } from './helpers/app-html.js';
 import { squash } from './helpers/source-text.js';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -20,7 +21,7 @@ const read = (p) => fs.readFileSync(path.join(rootDir, p), 'utf8');
 const stripJs = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
 const stripHtml = (s) => s.replace(/<!--[\s\S]*?-->/g, '');
 
-const html = stripHtml(read('index.html'));
+const html = stripHtml(appHtml());
 const controller = stripJs(read('src/modules/app/auth/auth.controller.ts'));
 const main = stripJs(read('src/main.ts'));
 
@@ -113,7 +114,7 @@ describe('a new player still has a way in', () => {
   });
 
   it('points the invitation button at the current server', () => {
-    const invites = [...read('index.html').matchAll(/https:\/\/discord\.gg\/([A-Za-z0-9]+)/g)].map((m) => m[1]);
+    const invites = [...appHtml().matchAll(/https:\/\/discord\.gg\/([A-Za-z0-9]+)/g)].map((m) => m[1]);
     expect(invites).toEqual(['HJ47V6chbw']);
   });
 });

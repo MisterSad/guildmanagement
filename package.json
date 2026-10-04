@@ -24,6 +24,7 @@
     "@axe-core/playwright": "^4.13.0",
     "@biomejs/biome": "2.5.15",
     "@playwright/test": "1.62.1",
+    "@types/html-minifier-terser": "^7.0.2",
     "@vitest/coverage-v8": "^4.1.11",
     "esbuild": "0.28.2",
     "html-minifier-terser": "^7.2.0",

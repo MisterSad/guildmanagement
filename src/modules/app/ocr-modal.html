@@ -1,0 +1,146 @@
+<div id="ocr-modal-overlay" class="gm-modal-overlay u-d-none u-z-999999">
+        <div class="gm-modal-card u-maxw-820px u-w-94pct u-maxh-90vh u-d-flex u-dir-column u-text-left u-overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="ocr-modal-title" aria-describedby="ocr-modal-subtitle">
+            <div class="gm-modal-header u-d-flex u-items-center u-justify-space-between u-pb-0_8rem u-bb-1px-solid-border-soft">
+                <div class="u-d-flex u-items-center u-gap-0_6rem">
+                    <div class="u-w-36px u-h-36px u-rounded-8px u-bg-linear-gradient-13-cba7e4 u-d-flex u-items-center u-justify-center u-c-hexfff">
+                        <i class="ph ph-scan u-fs-1_3rem" aria-hidden="true"></i>
+                    </div>
+                    <div>
+                        <h3 class="u-m-0 u-fs-1_15rem u-fw-700" id="ocr-modal-title">AI OCR Roster & Metric Scanner</h3>
+                        <p class="u-m-0 u-fs-0_78rem u-c-text-muted" id="ocr-modal-subtitle">Upload in-game screenshots to extract and synchronize player metrics</p>
+                    </div>
+                </div>
+                <div class="u-d-flex u-items-center u-gap-0_5rem">
+                    <button type="button" class="gm-mini-btn u-cursor-pointer" id="ocr-modal-close" aria-label="Close"><i class="ph ph-x" aria-hidden="true"></i></button>
+                </div>
+            </div>
+
+            <div class="gm-modal-body u-p-1rem-0 u-oy-auto u-flex-1">
+                <!-- Metric Selector Tabs -->
+                <div id="ocr-metric-tabs" class="gm-segmented u-d-flex u-wrap-wrap u-justify-center u-items-center u-gap-0_35rem u-mb-1rem u-p-0_35rem u-bg-bg-1 u-border-1px-solid-border-soft u-rounded-radius-md">
+                    <button type="button" class="gm-seg-btn active u-p-0_35rem-0_65rem u-rounded-4px u-fs-0_78rem u-fw-600 u-cursor-pointer u-border-none u-bg-hex10b981 u-c-hex0b0f19 u-d-inline-flex u-items-center u-gap-0_25rem" data-metric="members"><i class="ph ph-users"></i> 1. Members</button>
+                    <button type="button" class="gm-seg-btn u-p-0_35rem-0_65rem u-rounded-4px u-fs-0_78rem u-fw-600 u-cursor-pointer u-border-none u-bg-transparent u-c-text-muted u-d-inline-flex u-items-center u-gap-0_25rem" data-metric="power"><i class="ph ph-sword"></i> 2. Power</button>
+                    <button type="button" class="gm-seg-btn u-p-0_35rem-0_65rem u-rounded-4px u-fs-0_78rem u-fw-600 u-cursor-pointer u-border-none u-bg-transparent u-c-text-muted u-d-inline-flex u-items-center u-gap-0_25rem" data-metric="fleet"><i class="ph ph-sword"></i> 3. Fleet</button>
+                    <button type="button" class="gm-seg-btn u-p-0_35rem-0_65rem u-rounded-4px u-fs-0_78rem u-fw-600 u-cursor-pointer u-border-none u-bg-transparent u-c-text-muted u-d-inline-flex u-items-center u-gap-0_25rem" data-metric="tech"><i class="ph ph-atom"></i> 4. Tech</button>
+                    <button type="button" class="gm-seg-btn u-p-0_35rem-0_65rem u-rounded-4px u-fs-0_78rem u-fw-600 u-cursor-pointer u-border-none u-bg-transparent u-c-text-muted u-d-inline-flex u-items-center u-gap-0_25rem" data-metric="flagship"><i class="ph ph-rocket"></i> 5. Flagship</button>
+                    <button type="button" class="gm-seg-btn u-p-0_35rem-0_65rem u-rounded-4px u-fs-0_78rem u-fw-600 u-cursor-pointer u-border-none u-bg-transparent u-c-text-muted u-d-inline-flex u-items-center u-gap-0_25rem" data-metric="champs"><i class="ph ph-crown"></i> 6. Champs</button>
+                    <button type="button" class="gm-seg-btn u-p-0_35rem-0_65rem u-rounded-4px u-fs-0_78rem u-fw-600 u-cursor-pointer u-border-none u-bg-transparent u-c-text-muted u-d-inline-flex u-items-center u-gap-0_25rem" data-metric="crew"><i class="ph ph-users-three"></i> 7. Crew</button>
+                    <button type="button" class="gm-seg-btn u-p-0_35rem-0_65rem u-rounded-4px u-fs-0_78rem u-fw-600 u-cursor-pointer u-border-none u-bg-transparent u-c-text-muted u-d-inline-flex u-items-center u-gap-0_25rem" data-metric="glory"><i class="ph ph-trophy"></i> 8. Glory</button>
+                    <button type="button" class="gm-seg-btn u-p-0_35rem-0_65rem u-rounded-4px u-fs-0_78rem u-fw-600 u-cursor-pointer u-border-none u-bg-transparent u-c-text-muted u-d-inline-flex u-items-center u-gap-0_25rem" data-metric="svs_prep"><i class="ph ph-sword"></i> SvS D1-5</button>
+                    <button type="button" class="gm-seg-btn u-p-0_35rem-0_65rem u-rounded-4px u-fs-0_78rem u-fw-600 u-cursor-pointer u-border-none u-bg-transparent u-c-text-muted u-d-inline-flex u-items-center u-gap-0_25rem" data-metric="svs_day"><i class="ph ph-calendar-dots"></i> SvS Day N</button>
+                    <button type="button" class="gm-seg-btn u-p-0_35rem-0_65rem u-rounded-4px u-fs-0_78rem u-fw-600 u-cursor-pointer u-border-none u-bg-transparent u-c-text-muted u-d-inline-flex u-items-center u-gap-0_25rem" data-metric="svs_pvp"><i class="ph ph-fire"></i> SvS D6</button>
+                    <button type="button" class="gm-seg-btn u-p-0_35rem-0_65rem u-rounded-4px u-fs-0_78rem u-fw-600 u-cursor-pointer u-border-none u-bg-transparent u-c-text-muted u-d-inline-flex u-items-center u-gap-0_25rem" data-metric="gvg_prep"><i class="ph ph-flag-banner"></i> GvG D1-5</button>
+                    <button type="button" class="gm-seg-btn u-p-0_35rem-0_65rem u-rounded-4px u-fs-0_78rem u-fw-600 u-cursor-pointer u-border-none u-bg-transparent u-c-text-muted u-d-inline-flex u-items-center u-gap-0_25rem" data-metric="gvg_day"><i class="ph ph-calendar-dots"></i> GvG Day N</button>
+                    <button type="button" class="gm-seg-btn u-p-0_35rem-0_65rem u-rounded-4px u-fs-0_78rem u-fw-600 u-cursor-pointer u-border-none u-bg-transparent u-c-text-muted u-d-inline-flex u-items-center u-gap-0_25rem" data-metric="gvg_pvp"><i class="ph ph-sword"></i> GvG D6</button>
+                    <button type="button" class="gm-seg-btn u-p-0_35rem-0_65rem u-rounded-4px u-fs-0_78rem u-fw-600 u-cursor-pointer u-border-none u-bg-transparent u-c-text-muted u-d-inline-flex u-items-center u-gap-0_25rem" data-metric="shadowfront_s1"><i class="ph ph-users-three"></i> SF S1</button>
+                    <button type="button" class="gm-seg-btn u-p-0_35rem-0_65rem u-rounded-4px u-fs-0_78rem u-fw-600 u-cursor-pointer u-border-none u-bg-transparent u-c-text-muted u-d-inline-flex u-items-center u-gap-0_25rem" data-metric="shadowfront_s2"><i class="ph ph-users-three"></i> SF S2</button>
+                    <button type="button" class="gm-seg-btn u-p-0_35rem-0_65rem u-rounded-4px u-fs-0_78rem u-fw-600 u-cursor-pointer u-border-none u-bg-transparent u-c-text-muted u-d-inline-flex u-items-center u-gap-0_25rem" data-metric="dtr"><i class="ph ph-truck"></i> DTR</button>
+                    <button type="button" class="gm-seg-btn u-p-0_35rem-0_65rem u-rounded-4px u-fs-0_78rem u-fw-600 u-cursor-pointer u-border-none u-bg-transparent u-c-text-muted u-d-inline-flex u-items-center u-gap-0_25rem" data-metric="armsrace_sa"><i class="ph ph-lightning"></i> AR Stage A</button>
+                    <button type="button" class="gm-seg-btn u-p-0_35rem-0_65rem u-rounded-4px u-fs-0_78rem u-fw-600 u-cursor-pointer u-border-none u-bg-transparent u-c-text-muted u-d-inline-flex u-items-center u-gap-0_25rem" data-metric="armsrace_sb"><i class="ph ph-crosshair"></i> AR Stage B</button>
+                </div>
+
+                <!-- Guild Tag Filter Banner (Server-Wide Multi-Guild vs Intra-Guild) -->
+                <div class="u-d-flex u-items-center u-justify-space-between u-wrap-wrap u-gap-0_5rem u-p-0_6rem-0_85rem u-mb-1rem u-bg-rgba-99-102-241-0_06 u-border-1px-solid-rgba-99-dd9dbc u-rounded-radius-md" id="ocr-guild-tag-banner">
+                    <div class="u-d-flex u-items-center u-gap-0_5rem u-wrap-wrap">
+                        <span id="ocr-scope-badge" class="gm-chip u-bg-rgba-99-102-241-0_18 u-c-accent-text u-fw-700 u-fs-0_75rem"><i class="ph ph-shield-check"></i> Intra-Guild Scan</span>
+                        <span class="u-fs-0_78rem u-c-text-muted" id="ocr-scope-desc">Screenshots contain exclusively your guild members</span>
+                    </div>
+                    <div class="u-d-none u-items-center u-gap-0_4rem" id="ocr-tag-input-group">
+                        <label class="u-fs-0_78rem u-fw-600 u-c-text-normal" for="ocr-guild-tag-input">Guild Tag Filter:</label>
+                        <input type="text" id="ocr-guild-tag-input" class="gm-input u-p-0_25rem-0_5rem u-fs-0_8rem u-fw-700 u-w-95px u-tt-uppercase u-c-accent-text u-text-center" placeholder="e.g. [PR1M]">
+                    </div>
+                </div>
+
+                <!-- Step 0.5: War per-day scan target (only for svs_day / gvg_day) -->
+                <div class="u-d-none u-items-center u-justify-space-between u-wrap-wrap u-gap-0_5rem u-p-0_5rem-0_85rem u-mb-1rem u-bg-rgba-168-85-247-0_08 u-border-1px-solid-rgba-168-1a8dde u-rounded-radius-md" id="ocr-day-selector">
+                    <div class="u-d-flex u-items-center u-gap-0_5rem">
+                        <span class="u-fs-0_78rem u-fw-600 u-c-text-normal"><i class="ph ph-calendar-dots"></i> Scan Day Target:</span>
+                    </div>
+                    <div class="u-d-flex u-gap-0_3rem u-wrap-wrap" id="ocr-day-buttons">
+                        <button type="button" class="gm-seg-btn gm-active u-p-0_25rem-0_55rem u-rounded-4px u-fs-0_78rem u-fw-600 u-cursor-pointer u-border-none u-bg-transparent u-c-text-muted" data-ocr-day="1">Day 1</button>
+                        <button type="button" class="gm-seg-btn u-p-0_25rem-0_55rem u-rounded-4px u-fs-0_78rem u-fw-600 u-cursor-pointer u-border-none u-bg-transparent u-c-text-muted" data-ocr-day="2">Day 2</button>
+                        <button type="button" class="gm-seg-btn u-p-0_25rem-0_55rem u-rounded-4px u-fs-0_78rem u-fw-600 u-cursor-pointer u-border-none u-bg-transparent u-c-text-muted" data-ocr-day="3">Day 3</button>
+                        <button type="button" class="gm-seg-btn u-p-0_25rem-0_55rem u-rounded-4px u-fs-0_78rem u-fw-600 u-cursor-pointer u-border-none u-bg-transparent u-c-text-muted" data-ocr-day="4">Day 4</button>
+                        <button type="button" class="gm-seg-btn u-p-0_25rem-0_55rem u-rounded-4px u-fs-0_78rem u-fw-600 u-cursor-pointer u-border-none u-bg-transparent u-c-text-muted" data-ocr-day="5">Day 5</button>
+                    </div>
+                </div>
+
+                <!-- Step 1: Upload Dropzone -->
+                <div class="u-border-2px-dashed-rgba-99-00ad4e u-rounded-12px u-p-2rem-1rem u-text-center u-bg-rgba-99-102-241-0_03 u-cursor-pointer u-transition-all-0_2s-ease" id="ocr-dropzone">
+                    <i class="ph ph-cloud-arrow-up u-fs-2_8rem u-c-accent-text u-mb-0_5rem u-d-inline-block"></i>
+                    <h4 class="u-m-0-0-0_4rem-0 u-fs-1rem" id="ocr-dropzone-title">Drop your Overall Power screenshots here or click to browse</h4>
+                    <p class="u-m-0 u-fs-0_8rem u-c-text-muted" id="ocr-dropzone-desc">Screenshots (PNG/JPG/WEBP) or a scroll-recording video (MP4/MOV) — up to 60 images per batch / 300+ players</p>
+                    <input class="u-d-none" type="file" id="ocr-file-input" aria-label="Screenshots to scan" accept="image/*,video/*" multiple>
+                </div>
+
+                <!-- Processing Spinner -->
+                <div class="u-d-none u-text-center u-p-2_5rem-1rem" id="ocr-loading">
+                    <div class="gm-spinner u-w-42px u-h-42px u-bw-3px u-btc-hex8b5cf6 u-m-0-auto-1rem-auto"></div>
+                    <h4 class="u-m-0-0-0_4rem-0 u-fs-1rem">Analyzing screenshots with AI OCR...</h4>
+                    <p class="u-m-0 u-fs-0_8rem u-c-text-muted">Extracting player usernames and metric values...</p>
+                </div>
+
+                <!-- Step 2: Results Table & Review -->
+                <div class="u-d-none" id="ocr-results-container">
+                    <div class="u-d-flex u-justify-space-between u-items-center u-mb-0_65rem u-wrap-wrap u-gap-0_5rem">
+                        <div class="u-d-flex u-items-center u-gap-0_6rem u-wrap-wrap">
+                            <div class="u-fs-0_85rem u-fw-600">
+                                Extracted: <span class="u-c-accent-text" id="ocr-detected-count">0</span>
+                            </div>
+                            <div class="u-d-flex u-gap-0_4rem u-items-center" id="ocr-summary-badges"></div>
+                        </div>
+                        <div class="u-d-flex u-gap-0_5rem">
+                            <button type="button" class="gm-btn gm-btn-sm gm-btn-ghost" id="ocr-select-all-btn">Select All</button>
+                            <button type="button" class="gm-btn gm-btn-sm gm-btn-ghost" id="ocr-reset-btn"><i class="ph ph-arrow-counter-clockwise"></i> Clear / New Image</button>
+                        </div>
+                    </div>
+
+                    <!-- Video scans: what the reading covered, measured from the rank positions -->
+                    <div class="u-d-none u-mb-0_65rem" id="ocr-coverage-banner" role="status"></div>
+
+                    <!-- Instant Player Search / Filter Bar -->
+                    <div class="ocr-filter-bar u-mb-0_65rem">
+                        <div class="u-pos-relative u-d-flex u-items-center">
+                            <i class="ph ph-magnifying-glass u-pos-absolute u-left-0_75rem u-c-text-muted u-fs-0_95rem u-pe-none"></i>
+                            <input type="text" id="ocr-filter-search" aria-label="Search scanned players" class="gm-input u-w-100pct u-p-0_4rem-2_2rem-0_4rem-2_2rem u-fs-0_82rem u-rounded-radius-md" placeholder="Quick search player name (e.g. Trader)...">
+                            <button type="button" class="gm-search-clear-btn" data-gm-search-clear aria-label="Clear search" tabindex="-1">
+                                <i class="ph ph-x-circle"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="gm-table-wrap ocr-table-wrap u-maxh-380px u-oy-auto u-border-1px-solid-border-soft u-rounded-8px">
+                        <table class="gm-table ocr-table u-w-100pct u-fs-0_85rem">
+                            <thead class="ocr-thead">
+                                <tr>
+                                    <th class="ocr-col-cb u-w-38px u-text-center"><input type="checkbox" id="ocr-toggle-all-cb" aria-label="Select all scanned players" checked></th>
+                                    <th class="ocr-col-pseudo">Player Username</th>
+                                    <th class="ocr-col-uid" id="ocr-uid-header">UID</th>
+                                    <th class="ocr-col-rank u-d-none" id="ocr-rank-header">Rank</th>
+                                    <th class="ocr-col-metric" id="ocr-metric-header">Extracted Score</th>
+                                    <th class="ocr-col-status">Roster Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ocr-results-tbody">
+                                <!-- Dynamic rows (Existing members in roster mode / All rows in event mode) -->
+                            </tbody>
+                            <tbody id="ocr-results-tbody-new">
+                                <!-- Dynamic rows (New members in roster mode) -->
+                            </tbody>
+                            <tbody id="ocr-results-tbody-removed">
+                                <!-- Dynamic rows (Removed members in roster mode) -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="gm-modal-footer u-d-flex u-justify-flex-end u-gap-0_5rem u-pt-0_8rem u-bt-1px-solid-border-soft">
+                <button type="button" class="gm-btn gm-btn-ghost" id="ocr-modal-cancel">Cancel</button>
+                <button type="button" class="gm-btn gm-btn-primary u-d-none u-bg-linear-gradient-13-3c21bf u-border-none u-fw-600" id="ocr-commit-btn">
+                    <i class="ph ph-check-circle"></i>
+                    <span>Validate & Apply Updates (0)</span>
+                </button>
+            </div>
+        </div>
+    </div>

@@ -7,6 +7,7 @@
 // is re-validated; and a decided request loses its buttons.
 
 import { describe, it, expect } from 'vitest';
+import { appHtml } from './helpers/app-html.js';
 import { squash } from './helpers/source-text.js';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -95,7 +96,7 @@ describe('the Edge Function decides', () => {
 });
 
 describe('the app warns when join requests would be announced nowhere', () => {
-  const html = read('index.html');
+  const html = appHtml();
   const ctrl = read('src/modules/app/admin/guild-requests.controller.ts');
 
   it('has a warning under the officers channel field, hidden by default', () => {

@@ -4,6 +4,7 @@
  * it whole, and the table says what the reading covered.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { appHtml } from './helpers/app-html.js';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -269,6 +270,6 @@ describe('the frame extractor is gone', () => {
     }
   });
   it('declares the coverage banner in the modal', () => {
-    expect(read('index.html')).toContain('id="ocr-coverage-banner"');
+    expect(appHtml()).toContain('id="ocr-coverage-banner"');
   });
 });

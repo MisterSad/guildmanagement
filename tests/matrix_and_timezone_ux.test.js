@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { appHtml } from './helpers/app-html.js';
 import fs from 'fs';
 import path from 'path';
 
@@ -31,7 +32,7 @@ const I18N_SNIPPET = `<!DOCTYPE html><html><body>
 
 describe('Ticket 2.2 — Tactical Force Matrix Alignment & Timezone Collapsible UX', () => {
   describe('1. Static Template & CSS Invariants', () => {
-    const html = read('index.html');
+    const html = appHtml();
     const css = read('components.css');
     const membersRender = read('src/modules/app/members/members.render.ts');
     const ocrController = read('src/modules/app/ocr/ocr.controller.ts');
@@ -222,7 +223,7 @@ describe('Ticket 2.2 — Tactical Force Matrix Alignment & Timezone Collapsible 
 
   describe('3. Timezone Coverage Collapsible Interaction & Accessibility', () => {
     beforeEach(() => {
-      const match = read('index.html').match(
+      const match = appHtml().match(
         /<div class="gm-section gm-collapsible-section" id="admin-timezone-section"[\s\S]*?<\/div>\s*<\/div>\s*<\/div>/
       );
       document.body.innerHTML = match

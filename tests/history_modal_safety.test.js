@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { appHtml } from './helpers/app-html.js';
 import fs from 'fs';
 import path from 'path';
 
@@ -7,7 +8,7 @@ const read = (p) => fs.readFileSync(path.resolve(root, p), 'utf-8');
 
 describe('Ticket 1.1 — ar_subtitle i18n tag and Event History modal safety', () => {
   it('i18n dictionaries and index.html define a descriptive ar_subtitle string', () => {
-    const html = read('index.html');
+    const html = appHtml();
     expect(html).toContain('data-i18n="ar_subtitle"');
     expect(html).toContain('Track and manage Arms Race stages &amp; scores');
 

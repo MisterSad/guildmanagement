@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
+import { appHtml } from './helpers/app-html.js';
 import fs from 'fs';
 import path from 'path';
 import {
@@ -73,7 +74,7 @@ describe('Bulk Member Rank Assignment (Excluding R5)', () => {
 
   describe('3. Template & Markup Invariants (index.html, components.css, app.js)', () => {
     it('index.html defines the bulk action dock with R1-R4 buttons only and strictly excludes R5', () => {
-      const html = read('index.html');
+      const html = appHtml();
       expect(html).toContain('id="admin-members-bulk-bar"');
       expect(html).toContain('id="admin-members-select-all-btn"');
       expect(html).toContain('id="admin-bulk-selected-count"');

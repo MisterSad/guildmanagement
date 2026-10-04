@@ -4,6 +4,7 @@
  * Unit tests for the Migration Hub view module, markdown sanitizer, and scope handling.
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { appHtml } from './helpers/app-html.js';
 import { MigrationHubView } from '../src/modules/migration/views/MigrationHubView';
 import { NAV_ITEMS } from '../src/modules/shell/views/ShellView';
 import fs from 'fs';
@@ -31,8 +32,8 @@ describe('Migration Hub', () => {
     });
 
     it('contains admin-migration-hub panel in index.html', () => {
-      const htmlPath = path.resolve(__dirname, '../index.html');
-      const htmlContent = fs.readFileSync(htmlPath, 'utf-8');
+      // The admin markup ships in the admin chunk; appHtml() mounts it as startAdmin() does.
+      const htmlContent = appHtml();
       expect(htmlContent).toContain('id="admin-migration-hub"');
       expect(htmlContent).toContain('id="migration-hub-pages-container"');
       expect(htmlContent).toContain('id="migration-hub-dropzone"');

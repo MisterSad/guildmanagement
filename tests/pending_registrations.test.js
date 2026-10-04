@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import { appHtml } from './helpers/app-html.js';
 import { squash } from './helpers/source-text.js';
 import fs from 'fs';
 import path from 'path';
@@ -78,7 +79,7 @@ describe('Pending Player Registration Visibility & Validation', () => {
 
   describe('Admin Console UI (index.html & /src admin modules)', () => {
     it('index.html contains pending registrations section in Accounts & Access tab', () => {
-      const html = read('index.html');
+      const html = appHtml();
       expect(html).toContain('id="pending-accounts-card-admin"');
       expect(html).toContain('id="admin-pending-account-list"');
       expect(html).toContain('id="admin-pending-account-count"');
