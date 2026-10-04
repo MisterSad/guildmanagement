@@ -31,7 +31,12 @@ describe('Service-role safety of edge-called RPCs (v128.3)', () => {
 
   it('every W6-gated RPC called by edge functions with the service role is service-safe', () => {
     const lockdown = read('supabase/migrations/20260823060000_security_rpc_lockdown.sql');
-    const edgeCalledGated = ['gm_upsert_player_metrics', 'gm_get_player_metrics_history', 'gm_personal_kpis', 'request_guild_transfer'];
+    const edgeCalledGated = [
+      'gm_upsert_player_metrics',
+      'gm_get_player_metrics_history',
+      'gm_personal_kpis',
+      'request_guild_transfer',
+    ];
     for (const fn of edgeCalledGated) {
       const start = lockdown.indexOf(`CREATE OR REPLACE FUNCTION public.${fn}(`);
       expect(start, `${fn} must exist in the lockdown migration`).toBeGreaterThan(-1);

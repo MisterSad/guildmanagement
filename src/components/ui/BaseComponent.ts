@@ -38,11 +38,7 @@ export abstract class BaseComponent<Props = {}, State = {}> {
     }
   }
 
-  protected addEventListener(
-    element: HTMLElement,
-    type: string,
-    listener: EventListenerOrEventListenerObject
-  ): void {
+  protected addEventListener(element: HTMLElement, type: string, listener: EventListenerOrEventListenerObject): void {
     element.addEventListener(type, listener);
     this.eventDisposers.push(() => {
       element.removeEventListener(type, listener);

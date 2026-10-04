@@ -38,7 +38,7 @@ describe('Release version propagation (v3.5.2)', () => {
     const sidebarFooter = shell.slice(shell.indexOf('gm-sidebar-legal-footer'));
     const iVersion = sidebarFooter.indexOf('gm-app-version');
     const iPrivacy = sidebarFooter.indexOf('footer_privacy');
-    const iTerms   = sidebarFooter.indexOf('footer_terms');
+    const iTerms = sidebarFooter.indexOf('footer_terms');
     expect(iVersion).toBeLessThan(iPrivacy);
     expect(iPrivacy).toBeLessThan(iTerms);
   });

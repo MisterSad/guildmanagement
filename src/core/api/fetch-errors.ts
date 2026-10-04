@@ -10,7 +10,6 @@
  * configureFetchErrorRuntime() (main.ts), so unit tests can substitute fakes.
  */
 
-
 // The one escaping boundary. Imported from utils/text rather than from
 // ./supabase (which re-exports it) because supabase.ts imports mapFetchError
 // from this module -- going through it would create an import cycle.
@@ -70,8 +69,7 @@ export function mapFetchError(err: any, ctx = 'request'): FetchErrorInfo {
   const rawMsg = errMessage(err);
   const msg = rawMsg.toLowerCase();
 
-  const offline =
-    typeof navigator !== 'undefined' && navigator.onLine === false;
+  const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
 
   if (offline || /failed to fetch|network request failed|networkerror|load failed|fetch failed/.test(msg)) {
     return { kind: 'offline', message: rawMsg || ctx };
@@ -135,14 +133,20 @@ function defaultToast(message: unknown): void {
 
 let runtime: Required<FetchErrorRuntime> = {
   showToast: defaultToast,
-  onSessionInvalid: () => { /* no-op */ },
+  onSessionInvalid: () => {
+    /* no-op */
+  },
 };
 
 /** Injects the toast renderer and session-invalidation handler (main.ts). */
 export function configureFetchErrorRuntime(cfg: FetchErrorRuntime): void {
   runtime = {
     showToast: cfg.showToast || defaultToast,
-    onSessionInvalid: cfg.onSessionInvalid || (() => { /* no-op */ }),
+    onSessionInvalid:
+      cfg.onSessionInvalid ||
+      (() => {
+        /* no-op */
+      }),
   };
 }
 
@@ -182,8 +186,10 @@ function ensureRetryBanner(retryFn: () => void, label: string): void {
 
   banner.innerHTML =
     '<div style="flex:1; font-size:var(--fs-sm); line-height:1.35;">' +
-      '<span style="font-weight:700;">Failed to load ' + escapeAttr(label) + '.</span> ' +
-      '<span style="opacity:.85;">Please retry when the network allows.</span>' +
+    '<span style="font-weight:700;">Failed to load ' +
+    escapeAttr(label) +
+    '.</span> ' +
+    '<span style="opacity:.85;">Please retry when the network allows.</span>' +
     '</div>' +
     '<button type="button" data-fetch-retry-action="retry" class="gm-btn gm-btn-primary gm-btn-sm" style="flex-shrink:0;">Retry</button>' +
     '<button type="button" data-fetch-retry-action="dismiss" class="gm-btn gm-btn-ghost gm-btn-sm" style="flex-shrink:0;" aria-label="Dismiss">&times;</button>';
@@ -193,7 +199,11 @@ function ensureRetryBanner(retryFn: () => void, label: string): void {
   banner.querySelector<HTMLElement>('[data-fetch-retry-action="retry"]')?.addEventListener('click', () => {
     banner.remove();
     retryBannerEl = null;
-    try { retryFn(); } catch (e) { console.error('fetch retry failed', e); }
+    try {
+      retryFn();
+    } catch (e) {
+      console.error('fetch retry failed', e);
+    }
   });
   banner.querySelector<HTMLElement>('[data-fetch-retry-action="dismiss"]')?.addEventListener('click', () => {
     banner.remove();
@@ -218,9 +228,12 @@ export function toastFetchError(err: any, ctx = 'request', retryFn?: () => void)
     return info;
   }
 
-  const detail = info.kind === 'server' || info.kind === 'gateway' || info.kind === 'unknown'
-    ? (info.message ? ' (' + info.message.slice(0, 140) + ')' : '')
-    : '';
+  const detail =
+    info.kind === 'server' || info.kind === 'gateway' || info.kind === 'unknown'
+      ? info.message
+        ? ' (' + info.message.slice(0, 140) + ')'
+        : ''
+      : '';
 
   runtime.showToast(humanMessage(info.kind) + detail, info.kind === 'rate_limited' ? 'warning' : 'error');
 

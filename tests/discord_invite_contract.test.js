@@ -71,7 +71,10 @@ describe('the account id is generated safely', () => {
     // Stripping straight to [A-Za-z0-9_] turns 'Ärès_Actual' into 'rs_Actual'
     // -- unrecognisable to its owner. Verified live: it now yields
     // 'Ares_Actual', 'AEroskobing', 'Strasse', 'Coeur', 'Zizek'.
-    const gen = migration.slice(migration.indexOf('FUNCTION public.gm_generate_account_id'), migration.indexOf('FUNCTION public.gm_issue_admin_invite'));
+    const gen = migration.slice(
+      migration.indexOf('FUNCTION public.gm_generate_account_id'),
+      migration.indexOf('FUNCTION public.gm_issue_admin_invite')
+    );
     const translateAt = gen.indexOf('translate(');
     const stripAt = gen.indexOf("regexp_replace(v_base, '[^A-Za-z0-9_]'");
     expect(translateAt).toBeGreaterThan(-1);
@@ -83,7 +86,10 @@ describe('the account id is generated safely', () => {
   });
 
   it('has a fallback that cannot loop forever', () => {
-    const gen = migration.slice(migration.indexOf('FUNCTION public.gm_generate_account_id'), migration.indexOf('FUNCTION public.gm_issue_admin_invite'));
+    const gen = migration.slice(
+      migration.indexOf('FUNCTION public.gm_generate_account_id'),
+      migration.indexOf('FUNCTION public.gm_issue_admin_invite')
+    );
     expect(gen).toMatch(/FOR i IN 1\.\.12 LOOP/);
     expect(gen).toMatch(/RETURN 'd' \|\|/);
   });
@@ -104,7 +110,10 @@ describe('an invitation cannot mint privilege the issuer lacks', () => {
 
   it('refuses a member role outright in SQL too', () => {
     // Defence in depth: the RPC does not trust the Edge Function's check.
-    const issue = migration.slice(migration.indexOf('FUNCTION public.gm_issue_admin_invite'), migration.indexOf('FUNCTION public.gm_redeem_admin_invite'));
+    const issue = migration.slice(
+      migration.indexOf('FUNCTION public.gm_issue_admin_invite'),
+      migration.indexOf('FUNCTION public.gm_redeem_admin_invite')
+    );
     expect(issue).toContain("p_role NOT IN ('guild_admin', 'server_admin', 'super_admin')");
     expect(issue).toContain('invalid_role');
   });
@@ -122,13 +131,16 @@ describe('an invitation cannot mint privilege the issuer lacks', () => {
 
 describe('the outstanding-invitation cap is real', () => {
   it('is counted and enforced in SQL, under a lock', () => {
-    const issue = migration.slice(migration.indexOf('FUNCTION public.gm_issue_admin_invite'), migration.indexOf('FUNCTION public.gm_redeem_admin_invite'));
+    const issue = migration.slice(
+      migration.indexOf('FUNCTION public.gm_issue_admin_invite'),
+      migration.indexOf('FUNCTION public.gm_redeem_admin_invite')
+    );
     // Two concurrent issues would otherwise both read "4 open" and both write.
     expect(issue).toContain('FOR UPDATE');
     expect(issue).toContain('v_open >= p_max_open');
     expect(issue).toContain('too_many_open_codes');
-    expect(issue).toContain("c.used_at IS NULL");
-    expect(issue).toContain("c.expires_at > now()");
+    expect(issue).toContain('c.used_at IS NULL');
+    expect(issue).toContain('c.expires_at > now()');
   });
 
   it('is a constant in code, per the owner decision', () => {
@@ -148,7 +160,10 @@ describe('issuing is recorded and announced', () => {
   it('never stores the plaintext code', () => {
     expect(inviteBlock).toContain('p_code_hash: await sha256Hex(inviteCode)');
     expect(inviteBlock).toContain('invite_code: inviteCode');
-    const issue = migration.slice(migration.indexOf('FUNCTION public.gm_issue_admin_invite'), migration.indexOf('FUNCTION public.gm_redeem_admin_invite'));
+    const issue = migration.slice(
+      migration.indexOf('FUNCTION public.gm_issue_admin_invite'),
+      migration.indexOf('FUNCTION public.gm_redeem_admin_invite')
+    );
     expect(issue).not.toMatch(/p_code_plain|code_plain/);
   });
 });
@@ -191,7 +206,9 @@ describe('least privilege on the new functions', () => {
       'gm_issue_admin_invite(text, text, text, text, timestamptz, integer)',
       'gm_redeem_admin_invite(text, text, text)',
     ]) {
-      expect(migration).toMatch(new RegExp(`REVOKE ALL ON FUNCTION public\\.${esc(f)}\\s+FROM PUBLIC, anon, authenticated;`));
+      expect(migration).toMatch(
+        new RegExp(`REVOKE ALL ON FUNCTION public\\.${esc(f)}\\s+FROM PUBLIC, anon, authenticated;`)
+      );
       expect(migration).toMatch(new RegExp(`GRANT EXECUTE ON FUNCTION public\\.${esc(f)}\\s+TO service_role;`));
     }
   });

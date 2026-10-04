@@ -12,9 +12,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
-import {
-  shouldThrottle,
-} from '../supabase/functions/_shared/rate-limit.ts';
+import { shouldThrottle } from '../supabase/functions/_shared/rate-limit.ts';
 
 const rootDir = path.resolve(__dirname, '..');
 const proxyPath = path.join(rootDir, 'supabase/functions/discord-webhook-proxy/index.ts');
@@ -49,7 +47,7 @@ describe('TICKET-14 [TEST-02]: Discord Webhook Load & Concurrency Simulation', (
 
     expect(allowedCount).toBe(30);
     expect(throttledCount).toBe(20);
-    expect(results[29].allowed).toBe(true);  // 30th request allowed
+    expect(results[29].allowed).toBe(true); // 30th request allowed
     expect(results[30].allowed).toBe(false); // 31st request throttled
   });
 
@@ -59,16 +57,16 @@ describe('TICKET-14 [TEST-02]: Discord Webhook Load & Concurrency Simulation', (
     const limit = 30;
 
     // 30 attempts in past window (> 60s ago)
-    const staleRecords = [
-      { window_start: now - 65_000, attempts: 30 }
-    ];
+    const staleRecords = [{ window_start: now - 65_000, attempts: 30 }];
 
-    expect(shouldThrottle({
-      recentWindows: staleRecords,
-      limit,
-      windowMs,
-      now,
-    })).toBe(false);
+    expect(
+      shouldThrottle({
+        recentWindows: staleRecords,
+        limit,
+        windowMs,
+        now,
+      })
+    ).toBe(false);
   });
 });
 

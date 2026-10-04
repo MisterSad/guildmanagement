@@ -58,8 +58,9 @@ export function isOfficerRecorded(row: {
   score_pvp?: number | string | null;
 }): boolean {
   if (row.is_pending === true) return false;
-  return Number(row.participated) > 0 ||
-    Number(row.score) > 0 || Number(row.score_prep) > 0 || Number(row.score_pvp) > 0;
+  return (
+    Number(row.participated) > 0 || Number(row.score) > 0 || Number(row.score_prep) > 0 || Number(row.score_pvp) > 0
+  );
 }
 
 /**
@@ -69,7 +70,11 @@ export function isOfficerRecorded(row: {
  * direct `score_prep` write would be overwritten by the next derivation. Zero
  * or missing values are left out rather than written as zeros.
  */
-export function warSubmissionRows(pseudo: string, prep: number | null, pvp: number | null): Array<{ pseudo: string; day: number; score: number }> {
+export function warSubmissionRows(
+  pseudo: string,
+  prep: number | null,
+  pvp: number | null
+): Array<{ pseudo: string; day: number; score: number }> {
   const rows: Array<{ pseudo: string; day: number; score: number }> = [];
   if (prep !== null && prep > 0) rows.push({ pseudo, day: 0, score: prep });
   if (pvp !== null && pvp > 0) rows.push({ pseudo, day: 6, score: pvp });
@@ -117,16 +122,9 @@ export interface AuditLogEntry {
   level?: string;
 }
 
-export async function logPlayerAction(
-  admin: AdminClient,
-  entry: AuditLogEntry
-): Promise<void> {
+export async function logPlayerAction(admin: AdminClient, entry: AuditLogEntry): Promise<void> {
   try {
-    const { data: g } = await admin
-      .from("guilds")
-      .select("server_number")
-      .eq("id", entry.guild)
-      .maybeSingle();
+    const { data: g } = await admin.from("guilds").select("server_number").eq("id", entry.guild).maybeSingle();
 
     const serverNumber = g?.server_number || null;
 
@@ -137,7 +135,7 @@ export async function logPlayerAction(
       p_guild: entry.guild,
       p_server_number: serverNumber,
       p_message: entry.message,
-      p_metadata: entry.metadata || {}
+      p_metadata: entry.metadata || {},
     };
     if (entry.level) payload.p_level = entry.level;
     if (entry.service) payload.p_service = entry.service;
@@ -235,14 +233,15 @@ export async function updatePlayerTimezone(
   offset: number,
   timezone?: string | null
 ): Promise<{ ok: boolean; error?: string }> {
-  if (!Number.isFinite(offset) || offset < -12 || offset > 14 || !Number.isInteger(offset * 4)) return { ok: false, error: "invalid_offset" };
+  if (!Number.isFinite(offset) || offset < -12 || offset > 14 || !Number.isInteger(offset * 4))
+    return { ok: false, error: "invalid_offset" };
 
   const member = await getPlayer(admin, uid, guildContext);
 
   const { data, error } = await admin.rpc("gm_update_player_timezone", {
     p_uid: uid,
     p_offset: offset,
-    p_timezone: timezone || null
+    p_timezone: timezone || null,
   });
   if (error) return { ok: false, error: "db_error" };
   const row = (Array.isArray(data) ? data[0] : data) as { ok?: boolean; error?: string } | null;
@@ -320,16 +319,51 @@ export async function getPlayerChallenges(
   if (gwErr) return { ok: false, error: "db_error" };
   const gloryDone = (gloryThisWeek ?? []).length > 0;
 
-  const powerDone = !!member.power_updated_at &&
-    new Date(member.power_updated_at).getTime() >= new Date(week + "T00:00:00Z").getTime();
+  const powerDone =
+    !!member.power_updated_at && new Date(member.power_updated_at).getTime() >= new Date(week + "T00:00:00Z").getTime();
 
   const eventsCount = attended.size;
   const challenges: Challenge[] = [
-    { id: "events1", label: "Attend 1 event this week", icon: "ph-calendar-check", done: eventsCount >= 1, progress: Math.min(eventsCount, 1), target: 1 },
-    { id: "events3", label: "Attend 3 events this week", icon: "ph-lightning", done: eventsCount >= 3, progress: Math.min(eventsCount, 3), target: 3 },
-    { id: "events5", label: "Attend 5 events this week", icon: "ph-star", done: eventsCount >= 5, progress: Math.min(eventsCount, 5), target: 5 },
-    { id: "glory", label: "Submit your Glory score", icon: "ph-trophy", done: gloryDone, progress: gloryDone ? 1 : 0, target: 1 },
-    { id: "power", label: "Refresh your power", icon: "ph-gauge", done: powerDone, progress: powerDone ? 1 : 0, target: 1 },
+    {
+      id: "events1",
+      label: "Attend 1 event this week",
+      icon: "ph-calendar-check",
+      done: eventsCount >= 1,
+      progress: Math.min(eventsCount, 1),
+      target: 1,
+    },
+    {
+      id: "events3",
+      label: "Attend 3 events this week",
+      icon: "ph-lightning",
+      done: eventsCount >= 3,
+      progress: Math.min(eventsCount, 3),
+      target: 3,
+    },
+    {
+      id: "events5",
+      label: "Attend 5 events this week",
+      icon: "ph-star",
+      done: eventsCount >= 5,
+      progress: Math.min(eventsCount, 5),
+      target: 5,
+    },
+    {
+      id: "glory",
+      label: "Submit your Glory score",
+      icon: "ph-trophy",
+      done: gloryDone,
+      progress: gloryDone ? 1 : 0,
+      target: 1,
+    },
+    {
+      id: "power",
+      label: "Refresh your power",
+      icon: "ph-gauge",
+      done: powerDone,
+      progress: powerDone ? 1 : 0,
+      target: 1,
+    },
   ];
 
   const seasonScore = seasonAttended.size;

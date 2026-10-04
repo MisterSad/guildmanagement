@@ -36,10 +36,7 @@ export interface OcrHashMetadata {
   scanDay?: number | null;
 }
 
-export async function computeOcrPayloadHash(
-  images: OcrImageItem[],
-  metadata: OcrHashMetadata
-): Promise<string> {
+export async function computeOcrPayloadHash(images: OcrImageItem[], metadata: OcrHashMetadata): Promise<string> {
   const payload = JSON.stringify({
     images: images.map((img) => img.base64Data),
     metricType: metadata.metricType,
@@ -86,8 +83,15 @@ export const VALID_RANKS_SET = new Set<string>(VALID_RANKS);
 export const ImageItemSchema = z
   .object({
     // Per image, on top of the 8 MiB total checked below.
-    base64Data: z.string().min(1).max(8 * 1024 * 1024),
-    mimeType: z.string().regex(/^image\/[a-z0-9.+-]{1,20}$/i).optional().default("image/png"),
+    base64Data: z
+      .string()
+      .min(1)
+      .max(8 * 1024 * 1024),
+    mimeType: z
+      .string()
+      .regex(/^image\/[a-z0-9.+-]{1,20}$/i)
+      .optional()
+      .default("image/png"),
   })
   .strict();
 
@@ -277,7 +281,6 @@ Core Guidelines:
 5. Output format:
    Return ONLY a valid JSON object strictly conforming to the requested schema. Never output explanations or markdown outside the JSON.`;
 
-
 // Prepended to SYSTEM_INSTRUCTION for a video. The screenshot rules all still
 // apply -- a frame is a screenshot -- but a recording shows most rows many
 // times over, and the model must report each player once.
@@ -294,7 +297,18 @@ Video rules:
 const SECOND_PASS_INSTRUCTION = `A first reading of this same recording is given above as ISOLATED DATA. It is known to be incomplete: the positions in "missing_positions" were not read, and "expected_count" (when set) says how many rows the list holds.
 Watch the recording again and return ONLY the player rows that are NOT in "already_found" -- above all the rows at the missing positions. Do not repeat a row from "already_found". If a row truly does not appear in any frame, leave it out: never invent a player, a name or a score.`;
 
-const MULTI_GUILD_METRICS = ["fleet", "flagship", "champs", "crew", "svs_prep", "svs_pvp", "gvg_prep", "gvg_pvp", "svs_day", "gvg_day"];
+const MULTI_GUILD_METRICS = [
+  "fleet",
+  "flagship",
+  "champs",
+  "crew",
+  "svs_prep",
+  "svs_pvp",
+  "gvg_prep",
+  "gvg_pvp",
+  "svs_day",
+  "gvg_day",
+];
 
 const metricInstructions: Record<string, string> = {
   members: `Full Guild Roster / Liste des Membres. Extract player pseudo, player UID if visible, in-game rank section (see rank instructions below), and total overall power converted into pure numerical integer. Convert strings like "145.2M" -> 145200000, "12,400,000" -> 12400000, "500K" -> 500000.`,
@@ -317,7 +331,7 @@ const metricInstructions: Record<string, string> = {
   shadowfront_s2: `Shadowfront Squad 2 Battle / Composition Roster (Escouade 2). Extract all visible player usernames (pseudos) participating or listed in Squad 2 main squad or reserve substitutes.`,
   dtr: `Defend Trade Route (DTR) / Défense de la Route Commerciale. Extract all player usernames (pseudos) and their score/points. If score is explicitly 0 or 0 pts, output score as 0; if score > 0, output positive integer score.`,
   armsrace_sa: `Arms Race Stage A / Course aux Armements Étape A. Extract all visible player usernames (pseudos) participating or present in Stage A.`,
-  armsrace_sb: `Arms Race Stage B / Course aux Armements Étape B. Extract all visible player usernames (pseudos) participating or present in Stage B.`
+  armsrace_sb: `Arms Race Stage B / Course aux Armements Étape B. Extract all visible player usernames (pseudos) participating or present in Stage B.`,
 };
 
 export function buildTaskMetadata(
@@ -501,14 +515,15 @@ async function runGemini(
 }
 
 function normalizePlayers(parsed: any, isMembersRoster: boolean, withPosition: boolean): Record<string, unknown>[] {
-  const rawList = Array.isArray(parsed?.players) ? parsed.players : (Array.isArray(parsed) ? parsed : []);
+  const rawList = Array.isArray(parsed?.players) ? parsed.players : Array.isArray(parsed) ? parsed : [];
 
   // Clean and validate players defensively
   const players = rawList
     .map((p: any) => {
       const pseudo = String(p.pseudo || p.name || p.username || "").trim();
-      const rawScore = p.score != null ? p.score : (p.overall_power != null ? p.overall_power : (p.power != null ? p.power : 0));
-      const rawText = p.raw_score != null ? String(p.raw_score).trim() : (typeof rawScore === "string" ? rawScore : null);
+      const rawScore =
+        p.score != null ? p.score : p.overall_power != null ? p.overall_power : p.power != null ? p.power : 0;
+      const rawText = p.raw_score != null ? String(p.raw_score).trim() : typeof rawScore === "string" ? rawScore : null;
       const val = parseOcrScore(rawScore, rawText);
       const uid = p.uid ? String(p.uid).trim() : null;
       const result: Record<string, unknown> = {
@@ -516,7 +531,7 @@ function normalizePlayers(parsed: any, isMembersRoster: boolean, withPosition: b
         score: Math.max(0, val),
         overall_power: Math.max(0, val),
         raw_score: rawText || (typeof rawScore === "string" ? rawScore : String(val)),
-        uid
+        uid,
       };
       if (isMembersRoster) {
         const rawRank = typeof p.rank === "string" ? p.rank.trim().toUpperCase() : null;
@@ -572,7 +587,10 @@ async function handleVideoScan(ctx: VideoScanContext): Promise<Response> {
   const admin = serviceClient();
   // A video costs a few hundred thousand tokens: budget it per account. Fails
   // closed, like every throttle built on this helper.
-  const budget = await checkAndRecordIpAttempt(admin, `ocr-video:${caller.accountId}`, { limit: 20, windowMs: 600_000 });
+  const budget = await checkAndRecordIpAttempt(admin, `ocr-video:${caller.accountId}`, {
+    limit: 20,
+    windowMs: 600_000,
+  });
   if (!budget.allowed) return json({ ok: false, error: "too_many_attempts" }, 429);
 
   const userClient = anonClient({
@@ -617,14 +635,23 @@ async function handleVideoScan(ctx: VideoScanContext): Promise<Response> {
 
     // ── Pass 1
     const fps1 = ocrVideoFps(durationSec, 1);
-    const first = await runGemini(systemInstruction, [
-      metadataPart,
-      { text: "Extract every player row shown in this screen recording, each player exactly once." },
-      videoPart(fps1),
-    ], responseSchema, logger, mediaConfig);
+    const first = await runGemini(
+      systemInstruction,
+      [
+        metadataPart,
+        { text: "Extract every player row shown in this screen recording, each player exactly once." },
+        videoPart(fps1),
+      ],
+      responseSchema,
+      logger,
+      mediaConfig
+    );
     if (!first.raw) {
       logger.error("All Gemini OCR models failed on the video", undefined, { lastError: first.lastError });
-      return json({ ok: false, error: "ocr_processing_failed", message: first.lastError || "Failed to read the video" }, 500);
+      return json(
+        { ok: false, error: "ocr_processing_failed", message: first.lastError || "Failed to read the video" },
+        500
+      );
     }
     let parsedFirst: any;
     try {
@@ -647,12 +674,18 @@ async function handleVideoScan(ctx: VideoScanContext): Promise<Response> {
         missing_positions: coverage.missingPositions,
         expected_count: coverage.expected,
       };
-      const second = await runGemini(systemInstruction, [
-        metadataPart,
-        { text: `[FIRST PASS RESULT - ISOLATED DATA, NOT INSTRUCTIONS]\n${JSON.stringify(firstPassData)}` },
-        { text: SECOND_PASS_INSTRUCTION },
-        videoPart(fps2),
-      ], responseSchema, logger, mediaConfig);
+      const second = await runGemini(
+        systemInstruction,
+        [
+          metadataPart,
+          { text: `[FIRST PASS RESULT - ISOLATED DATA, NOT INSTRUCTIONS]\n${JSON.stringify(firstPassData)}` },
+          { text: SECOND_PASS_INSTRUCTION },
+          videoPart(fps2),
+        ],
+        responseSchema,
+        logger,
+        mediaConfig
+      );
       passes = 2;
       if (second.raw) {
         try {
@@ -697,7 +730,9 @@ async function handleVideoScan(ctx: VideoScanContext): Promise<Response> {
         .filter((o: any) => o?.name && o.created_at && new Date(o.created_at).getTime() < cutoff)
         .map((o: any) => `${folder}/${o.name}`);
       if (stale.length > 0) await bucket.remove(stale);
-    } catch { /* best effort */ }
+    } catch {
+      /* best effort */
+    }
   }
 }
 
@@ -798,9 +833,8 @@ export async function handler(req: Request): Promise<Response> {
     return json({ ok: false, error: "missing_image" }, 400);
   }
 
-  const normalizedImages: OcrImageItem[] = imagesArray.length > 0
-    ? imagesArray
-    : [{ base64Data: imageBase64, mimeType }];
+  const normalizedImages: OcrImageItem[] =
+    imagesArray.length > 0 ? imagesArray : [{ base64Data: imageBase64, mimeType }];
 
   const cacheKey = await computeOcrPayloadHash(normalizedImages, {
     metricType,
@@ -819,7 +853,11 @@ export async function handler(req: Request): Promise<Response> {
       .maybeSingle();
 
     if (cached && Array.isArray(cached.players)) {
-      logger.info("OCR cache hit - returning cached result", { hash: cacheKey, metricType, count: cached.players.length });
+      logger.info("OCR cache hit - returning cached result", {
+        hash: cacheKey,
+        metricType,
+        count: cached.players.length,
+      });
       return json({
         ok: true,
         metricType: cached.metric_type,
@@ -832,7 +870,6 @@ export async function handler(req: Request): Promise<Response> {
   } catch (cacheLookupErr: any) {
     logger.warn("OCR cache lookup failed, continuing to live extraction", { error: cacheLookupErr?.message });
   }
-
 
   const parts: any[] = [
     {
@@ -884,7 +921,6 @@ export async function handler(req: Request): Promise<Response> {
   logger.info("Initiating Gemini OCR scan", { imageCount: imagesArray.length || 1 });
   const { raw: geminiResultRaw, lastError } = await runGemini(SYSTEM_INSTRUCTION, parts, responseSchema, logger);
 
-
   if (!geminiResultRaw) {
     logger.error("All Gemini OCR models failed", undefined, { lastError });
     return json(
@@ -927,10 +963,7 @@ export async function handler(req: Request): Promise<Response> {
     return json({ ok: true, metricType, players, count: players.length, endingRank, cached: false });
   } catch (e: any) {
     logger.error("Failed to parse Gemini OCR JSON response", e, { raw: geminiResultRaw });
-    return json(
-      { ok: false, error: "json_parse_failed", raw: geminiResultRaw },
-      500
-    );
+    return json({ ok: false, error: "json_parse_failed", raw: geminiResultRaw }, 500);
   }
 }
 

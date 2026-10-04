@@ -36,14 +36,20 @@ describe('the worker forwards the click, nothing more', () => {
   });
 
   it('forwards only the custom_id and the message id', () => {
-    const raw = worker.slice(worker.indexOf('function toRawInteraction'), worker.indexOf('async function forwardInteraction'));
+    const raw = worker.slice(
+      worker.indexOf('function toRawInteraction'),
+      worker.indexOf('async function forwardInteraction')
+    );
     expect(raw).toContain('type: 3,');
     expect(raw).toContain('data: { custom_id: interaction.customId, component_type: 2 }');
     expect(raw).toContain('message: interaction.message ? { id: interaction.message.id } : null');
   });
 
   it('relays a non-link button only when it routes back through gmjoin:', () => {
-    const relay = worker.slice(worker.indexOf('const relayable = (c)'), worker.indexOf('if (!content && embeds.length === 0)'));
+    const relay = worker.slice(
+      worker.indexOf('const relayable = (c)'),
+      worker.indexOf('if (!content && embeds.length === 0)')
+    );
     expect(relay).toContain('(c.style !== 5 && /^gmjoin:/.test(String(c.custom_id || "")))');
   });
 });
@@ -67,7 +73,10 @@ describe('the Edge Function decides', () => {
   });
 
   it('asks before rejecting, and the first Reject click decides nothing', () => {
-    const rejectBranch = handler.slice(handler.indexOf('if (action === "reject")'), handler.indexOf('const decision ='));
+    const rejectBranch = handler.slice(
+      handler.indexOf('if (action === "reject")'),
+      handler.indexOf('const decision =')
+    );
     expect(rejectBranch).toContain('Yes, reject');
     expect(rejectBranch).toContain('custom_id: `gmjoin:rejectok:${targetId}:${requestMessageId}`');
     expect(rejectBranch).not.toContain('decideRegistration(');
@@ -94,7 +103,10 @@ describe('the app warns when join requests would be announced nowhere', () => {
   });
 
   it('shows it while the field is empty, and follows typing', () => {
-    const fn = ctrl.slice(ctrl.indexOf('function refreshAuditChannelWarning'), ctrl.indexOf('export async function loadGuildSettings'));
+    const fn = ctrl.slice(
+      ctrl.indexOf('function refreshAuditChannelWarning'),
+      ctrl.indexOf('export async function loadGuildSettings')
+    );
     expect(fn).toContain("warning.classList.toggle('hidden', input.value.trim() !== '')");
     expect(fn).toContain("input.addEventListener('input', refreshAuditChannelWarning)");
     const load = ctrl.slice(ctrl.indexOf('export async function loadGuildSettings'));

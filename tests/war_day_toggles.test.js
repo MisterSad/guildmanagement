@@ -15,7 +15,7 @@ function chained(data) {
     order: vi.fn(() => query),
     limit: vi.fn(() => query),
     maybeSingle: vi.fn(async () => ({ data: data[0] || null, error: null })),
-    then: (resolve) => Promise.resolve({ data, error: null }).then(resolve)
+    then: (resolve) => Promise.resolve({ data, error: null }).then(resolve),
   };
   return query;
 }
@@ -33,12 +33,14 @@ function installDb() {
             guild: 'ALPHA',
             event_name: 'SvS',
             session_id: SESSION,
-            ...(params.p_daily_results ? {
-              day1_result: params.p_daily_results.day1 !== undefined ? params.p_daily_results.day1 : null
-            } : {})
-          }
+            ...(params.p_daily_results
+              ? {
+                  day1_result: params.p_daily_results.day1 !== undefined ? params.p_daily_results.day1 : null,
+                }
+              : {}),
+          },
         },
-        error: null
+        error: null,
       };
     }
     return { data: 0, error: null };
@@ -48,11 +50,13 @@ function installDb() {
 
 function mount() {
   const panel = (id) =>
-    '<main id="' + id + '">' +
-      '<div class="event-status-badge"></div><div class="gm-event-actions"></div>' +
-      '<div class="war-banner"></div>' +
-      '<div class="event-card-container"></div>' +
-      '<div class="event-table-container"></div>' +
+    '<main id="' +
+    id +
+    '">' +
+    '<div class="event-status-badge"></div><div class="gm-event-actions"></div>' +
+    '<div class="war-banner"></div>' +
+    '<div class="event-card-container"></div>' +
+    '<div class="event-table-container"></div>' +
     '</main>';
   document.body.innerHTML = panel('event-svs') + panel('event-gvg');
 }
@@ -60,8 +64,17 @@ function mount() {
 describe('War Day Results Toggle & Badge Cycling', () => {
   beforeEach(() => {
     currentTables = {
-      event_status: [{ event_name: 'SvS', guild: 'ALPHA', is_active: true, session_id: SESSION, stage: null, start_at: '2026-08-03' }],
-      event_participants: []
+      event_status: [
+        {
+          event_name: 'SvS',
+          guild: 'ALPHA',
+          is_active: true,
+          session_id: SESSION,
+          stage: null,
+          start_at: '2026-08-03',
+        },
+      ],
+      event_participants: [],
     };
     installDb();
     mount();
@@ -149,7 +162,9 @@ describe('War Day Results Toggle & Badge Cycling', () => {
   });
 
   it('works identically in GvG', async () => {
-    currentTables.event_status = [{ event_name: 'GvG', guild: 'ALPHA', is_active: true, session_id: SESSION, stage: null, start_at: '2026-08-03' }];
+    currentTables.event_status = [
+      { event_name: 'GvG', guild: 'ALPHA', is_active: true, session_id: SESSION, stage: null, start_at: '2026-08-03' },
+    ];
     const view = new EventsView();
     await view.loadEvent('GvG');
 
@@ -174,20 +189,25 @@ describe('War Day Results Toggle & Badge Cycling', () => {
 });
 
 describe('Database Migration 20260915130000 — Day Results Clear Fix', () => {
-  const migPath = path.resolve(__dirname, '../supabase/migrations/20260915130000_fix_war_session_day_results_clear.sql');
+  const migPath = path.resolve(
+    __dirname,
+    '../supabase/migrations/20260915130000_fix_war_session_day_results_clear.sql'
+  );
   const migContent = fs.readFileSync(migPath, 'utf-8');
 
   it('re-defines gm_upsert_war_session without COALESCE blocking NULL resets', () => {
     expect(migContent).toContain('CREATE OR REPLACE FUNCTION public.gm_upsert_war_session');
     // Verifies CASE WHEN p_daily_results ? dayX THEN v_dX ELSE war_sessions.dayX_result END
     for (let d = 1; d <= 6; d++) {
-      expect(migContent).toContain(`day${d}_result       = CASE WHEN p_daily_results IS NOT NULL AND p_daily_results ? 'day${d}'`);
+      expect(migContent).toContain(
+        `day${d}_result       = CASE WHEN p_daily_results IS NOT NULL AND p_daily_results ? 'day${d}'`
+      );
       expect(migContent).toContain(`THEN v_d${d} ELSE war_sessions.day${d}_result END`);
     }
   });
 
   it('preserves RLS, search_path and execution privileges', () => {
-    expect(migContent).toContain("SECURITY DEFINER");
+    expect(migContent).toContain('SECURITY DEFINER');
     expect(migContent).toContain("SET search_path TO ''");
     expect(migContent).toContain('REVOKE ALL ON FUNCTION public.gm_upsert_war_session');
     expect(migContent).toContain('GRANT EXECUTE ON FUNCTION public.gm_upsert_war_session');

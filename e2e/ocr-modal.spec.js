@@ -7,37 +7,37 @@ import { test, expect } from '@playwright/test';
 // style as portal.spec.js's openPortal() helper.
 
 function openMembersOcrModal(page) {
-    return page.evaluate(() => window.GM_E2E.openOcrModal('members'));
+  return page.evaluate(() => window.GM_E2E.openOcrModal('members'));
 }
 
 test.beforeEach(async ({ page }) => {
-    // Defensive net: setOcrMetric() awaits getGuildTag(), which can
-    // hit Supabase for a guild_config row. It already falls back safely on
-    // any failure, but stub the REST surface anyway so this spec never
-    // depends on a real backend, per the project's e2e convention.
-    await page.route('**/rest/v1/**', (route) =>
-        route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
-    );
+  // Defensive net: setOcrMetric() awaits getGuildTag(), which can
+  // hit Supabase for a guild_config row. It already falls back safely on
+  // any failure, but stub the REST surface anyway so this spec never
+  // depends on a real backend, per the project's e2e convention.
+  await page.route('**/rest/v1/**', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
+  );
 });
 
 test('OCR modal Cancel button closes the modal', async ({ page }) => {
-    await page.goto('/');
-    await openMembersOcrModal(page);
+  await page.goto('/');
+  await openMembersOcrModal(page);
 
-    const overlay = page.locator('#ocr-modal-overlay');
-    await expect(overlay).toBeVisible();
+  const overlay = page.locator('#ocr-modal-overlay');
+  await expect(overlay).toBeVisible();
 
-    await page.locator('#ocr-modal-cancel').click();
-    await expect(overlay).toBeHidden();
+  await page.locator('#ocr-modal-cancel').click();
+  await expect(overlay).toBeHidden();
 });
 
 test('OCR modal X button also closes the modal', async ({ page }) => {
-    await page.goto('/');
-    await openMembersOcrModal(page);
+  await page.goto('/');
+  await openMembersOcrModal(page);
 
-    const overlay = page.locator('#ocr-modal-overlay');
-    await expect(overlay).toBeVisible();
+  const overlay = page.locator('#ocr-modal-overlay');
+  await expect(overlay).toBeVisible();
 
-    await page.locator('#ocr-modal-close').click();
-    await expect(overlay).toBeHidden();
+  await page.locator('#ocr-modal-close').click();
+  await expect(overlay).toBeHidden();
 });

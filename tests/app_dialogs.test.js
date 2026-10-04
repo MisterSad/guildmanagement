@@ -13,26 +13,26 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 // Each test assigns `mocks.config` / `mocks.drawScoreTrendChart`.
 const mocks = vi.hoisted(() => ({
   config: { get: async () => '', set: async () => undefined },
-  drawScoreTrendChart: () => undefined
+  drawScoreTrendChart: () => undefined,
 }));
 vi.mock('../src/core/config/guild-config', async (importOriginal) => {
   const actual = await importOriginal();
   const config = {
     get: (...args) => mocks.config.get(...args),
-    set: (...args) => mocks.config.set(...args)
+    set: (...args) => mocks.config.set(...args),
   };
   return { ...actual, config, default: config };
 });
 vi.mock('../src/core/dom/ui', async (importOriginal) => ({
   ...(await importOriginal()),
-  drawScoreTrendChart: (...args) => mocks.drawScoreTrendChart(...args)
+  drawScoreTrendChart: (...args) => mocks.drawScoreTrendChart(...args),
 }));
 
 import {
   showConfirm,
   showPlayerHistoryDialog,
   openCustomMsgModal,
-  showToast
+  showToast,
 } from '../src/modules/app/dialogs/dialogs.service';
 import { initGuildRequestsUi } from '../src/modules/app/admin/guild-requests.controller';
 import { setDbClient, resetSupabaseClient, getClient } from '../src/core/api/supabase';
@@ -256,7 +256,9 @@ describe('openCustomMsgModal', () => {
     contentInput.value = 'Hello ';
     contentInput.selectionStart = contentInput.selectionEnd = 6;
 
-    const rolePill = overlay.querySelector('.discord-pill-btn[data-insert="{guild_tag}"][data-target="tpl-reminder_30-content"]');
+    const rolePill = overlay.querySelector(
+      '.discord-pill-btn[data-insert="{guild_tag}"][data-target="tpl-reminder_30-content"]'
+    );
     expect(rolePill).toBeTruthy();
     rolePill.click();
 

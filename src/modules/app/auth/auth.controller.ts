@@ -13,7 +13,6 @@
  *  - User feedback delegates to dialogs.service.
  */
 
-
 import { adoptDialog } from '../../../components/ui/Dialog';
 import { loadAdmin } from '../admin-loader';
 import { portalViewLazy } from '../lazy-views';
@@ -22,8 +21,15 @@ import { getAppState, patchAppState, resetAppState } from '../../../core/state/a
 import { showToast } from '../dialogs/dialogs.service';
 import { setVerifiedRole, normalizeRole, ensureGuildRestriction } from '../../../core/auth/roles';
 import {
-  login, logout, loginWithDiscord, redeemDiscordTicket, chooseDiscordAccount,
-  redeemLinkCode, claimWithDiscord, onboardWithDiscord, loginWithBackupCodeDiscord
+  login,
+  logout,
+  loginWithDiscord,
+  redeemDiscordTicket,
+  chooseDiscordAccount,
+  redeemLinkCode,
+  claimWithDiscord,
+  onboardWithDiscord,
+  loginWithBackupCodeDiscord,
 } from '../../../core/auth/session';
 import { getClient, sessionInfo, forceRefreshPortalSession } from '../../../core/api/supabase';
 import { t } from '../../../core/i18n/i18n';
@@ -48,8 +54,6 @@ export interface RestoreSessionResult {
 function ls(): Storage | null {
   return typeof localStorage !== 'undefined' ? localStorage : null;
 }
-
-
 
 function el<T extends HTMLElement = HTMLElement>(id: string): T | null {
   if (typeof document === 'undefined') return null;
@@ -84,12 +88,16 @@ type DiscordStatusTone = 'error' | 'info' | 'success';
  */
 export function setDiscordStatus(message: string, tone: DiscordStatusTone = 'error'): void {
   const box = el('login-discord-status');
-  if (!box) { setLoginError(message); return; }
+  if (!box) {
+    setLoginError(message);
+    return;
+  }
   const span = box.querySelector('span:last-of-type');
   if (span) span.textContent = message;
   const icon = box.querySelector('i');
   if (icon) {
-    icon.className = 'ph ' + (tone === 'error' ? 'ph-warning-circle' : tone === 'success' ? 'ph-check-circle' : 'ph-info');
+    icon.className =
+      'ph ' + (tone === 'error' ? 'ph-warning-circle' : tone === 'success' ? 'ph-check-circle' : 'ph-info');
   }
   box.classList.remove('gm-login-notice-error', 'gm-login-notice-info', 'gm-login-notice-success');
   box.classList.add('gm-login-notice-' + tone);
@@ -135,9 +143,10 @@ export function applyLinkIntentAtBoot(alreadySignedIn: boolean): void {
   if (!banner) return;
   const span = banner.querySelector('span');
   if (span) {
-    span.textContent = intent.kind === 'join'
-      ? "You've been invited to join a guild. Continue with Discord to accept — your join code is already filled in."
-      : "You've received an invitation code. Continue with Discord to use it — it's already filled in.";
+    span.textContent =
+      intent.kind === 'join'
+        ? "You've been invited to join a guild. Continue with Discord to accept — your join code is already filled in."
+        : "You've received an invitation code. Continue with Discord to use it — it's already filled in.";
   }
   banner.classList.remove('hidden');
 }
@@ -146,11 +155,21 @@ export function applyLinkIntentAtBoot(alreadySignedIn: boolean): void {
 const LAST_METHOD_KEY = 'gm_last_signin_method';
 
 function rememberSignInMethod(method: 'discord' | 'password'): void {
-  try { const store = ls(); if (store) store.setItem(LAST_METHOD_KEY, method); } catch { /* storage blocked */ }
+  try {
+    const store = ls();
+    if (store) store.setItem(LAST_METHOD_KEY, method);
+  } catch {
+    /* storage blocked */
+  }
 }
 
 function lastSignInMethod(): string | null {
-  try { const store = ls(); return store ? store.getItem(LAST_METHOD_KEY) : null; } catch { return null; }
+  try {
+    const store = ls();
+    return store ? store.getItem(LAST_METHOD_KEY) : null;
+  } catch {
+    return null;
+  }
 }
 
 /** Puts the Discord button back to its idle state. */
@@ -186,7 +205,10 @@ export function revealPortal(): void {
   const portalStepForm = el('portal-step-form');
 
   if (loginView) loginView.classList.add('hidden');
-  if (dashboardView) { dashboardView.classList.add('hidden'); dashboardView.classList.remove('active'); }
+  if (dashboardView) {
+    dashboardView.classList.add('hidden');
+    dashboardView.classList.remove('active');
+  }
   if (playerPortalView) playerPortalView.classList.remove('hidden');
   if (portalStepForm) portalStepForm.classList.remove('hidden');
   if (playerPortalView) playerPortalView.classList.add('portal-connected');
@@ -219,7 +241,11 @@ export async function revealAdmin(role: string): Promise<void> {
 }
 
 async function fetchGuildsIfAvailable(): Promise<void> {
-  try { await (await loadAdmin()).fetchGuilds(); } catch (_) { /* best effort */ }
+  try {
+    await (await loadAdmin()).fetchGuilds();
+  } catch (_) {
+    /* best effort */
+  }
 }
 
 // ── Session restore ──────────────────────────────────────────────────────────
@@ -233,7 +259,6 @@ export async function restoreSession(): Promise<RestoreSessionResult> {
   const store = ls();
   const localRole = store ? store.getItem('gm_role') : null;
   const localUser = store ? store.getItem('gm_user') : null;
-
 
   if (localRole || localUser) {
     const loginView = el('login-view');
@@ -282,8 +307,10 @@ export async function restoreSession(): Promise<RestoreSessionResult> {
     }
     patchAppState({ currentGuildRestriction: guild, currentServerRestriction: null });
     if (store) {
-      if (guild) { store.setItem('gm_guild_restriction', guild); store.setItem('gm_current_guild', guild); }
-      else store.removeItem('gm_guild_restriction');
+      if (guild) {
+        store.setItem('gm_guild_restriction', guild);
+        store.setItem('gm_current_guild', guild);
+      } else store.removeItem('gm_guild_restriction');
       store.removeItem('gm_server_restriction');
     }
   } else if (info.role === 'server_admin' && info.accountId) {
@@ -324,7 +351,11 @@ export async function restoreSession(): Promise<RestoreSessionResult> {
   }
 
   if (role === 'guild_admin') {
-    try { await ensureGuildRestriction(); } catch (_) { /* best effort */ }
+    try {
+      await ensureGuildRestriction();
+    } catch (_) {
+      /* best effort */
+    }
   }
 
   await fetchGuildsIfAvailable();
@@ -397,10 +428,17 @@ export async function handleSuccessfulLogin(resp: LoginResponse, typedUser?: str
     }
     if (guild) {
       patchAppState({ currentGuildRestriction: guild, currentGuild: guild, currentServerRestriction: null });
-      if (store) { store.setItem('gm_current_guild', guild); store.setItem('gm_guild_restriction', guild); store.removeItem('gm_server_restriction'); }
+      if (store) {
+        store.setItem('gm_current_guild', guild);
+        store.setItem('gm_guild_restriction', guild);
+        store.removeItem('gm_server_restriction');
+      }
     } else {
       patchAppState({ currentGuildRestriction: null, currentServerRestriction: null });
-      if (store) { store.removeItem('gm_guild_restriction'); store.removeItem('gm_server_restriction'); }
+      if (store) {
+        store.removeItem('gm_guild_restriction');
+        store.removeItem('gm_server_restriction');
+      }
     }
   } else if (role === 'server_admin') {
     const client = db();
@@ -426,7 +464,10 @@ export async function handleSuccessfulLogin(resp: LoginResponse, typedUser?: str
     }
   } else {
     patchAppState({ currentGuildRestriction: null, currentServerRestriction: null });
-    if (store) { store.removeItem('gm_guild_restriction'); store.removeItem('gm_server_restriction'); }
+    if (store) {
+      store.removeItem('gm_guild_restriction');
+      store.removeItem('gm_server_restriction');
+    }
   }
 
   if (store) {
@@ -455,11 +496,11 @@ export async function handleSuccessfulLogin(resp: LoginResponse, typedUser?: str
   // tab through `restoreSession`, which is the behaviour worth keeping there.
   (await loadAdmin()).shellView.gotoItem('overview');
 
-  showToast(role === 'super_admin'
-    ? t('toast_login_ok')
-    : (t('toast_welcome') + ' ' + (typedUser || canonicalUser) + ' !'), 'success');
+  showToast(
+    role === 'super_admin' ? t('toast_login_ok') : t('toast_welcome') + ' ' + (typedUser || canonicalUser) + ' !',
+    'success'
+  );
 }
-
 
 /**
  * Picks a starting tenant for an admin who can see more than one.
@@ -486,7 +527,11 @@ async function ensureInitialGuildSelection(accountId: string | null): Promise<vo
     const list = Array.isArray(st.guildsList) ? st.guildsList : [];
     if (list.length === 0 || list.includes(st.currentGuild)) return;
     patchAppState({ currentGuild: null });
-    try { ls()?.removeItem('gm_current_guild'); } catch (_) { /* storage unavailable */ }
+    try {
+      ls()?.removeItem('gm_current_guild');
+    } catch (_) {
+      /* storage unavailable */
+    }
   }
 
   let guild: string | null = null;
@@ -496,7 +541,9 @@ async function ensureInitialGuildSelection(accountId: string | null): Promise<vo
     try {
       const { data } = await fetchAccountGuild(client, accountId);
       if (data && data.guild) guild = String(data.guild);
-    } catch (_) { /* fall through to the list */ }
+    } catch (_) {
+      /* fall through to the list */
+    }
   }
 
   if (!guild) {
@@ -512,7 +559,11 @@ async function ensureInitialGuildSelection(accountId: string | null): Promise<vo
   // tenant switcher, which renders on `isSuperAdmin && !restriction`.
   patchAppState({ currentGuild: guild });
   const store = ls();
-  try { if (store) store.setItem('gm_current_guild', guild); } catch (_) { /* storage unavailable */ }
+  try {
+    if (store) store.setItem('gm_current_guild', guild);
+  } catch (_) {
+    /* storage unavailable */
+  }
 }
 
 // ── Logout / login screens ───────────────────────────────────────────────────
@@ -521,12 +572,20 @@ export async function doLogout(): Promise<void> {
   setVerifiedRole(null, null);
   try {
     await logout();
-  } catch (_) { /* ignore */ }
+  } catch (_) {
+    /* ignore */
+  }
 
   const store = ls();
   if (store) {
-    ['gm_role', 'gm_user', 'gm_current_guild', 'gm_guild_restriction', 'gm_server_restriction', 'gm_portal_session']
-      .forEach((k) => store.removeItem(k));
+    [
+      'gm_role',
+      'gm_user',
+      'gm_current_guild',
+      'gm_guild_restriction',
+      'gm_server_restriction',
+      'gm_portal_session',
+    ].forEach((k) => store.removeItem(k));
   }
 
   resetAppState();
@@ -536,15 +595,24 @@ export async function doLogout(): Promise<void> {
 
 export function showLogin(): void {
   const dashboardView = el('dashboard-view');
-  if (dashboardView) { dashboardView.classList.add('hidden'); dashboardView.classList.remove('active'); }
+  if (dashboardView) {
+    dashboardView.classList.add('hidden');
+    dashboardView.classList.remove('active');
+  }
   // Signing out from the Player Portal must land somewhere: before this, the
   // portal stayed on screen and the person had to reload to see a login page.
   const portalView = el('player-portal-view');
-  if (portalView) { portalView.classList.add('hidden'); portalView.classList.remove('portal-connected'); }
+  if (portalView) {
+    portalView.classList.add('hidden');
+    portalView.classList.remove('portal-connected');
+  }
   setLoginBusy(false);
   resetDiscordButton();
   const loginView = el('login-view');
-  if (loginView) { loginView.classList.remove('hidden'); loginView.classList.add('active'); }
+  if (loginView) {
+    loginView.classList.remove('hidden');
+    loginView.classList.add('active');
+  }
 }
 
 // ── Discord sign-in ──────────────────────────────────────────────────────────
@@ -585,7 +653,9 @@ export async function handleDiscordCallback(): Promise<boolean> {
     params.delete('gm_auth_error');
     const qs = params.toString();
     window.history.replaceState({}, '', window.location.pathname + (qs ? '?' + qs : '') + window.location.hash);
-  } catch { /* replaceState is unavailable in some embedded webviews */ }
+  } catch {
+    /* replaceState is unavailable in some embedded webviews */
+  }
 
   // No ticket implies an error code here (the guard above), so this also
   // narrows `ticket` to a string for the redemption below.
@@ -609,7 +679,9 @@ export async function handleDiscordCallback(): Promise<boolean> {
         openAccountChooser(resp.ticket, resp.accounts, resp.discordUsername || null, resp.displayName || null);
       } else {
         console.error('Discord sign-in returned "choose" without a usable ticket or account list:', resp);
-        setDiscordStatus('Discord sign-in could not list your accounts. Please try again, and tell HawkEye if it keeps happening.');
+        setDiscordStatus(
+          'Discord sign-in could not list your accounts. Please try again, and tell HawkEye if it keeps happening.'
+        );
       }
       return true;
     }
@@ -669,31 +741,31 @@ export function openRecoveryCodeDialog(): void {
 
   const html =
     '<div id="recovery-code-overlay" class="gm-modal-overlay">' +
-      '<div class="gm-modal-card" style="max-width: 420px; width: 94%;">' +
-        '<div class="gm-modal-header" style="display:flex; align-items:center; gap:.5rem; margin-bottom:.6rem;">' +
-          '<i class="ph ph-key" style="font-size: var(--fs-2xl); color: var(--md-sys-color-primary);"></i>' +
-          '<h3 style="margin:0; font-size: var(--fs-xl);">Recovery code</h3>' +
-        '</div>' +
-        '<p style="margin:0 0 .8rem; color: var(--fg-dim); font-size: var(--fs-md); line-height:1.45;">' +
-          'For the platform owner, when Discord sign-in is unavailable. Each code works once.' +
-        '</p>' +
-        '<div class="gm-login-field">' +
-          '<label for="recovery-id">Identifier</label>' +
-          '<input id="recovery-id" class="gm-input" type="text" autocomplete="username" autocapitalize="off" spellcheck="false">' +
-        '</div>' +
-        '<div class="gm-login-field" style="margin-top:.6rem;">' +
-          '<label for="recovery-code">Recovery code</label>' +
-          '<input id="recovery-code" class="gm-input" type="text" autocomplete="one-time-code" ' +
-            'autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX">' +
-        '</div>' +
-        '<div id="recovery-error" class="gm-login-error hidden" style="margin-top:.6rem;">' +
-          '<i class="ph ph-warning-circle"></i><span></span>' +
-        '</div>' +
-        '<div class="gm-modal-footer" style="display:flex; justify-content:flex-end; gap:.5rem; margin-top:1rem;">' +
-          '<button type="button" class="gm-btn gm-btn-ghost" id="recovery-cancel">Cancel</button>' +
-          '<button type="button" class="gm-btn gm-btn-primary" id="recovery-submit">Sign in</button>' +
-        '</div>' +
-      '</div>' +
+    '<div class="gm-modal-card" style="max-width: 420px; width: 94%;">' +
+    '<div class="gm-modal-header" style="display:flex; align-items:center; gap:.5rem; margin-bottom:.6rem;">' +
+    '<i class="ph ph-key" style="font-size: var(--fs-2xl); color: var(--md-sys-color-primary);"></i>' +
+    '<h3 style="margin:0; font-size: var(--fs-xl);">Recovery code</h3>' +
+    '</div>' +
+    '<p style="margin:0 0 .8rem; color: var(--fg-dim); font-size: var(--fs-md); line-height:1.45;">' +
+    'For the platform owner, when Discord sign-in is unavailable. Each code works once.' +
+    '</p>' +
+    '<div class="gm-login-field">' +
+    '<label for="recovery-id">Identifier</label>' +
+    '<input id="recovery-id" class="gm-input" type="text" autocomplete="username" autocapitalize="off" spellcheck="false">' +
+    '</div>' +
+    '<div class="gm-login-field" style="margin-top:.6rem;">' +
+    '<label for="recovery-code">Recovery code</label>' +
+    '<input id="recovery-code" class="gm-input" type="text" autocomplete="one-time-code" ' +
+    'autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX">' +
+    '</div>' +
+    '<div id="recovery-error" class="gm-login-error hidden" style="margin-top:.6rem;">' +
+    '<i class="ph ph-warning-circle"></i><span></span>' +
+    '</div>' +
+    '<div class="gm-modal-footer" style="display:flex; justify-content:flex-end; gap:.5rem; margin-top:1rem;">' +
+    '<button type="button" class="gm-btn gm-btn-ghost" id="recovery-cancel">Cancel</button>' +
+    '<button type="button" class="gm-btn gm-btn-primary" id="recovery-submit">Sign in</button>' +
+    '</div>' +
+    '</div>' +
     '</div>';
 
   document.body.insertAdjacentHTML('beforeend', html);
@@ -701,15 +773,21 @@ export function openRecoveryCodeDialog(): void {
   if (!overlay) return;
   // Without this the dialog is invisible. See openAccountChooser: that exact
   // omission is what made Discord sign-in look broken for a day.
-  requestAnimationFrame(() => { overlay.classList.add('visible'); });
+  requestAnimationFrame(() => {
+    overlay.classList.add('visible');
+  });
 
   const close = (): void => {
     overlay.classList.remove('visible');
-    setTimeout(() => { overlay.remove(); }, 200);
+    setTimeout(() => {
+      overlay.remove();
+    }, 200);
   };
   const cancel = document.getElementById('recovery-cancel');
   if (cancel) cancel.addEventListener('click', close);
-  overlay.addEventListener('click', (ev) => { if (ev.target === overlay) close(); });
+  overlay.addEventListener('click', (ev) => {
+    if (ev.target === overlay) close();
+  });
 
   const submit = document.getElementById('recovery-submit') as HTMLButtonElement | null;
   const idEl = document.getElementById('recovery-id') as HTMLInputElement | null;
@@ -719,14 +797,20 @@ export function openRecoveryCodeDialog(): void {
   const fail = (msg: string): void => {
     const box = overlay.querySelector('#recovery-error') as HTMLElement | null;
     const span = box ? box.querySelector('span') : null;
-    if (box && span) { span.textContent = msg; box.classList.remove('hidden'); }
+    if (box && span) {
+      span.textContent = msg;
+      box.classList.remove('hidden');
+    }
     if (submit) submit.disabled = false;
   };
 
   const run = async (): Promise<void> => {
     const id = idEl ? idEl.value.trim() : '';
     const code = codeEl ? codeEl.value.trim() : '';
-    if (!id || !code) { fail('Enter your identifier and a recovery code.'); return; }
+    if (!id || !code) {
+      fail('Enter your identifier and a recovery code.');
+      return;
+    }
 
     if (submit) submit.disabled = true;
     try {
@@ -748,26 +832,38 @@ export function openRecoveryCodeDialog(): void {
       // `invalid_code` is deliberately the same answer for a wrong code, an
       // unknown account and an account that is not the super_admin: naming
       // which one would turn this into an account-enumeration oracle.
-      fail(resp.error === 'account_locked'
-        ? 'That account is temporarily locked. Try again later.'
-        : resp.error === 'too_many_attempts'
-          ? 'Too many attempts. Please wait a few minutes.'
-          : 'That identifier and code did not match.');
+      fail(
+        resp.error === 'account_locked'
+          ? 'That account is temporarily locked. Try again later.'
+          : resp.error === 'too_many_attempts'
+            ? 'Too many attempts. Please wait a few minutes.'
+            : 'That identifier and code did not match.'
+      );
     } catch (err) {
       console.error('Recovery sign-in failed:', err);
       fail('Something went wrong. Please try again.');
     }
   };
 
-  if (submit) submit.addEventListener('click', () => { void run(); });
+  if (submit)
+    submit.addEventListener('click', () => {
+      void run();
+    });
   if (codeEl) {
     codeEl.addEventListener('keydown', (ev) => {
-      if ((ev as KeyboardEvent).key === 'Enter') { ev.preventDefault(); void run(); }
+      if ((ev as KeyboardEvent).key === 'Enter') {
+        ev.preventDefault();
+        void run();
+      }
     });
   }
 }
 
-interface DiscordAccountChoice { id: string; role: string; guild: string | null }
+interface DiscordAccountChoice {
+  id: string;
+  role: string;
+  guild: string | null;
+}
 
 /**
  * Asks which account to sign in to, when a Discord identity holds several.
@@ -780,7 +876,7 @@ export function openAccountChooser(
   ticket: string,
   accounts: DiscordAccountChoice[],
   discordUsername: string | null,
-  displayName: string | null = null,
+  displayName: string | null = null
 ): void {
   if (typeof document === 'undefined') return;
   const existing = document.getElementById('discord-choose-overlay');
@@ -797,36 +893,46 @@ export function openAccountChooser(
     if (a.role === 'guild_admin') return 'Command Center' + (a.guild ? ', ' + escapeDialogText(a.guild) : '');
     return 'Player Portal' + (a.guild ? ', ' + escapeDialogText(a.guild) : '');
   };
-  const iconFor = (a: DiscordAccountChoice): string =>
-    a.role === 'member' ? 'ph-game-controller' : 'ph-shield-star';
+  const iconFor = (a: DiscordAccountChoice): string => (a.role === 'member' ? 'ph-game-controller' : 'ph-shield-star');
 
   const row = (a: DiscordAccountChoice): string =>
     '<button type="button" class="gm-btn gm-btn-ghost gm-choose-account" data-account="' +
-      escapeDialogText(a.id) + '" ' +
-      'style="width:100%; justify-content:flex-start; gap:.6rem; padding:.7rem .75rem; margin-top:.4rem; text-align:left;">' +
-      '<i class="ph ' + iconFor(a) + '" style="font-size: var(--fs-xl);"></i>' +
-      '<span style="display:flex; flex-direction:column; gap:.1rem;">' +
-        '<span style="font-weight:600;">' + escapeDialogText(a.id) + '</span>' +
-        '<span style="font-size:.78rem; color: var(--fg-dim);">' + describe(a) + '</span>' +
-      '</span>' +
+    escapeDialogText(a.id) +
+    '" ' +
+    'style="width:100%; justify-content:flex-start; gap:.6rem; padding:.7rem .75rem; margin-top:.4rem; text-align:left;">' +
+    '<i class="ph ' +
+    iconFor(a) +
+    '" style="font-size: var(--fs-xl);"></i>' +
+    '<span style="display:flex; flex-direction:column; gap:.1rem;">' +
+    '<span style="font-weight:600;">' +
+    escapeDialogText(a.id) +
+    '</span>' +
+    '<span style="font-size:.78rem; color: var(--fg-dim);">' +
+    describe(a) +
+    '</span>' +
+    '</span>' +
     '</button>';
 
   const html =
     '<div id="discord-choose-overlay" class="gm-modal-overlay">' +
-      '<div class="gm-modal-card" style="max-width: 430px; width: 94%;">' +
-        '<div class="gm-modal-header" style="display:flex; align-items:center; gap:.5rem; margin-bottom:.6rem;">' +
-          '<i class="ph ph-discord-logo" style="font-size: var(--fs-2xl); color:#5865F2;"></i>' +
-          '<h3 style="margin:0; font-size: var(--fs-xl);">' + greeting + '</h3>' +
-        '</div>' +
-        '<p style="margin:0 0 .4rem; color: var(--fg-dim); font-size: var(--fs-md); line-height:1.45;">' +
-          'You signed in' + who + '. This Discord account holds more than one account here — which one do you want to open?' +
-        '</p>' +
-        accounts.map(row).join('') +
-        '<div id="discord-choose-error" class="gm-login-error hidden" style="margin-top:.6rem;"></div>' +
-        '<div class="gm-modal-footer" style="display:flex; justify-content:flex-end; margin-top:.9rem;">' +
-          '<button type="button" class="gm-btn gm-btn-ghost" id="discord-choose-cancel">Cancel</button>' +
-        '</div>' +
-      '</div>' +
+    '<div class="gm-modal-card" style="max-width: 430px; width: 94%;">' +
+    '<div class="gm-modal-header" style="display:flex; align-items:center; gap:.5rem; margin-bottom:.6rem;">' +
+    '<i class="ph ph-discord-logo" style="font-size: var(--fs-2xl); color:#5865F2;"></i>' +
+    '<h3 style="margin:0; font-size: var(--fs-xl);">' +
+    greeting +
+    '</h3>' +
+    '</div>' +
+    '<p style="margin:0 0 .4rem; color: var(--fg-dim); font-size: var(--fs-md); line-height:1.45;">' +
+    'You signed in' +
+    who +
+    '. This Discord account holds more than one account here — which one do you want to open?' +
+    '</p>' +
+    accounts.map(row).join('') +
+    '<div id="discord-choose-error" class="gm-login-error hidden" style="margin-top:.6rem;"></div>' +
+    '<div class="gm-modal-footer" style="display:flex; justify-content:flex-end; margin-top:.9rem;">' +
+    '<button type="button" class="gm-btn gm-btn-ghost" id="discord-choose-cancel">Cancel</button>' +
+    '</div>' +
+    '</div>' +
     '</div>';
 
   const host = document.createElement('div');
@@ -841,23 +947,36 @@ export function openAccountChooser(
   // looked broken, nothing appeared, and the continuation ticket quietly
   // expired two minutes later. `openLinkAccountDialog` below does the same
   // thing correctly; this was not copied from it.
-  requestAnimationFrame(() => { overlay.classList.add('visible'); });
+  requestAnimationFrame(() => {
+    overlay.classList.add('visible');
+  });
 
   const cancelBtn = overlay.querySelector('#discord-choose-cancel');
   if (cancelBtn) {
     cancelBtn.addEventListener('click', () => {
       overlay.classList.remove('visible');
-      setTimeout(() => { overlay.remove(); }, 200);
+      setTimeout(() => {
+        overlay.remove();
+      }, 200);
       setDiscordStatus("Sign-in cancelled — continue with Discord whenever you're ready.", 'info');
     });
   }
   // Escape is the Cancel button: same message, same continuation-ticket loss.
-  adoptDialog(overlay, { onEscape: () => { (cancelBtn as HTMLButtonElement | null)?.click(); } });
+  adoptDialog(overlay, {
+    onEscape: () => {
+      (cancelBtn as HTMLButtonElement | null)?.click();
+    },
+  });
 
   const fail = (msg: string): void => {
     const box = overlay.querySelector('#discord-choose-error') as HTMLElement | null;
-    if (box) { box.textContent = msg; box.classList.remove('hidden'); }
-    overlay.querySelectorAll('button').forEach((b) => { (b as HTMLButtonElement).disabled = false; });
+    if (box) {
+      box.textContent = msg;
+      box.classList.remove('hidden');
+    }
+    overlay.querySelectorAll('button').forEach((b) => {
+      (b as HTMLButtonElement).disabled = false;
+    });
   };
 
   overlay.addEventListener('click', (ev) => {
@@ -868,7 +987,9 @@ export function openAccountChooser(
 
     // The ticket is single-use: a second click would spend a ticket that is
     // already gone and fail with a confusing error.
-    overlay.querySelectorAll('button').forEach((b) => { (b as HTMLButtonElement).disabled = true; });
+    overlay.querySelectorAll('button').forEach((b) => {
+      (b as HTMLButtonElement).disabled = true;
+    });
 
     void (async () => {
       try {
@@ -878,9 +999,11 @@ export function openAccountChooser(
           await handleSuccessfulLogin(resp, resp.id || accountId);
           return;
         }
-        fail(resp.error === 'ticket_invalid'
-          ? 'That took too long and the sign-in expired. Please press "Continue with Discord" again.'
-          : discordErrorMessage(resp.error || 'request_failed'));
+        fail(
+          resp.error === 'ticket_invalid'
+            ? 'That took too long and the sign-in expired. Please press "Continue with Discord" again.'
+            : discordErrorMessage(resp.error || 'request_failed')
+        );
       } catch (err) {
         console.error('Account selection failed:', err);
         fail(discordErrorMessage('request_failed'));
@@ -912,7 +1035,7 @@ export function openAccountChooser(
 export function openLinkAccountDialog(
   firstTicket: string,
   discordUsername: string | null,
-  displayName: string | null = null,
+  displayName: string | null = null
 ): void {
   if (typeof document === 'undefined') return;
   const existing = document.getElementById('discord-link-overlay');
@@ -929,105 +1052,159 @@ export function openLinkAccountDialog(
     : 'Signed in with Discord. ';
 
   const card = (id: Choice, icon: string, title: string, body: string): string =>
-    '<button type="button" class="gm-onboard-card" data-choice="' + id + '">' +
-      '<i class="ph ' + icon + '" aria-hidden="true"></i>' +
-      '<span class="gm-onboard-card-text">' +
-        '<span class="gm-onboard-card-title">' + title + '</span>' +
-        '<span class="gm-onboard-card-body">' + body + '</span>' +
-      '</span>' +
-      '<i class="ph ph-caret-right gm-onboard-card-caret" aria-hidden="true"></i>' +
+    '<button type="button" class="gm-onboard-card" data-choice="' +
+    id +
+    '">' +
+    '<i class="ph ' +
+    icon +
+    '" aria-hidden="true"></i>' +
+    '<span class="gm-onboard-card-text">' +
+    '<span class="gm-onboard-card-title">' +
+    title +
+    '</span>' +
+    '<span class="gm-onboard-card-body">' +
+    body +
+    '</span>' +
+    '</span>' +
+    '<i class="ph ph-caret-right gm-onboard-card-caret" aria-hidden="true"></i>' +
     '</button>';
 
   const field = (id: string, label: string, attrs: string, help = ''): string =>
     '<div class="gm-login-field gm-onboard-field">' +
-      '<label for="' + id + '">' + label + '</label>' +
-      '<input id="' + id + '" class="gm-input" ' + attrs + ' aria-describedby="' + id + '-error' + (help ? ' ' + id + '-help' : '') + '">' +
-      (help ? '<p id="' + id + '-help" class="gm-onboard-help">' + help + '</p>' : '') +
-      '<p id="' + id + '-error" class="gm-onboard-field-error hidden" role="alert"></p>' +
+    '<label for="' +
+    id +
+    '">' +
+    label +
+    '</label>' +
+    '<input id="' +
+    id +
+    '" class="gm-input" ' +
+    attrs +
+    ' aria-describedby="' +
+    id +
+    '-error' +
+    (help ? ' ' + id + '-help' : '') +
+    '">' +
+    (help ? '<p id="' + id + '-help" class="gm-onboard-help">' + help + '</p>' : '') +
+    '<p id="' +
+    id +
+    '-error" class="gm-onboard-field-error hidden" role="alert"></p>' +
     '</div>';
 
   const html =
     '<div id="discord-link-overlay" class="gm-modal-overlay">' +
-      '<div class="gm-modal-card gm-onboard" style="max-width: 480px; width: 94%;">' +
-        '<div class="gm-modal-header gm-onboard-header">' +
-          '<button type="button" class="gm-onboard-back hidden" id="discord-link-back" aria-label="Back">' +
-            '<i class="ph ph-arrow-left" aria-hidden="true"></i>' +
-          '</button>' +
-          '<i class="ph ph-discord-logo gm-onboard-logo" aria-hidden="true"></i>' +
-          '<h3 id="discord-link-title">' + greeting + '</h3>' +
-        '</div>' +
-
-        // ── Step 1: who are you? ──
-        '<div id="discord-link-step-choose">' +
-          '<p class="gm-onboard-lead">' + handle +
-            'This Discord account isn\'t linked to anything here yet. What brings you here?</p>' +
-          '<div class="gm-onboard-cards">' +
-            card('join', 'ph-game-controller', "I'm a player — join my guild",
-              "Use your guild's join code and your in-game UID. An officer approves you.") +
-            card('existing', 'ph-user-check', 'I already have an account',
-              'Sign in once with your identifier and password, or use a code an admin gave you.') +
-            card('create', 'ph-flag-banner', 'I lead a guild — create it',
-              'Set up a new guild space and become its first admin.') +
-          '</div>' +
-        '</div>' +
-
-        // ── Step 2: the form for that choice ──
-        '<div id="discord-link-step-form" class="hidden">' +
-          '<div id="path-join" class="gm-link-panel hidden">' +
-            '<h4 class="gm-onboard-panel-title">Join a guild</h4>' +
-            field('discord-join-code', "Your guild's join code", 'type="text" autocomplete="off" spellcheck="false" placeholder="FGF-XXXX-XXXX"',
-              'Ask an officer of your guild. It looks like FGF-XXXX-XXXX.') +
-            field('discord-join-uid', 'Your in-game UID', 'type="text" inputmode="numeric" autocomplete="off" placeholder="Digits only"',
-              'The number on your in-game profile. It must already be on your guild\'s roster.') +
-            '<p class="gm-onboard-note"><i class="ph ph-info"></i> An officer approves new members. You\'ll get a Discord DM when it\'s done.</p>' +
-          '</div>' +
-
-          '<div id="path-existing" class="gm-link-panel hidden">' +
-            '<h4 class="gm-onboard-panel-title">I already have an account</h4>' +
-            '<div class="gm-onboard-tabs" role="tablist">' +
-              '<button type="button" role="tab" class="gm-onboard-tab" data-tab="claim" aria-selected="true">Identifier &amp; password</button>' +
-              '<button type="button" role="tab" class="gm-onboard-tab" data-tab="code" aria-selected="false">I have a code</button>' +
-            '</div>' +
-            '<div id="path-claim" class="gm-onboard-tabpanel">' +
-              field('discord-link-id', 'Identifier', 'type="text" autocomplete="username"') +
-              field('discord-link-password', 'Password', 'type="password" autocomplete="current-password"') +
-              '<div class="terms-callout warning gm-onboard-warning">' +
-                '<i class="ph ph-warning"></i> After this, <strong>Discord becomes the only way in</strong> for this account. Your password is removed.' +
-              '</div>' +
-            '</div>' +
-            '<div id="path-code" class="gm-onboard-tabpanel hidden">' +
-              field('discord-link-code', 'Invitation or relink code', 'type="text" placeholder="XXXXX-XXXXX" autocomplete="one-time-code" spellcheck="false"',
-                'An admin issues these — to restore your access, or to add you as a new admin.') +
-            '</div>' +
-          '</div>' +
-
-          '<div id="path-create" class="gm-link-panel hidden">' +
-            '<h4 class="gm-onboard-panel-title">Create a guild</h4>' +
-            field('discord-create-tag', 'Guild tag', 'type="text" maxlength="12" placeholder="SIGMA" autocomplete="off" spellcheck="false"',
-              'Two to twelve letters, digits or underscores. It must be free.') +
-            field('discord-create-server', 'Server number', 'type="text" maxlength="4" inputmode="numeric" placeholder="1089" autocomplete="off"',
-              'The four-digit number of your game server.') +
-            '<p class="gm-onboard-note"><i class="ph ph-info"></i> You become its first admin and land in the Command Center.</p>' +
-          '</div>' +
-        '</div>' +
-
-        '<div id="discord-link-error" class="gm-login-error hidden" role="alert" style="margin-top:.8rem;">' +
-          '<i class="ph ph-warning-circle"></i><span></span>' +
-        '</div>' +
-        '<div class="gm-modal-footer gm-onboard-footer">' +
-          '<button type="button" class="gm-btn gm-btn-ghost" id="discord-link-cancel">Cancel</button>' +
-          '<button type="button" class="gm-btn gm-btn-primary hidden" id="discord-link-restart">' +
-            '<i class="ph ph-discord-logo"></i> Restart with Discord' +
-          '</button>' +
-          '<button type="button" class="gm-btn gm-btn-primary hidden" id="discord-link-submit">Continue</button>' +
-        '</div>' +
-      '</div>' +
+    '<div class="gm-modal-card gm-onboard" style="max-width: 480px; width: 94%;">' +
+    '<div class="gm-modal-header gm-onboard-header">' +
+    '<button type="button" class="gm-onboard-back hidden" id="discord-link-back" aria-label="Back">' +
+    '<i class="ph ph-arrow-left" aria-hidden="true"></i>' +
+    '</button>' +
+    '<i class="ph ph-discord-logo gm-onboard-logo" aria-hidden="true"></i>' +
+    '<h3 id="discord-link-title">' +
+    greeting +
+    '</h3>' +
+    '</div>' +
+    // ── Step 1: who are you? ──
+    '<div id="discord-link-step-choose">' +
+    '<p class="gm-onboard-lead">' +
+    handle +
+    "This Discord account isn't linked to anything here yet. What brings you here?</p>" +
+    '<div class="gm-onboard-cards">' +
+    card(
+      'join',
+      'ph-game-controller',
+      "I'm a player — join my guild",
+      "Use your guild's join code and your in-game UID. An officer approves you."
+    ) +
+    card(
+      'existing',
+      'ph-user-check',
+      'I already have an account',
+      'Sign in once with your identifier and password, or use a code an admin gave you.'
+    ) +
+    card(
+      'create',
+      'ph-flag-banner',
+      'I lead a guild — create it',
+      'Set up a new guild space and become its first admin.'
+    ) +
+    '</div>' +
+    '</div>' +
+    // ── Step 2: the form for that choice ──
+    '<div id="discord-link-step-form" class="hidden">' +
+    '<div id="path-join" class="gm-link-panel hidden">' +
+    '<h4 class="gm-onboard-panel-title">Join a guild</h4>' +
+    field(
+      'discord-join-code',
+      "Your guild's join code",
+      'type="text" autocomplete="off" spellcheck="false" placeholder="FGF-XXXX-XXXX"',
+      'Ask an officer of your guild. It looks like FGF-XXXX-XXXX.'
+    ) +
+    field(
+      'discord-join-uid',
+      'Your in-game UID',
+      'type="text" inputmode="numeric" autocomplete="off" placeholder="Digits only"',
+      "The number on your in-game profile. It must already be on your guild's roster."
+    ) +
+    '<p class="gm-onboard-note"><i class="ph ph-info"></i> An officer approves new members. You\'ll get a Discord DM when it\'s done.</p>' +
+    '</div>' +
+    '<div id="path-existing" class="gm-link-panel hidden">' +
+    '<h4 class="gm-onboard-panel-title">I already have an account</h4>' +
+    '<div class="gm-onboard-tabs" role="tablist">' +
+    '<button type="button" role="tab" class="gm-onboard-tab" data-tab="claim" aria-selected="true">Identifier &amp; password</button>' +
+    '<button type="button" role="tab" class="gm-onboard-tab" data-tab="code" aria-selected="false">I have a code</button>' +
+    '</div>' +
+    '<div id="path-claim" class="gm-onboard-tabpanel">' +
+    field('discord-link-id', 'Identifier', 'type="text" autocomplete="username"') +
+    field('discord-link-password', 'Password', 'type="password" autocomplete="current-password"') +
+    '<div class="terms-callout warning gm-onboard-warning">' +
+    '<i class="ph ph-warning"></i> After this, <strong>Discord becomes the only way in</strong> for this account. Your password is removed.' +
+    '</div>' +
+    '</div>' +
+    '<div id="path-code" class="gm-onboard-tabpanel hidden">' +
+    field(
+      'discord-link-code',
+      'Invitation or relink code',
+      'type="text" placeholder="XXXXX-XXXXX" autocomplete="one-time-code" spellcheck="false"',
+      'An admin issues these — to restore your access, or to add you as a new admin.'
+    ) +
+    '</div>' +
+    '</div>' +
+    '<div id="path-create" class="gm-link-panel hidden">' +
+    '<h4 class="gm-onboard-panel-title">Create a guild</h4>' +
+    field(
+      'discord-create-tag',
+      'Guild tag',
+      'type="text" maxlength="12" placeholder="SIGMA" autocomplete="off" spellcheck="false"',
+      'Two to twelve letters, digits or underscores. It must be free.'
+    ) +
+    field(
+      'discord-create-server',
+      'Server number',
+      'type="text" maxlength="4" inputmode="numeric" placeholder="1089" autocomplete="off"',
+      'The four-digit number of your game server.'
+    ) +
+    '<p class="gm-onboard-note"><i class="ph ph-info"></i> You become its first admin and land in the Command Center.</p>' +
+    '</div>' +
+    '</div>' +
+    '<div id="discord-link-error" class="gm-login-error hidden" role="alert" style="margin-top:.8rem;">' +
+    '<i class="ph ph-warning-circle"></i><span></span>' +
+    '</div>' +
+    '<div class="gm-modal-footer gm-onboard-footer">' +
+    '<button type="button" class="gm-btn gm-btn-ghost" id="discord-link-cancel">Cancel</button>' +
+    '<button type="button" class="gm-btn gm-btn-primary hidden" id="discord-link-restart">' +
+    '<i class="ph ph-discord-logo"></i> Restart with Discord' +
+    '</button>' +
+    '<button type="button" class="gm-btn gm-btn-primary hidden" id="discord-link-submit">Continue</button>' +
+    '</div>' +
+    '</div>' +
     '</div>';
 
   document.body.insertAdjacentHTML('beforeend', html);
   const overlay = document.getElementById('discord-link-overlay');
   if (!overlay) return;
-  requestAnimationFrame(() => { overlay.classList.add('visible'); });
+  requestAnimationFrame(() => {
+    overlay.classList.add('visible');
+  });
 
   const $ = <T extends HTMLElement = HTMLElement>(id: string): T | null => document.getElementById(id) as T | null;
   const submitBtn = $<HTMLButtonElement>('discord-link-submit');
@@ -1048,7 +1225,10 @@ export function openLinkAccountDialog(
   const val = (id: string): string => (($<HTMLInputElement>(id) || ({} as any)).value || '').trim();
 
   const clearErrors = (): void => {
-    overlay.querySelectorAll('.gm-onboard-field-error').forEach((n) => { n.classList.add('hidden'); n.textContent = ''; });
+    overlay.querySelectorAll('.gm-onboard-field-error').forEach((n) => {
+      n.classList.add('hidden');
+      n.textContent = '';
+    });
     overlay.querySelectorAll('input[aria-invalid]').forEach((n) => n.removeAttribute('aria-invalid'));
     const box = $('discord-link-error');
     if (box) box.classList.add('hidden');
@@ -1060,7 +1240,10 @@ export function openLinkAccountDialog(
       fieldErr.textContent = msg;
       fieldErr.classList.remove('hidden');
       const input = $<HTMLInputElement>(fieldId!);
-      if (input) { input.setAttribute('aria-invalid', 'true'); input.focus(); }
+      if (input) {
+        input.setAttribute('aria-invalid', 'true');
+        input.focus();
+      }
       return;
     }
     const box = $('discord-link-error');
@@ -1083,14 +1266,19 @@ export function openLinkAccountDialog(
   let confirmTimer: ReturnType<typeof setTimeout> | null = null;
   const closeModal = (announce: boolean): void => {
     overlay.classList.remove('visible');
-    setTimeout(() => { overlay.remove(); }, 200);
+    setTimeout(() => {
+      overlay.remove();
+    }, 200);
     if (announce) setDiscordStatus("Sign-in cancelled — continue with Discord whenever you're ready.", 'info');
   };
   // Two clicks to discard what was typed, rather than a native confirm(): the
   // first click says what will happen, the second does it.
   const requestClose = (): void => {
     if (busy) return;
-    if (!isDirty() || (cancelBtn && cancelBtn.dataset.confirm === '1')) { closeModal(true); return; }
+    if (!isDirty() || (cancelBtn && cancelBtn.dataset.confirm === '1')) {
+      closeModal(true);
+      return;
+    }
     if (cancelBtn) {
       cancelBtn.dataset.confirm = '1';
       cancelBtn.textContent = 'Discard and close?';
@@ -1142,24 +1330,35 @@ export function openLinkAccountDialog(
       return;
     }
     setPath(initial || (c === 'existing' ? 'claim' : c));
-    const firstEmpty = Array.from(overlay.querySelectorAll('#path-' + c + ' input'))
-      .find((n) => !(n as HTMLElement).closest('.hidden') && !(n as HTMLInputElement).value) as HTMLInputElement | undefined;
+    const firstEmpty = Array.from(overlay.querySelectorAll('#path-' + c + ' input')).find(
+      (n) => !(n as HTMLElement).closest('.hidden') && !(n as HTMLInputElement).value
+    ) as HTMLInputElement | undefined;
     if (firstEmpty) firstEmpty.focus();
   };
 
   overlay.querySelectorAll('.gm-onboard-card').forEach((btn) => {
-    btn.addEventListener('click', () => { showStep(btn.getAttribute('data-choice') as Choice); });
+    btn.addEventListener('click', () => {
+      showStep(btn.getAttribute('data-choice') as Choice);
+    });
   });
   overlay.querySelectorAll('.gm-onboard-tab').forEach((tab) => {
-    tab.addEventListener('click', () => { setPath(tab.getAttribute('data-tab') as Path); });
+    tab.addEventListener('click', () => {
+      setPath(tab.getAttribute('data-tab') as Path);
+    });
   });
-  if (backBtn) backBtn.addEventListener('click', () => { if (!busy) showStep(null); });
+  if (backBtn)
+    backBtn.addEventListener('click', () => {
+      if (!busy) showStep(null);
+    });
 
   // Pre-fill from what the person was doing before the last Discord round
   // trip: a restart, or (phase 4) a shared invite link.
   const intent = peekPendingIntent();
   if (intent) {
-    const put = (id: string, v?: string): void => { const n = $<HTMLInputElement>(id); if (n && v) n.value = v; };
+    const put = (id: string, v?: string): void => {
+      const n = $<HTMLInputElement>(id);
+      if (n && v) n.value = v;
+    };
     put('discord-join-code', intent.kind === 'join' ? intent.code : undefined);
     put('discord-join-uid', intent.uid);
     put('discord-link-code', intent.kind === 'code' ? intent.code : undefined);
@@ -1214,20 +1413,44 @@ export function openLinkAccountDialog(
 
     // Local checks first: an empty field must not spend an attempt.
     if (path === 'claim') {
-      if (!val('discord-link-id')) { setErr('Enter your identifier.', 'discord-link-id'); return; }
-      if (!(($<HTMLInputElement>('discord-link-password') || ({} as any)).value)) { setErr('Enter your password.', 'discord-link-password'); return; }
+      if (!val('discord-link-id')) {
+        setErr('Enter your identifier.', 'discord-link-id');
+        return;
+      }
+      if (!($<HTMLInputElement>('discord-link-password') || ({} as any)).value) {
+        setErr('Enter your password.', 'discord-link-password');
+        return;
+      }
     } else if (path === 'code') {
-      if (!val('discord-link-code')) { setErr('Enter the code an admin gave you.', 'discord-link-code'); return; }
+      if (!val('discord-link-code')) {
+        setErr('Enter the code an admin gave you.', 'discord-link-code');
+        return;
+      }
     } else if (path === 'join') {
-      if (!val('discord-join-code')) { setErr("Enter your guild's join code.", 'discord-join-code'); return; }
-      if (!/^[0-9]{1,20}$/.test(val('discord-join-uid'))) { setErr('Enter your in-game UID — digits only.', 'discord-join-uid'); return; }
+      if (!val('discord-join-code')) {
+        setErr("Enter your guild's join code.", 'discord-join-code');
+        return;
+      }
+      if (!/^[0-9]{1,20}$/.test(val('discord-join-uid'))) {
+        setErr('Enter your in-game UID — digits only.', 'discord-join-uid');
+        return;
+      }
     } else {
-      if (!/^[A-Za-z0-9_]{2,12}$/.test(val('discord-create-tag'))) { setErr('A guild tag is 2 to 12 letters, digits or underscores.', 'discord-create-tag'); return; }
-      if (!/^[0-9]{4}$/.test(val('discord-create-server'))) { setErr('A server number is exactly four digits.', 'discord-create-server'); return; }
+      if (!/^[A-Za-z0-9_]{2,12}$/.test(val('discord-create-tag'))) {
+        setErr('A guild tag is 2 to 12 letters, digits or underscores.', 'discord-create-tag');
+        return;
+      }
+      if (!/^[0-9]{4}$/.test(val('discord-create-server'))) {
+        setErr('A server number is exactly four digits.', 'discord-create-server');
+        return;
+      }
     }
 
     busy = true;
-    if (submitBtn) { submitBtn.disabled = true; submitBtn.classList.add('is-loading'); }
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.classList.add('is-loading');
+    }
     try {
       if (path === 'claim') {
         const id = val('discord-link-id');
@@ -1237,7 +1460,10 @@ export function openLinkAccountDialog(
         const code = val('discord-link-code');
         resp = await redeemLinkCode(ticket, code);
       } else if (path === 'join') {
-        resp = await onboardWithDiscord(ticket, 'join', { join_code: val('discord-join-code'), uid: val('discord-join-uid') });
+        resp = await onboardWithDiscord(ticket, 'join', {
+          join_code: val('discord-join-code'),
+          uid: val('discord-join-uid'),
+        });
       } else {
         resp = await onboardWithDiscord(ticket, 'create', {
           guild_tag: val('discord-create-tag').toUpperCase(),
@@ -1257,10 +1483,15 @@ export function openLinkAccountDialog(
           setErr(msg, FIELD_FOR[code]);
           return;
         }
-        if (TICKET_MAY_SURVIVE.has(code)) { setErr(msg); return; }
-        setErr(code === 'ticket_invalid' || FIELD_FOR[code]
-          ? msg + ' Restart with Discord to try again — what you typed is kept.'
-          : msg);
+        if (TICKET_MAY_SURVIVE.has(code)) {
+          setErr(msg);
+          return;
+        }
+        setErr(
+          code === 'ticket_invalid' || FIELD_FOR[code]
+            ? msg + ' Restart with Discord to try again — what you typed is kept.'
+            : msg
+        );
         offerRestart();
         return;
       }
@@ -1282,14 +1513,23 @@ export function openLinkAccountDialog(
       await handleSuccessfulLogin(resp, resp.id || '');
     } finally {
       busy = false;
-      if (submitBtn) { submitBtn.disabled = false; submitBtn.classList.remove('is-loading'); }
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.classList.remove('is-loading');
+      }
     }
   };
 
-  if (submitBtn) submitBtn.addEventListener('click', () => { void submit(); });
+  if (submitBtn)
+    submitBtn.addEventListener('click', () => {
+      void submit();
+    });
   overlay.addEventListener('keydown', (ev) => {
     const target = ev.target as HTMLElement;
-    if (ev.key === 'Enter' && target && target.tagName === 'INPUT') { ev.preventDefault(); void submit(); }
+    if (ev.key === 'Enter' && target && target.tagName === 'INPUT') {
+      ev.preventDefault();
+      void submit();
+    }
   });
 }
 
@@ -1306,7 +1546,10 @@ export function showPendingScreen(guild: string | null, accountId: string | null
   const text = el('login-pending-text');
   if (text) {
     text.textContent = guild
-      ? 'Your request to join ' + guild + (accountId ? ' as ' + accountId : '') + ' was sent. It is waiting for one of its officers.'
+      ? 'Your request to join ' +
+        guild +
+        (accountId ? ' as ' + accountId : '') +
+        ' was sent. It is waiting for one of its officers.'
       : 'Your request is waiting for an officer of your guild.';
   }
   clearDiscordStatus();
@@ -1388,38 +1631,53 @@ function linkErrorMessage(code: string, path: 'claim' | 'code' | 'join' | 'creat
  */
 function showBackupCodesOnce(codes: string[]): void {
   if (typeof document === 'undefined') return;
-  const list = codes.map((c) => '<li style="font-family: var(--font-mono, monospace); font-size: var(--fs-md);">' + escapeDialogText(c) + '</li>').join('');
+  const list = codes
+    .map(
+      (c) =>
+        '<li style="font-family: var(--font-mono, monospace); font-size: var(--fs-md);">' +
+        escapeDialogText(c) +
+        '</li>'
+    )
+    .join('');
   const html =
     '<div id="backup-codes-once-overlay" class="gm-modal-overlay">' +
-      '<div class="gm-modal-card" style="max-width: 420px; width: 92%;">' +
-        '<div class="gm-modal-header" style="display:flex; align-items:center; gap:.5rem; margin-bottom:.75rem;">' +
-          '<i class="ph ph-key" style="font-size: var(--fs-2xl); color: var(--accent);"></i>' +
-          '<h3 style="margin:0; font-size: var(--fs-xl);">Save your backup codes</h3>' +
-        '</div>' +
-        '<p style="margin:0 0 .8rem; color: var(--fg-dim); font-size: var(--fs-md); line-height:1.45;">' +
-          'These are your only way back in if Discord becomes unavailable. They are <strong>shown once</strong> — store them somewhere safe now.' +
-        '</p>' +
-        '<ul style="margin:0; padding-left:1.2rem; line-height:1.9;">' + list + '</ul>' +
-        '<div class="gm-modal-footer" style="display:flex; justify-content:flex-end; gap:.5rem; margin-top:1rem;">' +
-          '<button type="button" class="gm-btn gm-btn-ghost" id="backup-codes-once-copy">Copy</button>' +
-          '<button type="button" class="gm-btn gm-btn-primary" id="backup-codes-once-done">I have saved them</button>' +
-        '</div>' +
-      '</div>' +
+    '<div class="gm-modal-card" style="max-width: 420px; width: 92%;">' +
+    '<div class="gm-modal-header" style="display:flex; align-items:center; gap:.5rem; margin-bottom:.75rem;">' +
+    '<i class="ph ph-key" style="font-size: var(--fs-2xl); color: var(--accent);"></i>' +
+    '<h3 style="margin:0; font-size: var(--fs-xl);">Save your backup codes</h3>' +
+    '</div>' +
+    '<p style="margin:0 0 .8rem; color: var(--fg-dim); font-size: var(--fs-md); line-height:1.45;">' +
+    'These are your only way back in if Discord becomes unavailable. They are <strong>shown once</strong> — store them somewhere safe now.' +
+    '</p>' +
+    '<ul style="margin:0; padding-left:1.2rem; line-height:1.9;">' +
+    list +
+    '</ul>' +
+    '<div class="gm-modal-footer" style="display:flex; justify-content:flex-end; gap:.5rem; margin-top:1rem;">' +
+    '<button type="button" class="gm-btn gm-btn-ghost" id="backup-codes-once-copy">Copy</button>' +
+    '<button type="button" class="gm-btn gm-btn-primary" id="backup-codes-once-done">I have saved them</button>' +
+    '</div>' +
+    '</div>' +
     '</div>';
   document.body.insertAdjacentHTML('beforeend', html);
   const overlay = document.getElementById('backup-codes-once-overlay');
   if (!overlay) return;
-  requestAnimationFrame(() => { overlay.classList.add('visible'); });
+  requestAnimationFrame(() => {
+    overlay.classList.add('visible');
+  });
 
   const copyBtn = document.getElementById('backup-codes-once-copy');
-  if (copyBtn) copyBtn.addEventListener('click', () => {
-    if (navigator.clipboard) navigator.clipboard.writeText(codes.join('\n')).catch(() => undefined);
-  });
+  if (copyBtn)
+    copyBtn.addEventListener('click', () => {
+      if (navigator.clipboard) navigator.clipboard.writeText(codes.join('\n')).catch(() => undefined);
+    });
   const doneBtn = document.getElementById('backup-codes-once-done');
-  if (doneBtn) doneBtn.addEventListener('click', () => {
-    overlay.classList.remove('visible');
-    setTimeout(() => { overlay.remove(); }, 200);
-  });
+  if (doneBtn)
+    doneBtn.addEventListener('click', () => {
+      overlay.classList.remove('visible');
+      setTimeout(() => {
+        overlay.remove();
+      }, 200);
+    });
   // No onEscape: this dialog is blocking on purpose -- the codes are shown once.
   adoptDialog(overlay);
 }
@@ -1427,8 +1685,11 @@ function showBackupCodesOnce(codes: string[]): void {
 /** Escaping for the single interpolation in the dialog above. */
 function escapeDialogText(v: string): string {
   return String(v)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
 
 /** Maps an auth-discord error code to something a person can act on. */
@@ -1525,7 +1786,9 @@ function wireOnce(node: HTMLElement | null, flag: string, event: string, handler
 export function initAuthForms(): void {
   if (typeof document === 'undefined') return;
 
-  wireOnce(el('login-form'), '__gmAuthWired', 'submit', (e) => { void onLoginSubmit(e); });
+  wireOnce(el('login-form'), '__gmAuthWired', 'submit', (e) => {
+    void onLoginSubmit(e);
+  });
 
   // The segmented tab switcher, the "Register Player" form and the
   // "Request a Guild" form were removed from index.html, so showAuthTab(),
@@ -1537,17 +1800,25 @@ export function initAuthForms(): void {
   // their Edge Functions are still deployed, and client and function come
   // out together in phase D7.
 
-  wireOnce(el('login-recovery-btn'), '__gmAuthWired', 'click', () => { openRecoveryCodeDialog(); });
+  wireOnce(el('login-recovery-btn'), '__gmAuthWired', 'click', () => {
+    openRecoveryCodeDialog();
+  });
 
-  wireOnce(el('login-discord-btn'), '__gmAuthWired', 'click', () => { startDiscordSignIn(); });
-  wireOnce(el('login-pending-back'), '__gmAuthWired', 'click', () => { hidePendingScreen(); });
+  wireOnce(el('login-discord-btn'), '__gmAuthWired', 'click', () => {
+    startDiscordSignIn();
+  });
+  wireOnce(el('login-pending-back'), '__gmAuthWired', 'click', () => {
+    hidePendingScreen();
+  });
 
   // Back from Discord's consent screen with the browser's Back button: the
   // page can come out of the bfcache with the button still saying "Opening
   // Discord…" and disabled.
   if (typeof window !== 'undefined' && !discordPageshowWired) {
     discordPageshowWired = true;
-    window.addEventListener('pageshow', (e: PageTransitionEvent) => { if (e.persisted) resetDiscordButton(); });
+    window.addEventListener('pageshow', (e: PageTransitionEvent) => {
+      if (e.persisted) resetDiscordButton();
+    });
   }
 
   // Open the password route for whoever used it last on this device; Discord
@@ -1555,5 +1826,7 @@ export function initAuthForms(): void {
   const legacy = el<HTMLDetailsElement>('login-legacy');
   if (legacy && lastSignInMethod() === 'password') legacy.open = true;
 
-  wireOnce(el('logout-btn'), '__gmAuthWired', 'click', () => { void doLogout(); });
+  wireOnce(el('logout-btn'), '__gmAuthWired', 'click', () => {
+    void doLogout();
+  });
 }

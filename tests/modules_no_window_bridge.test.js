@@ -21,7 +21,7 @@ const ALLOWED = [];
 function files(dir) {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
     const p = path.join(dir, e.name);
-    return e.isDirectory() ? files(p) : (e.name.endsWith('.ts') ? [p] : []);
+    return e.isDirectory() ? files(p) : e.name.endsWith('.ts') ? [p] : [];
   });
 }
 
@@ -29,13 +29,15 @@ describe('feature modules do not read the window bridge', () => {
   it('no module reads window.GM, a GM_* namespace or window.showConfirm', () => {
     const offenders = [];
     for (const f of files(MODULES)) {
-      fs.readFileSync(f, 'utf8').split('\n').forEach((line, i) => {
-        const trimmed = line.trim();
-        if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*')) return;
-        // The imported showConfirm is called bare; only `x.showConfirm(` is a window member.
-        if (!BRIDGE.test(line) || ALLOWED.includes(line)) return;
-        offenders.push(`${path.relative(MODULES, f)}:${i + 1}: ${trimmed}`);
-      });
+      fs.readFileSync(f, 'utf8')
+        .split('\n')
+        .forEach((line, i) => {
+          const trimmed = line.trim();
+          if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*')) return;
+          // The imported showConfirm is called bare; only `x.showConfirm(` is a window member.
+          if (!BRIDGE.test(line) || ALLOWED.includes(line)) return;
+          offenders.push(`${path.relative(MODULES, f)}:${i + 1}: ${trimmed}`);
+        });
     }
     expect(offenders).toEqual([]);
   });

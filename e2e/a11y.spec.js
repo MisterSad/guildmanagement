@@ -15,38 +15,91 @@ const REPORT = !!process.env.A11Y_REPORT;
 async function expectNoSeriousViolations(page, screen) {
   const results = await new AxeBuilder({ page }).withTags(WCAG).analyze();
   const blocking = results.violations.filter((v) => v.impact === 'critical' || v.impact === 'serious');
-  const summary = blocking.map((v) => `${v.impact} ${v.id} (${v.nodes.length}): ${v.help}\n` +
-    v.nodes.slice(0, REPORT ? 50 : 5).map((n) => `    ${n.target.join(' ')}  ${n.failureSummary.split('\n')[1] || ''}`).join('\n')).join('\n');
-  if (REPORT) { console.log(`\n=== ${screen}: ${blocking.length} rules\n${summary}`); return; }
+  const summary = blocking
+    .map(
+      (v) =>
+        `${v.impact} ${v.id} (${v.nodes.length}): ${v.help}\n` +
+        v.nodes
+          .slice(0, REPORT ? 50 : 5)
+          .map((n) => `    ${n.target.join(' ')}  ${n.failureSummary.split('\n')[1] || ''}`)
+          .join('\n')
+    )
+    .join('\n');
+  if (REPORT) {
+    console.log(`\n=== ${screen}: ${blocking.length} rules\n${summary}`);
+    return;
+  }
   expect(blocking, `${screen}\n${summary}`).toEqual([]);
 }
 
 const PORTAL = {
   'get-active-sessions': {
-    ok: true, pseudo: 'AlphaPrime', guild: 'ALPHA', overall_power: 80000000, timezone_offset: 1, glory: 5000,
-    sessions: [{ event_name: 'GvG', session_id: 'GVG-2026-W32', start_at: null, current_data: { participated: 1, score_prep: 1000 } }],
+    ok: true,
+    pseudo: 'AlphaPrime',
+    guild: 'ALPHA',
+    overall_power: 80000000,
+    timezone_offset: 1,
+    glory: 5000,
+    sessions: [
+      {
+        event_name: 'GvG',
+        session_id: 'GVG-2026-W32',
+        start_at: null,
+        current_data: { participated: 1, score_prep: 1000 },
+      },
+    ],
   },
   'get-history': { ok: true, events: {} },
   'get-personal-kpis': { ok: true, attendance: { rate: 75 }, glory: { current_week: 5000 } },
   'get-weekly-challenges': {
-    ok: true, week: '2026-08-03', completed: 1, total: 2, season: { level: 'Silver', events: 9 },
+    ok: true,
+    week: '2026-08-03',
+    completed: 1,
+    total: 2,
+    season: { level: 'Silver', events: 9 },
     challenges: [
-      { id: 'events1', label: 'Attend 1 event this week', icon: 'ph-calendar-check', done: true, progress: 1, target: 1 },
+      {
+        id: 'events1',
+        label: 'Attend 1 event this week',
+        icon: 'ph-calendar-check',
+        done: true,
+        progress: 1,
+        target: 1,
+      },
       { id: 'glory', label: 'Submit your Glory score', icon: 'ph-trophy', done: false, progress: 0, target: 1 },
     ],
   },
-  'get-badges': { ok: true, role: 'R3', created_at: '2026-06-01T00:00:00Z', overall_power: 80000000, attended: 12, glory_best: 4000 },
+  'get-badges': {
+    ok: true,
+    role: 'R3',
+    created_at: '2026-06-01T00:00:00Z',
+    overall_power: 80000000,
+    attended: 12,
+    glory_best: 4000,
+  },
   'get-transfer-guilds': { ok: true, guilds: [] },
 };
 
 async function stubBackend(page) {
-  await page.route('**/rest/v1/**', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: '[]' }));
+  await page.route('**/rest/v1/**', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
+  );
   // Playwright tries the most recently registered route first.
-  await page.route('**/functions/v1/**', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' }));
+  await page.route('**/functions/v1/**', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' })
+  );
   await page.route('**/functions/v1/member-portal', async (route) => {
     let body = {};
-    try { body = route.request().postDataJSON() || {}; } catch (_) { /* not JSON */ }
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(PORTAL[body.action] || { ok: true }) });
+    try {
+      body = route.request().postDataJSON() || {};
+    } catch (_) {
+      /* not JSON */
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(PORTAL[body.action] || { ok: true }),
+    });
   });
 }
 
@@ -74,8 +127,21 @@ test('the player portal', async ({ page }) => {
   await expectNoSeriousViolations(page, 'portal');
 });
 
-const ADMIN_TABS = ['overview', 'members', 'events', 'glory', 'history', 'stats', 'migration-hub', 'accounts', 'discord',
-  'sanctions', 'banned', 'superadmin-accounts', 'tickets'];
+const ADMIN_TABS = [
+  'overview',
+  'members',
+  'events',
+  'glory',
+  'history',
+  'stats',
+  'migration-hub',
+  'accounts',
+  'discord',
+  'sanctions',
+  'banned',
+  'superadmin-accounts',
+  'tickets',
+];
 
 for (const item of ADMIN_TABS) {
   test(`the admin dashboard: ${item}`, async ({ page }) => {
@@ -101,7 +167,14 @@ test('the OCR modal', async ({ page }) => {
 });
 
 test('the confirmation dialog', async ({ page }) => {
-  await page.evaluate(() => window.GM_E2E.showConfirm('Delete this session?', 'This cannot be undone.', () => {}, () => {}));
+  await page.evaluate(() =>
+    window.GM_E2E.showConfirm(
+      'Delete this session?',
+      'This cannot be undone.',
+      () => {},
+      () => {}
+    )
+  );
   await expect(page.getByRole('alertdialog')).toBeVisible();
   await expectNoSeriousViolations(page, 'confirm dialog');
 });

@@ -6,7 +6,6 @@
  * deleteBannedPlayer. Strict escaping via esc().
  */
 
-
 import { t, esc, byId } from '../admin/utils';
 import {
   type BannedPlayer,
@@ -14,7 +13,7 @@ import {
   setBannedPlayers,
   removeBannedPlayer,
   getGuildMembers,
-  filterGuildMembersOut
+  filterGuildMembersOut,
 } from './members.store';
 import { renderGuildMembers } from './members.render';
 import { showToast, showConfirm } from '../dialogs/dialogs.service';
@@ -55,14 +54,25 @@ export function renderBannedPlayers(): void {
   const search = byId<HTMLInputElement>('banned-search');
   const q = search ? search.value.toLowerCase() : '';
   const banned = getBannedPlayers();
-  const filtered = banned.filter((bp) =>
-    (String(bp.uid).toLowerCase() + ' ' + String(bp.pseudo || '').toLowerCase() + ' ' + String(bp.reason || '').toLowerCase()).indexOf(q) !== -1);
+  const filtered = banned.filter(
+    (bp) =>
+      (
+        String(bp.uid).toLowerCase() +
+        ' ' +
+        String(bp.pseudo || '').toLowerCase() +
+        ' ' +
+        String(bp.reason || '').toLowerCase()
+      ).indexOf(q) !== -1
+  );
 
   const count = byId('banned-count');
   if (count) count.textContent = String(filtered.length);
 
   if (filtered.length === 0) {
-    container.innerHTML = '<div class="gm-empty"><i class="ph ph-ghost gm-icon"></i><div class="gm-empty-title">' + t('empty_banned') + '</div></div>';
+    container.innerHTML =
+      '<div class="gm-empty"><i class="ph ph-ghost gm-icon"></i><div class="gm-empty-title">' +
+      t('empty_banned') +
+      '</div></div>';
     return;
   }
 
@@ -77,25 +87,58 @@ export function renderBannedPlayers(): void {
   let html = '<div class="gm-member-list">';
   filtered.forEach((bp: BannedPlayer) => {
     const dateStr = bp.created_at
-      ? new Date(bp.created_at).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+      ? new Date(bp.created_at).toLocaleDateString(locale, {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        })
       : '-';
     const initial = avatarInit(bp.pseudo || fallbackName);
-    html += '<div class="gm-member-row" data-uid="' + esc(bp.uid) + '">' +
+    html +=
+      '<div class="gm-member-row" data-uid="' +
+      esc(bp.uid) +
+      '">' +
       '<div class="gm-member-id">' +
-        '<div class="gm-avatar" style="background: var(--danger-soft); color: var(--danger); border-color: var(--danger-soft);">' + esc(initial) + '</div>' +
-        '<div class="gm-grow gm-truncate">' +
-          '<div class="gm-mono gm-truncate" style="color: var(--danger); font-weight: 700; font-size: var(--fs-xl);">' + esc(uidPrefix) + ' ' + esc(bp.uid) + '</div>' +
-          '<div class="gm-member-pseudo gm-dim gm-truncate" style="font-weight: 500; font-size: var(--fs-base); margin-top: 2px;">' + esc(bp.pseudo || '-') + '</div>' +
-        '</div>' +
+      '<div class="gm-avatar" style="background: var(--danger-soft); color: var(--danger); border-color: var(--danger-soft);">' +
+      esc(initial) +
+      '</div>' +
+      '<div class="gm-grow gm-truncate">' +
+      '<div class="gm-mono gm-truncate" style="color: var(--danger); font-weight: 700; font-size: var(--fs-xl);">' +
+      esc(uidPrefix) +
+      ' ' +
+      esc(bp.uid) +
+      '</div>' +
+      '<div class="gm-member-pseudo gm-dim gm-truncate" style="font-weight: 500; font-size: var(--fs-base); margin-top: 2px;">' +
+      esc(bp.pseudo || '-') +
+      '</div>' +
+      '</div>' +
       '</div>' +
       '<div class="gm-col gm-dim" style="gap:.2rem; font-size: var(--fs-sm); flex: 1.5; min-width: 150px;">' +
-        '<span><strong>' + esc(reasonLabel) + '</strong> ' + esc(bp.reason || '-') + '</span>' +
-        '<span>' + esc(byLabel) + ' <strong>' + esc(bp.created_by || '-') + '</strong> ' + esc(onLabel) + ' ' + dateStr + '</span>' +
+      '<span><strong>' +
+      esc(reasonLabel) +
+      '</strong> ' +
+      esc(bp.reason || '-') +
+      '</span>' +
+      '<span>' +
+      esc(byLabel) +
+      ' <strong>' +
+      esc(bp.created_by || '-') +
+      '</strong> ' +
+      esc(onLabel) +
+      ' ' +
+      dateStr +
+      '</span>' +
       '</div>' +
       '<div class="gm-member-actions">' +
-        '<button class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm banned-delete-btn" data-uid="' + esc(bp.uid) + '" title="' + t('delete_title') + '" style="color: var(--danger);"><i class="ph ph-trash"></i></button>' +
+      '<button class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm banned-delete-btn" data-uid="' +
+      esc(bp.uid) +
+      '" title="' +
+      t('delete_title') +
+      '" style="color: var(--danger);"><i class="ph ph-trash"></i></button>' +
       '</div>' +
-    '</div>';
+      '</div>';
   });
   html += '</div>';
   container.innerHTML = html;
@@ -103,11 +146,9 @@ export function renderBannedPlayers(): void {
   container.querySelectorAll('.banned-delete-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       const uid = btn.getAttribute('data-uid') || '';
-      showConfirm(
-        t('confirm_unban_title'),
-        t('confirm_unban_body') + ' <strong>' + esc(uid) + '</strong> ?',
-        () => { void deleteBannedPlayer(uid); }
-      );
+      showConfirm(t('confirm_unban_title'), t('confirm_unban_body') + ' <strong>' + esc(uid) + '</strong> ?', () => {
+        void deleteBannedPlayer(uid);
+      });
     });
   });
 }
@@ -124,9 +165,15 @@ export async function handleAddBannedPlayer(): Promise<void> {
   if (!uidVal) return;
 
   const uidErr = validateUid(uidVal);
-  if (uidErr) { showToast(t(uidErr), 'error'); return; }
+  if (uidErr) {
+    showToast(t(uidErr), 'error');
+    return;
+  }
 
-  if (getBannedPlayers().some((bp) => bp.uid === uidVal)) { showToast(t('toast_player_already_banned'), 'error'); return; }
+  if (getBannedPlayers().some((bp) => bp.uid === uidVal)) {
+    showToast(t('toast_player_already_banned'), 'error');
+    return;
+  }
   // Banning removes the player from the roster, which the database refuses for
   // the R5: the ban would be recorded while the leader stayed on the roster.
   if (getGuildMembers().some((m) => m.uid === uidVal && m.role === 'R5')) {
@@ -140,8 +187,12 @@ export async function handleAddBannedPlayer(): Promise<void> {
   if (onRoster) {
     showConfirm(
       'Ban and remove from the guild',
-      '<strong>' + esc(onRoster.pseudo) + '</strong> is on your member list. Banning removes them from it.<br><br>' +
-        '<span style="color:#f87171;">' + esc(t('confirm_remove_member_cascade')) + '</span><br><br>' +
+      '<strong>' +
+        esc(onRoster.pseudo) +
+        '</strong> is on your member list. Banning removes them from it.<br><br>' +
+        '<span style="color:#f87171;">' +
+        esc(t('confirm_remove_member_cascade')) +
+        '</span><br><br>' +
         'To keep a record without losing their history, give a sanction instead.',
       () => executeBan(uidVal, pseudoVal, reasonVal)
     );
@@ -155,7 +206,7 @@ async function executeBan(uidVal: string, pseudoVal: string, reasonVal: string):
   const pseudoInput = byId<HTMLInputElement>('banned-pseudo');
   const reasonInput = byId<HTMLInputElement>('banned-reason');
   const form = byId<HTMLFormElement>('add-banned-form');
-  const btn = form ? form.querySelector('button[type="submit"]') as HTMLButtonElement | null : null;
+  const btn = form ? (form.querySelector('button[type="submit"]') as HTMLButtonElement | null) : null;
   if (btn) btn.disabled = true;
 
   try {
@@ -208,7 +259,10 @@ export function initBannedUi(): void {
 
   const form = byId<HTMLFormElement>('add-banned-form');
   if (form) {
-    form.addEventListener('submit', (e) => { e.preventDefault(); void handleAddBannedPlayer(); });
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      void handleAddBannedPlayer();
+    });
   }
 
   const search = byId<HTMLInputElement>('banned-search');

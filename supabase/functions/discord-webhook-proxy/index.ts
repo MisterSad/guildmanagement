@@ -8,7 +8,6 @@ import { serveUnlessTest } from "../_shared/serve.ts";
 import { isAdminRole, isGuildAdmin, isGuildInScope, isServerAdmin } from "../_shared/admin-authz.ts";
 import type { CallerInfo } from "../_shared/auth.ts";
 
-
 function makeJson(req: Request) {
   return (body: unknown, status = 200): Response =>
     new Response(JSON.stringify(body), {
@@ -57,13 +56,15 @@ function cleanWebhookUrl(url: string): string {
   return clean.startsWith("http") ? clean : "https://" + clean;
 }
 
-const SetWebhookSchema = z.object({
-  action: z.literal("set-webhook"),
-  guild: z.string().trim().min(1).max(64),
-  key: z.string().trim().max(64).refine(isWebhookKey, "not a webhook key"),
-  // Empty removes the webhook.
-  url: z.string().trim().max(512),
-}).strict();
+const SetWebhookSchema = z
+  .object({
+    action: z.literal("set-webhook"),
+    guild: z.string().trim().min(1).max(64),
+    key: z.string().trim().max(64).refine(isWebhookKey, "not a webhook key"),
+    // Empty removes the webhook.
+    url: z.string().trim().max(512),
+  })
+  .strict();
 
 /**
  * ARC-04: the only way a webhook URL is written. The browser can neither read
@@ -74,7 +75,7 @@ async function setWebhook(
   caller: CallerInfo,
   rawBody: unknown,
   json: (b: unknown, s?: number) => Response,
-  logger: EdgeLogger,
+  logger: EdgeLogger
 ): Promise<Response> {
   const parsed = SetWebhookSchema.safeParse(rawBody);
   if (!parsed.success) return json({ ok: false, error: "bad_request" }, 400);
@@ -84,7 +85,13 @@ async function setWebhook(
   const { data: g } = await admin.from("guilds").select("id, server_number").eq("id", guild).maybeSingle();
   if (!g) return json({ ok: false, error: "forbidden" }, 403);
   const target = g as { id: string; server_number: string | null };
-  if (!isGuildInScope({ role: caller.role, guild: caller.guild, serverNumber: caller.serverNumber }, target.id, target.server_number)) {
+  if (
+    !isGuildInScope(
+      { role: caller.role, guild: caller.guild, serverNumber: caller.serverNumber },
+      target.id,
+      target.server_number
+    )
+  ) {
     logger.warn("set-webhook outside the caller's scope", { requestedGuild: guild });
     return json({ ok: false, error: "forbidden" }, 403);
   }
@@ -99,10 +106,12 @@ async function setWebhook(
   if (!isValidDiscordWebhook(url)) {
     return json({ ok: false, error: "invalid_discord_webhook_url" }, 400);
   }
-  const { error } = await admin.from("guild_config").upsert(
-    { guild: target.id, key, value: cleanWebhookUrl(url), updated_at: new Date().toISOString() },
-    { onConflict: "guild,key" },
-  );
+  const { error } = await admin
+    .from("guild_config")
+    .upsert(
+      { guild: target.id, key, value: cleanWebhookUrl(url), updated_at: new Date().toISOString() },
+      { onConflict: "guild,key" }
+    );
   if (error) return json({ ok: false, error: "save_failed" }, 500);
   // Never log the URL: it is the channel's credential.
   logger.info("Webhook set", { guild: target.id, key });
@@ -197,7 +206,11 @@ export async function handler(req: Request): Promise<Response> {
       }
       if (requestedGuild && caller.serverNumber) {
         const adminClient = serviceClient();
-        const { data: g } = await adminClient.from("guilds").select("server_number").eq("id", requestedGuild).maybeSingle();
+        const { data: g } = await adminClient
+          .from("guilds")
+          .select("server_number")
+          .eq("id", requestedGuild)
+          .maybeSingle();
         if (!g || g.server_number !== caller.serverNumber) {
           logger.warn("Server admin attempted cross-server discord webhook dispatch", {
             callerServer: caller.serverNumber,
@@ -215,24 +228,19 @@ export async function handler(req: Request): Promise<Response> {
     // 3. Permission explicite et validée pour @everyone / @here
     const explicitEveryoneRequested = Boolean(
       body?.allowEveryoneMention === true ||
-      body?.allow_everyone_mention === true ||
-      body?.allowEveryone === true ||
-      payload?.allowEveryoneMention === true ||
-      payload?.allow_everyone_mention === true ||
-      payload?.allowEveryone === true
+        body?.allow_everyone_mention === true ||
+        body?.allowEveryone === true ||
+        payload?.allowEveryoneMention === true ||
+        payload?.allow_everyone_mention === true ||
+        payload?.allowEveryone === true
     );
-    hasExplicitEveryonePermission =
-      explicitEveryoneRequested &&
-      isAdminRole(caller.role);
+    hasExplicitEveryonePermission = explicitEveryoneRequested && isAdminRole(caller.role);
 
     // Server-side resolution from guild_config
     requestedGuild = requestedGuild || caller.guild || "";
     if (!webhookUrl && requestedGuild) {
       const adminClient = serviceClient();
-      const { data: rows } = await adminClient
-        .from("guild_config")
-        .select("key, value")
-        .eq("guild", requestedGuild);
+      const { data: rows } = await adminClient.from("guild_config").select("key, value").eq("guild", requestedGuild);
 
       const configMap: Record<string, string> = {};
       (rows || []).forEach((r) => {
@@ -244,7 +252,14 @@ export async function handler(req: Request): Promise<Response> {
         resolved = configMap["discord_webhook_url"];
       }
       if (!resolved || !resolved.trim()) {
-        const fallbacks = ["webhook_armsrace", "webhook_svs", "webhook_gvg", "webhook_dtr", "webhook_calamity", "webhook_shadowfront"];
+        const fallbacks = [
+          "webhook_armsrace",
+          "webhook_svs",
+          "webhook_gvg",
+          "webhook_dtr",
+          "webhook_calamity",
+          "webhook_shadowfront",
+        ];
         for (const fk of fallbacks) {
           if (configMap[fk] && configMap[fk].trim()) {
             resolved = configMap[fk];
@@ -266,9 +281,11 @@ export async function handler(req: Request): Promise<Response> {
 
   // The payload is relayed to Discord as given: bound it to what Discord
   // itself accepts before spending a quota slot on it (audit SEC-13).
-  if ((typeof payload?.content === "string" && payload.content.length > 2000)
-      || (payload?.embeds !== undefined && (!Array.isArray(payload.embeds) || payload.embeds.length > 10))
-      || JSON.stringify(payload ?? {}).length > 60_000) {
+  if (
+    (typeof payload?.content === "string" && payload.content.length > 2000) ||
+    (payload?.embeds !== undefined && (!Array.isArray(payload.embeds) || payload.embeds.length > 10)) ||
+    JSON.stringify(payload ?? {}).length > 60_000
+  ) {
     return json({ ok: false, error: "payload_too_large" }, 400);
   }
 
@@ -277,7 +294,7 @@ export async function handler(req: Request): Promise<Response> {
   }
 
   if (!isValidDiscordWebhook(webhookUrl)) {
-    const masked = webhookUrl.replace(/(https:\/\/discord\.com\/api\/webhooks\/\d+\/)[^?#\s]+/, '$1***');
+    const masked = webhookUrl.replace(/(https:\/\/discord\.com\/api\/webhooks\/\d+\/)[^?#\s]+/, "$1***");
     logger.warn("Invalid Discord Webhook URL blocked", { webhookUrl: masked });
     return json({ ok: false, error: "invalid_discord_webhook_url" }, 400);
   }
@@ -334,10 +351,7 @@ export async function handler(req: Request): Promise<Response> {
 
     const errText = await discordRes.text().catch(() => "");
     logger.error("Discord returned error status", undefined, { status: discordRes.status, errText });
-    return json(
-      { ok: false, status: discordRes.status, error: `Discord HTTP ${discordRes.status}: ${errText}` },
-      200
-    );
+    return json({ ok: false, status: discordRes.status, error: `Discord HTTP ${discordRes.status}: ${errText}` }, 200);
   } catch (err: any) {
     logger.error("Fetch to Discord failed", err);
     return json({ ok: false, error: `Server fetch to Discord failed: ${err?.message ?? err}` }, 200);

@@ -113,14 +113,20 @@ export const OnboardSchema = z.discriminatedUnion("mode", [
     mode: z.literal("join"),
     ticket: TicketField,
     join_code: z.string().trim().min(1).max(64),
-    uid: z.string().trim().regex(/^[0-9]{1,20}$/),
+    uid: z
+      .string()
+      .trim()
+      .regex(/^[0-9]{1,20}$/),
   }),
   z.object({
     action: z.literal("onboard"),
     mode: z.literal("create"),
     ticket: TicketField,
     guild_tag: z.string().trim().min(2).max(12),
-    server_number: z.string().trim().regex(/^[0-9]{4}$/),
+    server_number: z
+      .string()
+      .trim()
+      .regex(/^[0-9]{4}$/),
   }),
 ]);
 

@@ -113,7 +113,7 @@ const OCR_DOM = `
 const MEMBERS = [
   { pseudo: 'Alpha', uid: '111111', role: 'R1', guild: 'ALPHA', glory_score: 1 },
   { pseudo: 'Bravo', uid: '222222', role: 'R1', guild: 'ALPHA', glory_score: 1 },
-  { pseudo: 'Delta', uid: '444444', role: 'R1', guild: 'ALPHA', glory_score: 1 }
+  { pseudo: 'Delta', uid: '444444', role: 'R1', guild: 'ALPHA', glory_score: 1 },
 ];
 
 /**
@@ -149,9 +149,16 @@ beforeEach(() => {
 
   // jsdom decodes no images, so the compressor's <img> would never settle.
   // Failing it takes the base64 fallback, which is a real path in production.
-  vi.stubGlobal('Image', class {
-    set src(_v) { queueMicrotask(() => { if (this.onerror) this.onerror(); }); }
-  });
+  vi.stubGlobal(
+    'Image',
+    class {
+      set src(_v) {
+        queueMicrotask(() => {
+          if (this.onerror) this.onerror();
+        });
+      }
+    }
+  );
 
   // The controller resolves the guild and its tag through the real modules.
   patchAppState({ currentGuild: 'ALPHA' });
@@ -173,14 +180,16 @@ describe('one bad batch does not discard the good ones', () => {
         invoke: stubInvoke([
           { ok: true, players: [{ pseudo: 'Alpha', score: 500, raw_score: '500' }] },
           { ok: false, error: 'json_parse_failed' },
-          { ok: true, players: [{ pseudo: 'Bravo', score: 400, raw_score: '400' }] }
-        ])
-      }
+          { ok: true, players: [{ pseudo: 'Bravo', score: 400, raw_score: '400' }] },
+        ]),
+      },
     });
 
     await handleOcrFiles(frames());
 
-    const found = getOcrExtractedPlayers().map((p) => p.pseudo).sort();
+    const found = getOcrExtractedPlayers()
+      .map((p) => p.pseudo)
+      .sort();
     expect(found, 'batches 1 and 3 must survive batch 2').toEqual(['Alpha', 'Bravo']);
     expect(document.getElementById('ocr-results-container').style.display).not.toBe('none');
   });
@@ -191,9 +200,9 @@ describe('one bad batch does not discard the good ones', () => {
         invoke: stubInvoke([
           { ok: true, players: [{ pseudo: 'Alpha', score: 500, raw_score: '500' }] },
           { ok: false, error: 'json_parse_failed' },
-          { ok: true, players: [{ pseudo: 'Bravo', score: 400, raw_score: '400' }] }
-        ])
-      }
+          { ok: true, players: [{ pseudo: 'Bravo', score: 400, raw_score: '400' }] },
+        ]),
+      },
     });
 
     await handleOcrFiles(frames());
@@ -208,9 +217,9 @@ describe('one bad batch does not discard the good ones', () => {
         invoke: stubInvoke([
           { ok: false, error: 'json_parse_failed' },
           { ok: false, error: 'json_parse_failed' },
-          { ok: false, error: 'json_parse_failed' }
-        ])
-      }
+          { ok: false, error: 'json_parse_failed' },
+        ]),
+      },
     });
 
     await handleOcrFiles(frames());

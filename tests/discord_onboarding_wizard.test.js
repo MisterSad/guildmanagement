@@ -19,7 +19,7 @@ const session = vi.hoisted(() => ({
 vi.mock('../src/core/auth/session', async (importOriginal) => ({ ...(await importOriginal()), ...session }));
 
 vi.mock('../src/modules/portal/views/PortalView', () => ({
-  portalView: { loadDashboard: vi.fn(), renderDashboard: vi.fn() }
+  portalView: { loadDashboard: vi.fn(), renderDashboard: vi.fn() },
 }));
 
 import { openLinkAccountDialog, showPendingScreen, initAuthForms } from '../src/modules/app/auth/auth.controller';
@@ -46,7 +46,9 @@ const LOGIN_DOM = `
 
 const $ = (id) => document.getElementById(id);
 const click = (node) => node.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-const type = (id, value) => { $(id).value = value; };
+const type = (id, value) => {
+  $(id).value = value;
+};
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
 beforeEach(() => {
@@ -117,7 +119,8 @@ describe('step 2: correcting a mistake', () => {
     type('discord-join-code', 'FGF-AAAA-BBBB');
     type('discord-join-uid', '123');
     click($('discord-link-submit'));
-    await flush(); await flush();
+    await flush();
+    await flush();
 
     expect($('discord-join-uid-error').textContent).toContain('not on the guild roster');
     expect($('discord-join-uid-error').textContent).toContain('2 attempts left');
@@ -127,7 +130,8 @@ describe('step 2: correcting a mistake', () => {
 
     type('discord-join-uid', '456');
     click($('discord-link-submit'));
-    await flush(); await flush();
+    await flush();
+    await flush();
 
     expect(session.onboardWithDiscord.mock.calls[0][0]).toBe(first);
     expect(session.onboardWithDiscord.mock.calls[1][0]).toBe(second);
@@ -144,7 +148,8 @@ describe('step 2: correcting a mistake', () => {
     type('discord-link-id', 'Hawk');
     type('discord-link-password', 'hunter2');
     click($('discord-link-submit'));
-    await flush(); await flush();
+    await flush();
+    await flush();
 
     expect($('discord-link-restart').classList.contains('hidden')).toBe(false);
     expect($('discord-link-submit').classList.contains('hidden')).toBe(true);

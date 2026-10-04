@@ -72,14 +72,14 @@ export const dialogRecipe = cva('gm-ui-dialog', {
       sm: 'gm-ui-dialog-sm',
       md: 'gm-ui-dialog-md',
       lg: 'gm-ui-dialog-lg',
-      full: 'gm-ui-dialog-full'
-    }
+      full: 'gm-ui-dialog-full',
+    },
   },
-  defaultVariants: { tone: 'default', size: 'md' }
+  defaultVariants: { tone: 'default', size: 'md' },
 });
 
 let uidCounter = 0;
-const nextUid = (): string => 'gm-ui-dialog-' + (++uidCounter);
+const nextUid = (): string => 'gm-ui-dialog-' + ++uidCounter;
 
 const cleanupRegistry = new WeakMap<HTMLElement, () => void>();
 
@@ -88,9 +88,11 @@ function titleIdFor(id: string): string {
 }
 
 function focusableElements(card: HTMLElement): HTMLElement[] {
-  return Array.from(card.querySelectorAll<HTMLElement>(
-    'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-  )).filter((el) => {
+  return Array.from(
+    card.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    )
+  ).filter((el) => {
     // A hand-built card hides whole steps with display:none; focus() on those
     // is a silent no-op that would break the trap. Where the browser can tell.
     const check = (el as HTMLElement & { checkVisibility?: () => boolean }).checkVisibility;
@@ -157,7 +159,11 @@ function engageModal(root: HTMLElement, b: ModalBehaviour): () => void {
   const first = b.initialFocus || focusableElements(b.card)[0] || b.card;
   if (first) {
     if (first === b.card && !b.card.hasAttribute('tabindex')) b.card.setAttribute('tabindex', '-1');
-    try { first.focus(); } catch { /* best effort */ }
+    try {
+      first.focus();
+    } catch {
+      /* best effort */
+    }
   }
 
   let released = false;
@@ -173,7 +179,11 @@ function engageModal(root: HTMLElement, b: ModalBehaviour): () => void {
       else appRoot.removeAttribute('aria-hidden');
     }
     if (previouslyFocused && typeof previouslyFocused.focus === 'function' && document.contains(previouslyFocused)) {
-      try { previouslyFocused.focus(); } catch { /* best effort */ }
+      try {
+        previouslyFocused.focus();
+      } catch {
+        /* best effort */
+      }
     }
   };
 }
@@ -214,7 +224,7 @@ export function adoptDialog(overlay: HTMLElement, opts: AdoptDialogOptions = {})
   if (!labelledBy && !opts.label) {
     const heading = card.querySelector<HTMLElement>('h1, h2, h3, h4');
     if (heading) {
-      if (!heading.id) heading.id = 'gm-adopted-dialog-title-' + (++adoptedUid);
+      if (!heading.id) heading.id = 'gm-adopted-dialog-title-' + ++adoptedUid;
       labelledBy = heading.id;
     }
   }
@@ -224,11 +234,16 @@ export function adoptDialog(overlay: HTMLElement, opts: AdoptDialogOptions = {})
   const release = engageModal(overlay, { card, onEscape: opts.onEscape, initialFocus: opts.initialFocus });
   let observer: MutationObserver | null = null;
   const releaseAll = (): void => {
-    if (observer) { observer.disconnect(); observer = null; }
+    if (observer) {
+      observer.disconnect();
+      observer = null;
+    }
     release();
   };
   if (overlay.parentNode && typeof MutationObserver !== 'undefined') {
-    observer = new MutationObserver(() => { if (!overlay.isConnected) releaseAll(); });
+    observer = new MutationObserver(() => {
+      if (!overlay.isConnected) releaseAll();
+    });
     observer.observe(overlay.parentNode, { childList: true });
   }
   return releaseAll;
@@ -238,30 +253,49 @@ export function adoptDialog(overlay: HTMLElement, opts: AdoptDialogOptions = {})
 export function createDialog(opts: DialogOptions): HTMLElement {
   const id = opts.id || nextUid();
   const titleId = titleIdFor(id);
-  const subtitleId = opts.subtitle ? (id + '-subtitle') : '';
-  const bodyId = opts.bodyId || (id + '-body');
+  const subtitleId = opts.subtitle ? id + '-subtitle' : '';
+  const bodyId = opts.bodyId || id + '-body';
   const title = escapeHTML(opts.title);
   const cls = cn(dialogRecipe({ tone: opts.tone, size: opts.size }), 'gm-ui-dialog-wrap');
   const role = opts.tone === 'danger' ? 'alertdialog' : 'dialog';
 
-  const headerCloseId = opts.headerCloseId || (id + '-close');
-  const iconHtml = opts.iconClass && /^[a-z0-9 _-]+$/i.test(opts.iconClass)
-    ? '<i class="ph ' + opts.iconClass + '" aria-hidden="true"></i> '
-    : '';
+  const headerCloseId = opts.headerCloseId || id + '-close';
+  const iconHtml =
+    opts.iconClass && /^[a-z0-9 _-]+$/i.test(opts.iconClass)
+      ? '<i class="ph ' + opts.iconClass + '" aria-hidden="true"></i> '
+      : '';
   const headingText =
     '<div class="gm-ui-dialog-heading-text">' +
-      '<h2 class="gm-ui-dialog-title" id="' + titleId + '">' + title + '</h2>' +
-      (opts.subtitle ? '<div class="gm-ui-dialog-subtitle" id="' + subtitleId + '">' + opts.subtitle + '</div>' : '') +
+    '<h2 class="gm-ui-dialog-title" id="' +
+    titleId +
+    '">' +
+    title +
+    '</h2>' +
+    (opts.subtitle ? '<div class="gm-ui-dialog-subtitle" id="' + subtitleId + '">' + opts.subtitle + '</div>' : '') +
     '</div>';
   const headerHtml =
     '<div class="gm-ui-dialog-header">' +
-      '<div class="gm-ui-dialog-heading">' + iconHtml + headingText + '</div>' +
-      '<button type="button" class="gm-ui-dialog-header-close gm-btn gm-btn-ghost gm-btn-icon" id="' + headerCloseId + '" aria-label="' + escapeHTML(opts.cancelLabel || 'Close') + '"><i class="ph ph-x" aria-hidden="true"></i></button>' +
+    '<div class="gm-ui-dialog-heading">' +
+    iconHtml +
+    headingText +
+    '</div>' +
+    '<button type="button" class="gm-ui-dialog-header-close gm-btn gm-btn-ghost gm-btn-icon" id="' +
+    headerCloseId +
+    '" aria-label="' +
+    escapeHTML(opts.cancelLabel || 'Close') +
+    '"><i class="ph ph-x" aria-hidden="true"></i></button>' +
     '</div>';
 
-  const bodyHtml = typeof opts.body === 'string'
-    ? '<div class="gm-ui-dialog-body' + (opts.scrollBody ? ' gm-ui-dialog-scroll' : '') + '" id="' + bodyId + '">' + opts.body + '</div>'
-    : '';
+  const bodyHtml =
+    typeof opts.body === 'string'
+      ? '<div class="gm-ui-dialog-body' +
+        (opts.scrollBody ? ' gm-ui-dialog-scroll' : '') +
+        '" id="' +
+        bodyId +
+        '">' +
+        opts.body +
+        '</div>'
+      : '';
 
   let footerHtml = '';
   if (opts.footer) {
@@ -272,10 +306,18 @@ export function createDialog(opts: DialogOptions): HTMLElement {
     if (hasConfirm || hasCancel) {
       const actions =
         (hasConfirm
-          ? '<button type="button" class="gm-btn gm-ui-dialog-confirm' + (opts.tone === 'danger' ? ' gm-btn-danger" style="background:rgba(239,68,68,0.14); border:1px solid rgba(239,68,68,0.3); color:var(--danger);' : '" style="margin-left:auto;') + '"><span>' + escapeHTML(opts.confirmLabel) + '</span></button>'
+          ? '<button type="button" class="gm-btn gm-ui-dialog-confirm' +
+            (opts.tone === 'danger'
+              ? ' gm-btn-danger" style="background:rgba(239,68,68,0.14); border:1px solid rgba(239,68,68,0.3); color:var(--danger);'
+              : '" style="margin-left:auto;') +
+            '"><span>' +
+            escapeHTML(opts.confirmLabel) +
+            '</span></button>'
           : '') +
         (hasCancel
-          ? '<button type="button" class="gm-btn gm-btn-ghost gm-ui-dialog-cancel"><span>' + escapeHTML(opts.cancelLabel) + '</span></button>'
+          ? '<button type="button" class="gm-btn gm-btn-ghost gm-ui-dialog-cancel"><span>' +
+            escapeHTML(opts.cancelLabel) +
+            '</span></button>'
           : '');
       footerHtml = '<div class="gm-ui-dialog-footer gm-ui-dialog-footer-actions">' + actions + '</div>';
     }
@@ -288,10 +330,18 @@ export function createDialog(opts: DialogOptions): HTMLElement {
   const describedById = opts.describedBy || subtitleId || '';
   const describedByAttr = describedById ? ' aria-describedby="' + escapeHTML(describedById) + '"' : '';
   backdrop.innerHTML =
-    '<div class="' + cn(cls) + '" role="' + role + '" aria-modal="true" aria-labelledby="' + titleId + '"' + describedByAttr + ' tabindex="-1">' +
-      headerHtml +
-      bodyHtml +
-      footerHtml +
+    '<div class="' +
+    cn(cls) +
+    '" role="' +
+    role +
+    '" aria-modal="true" aria-labelledby="' +
+    titleId +
+    '"' +
+    describedByAttr +
+    ' tabindex="-1">' +
+    headerHtml +
+    bodyHtml +
+    footerHtml +
     '</div>';
 
   if (opts.body && typeof opts.body !== 'string') {
@@ -356,9 +406,12 @@ export function openDialog(opts: DialogOptions): HTMLElement {
 
   // A dialog removed by other code (dialog.remove()) still releases the
   // keyboard, the page behind and its place in the stack.
-  const observer = typeof MutationObserver !== 'undefined'
-    ? new MutationObserver(() => { if (!dialog.isConnected) closeDialog(dialog); })
-    : null;
+  const observer =
+    typeof MutationObserver !== 'undefined'
+      ? new MutationObserver(() => {
+          if (!dialog.isConnected) closeDialog(dialog);
+        })
+      : null;
   observer?.observe(document.body, { childList: true });
 
   cleanupRegistry.set(dialog, () => {

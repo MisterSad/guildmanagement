@@ -20,17 +20,15 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
-import {
-  getAppState,
-  patchAppState,
-  initAppState,
-  resetAppState
-} from '../src/core/state/app-state.ts';
+import { getAppState, patchAppState, initAppState, resetAppState } from '../src/core/state/app-state.ts';
 
 const rootDir = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(rootDir, p), 'utf8');
 const stripComments = (s) =>
-  s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '').replace(/\/\/.*$/gm, '');
+  s
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '')
+    .replace(/\/\/.*$/gm, '');
 
 function walk(dir, out = []) {
   for (const e of fs.readdirSync(path.join(rootDir, dir), { withFileTypes: true })) {
@@ -51,7 +49,7 @@ const STATE_KEYS = [
   'guildAbsences',
   'adminSelectedMembers',
   'adminMembersViewMode',
-  'GM_COLLAPSED_ROLES'
+  'GM_COLLAPSED_ROLES',
 ];
 
 describe('the store lives in core/ and can', () => {
@@ -98,11 +96,8 @@ describe('the store is the single write path', () => {
   it('is reached by name from every module that needs to write state', () => {
     // Guards the guard: if the scan above matched nothing because the state
     // keys were renamed, this fails too rather than going quietly green.
-    const writers = walk('src').filter(
-      (f) => f !== STORE && /patchAppState\s*\(/.test(stripComments(read(f)))
-    );
-    expect(writers.length, `modules writing through the store: ${writers.join(', ')}`)
-      .toBeGreaterThanOrEqual(5);
+    const writers = walk('src').filter((f) => f !== STORE && /patchAppState\s*\(/.test(stripComments(read(f))));
+    expect(writers.length, `modules writing through the store: ${writers.join(', ')}`).toBeGreaterThanOrEqual(5);
   });
 });
 

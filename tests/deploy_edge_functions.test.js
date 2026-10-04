@@ -93,10 +93,14 @@ describe('the CI pipeline', () => {
   });
 
   it('runs the Edge handlers and the SQL tests, not only their text (QA-01)', () => {
-    expect(ci).toContain('deno test --no-config --node-modules-dir=none --allow-env --allow-net --allow-read supabase/functions/');
+    expect(ci).toContain(
+      'deno test --no-config --node-modules-dir=none --allow-env --allow-net --allow-read supabase/functions/'
+    );
     expect(ci).toContain('bash scripts/sql-tests.sh');
-    const fns = fs.readdirSync(path.join(root, 'supabase/functions'), { withFileTypes: true })
-      .filter((e) => e.isDirectory() && !e.name.startsWith('_')).map((e) => e.name);
+    const fns = fs
+      .readdirSync(path.join(root, 'supabase/functions'), { withFileTypes: true })
+      .filter((e) => e.isDirectory() && !e.name.startsWith('_'))
+      .map((e) => e.name);
     for (const fn of fns) {
       const src = read(`supabase/functions/${fn}/index.ts`);
       expect(src, fn).toMatch(/export async function handler\(/);
@@ -123,16 +127,26 @@ describe('config.toml stays the single declaration of verify_jwt', () => {
   };
 
   it('declares verify_jwt for every function directory', () => {
-    const dirs = fs.readdirSync(path.join(root, 'supabase/functions'), { withFileTypes: true })
+    const dirs = fs
+      .readdirSync(path.join(root, 'supabase/functions'), { withFileTypes: true })
       .filter((e) => e.isDirectory() && !e.name.startsWith('_'))
       .map((e) => e.name);
-    const missing = dirs.filter((d) => !toml.includes(`[functions.${d}]`) || !/verify_jwt\s*=\s*(true|false)/.test(block(d)));
+    const missing = dirs.filter(
+      (d) => !toml.includes(`[functions.${d}]`) || !/verify_jwt\s*=\s*(true|false)/.test(block(d))
+    );
     expect(missing).toEqual([]);
   });
 
   it('keeps the seven JWT-gated functions gated', () => {
-    for (const fn of ['admin-accounts', 'member-portal', 'guild-data-export', 'discord-webhook-proxy',
-                      'ocr-guild-members', 'tickets', 'migration-summary']) {
+    for (const fn of [
+      'admin-accounts',
+      'member-portal',
+      'guild-data-export',
+      'discord-webhook-proxy',
+      'ocr-guild-members',
+      'tickets',
+      'migration-summary',
+    ]) {
       expect(block(fn), `${fn} must stay verify_jwt = true`).toMatch(/verify_jwt\s*=\s*true/);
     }
   });
@@ -148,17 +162,35 @@ describe('the deploy script, run', () => {
     fs.writeFileSync(path.join(bin, 'supabase'), `#!/usr/bin/env bash\necho "$3" >> "${log}"\n`, { mode: 0o755 });
     execFileSync('bash', ['scripts/deploy-edge-functions.sh', base, head], {
       cwd: root,
-      env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, SUPABASE_ACCESS_TOKEN: 'test', SUPABASE_PROJECT_REF: 'test-ref' },
+      env: {
+        ...process.env,
+        PATH: `${bin}:${process.env.PATH}`,
+        SUPABASE_ACCESS_TOKEN: 'test',
+        SUPABASE_PROJECT_REF: 'test-ref',
+      },
       stdio: 'pipe',
     });
     return fs.existsSync(log) ? fs.readFileSync(log, 'utf8').trim().split('\n').sort() : [];
   }
 
   const hasCommit = (sha) => {
-    try { execFileSync('git', ['cat-file', '-e', `${sha}^{commit}`], { cwd: root, stdio: 'pipe' }); return true; } catch { return false; }
+    try {
+      execFileSync('git', ['cat-file', '-e', `${sha}^{commit}`], { cwd: root, stdio: 'pipe' });
+      return true;
+    } catch {
+      return false;
+    }
   };
 
-  it.runIf(hasCommit('b68ed4b') && hasCommit('d089916'))('deploys the functions a push changed, never a `_` directory', () => {
-    expect(deployedBetween('b68ed4b', 'd089916')).toEqual(['admin-accounts', 'auth-discord', 'event-reminders', 'member-portal']);
-  });
+  it.runIf(hasCommit('b68ed4b') && hasCommit('d089916'))(
+    'deploys the functions a push changed, never a `_` directory',
+    () => {
+      expect(deployedBetween('b68ed4b', 'd089916')).toEqual([
+        'admin-accounts',
+        'auth-discord',
+        'event-reminders',
+        'member-portal',
+      ]);
+    }
+  );
 });

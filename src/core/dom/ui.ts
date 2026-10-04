@@ -6,14 +6,11 @@
  * renderer.
  */
 
-
 import { adoptDialog } from '../../components/ui/Dialog';
 import { formatNumber, formatPower, escapeHTML } from '../utils/text';
 import { formatChartDate, pad2 } from '../utils/date';
 import { showToast } from './toast';
 import { t } from '../i18n/i18n';
-
-
 
 /** Formats a text input with thousands separators, preserving the caret. */
 export function attachNumberFormatter(input: HTMLInputElement | null): void {
@@ -36,10 +33,17 @@ export function attachNumberFormatter(input: HTMLInputElement | null): void {
     let newPos = formatted.length;
     let count = 0;
     for (let i = 0; i < formatted.length; i++) {
-      if (count >= digitsBefore) { newPos = i; break; }
+      if (count >= digitsBefore) {
+        newPos = i;
+        break;
+      }
       if (/\d/.test(formatted[i])) count++;
     }
-    try { input.setSelectionRange(newPos, newPos); } catch (_) { /* ignore */ }
+    try {
+      input.setSelectionRange(newPos, newPos);
+    } catch (_) {
+      /* ignore */
+    }
   });
 }
 
@@ -49,7 +53,10 @@ export interface PickEventStartOptions {
 }
 
 /** Day + time modal (interpreted in UTC). callback(isoString) or callback(null). */
-export function pickEventStart(opts: PickEventStartOptions | undefined, callback: (startAt: string | null) => void): void {
+export function pickEventStart(
+  opts: PickEventStartOptions | undefined,
+  callback: (startAt: string | null) => void
+): void {
   const o = opts || {};
   const existing = document.getElementById('evt-start-overlay');
   if (existing) existing.remove();
@@ -64,53 +71,88 @@ export function pickEventStart(opts: PickEventStartOptions | undefined, callback
   overlay.className = 'gm-modal-overlay';
   overlay.innerHTML =
     '<div class="gm-modal-card" style="max-width: 400px; width: 90%; text-align: center;">' +
-      '<div class="confirm-icon"><i class="ph ph-calendar-plus text-accent"></i></div>' +
-      '<h3>' + t('event_start_when_title') + '</h3>' +
-      '<p>' + (o.eventLabel ? '<strong>' + escapeHTML(o.eventLabel) + '</strong> - ' : '') + t('event_start_when_body') + '</p>' +
-      '<div class="gm-col" style="gap:.75rem; text-align:left; margin:.25rem 0 1.2rem;">' +
-        '<div class="gm-col" style="gap:.3rem;">' +
-          '<label for="evt-start-date" class="gm-dim" style="font-size:.8rem;">' + t('event_start_date') + '</label>' +
-          '<input type="date" id="evt-start-date" class="gm-input" value="' + defDate + '">' +
-        '</div>' +
-        '<div class="gm-col" style="gap:.3rem;">' +
-          '<label for="evt-start-time" class="gm-dim" style="font-size:.8rem;">' + t('event_start_time') + '</label>' +
-          '<input type="time" id="evt-start-time" class="gm-input" value="' + defTime + '">' +
-        '</div>' +
-      '</div>' +
-      '<div class="confirm-actions" style="gap:1rem;">' +
-        '<button id="evt-start-cancel" class="gm-btn gm-btn-ghost">' + t('confirm_cancel') + '</button>' +
-        '<button id="evt-start-ok" class="gm-btn gm-btn-primary">' + t('event_start_confirm') + '</button>' +
-      '</div>' +
+    '<div class="confirm-icon"><i class="ph ph-calendar-plus text-accent"></i></div>' +
+    '<h3>' +
+    t('event_start_when_title') +
+    '</h3>' +
+    '<p>' +
+    (o.eventLabel ? '<strong>' + escapeHTML(o.eventLabel) + '</strong> - ' : '') +
+    t('event_start_when_body') +
+    '</p>' +
+    '<div class="gm-col" style="gap:.75rem; text-align:left; margin:.25rem 0 1.2rem;">' +
+    '<div class="gm-col" style="gap:.3rem;">' +
+    '<label for="evt-start-date" class="gm-dim" style="font-size:.8rem;">' +
+    t('event_start_date') +
+    '</label>' +
+    '<input type="date" id="evt-start-date" class="gm-input" value="' +
+    defDate +
+    '">' +
+    '</div>' +
+    '<div class="gm-col" style="gap:.3rem;">' +
+    '<label for="evt-start-time" class="gm-dim" style="font-size:.8rem;">' +
+    t('event_start_time') +
+    '</label>' +
+    '<input type="time" id="evt-start-time" class="gm-input" value="' +
+    defTime +
+    '">' +
+    '</div>' +
+    '</div>' +
+    '<div class="confirm-actions" style="gap:1rem;">' +
+    '<button id="evt-start-cancel" class="gm-btn gm-btn-ghost">' +
+    t('confirm_cancel') +
+    '</button>' +
+    '<button id="evt-start-ok" class="gm-btn gm-btn-primary">' +
+    t('event_start_confirm') +
+    '</button>' +
+    '</div>' +
     '</div>';
   document.body.appendChild(overlay);
-  window.requestAnimationFrame(() => { overlay.classList.add('visible'); });
+  window.requestAnimationFrame(() => {
+    overlay.classList.add('visible');
+  });
 
   let done = false;
   const close = (result: string | null): void => {
     if (done) return;
     done = true;
     overlay.classList.remove('visible');
-    setTimeout(() => { overlay.remove(); }, 300);
+    setTimeout(() => {
+      overlay.remove();
+    }, 300);
     callback(result);
   };
   adoptDialog(overlay, { onEscape: () => close(null) });
 
   const cancelBtn = document.getElementById('evt-start-cancel');
   if (cancelBtn) cancelBtn.addEventListener('click', () => close(null));
-  overlay.addEventListener('click', (ev) => { if (ev.target === overlay) close(null); });
+  overlay.addEventListener('click', (ev) => {
+    if (ev.target === overlay) close(null);
+  });
   const okBtn = document.getElementById('evt-start-ok');
   if (okBtn) {
     okBtn.addEventListener('click', () => {
       const dateStr = (document.getElementById('evt-start-date') as HTMLInputElement).value;
       const timeStr = (document.getElementById('evt-start-time') as HTMLInputElement).value;
-      if (!dateStr || !timeStr) { showToast(t('event_start_invalid'), 'error'); return; }
+      if (!dateStr || !timeStr) {
+        showToast(t('event_start_invalid'), 'error');
+        return;
+      }
       const dm = dateStr.split('-');
       const tm = timeStr.split(':');
-      const d = new Date(Date.UTC(
-        parseInt(dm[0], 10), parseInt(dm[1], 10) - 1, parseInt(dm[2], 10),
-        parseInt(tm[0], 10), parseInt(tm[1], 10), 0
-      ));
-      if (isNaN(d.getTime())) { showToast(t('event_start_invalid'), 'error'); return; }
+      const d = new Date(
+        Date.UTC(
+          parseInt(dm[0], 10),
+          parseInt(dm[1], 10) - 1,
+          parseInt(dm[2], 10),
+          parseInt(tm[0], 10),
+          parseInt(tm[1], 10),
+          0
+        )
+      );
+      if (isNaN(d.getTime())) {
+        showToast(t('event_start_invalid'), 'error');
+        return;
+      }
       close(d.toISOString());
     });
   }
@@ -141,9 +183,9 @@ export function initTermsModal(): void {
 export function drawScoreTrendChart(canvas: HTMLCanvasElement | null, history: any[]): void {
   if (!canvas) return;
 
-  const cssW = Math.max(280, (canvas.getBoundingClientRect().width || canvas.width || 1200));
+  const cssW = Math.max(280, canvas.getBoundingClientRect().width || canvas.width || 1200);
   const dpr = Math.max(1, window.devicePixelRatio || 1);
-  const cssH = Math.max(190, Math.min(300, Math.round(cssW * 0.30)));
+  const cssH = Math.max(190, Math.min(300, Math.round(cssW * 0.3)));
   canvas.width = Math.round(cssW * dpr);
   canvas.height = Math.round(cssH * dpr);
   canvas.style.height = cssH + 'px';
@@ -165,7 +207,10 @@ export function drawScoreTrendChart(canvas: HTMLCanvasElement | null, history: a
     return;
   }
 
-  const padL = 40, padR = 40, padT = 32, padB = 36;
+  const padL = 40,
+    padR = 40,
+    padT = 32,
+    padB = 36;
   const chartW = w - padL - padR;
   const chartH = h - padT - padB;
   const baseY = padT + chartH;
@@ -174,7 +219,7 @@ export function drawScoreTrendChart(canvas: HTMLCanvasElement | null, history: a
     x: i,
     score: Number(pt.score) || 0,
     avg: Number(pt.guild_avg_score) || 0,
-    label: formatChartDate(pt)
+    label: formatChartDate(pt),
   }));
 
   let maxVal = 1;
@@ -185,7 +230,7 @@ export function drawScoreTrendChart(canvas: HTMLCanvasElement | null, history: a
   maxVal = Math.round(maxVal * 1.25);
 
   for (let g = 1; g <= 3; g++) {
-    const gy = padT + chartH - (chartH * g / 4);
+    const gy = padT + chartH - (chartH * g) / 4;
     ctx.strokeStyle = 'rgba(255,255,255,0.06)';
     ctx.lineWidth = 1;
     ctx.setLineDash([4, 4]);
@@ -216,7 +261,7 @@ export function drawScoreTrendChart(canvas: HTMLCanvasElement | null, history: a
     ctx.fillText('Scores will appear once submitted and validated', w / 2, padT + chartH / 2 + 14);
 
     list.forEach((pt: any, i: number) => {
-      const x = padL + (chartW * i / Math.max(1, list.length - 1));
+      const x = padL + (chartW * i) / Math.max(1, list.length - 1);
       ctx.fillStyle = 'rgba(255,255,255,0.65)';
       ctx.font = '11px Inter, sans-serif';
       ctx.textAlign = 'center';
@@ -225,8 +270,8 @@ export function drawScoreTrendChart(canvas: HTMLCanvasElement | null, history: a
     return;
   }
 
-  const xFor = (i: number): number => padL + (chartW * i / Math.max(1, list.length - 1));
-  const yFor = (val: number): number => baseY - (chartH * (val / maxVal));
+  const xFor = (i: number): number => padL + (chartW * i) / Math.max(1, list.length - 1);
+  const yFor = (val: number): number => baseY - chartH * (val / maxVal);
 
   if (avgPoints.length > 0) {
     ctx.save();
@@ -237,14 +282,17 @@ export function drawScoreTrendChart(canvas: HTMLCanvasElement | null, history: a
     ctx.lineCap = 'round';
     ctx.beginPath();
     avgPoints.forEach((p, i) => {
-      const x = xFor(p.x), y = yFor(p.avg);
-      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      const x = xFor(p.x),
+        y = yFor(p.avg);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
     });
     ctx.stroke();
     ctx.restore();
 
     avgPoints.forEach((p, idx) => {
-      const x = xFor(p.x), y = yFor(p.avg);
+      const x = xFor(p.x),
+        y = yFor(p.avg);
       ctx.beginPath();
       ctx.arc(x, y, 3, 0, Math.PI * 2);
       ctx.fillStyle = '#1e1f20';
@@ -285,8 +333,10 @@ export function drawScoreTrendChart(canvas: HTMLCanvasElement | null, history: a
 
     ctx.beginPath();
     scoredPoints.forEach((p, i) => {
-      const x = xFor(p.x), y = yFor(p.score);
-      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      const x = xFor(p.x),
+        y = yFor(p.score);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
     });
     if (scoredPoints.length > 1) {
       ctx.lineTo(xFor(scoredPoints[scoredPoints.length - 1].x), baseY);
@@ -298,8 +348,10 @@ export function drawScoreTrendChart(canvas: HTMLCanvasElement | null, history: a
 
     ctx.beginPath();
     scoredPoints.forEach((p, i) => {
-      const x = xFor(p.x), y = yFor(p.score);
-      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      const x = xFor(p.x),
+        y = yFor(p.score);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
     });
     ctx.strokeStyle = '#6dd58c';
     ctx.lineWidth = 3.0;
@@ -308,7 +360,8 @@ export function drawScoreTrendChart(canvas: HTMLCanvasElement | null, history: a
     ctx.stroke();
 
     scoredPoints.forEach((p) => {
-      const x = xFor(p.x), y = yFor(p.score);
+      const x = xFor(p.x),
+        y = yFor(p.score);
 
       ctx.beginPath();
       ctx.arc(x, y, 6, 0, Math.PI * 2);

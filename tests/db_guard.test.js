@@ -14,11 +14,7 @@
 // phase 7 is about to put it in.
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import {
-  installDbWriteGuard,
-  TENANT_TABLES,
-  READ_ONLY_MESSAGE
-} from '../src/core/api/db-guard.ts';
+import { installDbWriteGuard, TENANT_TABLES, READ_ONLY_MESSAGE } from '../src/core/api/db-guard.ts';
 import { setVerifiedRole } from '../src/core/auth/roles.ts';
 import { patchAppState, resetAppState } from '../src/core/state/app-state.ts';
 
@@ -33,12 +29,34 @@ function fakeDb() {
     const b = {
       table,
       chain,
-      delete: (...a) => { chain.push(['delete', a]); calls.push({ table, op: 'delete', args: a }); return b; },
-      update: (v, o) => { chain.push(['update', v]); calls.push({ table, op: 'update', values: v, options: o }); return b; },
-      insert: (v, o) => { chain.push(['insert', v]); calls.push({ table, op: 'insert', values: v, options: o }); return b; },
-      upsert: (v, o) => { chain.push(['upsert', v]); calls.push({ table, op: 'upsert', values: v, options: o }); return b; },
-      eq: (col, val) => { chain.push(['eq', col, val]); return b; },
-      select: (...a) => { chain.push(['select', a]); return b; }
+      delete: (...a) => {
+        chain.push(['delete', a]);
+        calls.push({ table, op: 'delete', args: a });
+        return b;
+      },
+      update: (v, o) => {
+        chain.push(['update', v]);
+        calls.push({ table, op: 'update', values: v, options: o });
+        return b;
+      },
+      insert: (v, o) => {
+        chain.push(['insert', v]);
+        calls.push({ table, op: 'insert', values: v, options: o });
+        return b;
+      },
+      upsert: (v, o) => {
+        chain.push(['upsert', v]);
+        calls.push({ table, op: 'upsert', values: v, options: o });
+        return b;
+      },
+      eq: (col, val) => {
+        chain.push(['eq', col, val]);
+        return b;
+      },
+      select: (...a) => {
+        chain.push(['select', a]);
+        return b;
+      },
     };
     return b;
   };
@@ -134,7 +152,9 @@ describe('M6 — readOnlyResult is a thenable, and must behave like a result', (
   });
 
   it('resolves under .then()', async () => {
-    const r = await new Promise((resolve) => { refused().then(resolve); });
+    const r = await new Promise((resolve) => {
+      refused().then(resolve);
+    });
     expect(r.error.message).toBe(READ_ONLY_MESSAGE);
   });
 

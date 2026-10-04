@@ -26,11 +26,14 @@ const sql = stripComments(migration);
 
 describe('the snapshot cannot be erased by removing a member', () => {
   it('references guilds, never guild_members', () => {
-    const create = sql.slice(sql.indexOf('CREATE TABLE IF NOT EXISTS public.guild_weekly_snapshots'),
-                             sql.indexOf('COMMENT ON TABLE'));
+    const create = sql.slice(
+      sql.indexOf('CREATE TABLE IF NOT EXISTS public.guild_weekly_snapshots'),
+      sql.indexOf('COMMENT ON TABLE')
+    );
     expect(create).toContain('REFERENCES public.guilds(id)');
-    expect(create, 'a (guild, pseudo) key would reintroduce the cascade this table exists to survive')
-      .not.toContain('guild_members');
+    expect(create, 'a (guild, pseudo) key would reintroduce the cascade this table exists to survive').not.toContain(
+      'guild_members'
+    );
   });
 
   it('asserts that absence at migration time, against the live catalog', () => {

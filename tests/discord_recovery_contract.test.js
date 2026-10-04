@@ -24,7 +24,10 @@ describe('an unlink can never strand an account', () => {
   it('detaches the link and issues the code in ONE transaction', () => {
     // A bare deletion with no code to follow is not recovery, it is a way to
     // lock a colleague out. The RPC cannot do only the first half.
-    const fn = migration.slice(migration.indexOf('FUNCTION public.gm_discord_unlink'), migration.indexOf('FUNCTION public.gm_redeem_relink_code'));
+    const fn = migration.slice(
+      migration.indexOf('FUNCTION public.gm_discord_unlink'),
+      migration.indexOf('FUNCTION public.gm_redeem_relink_code')
+    );
     expect(fn).toMatch(/DELETE FROM public\.discord_account_links/);
     expect(fn).toMatch(/INSERT INTO public\.account_link_codes/);
     expect(fn).toMatch(/kind, account_id, issued_by, expires_at/);
@@ -34,7 +37,10 @@ describe('an unlink can never strand an account', () => {
     // This is the escape hatch D3 needs for the 99 accounts that have never
     // logged in and will not remember a password they never used: an admin can
     // hand them a relink code even though there is nothing to detach.
-    const fn = migration.slice(migration.indexOf('FUNCTION public.gm_discord_unlink'), migration.indexOf('FUNCTION public.gm_redeem_relink_code'));
+    const fn = migration.slice(
+      migration.indexOf('FUNCTION public.gm_discord_unlink'),
+      migration.indexOf('FUNCTION public.gm_redeem_relink_code')
+    );
     // The only early return is a missing ACCOUNT, never a missing link.
     const earlyReturns = fn.match(/RETURN QUERY SELECT false[^;]*;/g) || [];
     expect(earlyReturns).toHaveLength(1);
@@ -55,10 +61,12 @@ describe('an unlink can never strand an account', () => {
     expect(migration).toContain('code_hash               text        NOT NULL UNIQUE');
     // Assert on the column list, not the prose: the table COMMENT cites
     // `join_code_plain` on purpose, as the contrasting case.
-    const columns = migration.slice(
-      migration.indexOf('CREATE TABLE IF NOT EXISTS public.account_link_codes'),
-      migration.indexOf('CREATE INDEX IF NOT EXISTS idx_account_link_codes_expires')
-    ).replace(/--.*$/gm, '');
+    const columns = migration
+      .slice(
+        migration.indexOf('CREATE TABLE IF NOT EXISTS public.account_link_codes'),
+        migration.indexOf('CREATE INDEX IF NOT EXISTS idx_account_link_codes_expires')
+      )
+      .replace(/--.*$/gm, '');
     expect(columns).not.toMatch(/plain|clear_text|plaintext/i);
   });
 
@@ -77,7 +85,7 @@ describe('peer unlink is permitted but never quiet', () => {
   });
 
   it('writes the audit ledger AND announces on Discord', () => {
-    expect(block).toContain("from(\"system_audit_logs\").insert");
+    expect(block).toContain('from("system_audit_logs").insert');
     expect(block).toContain('action_type: "discord_unlink"');
     expect(block).toContain('resolveAuditChannelId(admin, targetGuild)');
     expect(block).toContain('postAuditMessage(');
@@ -112,7 +120,10 @@ describe('peer unlink is permitted but never quiet', () => {
     // discord-profile-verification deletes its own replies after 15s to keep
     // the verification channel clean. An audit record must survive.
     const poster = read('supabase/functions/_shared/discord-verification.ts');
-    const fn = poster.slice(poster.indexOf('export async function postAuditMessage'), poster.indexOf('export interface ExtractedProfile'));
+    const fn = poster.slice(
+      poster.indexOf('export async function postAuditMessage'),
+      poster.indexOf('export interface ExtractedProfile')
+    );
     expect(fn).not.toContain('DELETE');
     expect(fn).not.toContain('setTimeout');
   });
@@ -179,8 +190,9 @@ describe('backup codes: one implementation, one audience', () => {
   it('stores only the hash and replaces the whole set on reissue', () => {
     const fn = shared.slice(shared.indexOf('export async function issueBackupCodes'));
     expect(fn).toContain('code_hash: await sha256Hex(code)');
-    expect(fn, 'a code written down last year must not outlive a reissue')
-      .toMatch(/delete\(\)\.eq\("account_id", accountId\)/);
+    expect(fn, 'a code written down last year must not outlive a reissue').toMatch(
+      /delete\(\)\.eq\("account_id", accountId\)/
+    );
   });
 
   it('is restricted to super_admin, and does not leak that fact', () => {
@@ -239,7 +251,9 @@ describe('least privilege on the new objects', () => {
   it('revokes both new functions from unprivileged roles', () => {
     const esc = (x) => x.replace(/[.()]/g, '\\$&');
     for (const f of ['gm_discord_unlink(text, text, timestamptz, text)', 'gm_redeem_relink_code(text, text)']) {
-      expect(migration).toMatch(new RegExp(`REVOKE ALL ON FUNCTION public\\.${esc(f)}\\s+FROM PUBLIC, anon, authenticated;`));
+      expect(migration).toMatch(
+        new RegExp(`REVOKE ALL ON FUNCTION public\\.${esc(f)}\\s+FROM PUBLIC, anon, authenticated;`)
+      );
       expect(migration).toMatch(new RegExp(`GRANT EXECUTE ON FUNCTION public\\.${esc(f)}\\s+TO service_role;`));
     }
   });
@@ -258,7 +272,7 @@ describe('the admin surface tells the truth about what it does', () => {
 
   it('warns that the unlink is announced before it happens', () => {
     const block = render.slice(render.indexOf("'.gm-cred-discord-unlink'"));
-    expect(block).toContain("announced on the guild");
+    expect(block).toContain('announced on the guild');
     expect(block).toContain('single-use relink code');
   });
 

@@ -12,7 +12,6 @@
  * gone; tests call patchAppState().
  */
 
-
 export interface CollapsedRoles {
   R5: boolean;
   R4: boolean;
@@ -77,7 +76,7 @@ function createDefaultState(): AppState {
     guildAbsences: [],
     adminSelectedMembers: new Set<string>(),
     adminMembersViewMode: 'cards',
-    collapsedRoles: defaultCollapsedRoles()
+    collapsedRoles: defaultCollapsedRoles(),
   };
 }
 

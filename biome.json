@@ -82,12 +82,7 @@
   },
   "overrides": [
     {
-      "includes": [
-        "tests/**",
-        "e2e/**",
-        "supabase/functions/_test/**",
-        "supabase/functions/**/*.test.ts"
-      ],
+      "includes": ["tests/**", "e2e/**", "supabase/functions/_test/**", "supabase/functions/**/*.test.ts"],
       "linter": {
         "rules": {
           "suspicious": {
@@ -99,9 +94,7 @@
       }
     },
     {
-      "includes": [
-        "supabase/functions/**"
-      ],
+      "includes": ["supabase/functions/**"],
       "javascript": {
         "formatter": {
           "quoteStyle": "double"
@@ -109,10 +102,7 @@
       }
     },
     {
-      "includes": [
-        "supabase/functions/event-reminders/**",
-        "supabase/functions/_shared/reminder-rules.ts"
-      ],
+      "includes": ["supabase/functions/event-reminders/**", "supabase/functions/_shared/reminder-rules.ts"],
       "javascript": {
         "formatter": {
           "quoteStyle": "single"

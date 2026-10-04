@@ -6,7 +6,6 @@
  * the create account/admin/guild forms, and wireJoinCode.
  */
 
-
 import { t, esc, byId, getDb, ls } from './utils';
 import { getActiveGuild, isSuperAdmin, currentAccountId } from '../../../core/auth/roles';
 import { adminAccounts, generateJoinCode } from '../../../core/auth/session';
@@ -94,11 +93,13 @@ export function populateAccountGuildSelect(): void {
       inviteGuild.disabled = true;
     } else {
       inviteGuild.disabled = false;
-      inviteGuild.innerHTML = (st.guildsList || []).map((g: string) => {
-        const entry = st.guildsData ? st.guildsData[g] : undefined;
-        const sNum = (entry && entry.server_number) ? ' (#' + entry.server_number + ')' : '';
-        return '<option value="' + esc(g) + '">' + esc(g) + sNum + '</option>';
-      }).join('');
+      inviteGuild.innerHTML = (st.guildsList || [])
+        .map((g: string) => {
+          const entry = st.guildsData ? st.guildsData[g] : undefined;
+          const sNum = entry && entry.server_number ? ' (#' + entry.server_number + ')' : '';
+          return '<option value="' + esc(g) + '">' + esc(g) + sNum + '</option>';
+        })
+        .join('');
     }
   }
 
@@ -119,7 +120,7 @@ export function populateAccountGuildSelect(): void {
     let html = '';
     (st.guildsList || []).forEach((g: string) => {
       const entry = st.guildsData ? st.guildsData[g] : undefined;
-      const sNum = (entry && entry.server_number) ? ' (#' + entry.server_number + ')' : '';
+      const sNum = entry && entry.server_number ? ' (#' + entry.server_number + ')' : '';
       html += '<option value="' + esc(g) + '">' + esc(g) + sNum + '</option>';
     });
     selectR5.innerHTML = html;
@@ -146,14 +147,22 @@ export function wireAdminInvite(): void {
     const submitBtn = form.querySelector('button[type="submit"]') as HTMLButtonElement | null;
     const guild = guildSel ? guildSel.value : '';
     const role = roleSel ? roleSel.value : 'guild_admin';
-    if (!guild) { showToast('Pick a guild first.', 'error'); return; }
+    if (!guild) {
+      showToast('Pick a guild first.', 'error');
+      return;
+    }
 
     if (submitBtn) submitBtn.disabled = true;
     try {
       const res = await adminAccounts('issue-admin-invite', { guild: guild, role: role });
       if (!res.ok) {
         if (res.error === 'too_many_open_codes') {
-          showToast('That guild already has ' + (res.open_codes ?? 'too many') + ' unused invitations. Wait for one to be used or to expire.', 'error');
+          showToast(
+            'That guild already has ' +
+              (res.open_codes ?? 'too many') +
+              ' unused invitations. Wait for one to be used or to expire.',
+            'error'
+          );
         } else if (res.error === 'forbidden') {
           showToast('You cannot invite that role into that guild.', 'error');
         } else {
@@ -165,20 +174,34 @@ export function wireAdminInvite(): void {
       if (result) {
         result.innerHTML =
           '<div class="gm-cred-pass" style="display:inline-flex;">' +
-            '<span class="gm-pwd-text">' + esc(res.invite_code) + '</span>' +
-            '<button class="gm-mini-btn gm-invite-copy" title="Copy invitation code"><i class="ph ph-copy"></i></button>' +
-            '<button class="gm-mini-btn gm-invite-link-copy" title="Copy invite link"><i class="ph ph-link"></i></button>' +
+          '<span class="gm-pwd-text">' +
+          esc(res.invite_code) +
+          '</span>' +
+          '<button class="gm-mini-btn gm-invite-copy" title="Copy invitation code"><i class="ph ph-copy"></i></button>' +
+          '<button class="gm-mini-btn gm-invite-link-copy" title="Copy invite link"><i class="ph ph-link"></i></button>' +
           '</div>' +
           '<div style="margin-top:.4rem; font-size:.78rem; color:var(--text-dim);">' +
-            esc(String(res.open_codes)) + ' of ' + esc(String(res.max_open_codes)) + ' invitations open for ' + esc(guild) + '. Shown once.' +
+          esc(String(res.open_codes)) +
+          ' of ' +
+          esc(String(res.max_open_codes)) +
+          ' invitations open for ' +
+          esc(guild) +
+          '. Shown once.' +
           '</div>';
         const linkCopyBtn = result.querySelector('.gm-invite-link-copy');
-        if (linkCopyBtn) linkCopyBtn.addEventListener('click', () => { copyInviteLink('code', res.invite_code); });
+        if (linkCopyBtn)
+          linkCopyBtn.addEventListener('click', () => {
+            copyInviteLink('code', res.invite_code);
+          });
         const copyBtn = result.querySelector('.gm-invite-copy');
-        if (copyBtn) copyBtn.addEventListener('click', () => {
-          if (navigator.clipboard) navigator.clipboard.writeText(res.invite_code)
-            .then(() => showToast('Invitation code copied.', 'success')).catch(() => undefined);
-        });
+        if (copyBtn)
+          copyBtn.addEventListener('click', () => {
+            if (navigator.clipboard)
+              navigator.clipboard
+                .writeText(res.invite_code)
+                .then(() => showToast('Invitation code copied.', 'success'))
+                .catch(() => undefined);
+          });
       }
       if (navigator.clipboard) navigator.clipboard.writeText(res.invite_code).catch(() => undefined);
       showToast('Invitation for ' + guild + ' created and copied — relay it via Discord.', 'success');
@@ -209,7 +232,8 @@ function joinCodeStorageKey(): string | null {
 function copyInviteLink(kind: 'join' | 'code', code: string): void {
   const link = buildInviteLink(window.location.origin, kind, code);
   if (navigator.clipboard) {
-    navigator.clipboard.writeText(link)
+    navigator.clipboard
+      .writeText(link)
       .then(() => showToast("Invite link copied — share it on your guild's Discord.", 'success'))
       .catch(() => undefined);
   }
@@ -265,7 +289,9 @@ export function wireJoinCode(): void {
         try {
           const key = joinCodeStorageKey();
           if (key) ls()?.setItem(key, generatedCode);
-        } catch (_) { /* ignore */ }
+        } catch (_) {
+          /* ignore */
+        }
         showCode(generatedCode);
         setInfo("This is your guild's permanent join code. Share it with your players.");
         showToast('Join code created.', 'success');
@@ -274,8 +300,10 @@ export function wireJoinCode(): void {
       let storedCode = '';
       try {
         const key = joinCodeStorageKey();
-        storedCode = key ? (ls()?.getItem(key) || '') : '';
-      } catch (_) { /* ignore */ }
+        storedCode = key ? ls()?.getItem(key) || '' : '';
+      } catch (_) {
+        /* ignore */
+      }
       if (storedCode) {
         showCode(storedCode);
         setInfo("This is your guild's permanent join code. Share it with your players.");
@@ -292,7 +320,13 @@ export function wireJoinCode(): void {
     copyBtn.addEventListener('click', () => {
       const code = currentCode || (resultVal ? resultVal.textContent : '') || '';
       if (!code || code === 'No code yet') return;
-      if (navigator.clipboard) navigator.clipboard.writeText(code).then(() => { showToast('Join code copied.', 'success'); }).catch(() => undefined);
+      if (navigator.clipboard)
+        navigator.clipboard
+          .writeText(code)
+          .then(() => {
+            showToast('Join code copied.', 'success');
+          })
+          .catch(() => undefined);
     });
   }
   if (linkBtn && !(linkBtn as any).__gmLinkWired) {
@@ -331,20 +365,23 @@ async function onCreateAccountSubmit(e: Event): Promise<void> {
     const res = await adminAccounts('create', {
       id: identifier,
       role: 'guild_admin',
-      guild: (guildSelected === 'ALL' ? null : guildSelected),
-      created_by: currentAccountId()
+      guild: guildSelected === 'ALL' ? null : guildSelected,
+      created_by: currentAccountId(),
     });
     if (!res.ok || !res.password) throw new Error(createErrorMessage(res.error));
     unshiftAccount({
       id: identifier,
       role: 'guild_admin',
-      guild: (guildSelected === 'ALL' ? null : guildSelected),
-      created_at: new Date().toISOString()
+      guild: guildSelected === 'ALL' ? null : guildSelected,
+      created_at: new Date().toISOString(),
     });
     renderAccounts();
     revealAccountPassword(identifier, res.password);
     if (idInput) idInput.value = '';
-    showToast(t('toast_account_created') + ' Password: ' + res.password + ' (copied to clipboard, shown only this once)', 'success');
+    showToast(
+      t('toast_account_created') + ' Password: ' + res.password + ' (copied to clipboard, shown only this once)',
+      'success'
+    );
   } catch (err: any) {
     showToast(err.message || t('toast_err_create'), 'error');
   } finally {
@@ -390,7 +427,10 @@ async function onCreateAdminAccountSubmit(e: Event): Promise<void> {
     renderAccounts();
     revealAccountPassword(identifier, res.password);
     if (idInput) idInput.value = '';
-    showToast('Admin account ' + identifier + ' (' + roleSelected + ') created for guild ' + guildSelected + '!', 'success');
+    showToast(
+      'Admin account ' + identifier + ' (' + roleSelected + ') created for guild ' + guildSelected + '!',
+      'success'
+    );
   } catch (err: any) {
     showToast(err.message || 'Error creating admin account', 'error');
   } finally {
@@ -408,9 +448,18 @@ async function onCreateGuildSubmit(e: Event): Promise<void> {
   const serverNum = serverInput ? serverInput.value.trim() : '';
   if (!guildName) return;
 
-  if (!/^\d{4}$/.test(serverNum)) { showToast('Server number must be exactly 4 digits (e.g. 1089).', 'error'); return; }
-  if (/[^A-Z0-9_]/.test(guildName)) { showToast('Guild name must contain uppercase letters, numbers, or underscores.', 'error'); return; }
-  if ((getAppState().guildsList || []).indexOf(guildName) !== -1) { showToast('This guild already exists!', 'error'); return; }
+  if (!/^\d{4}$/.test(serverNum)) {
+    showToast('Server number must be exactly 4 digits (e.g. 1089).', 'error');
+    return;
+  }
+  if (/[^A-Z0-9_]/.test(guildName)) {
+    showToast('Guild name must contain uppercase letters, numbers, or underscores.', 'error');
+    return;
+  }
+  if ((getAppState().guildsList || []).indexOf(guildName) !== -1) {
+    showToast('This guild already exists!', 'error');
+    return;
+  }
 
   const btn = submitButton(form);
   if (btn) btn.disabled = true;
@@ -442,9 +491,15 @@ export function initAccountsUi(): void {
     (form as any).__gmAdminWired = true;
     form.addEventListener('submit', handler);
   };
-  wire('create-account-form', (e) => { void onCreateAccountSubmit(e); });
-  wire('create-admin-account-form', (e) => { void onCreateAdminAccountSubmit(e); });
-  wire('create-guild-form', (e) => { void onCreateGuildSubmit(e); });
+  wire('create-account-form', (e) => {
+    void onCreateAccountSubmit(e);
+  });
+  wire('create-admin-account-form', (e) => {
+    void onCreateAdminAccountSubmit(e);
+  });
+  wire('create-guild-form', (e) => {
+    void onCreateGuildSubmit(e);
+  });
 }
 
 // ── Recovery codes ───────────────────────────────────────────────────────────
@@ -474,18 +529,24 @@ export async function loadRecoveryCodesCard(): Promise<void> {
     card.classList.remove('hidden');
     const remaining = Number(res.remaining ?? 0);
     const total = Number(res.total ?? 10);
-    const tone = remaining === 0 ? 'error' : (remaining <= 2 ? 'warning' : 'success');
+    const tone = remaining === 0 ? 'error' : remaining <= 2 ? 'warning' : 'success';
     statusEl.className = '';
     statusEl.innerHTML =
       '<div class="gm-row" style="gap:.6rem; align-items:center;">' +
-        '<span class="gm-badge gm-badge-' + tone + '">' + remaining + ' / ' + total + '</span>' +
-        '<span style="color: var(--text-muted); font-size: var(--fs-sm);">' +
-          (remaining === 0
-            ? 'No codes left. Issue a new set now.'
-            : remaining <= 2
-              ? 'Running low. Issue a new set soon.'
-              : 'unused codes remaining.') +
-        '</span>' +
+      '<span class="gm-badge gm-badge-' +
+      tone +
+      '">' +
+      remaining +
+      ' / ' +
+      total +
+      '</span>' +
+      '<span style="color: var(--text-muted); font-size: var(--fs-sm);">' +
+      (remaining === 0
+        ? 'No codes left. Issue a new set now.'
+        : remaining <= 2
+          ? 'Running low. Issue a new set soon.'
+          : 'unused codes remaining.') +
+      '</span>' +
       '</div>';
   } catch (_) {
     card.classList.add('hidden');
@@ -500,9 +561,12 @@ async function regenerateRecoveryCodes(): Promise<void> {
 
   // Reissuing invalidates the previous set, so a code written down last year
   // stops working. Say that before doing it, not after.
-  const ok = typeof window !== 'undefined'
-    ? window.confirm('Issue ten new recovery codes?\n\nYour current codes stop working immediately. The new ones are shown once and never again.')
-    : false;
+  const ok =
+    typeof window !== 'undefined'
+      ? window.confirm(
+          'Issue ten new recovery codes?\n\nYour current codes stop working immediately. The new ones are shown once and never again.'
+        )
+      : false;
   if (!ok) return;
 
   if (btn) btn.disabled = true;
@@ -516,36 +580,52 @@ async function regenerateRecoveryCodes(): Promise<void> {
     out.classList.remove('hidden');
     out.innerHTML =
       '<div class="terms-callout warning" style="margin-bottom:.75rem; font-size: var(--fs-sm); line-height:1.45;">' +
-        '<i class="ph ph-warning"></i> Save these now. They are shown once and cannot be recovered.' +
+      '<i class="ph ph-warning"></i> Save these now. They are shown once and cannot be recovered.' +
       '</div>' +
       '<div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap:.4rem;">' +
-        codes.map((c) => '<code class="gm-code-chip" style="padding:.45rem .6rem; border-radius:8px; background: var(--bg-2, #1a1b1e); font-family: var(--font-mono, monospace);">' + esc(c) + '</code>').join('') +
+      codes
+        .map(
+          (c) =>
+            '<code class="gm-code-chip" style="padding:.45rem .6rem; border-radius:8px; background: var(--bg-2, #1a1b1e); font-family: var(--font-mono, monospace);">' +
+            esc(c) +
+            '</code>'
+        )
+        .join('') +
       '</div>' +
       '<div class="gm-row" style="gap:.5rem; margin-top:.75rem;">' +
-        '<button type="button" class="gm-btn gm-btn-ghost gm-btn-sm" id="recovery-codes-copy"><i class="ph ph-copy"></i> Copy all</button>' +
-        '<button type="button" class="gm-btn gm-btn-ghost gm-btn-sm" id="recovery-codes-download"><i class="ph ph-download-simple"></i> Download</button>' +
+      '<button type="button" class="gm-btn gm-btn-ghost gm-btn-sm" id="recovery-codes-copy"><i class="ph ph-copy"></i> Copy all</button>' +
+      '<button type="button" class="gm-btn gm-btn-ghost gm-btn-sm" id="recovery-codes-download"><i class="ph ph-download-simple"></i> Download</button>' +
       '</div>';
 
     const copyBtn = byId('recovery-codes-copy');
-    if (copyBtn) copyBtn.addEventListener('click', () => {
-      if (navigator.clipboard) {
-        void navigator.clipboard.writeText(codes.join('\n'))
-          .then(() => showToast('Recovery codes copied.', 'success'))
-          .catch(() => showToast('Could not copy. Select them by hand.', 'error'));
-      }
-    });
+    if (copyBtn)
+      copyBtn.addEventListener('click', () => {
+        if (navigator.clipboard) {
+          void navigator.clipboard
+            .writeText(codes.join('\n'))
+            .then(() => showToast('Recovery codes copied.', 'success'))
+            .catch(() => showToast('Could not copy. Select them by hand.', 'error'));
+        }
+      });
     const dlBtn = byId('recovery-codes-download');
-    if (dlBtn) dlBtn.addEventListener('click', () => {
-      const blob = new Blob(
-        ['FGF Guild Management recovery codes\nIssued ' + new Date().toISOString() + '\n\n' + codes.join('\n') + '\n'],
-        { type: 'text/plain' }
-      );
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'fgf-recovery-codes.txt';
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-    });
+    if (dlBtn)
+      dlBtn.addEventListener('click', () => {
+        const blob = new Blob(
+          [
+            'FGF Guild Management recovery codes\nIssued ' +
+              new Date().toISOString() +
+              '\n\n' +
+              codes.join('\n') +
+              '\n',
+          ],
+          { type: 'text/plain' }
+        );
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'fgf-recovery-codes.txt';
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      });
 
     showToast('Ten new recovery codes issued.', 'success');
     void loadRecoveryCodesCard();
@@ -561,7 +641,9 @@ export function wireRecoveryCodesCard(): void {
   const btn = byId('recovery-codes-regen-btn');
   if (!btn || (btn as any).__gmRecoveryWired) return;
   (btn as any).__gmRecoveryWired = true;
-  btn.addEventListener('click', () => { void regenerateRecoveryCodes(); });
+  btn.addEventListener('click', () => {
+    void regenerateRecoveryCodes();
+  });
 }
 
 // Passkeys were removed entirely on 2026-10-03 (owner decision): the "My

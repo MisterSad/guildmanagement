@@ -52,4 +52,3 @@ export interface WarOpponentSnapshot {
   server_number?: string | null;
   guild_ref?: string | null;
 }
-

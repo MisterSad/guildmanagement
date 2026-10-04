@@ -53,7 +53,9 @@ describe('the recovery code is reachable from the login page', () => {
     expect(body).toMatch(/loginWithBackupCodeDiscord/);
     // Since M4c there is no bridge: the controller must import the real
     // export from session.ts, or the dialog would call nothing.
-    expect(ctrl).toMatch(/import\s*\{[^}]*\bloginWithBackupCodeDiscord\b[^}]*\}\s*from\s*'\.\.\/\.\.\/\.\.\/core\/auth\/session'/);
+    expect(ctrl).toMatch(
+      /import\s*\{[^}]*\bloginWithBackupCodeDiscord\b[^}]*\}\s*from\s*'\.\.\/\.\.\/\.\.\/core\/auth\/session'/
+    );
     expect(read('src/core/auth/session.ts')).toMatch(/export async function loginWithBackupCodeDiscord\(/);
   });
 

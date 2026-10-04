@@ -25,12 +25,20 @@ export interface PendingApprovalContext {
 /** Chip + button, or nothing when the row is not pending. */
 export function pendingApprovalHtml(pseudo: string | undefined, isPending: unknown): string {
   if (!isPending || !pseudo) return '';
-  return '<span class="gm-chip gm-chip-warning" style="font-size: var(--fs-2xs); padding:0.05rem 0.3rem;" title="Submitted by the player from the Player Portal">Pending</span>' +
-    '<button type="button" class="gm-btn gm-btn-success gm-btn-sm pending-approve-btn" data-pseudo="' + escapeHTML(pseudo) + '" style="padding:0.1rem 0.45rem; font-size: var(--fs-xs);">Approve</button>';
+  return (
+    '<span class="gm-chip gm-chip-warning" style="font-size: var(--fs-2xs); padding:0.05rem 0.3rem;" title="Submitted by the player from the Player Portal">Pending</span>' +
+    '<button type="button" class="gm-btn gm-btn-success gm-btn-sm pending-approve-btn" data-pseudo="' +
+    escapeHTML(pseudo) +
+    '" style="padding:0.1rem 0.45rem; font-size: var(--fs-xs);">Approve</button>'
+  );
 }
 
 /** Wire every `.pending-approve-btn` under `area`. `onApproved` runs after a success. */
-export function wirePendingApprovals(area: Element, ctx: PendingApprovalContext, onApproved: (pseudo: string) => void): void {
+export function wirePendingApprovals(
+  area: Element,
+  ctx: PendingApprovalContext,
+  onApproved: (pseudo: string) => void
+): void {
   area.querySelectorAll('.pending-approve-btn').forEach((el) => {
     const btn = el as HTMLButtonElement;
     btn.addEventListener('click', async () => {
@@ -41,7 +49,7 @@ export function wirePendingApprovals(area: Element, ctx: PendingApprovalContext,
           p_guild: ctx.guild,
           p_event_name: ctx.eventName,
           p_session_id: ctx.sessionId,
-          p_pseudo: pseudo
+          p_pseudo: pseudo,
         });
         if (res.error) throw res.error;
         if (!res.data || res.data.ok === false) throw new Error((res.data && res.data.error) || 'approve_failed');

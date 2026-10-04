@@ -30,9 +30,7 @@ export async function findUserByEmail(
       break;
     }
 
-    const found = data.users.find(
-      (u) => u.email && u.email.trim().toLowerCase() === targetEmail
-    );
+    const found = data.users.find((u) => u.email && u.email.trim().toLowerCase() === targetEmail);
 
     if (found) {
       return {

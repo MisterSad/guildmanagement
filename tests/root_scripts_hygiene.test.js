@@ -59,8 +59,7 @@ describe('TICKET-12 [MAINT-01]: Root Scripts Hygiene & Build Exclusion', () => {
   });
 
   it('verifies that only active operational scripts remain in scripts/', () => {
-    const activeScripts = fs.readdirSync(scriptsDir)
-      .filter((f) => fs.statSync(path.join(scriptsDir, f)).isFile());
+    const activeScripts = fs.readdirSync(scriptsDir).filter((f) => fs.statSync(path.join(scriptsDir, f)).isFile());
 
     // Only operational scripts remain at scripts/ root
     expect(activeScripts).toContain('build.js');

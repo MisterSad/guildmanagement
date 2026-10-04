@@ -3,8 +3,21 @@
  * 5 minutes and start reminders, from each active event_status row.
  */
 
-import { isToggleEnabled, resolveGuildWebhook, isStandardEventName, eventPrefixForName, normalizeEventName } from "../_shared/reminder-rules.ts";
-import { claimSlot, settleSlot, postToDiscord, reminderBody, formatDiscordRoleMention, type GuildRun } from "./shared.ts";
+import {
+  isToggleEnabled,
+  resolveGuildWebhook,
+  isStandardEventName,
+  eventPrefixForName,
+  normalizeEventName,
+} from '../_shared/reminder-rules.ts';
+import {
+  claimSlot,
+  settleSlot,
+  postToDiscord,
+  reminderBody,
+  formatDiscordRoleMention,
+  type GuildRun,
+} from './shared.ts';
 
 export interface ActiveEvent {
   guild: string;
@@ -26,24 +39,41 @@ function dueReminder(roundedMins: number): string {
 function roleTagFor(run: GuildRun, event: ActiveEvent, eventPrefix: string): string {
   const { config } = run;
   let eventSpecificRoleId: string | null = null;
-  if (normalizeEventName(event.event_name) === 'SHADOWFRONT SQUAD 1' && config['discord_role_id_shadowfront_squad1']?.trim()) {
+  if (
+    normalizeEventName(event.event_name) === 'SHADOWFRONT SQUAD 1' &&
+    config['discord_role_id_shadowfront_squad1']?.trim()
+  ) {
     eventSpecificRoleId = config['discord_role_id_shadowfront_squad1'];
-  } else if (normalizeEventName(event.event_name) === 'SHADOWFRONT SQUAD 2' && config['discord_role_id_shadowfront_squad2']?.trim()) {
+  } else if (
+    normalizeEventName(event.event_name) === 'SHADOWFRONT SQUAD 2' &&
+    config['discord_role_id_shadowfront_squad2']?.trim()
+  ) {
     eventSpecificRoleId = config['discord_role_id_shadowfront_squad2'];
   } else if (eventPrefix) {
     eventSpecificRoleId = config[`discord_role_id_${eventPrefix}`] || null;
   }
-  const discordRoleId = (eventSpecificRoleId && eventSpecificRoleId.trim() !== '')
-    ? eventSpecificRoleId
-    : config['discord_role_id'];
+  const discordRoleId =
+    eventSpecificRoleId && eventSpecificRoleId.trim() !== '' ? eventSpecificRoleId : config['discord_role_id'];
   return formatDiscordRoleMention(discordRoleId);
 }
 
-function buildMessage(run: GuildRun, event: ActiveEvent, eventPrefix: string, reminderType: string, eventGuildTag: string) {
-  const dateFormatted = new Date(event.start_at as string).toLocaleString('en-US', {
-    weekday: 'short', month: '2-digit', day: '2-digit', timeZone: 'UTC',
-    hour: '2-digit', minute: '2-digit', hour12: false
-  }) + ' UTC';
+function buildMessage(
+  run: GuildRun,
+  event: ActiveEvent,
+  eventPrefix: string,
+  reminderType: string,
+  eventGuildTag: string
+) {
+  const dateFormatted =
+    new Date(event.start_at as string).toLocaleString('en-US', {
+      weekday: 'short',
+      month: '2-digit',
+      day: '2-digit',
+      timeZone: 'UTC',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }) + ' UTC';
 
   let content = '';
   let embedTitle = `📢 Guild Event: ${event.event_name}`;
@@ -94,9 +124,7 @@ function buildMessage(run: GuildRun, event: ActiveEvent, eventPrefix: string, re
     agenda = '';
   }
 
-  const fields = [
-    { name: 'Start Time (UTC)', value: dateFormatted, inline: true }
-  ];
+  const fields = [{ name: 'Start Time (UTC)', value: dateFormatted, inline: true }];
   if (agenda) {
     fields.push({ name: 'Guild Agenda', value: agenda, inline: false });
   }
@@ -116,8 +144,10 @@ export async function runStandardEvents(run: GuildRun, events: ActiveEvent[]): P
     const startMs = new Date(event.start_at).getTime();
 
     // Auto-expire stale standard events whose start_at is older than 24 hours
-    if (!isNaN(startMs) && (now - startMs) > DAY_MS) {
-      logger.info(`[${guild}] Auto-expiring stale event ${event.event_name} (session: ${event.session_id}, started: ${event.start_at})`);
+    if (!isNaN(startMs) && now - startMs > DAY_MS) {
+      logger.info(
+        `[${guild}] Auto-expiring stale event ${event.event_name} (session: ${event.session_id}, started: ${event.start_at})`
+      );
       await supabase
         .from('event_status')
         .update({ is_active: false, updated_at: new Date().toISOString() })
@@ -132,14 +162,16 @@ export async function runStandardEvents(run: GuildRun, events: ActiveEvent[]): P
     if (!reminderType || !eventPrefix) continue;
 
     if (!isToggleEnabled(config, `notify_${eventPrefix}_${reminderType}`)) {
-      logger.info(`[${guild}] Notification for ${event.event_name} (${reminderType}) is disabled in configuration, skipping.`);
+      logger.info(
+        `[${guild}] Notification for ${event.event_name} (${reminderType}) is disabled in configuration, skipping.`
+      );
       continue;
     }
 
     const webhookUrl = resolveGuildWebhook(config, eventPrefix);
     const lockKey = `sent_event_${event.event_name.replace(/\s+/g, '_')}_${event.session_id}_${reminderType}`;
     const what = `standard event ${event.event_name} (${reminderType})`;
-    if (!await claimSlot(run, lockKey, what)) continue;
+    if (!(await claimSlot(run, lockKey, what))) continue;
 
     const body = buildMessage(run, event, eventPrefix, reminderType, roleTagFor(run, event, eventPrefix));
     const sent = await postToDiscord(run, webhookUrl, body, `${event.event_name} (${reminderType})`);

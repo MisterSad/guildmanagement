@@ -75,9 +75,17 @@ describe('no payment code ships', () => {
     for (const f of files) {
       const code = stripComments(read(f));
       for (const token of [
-        'gm_payments', 'gm_apply_donation', 'gm_apply_subscription_payment',
-        'subscription_type', 'subscription_end', 'payments_disabled', 'plan_key',
-        'isPaymentsDisabled', 'isGuildSubscriptionExpired', 'stripe', 'Stripe',
+        'gm_payments',
+        'gm_apply_donation',
+        'gm_apply_subscription_payment',
+        'subscription_type',
+        'subscription_end',
+        'payments_disabled',
+        'plan_key',
+        'isPaymentsDisabled',
+        'isGuildSubscriptionExpired',
+        'stripe',
+        'Stripe',
       ]) {
         expect(code, `${f} still references ${token}`).not.toContain(token);
       }
@@ -103,7 +111,7 @@ describe('the guild admin tab kept what was actually live', () => {
     expect(ctrl).toContain('guild-server-number');
     // M4b: the queries live in admin.service; the controller calls them.
     const svc = read('src/modules/app/admin/admin.service.ts');
-    expect(svc).toContain("update({ server_number:");
+    expect(svc).toContain('update({ server_number:');
     expect(svc, 'gm_delete_guild has no other caller').toContain('gm_delete_guild');
     expect(ctrl).toContain('await updateGuildServerNumber(db, guildId, serverNum)');
     expect(ctrl).toContain('await deleteGuild(db, guildId)');

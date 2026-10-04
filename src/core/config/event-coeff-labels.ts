@@ -21,12 +21,16 @@ export function resolveCoeff(bucket: EventCoeffBucket, raw: unknown): number {
 
 export async function paintEventCoeffLabels(root: ParentNode = document): Promise<void> {
   const els = Array.from(root.querySelectorAll<HTMLElement>('[data-gm-event-coeff]'));
-  await Promise.all(els.map(async (el) => {
-    const bucket = el.getAttribute('data-gm-event-coeff') as EventCoeffBucket;
-    if (!(bucket in EVENT_COEFF_CONFIG_KEYS)) return;
-    try {
-      const value = resolveCoeff(bucket, await getGuildConfig(EVENT_COEFF_CONFIG_KEYS[bucket]));
-      el.textContent = '· coeff. ' + value + '×';
-    } catch (_) { /* keep what is shown */ }
-  }));
+  await Promise.all(
+    els.map(async (el) => {
+      const bucket = el.getAttribute('data-gm-event-coeff') as EventCoeffBucket;
+      if (!(bucket in EVENT_COEFF_CONFIG_KEYS)) return;
+      try {
+        const value = resolveCoeff(bucket, await getGuildConfig(EVENT_COEFF_CONFIG_KEYS[bucket]));
+        el.textContent = '· coeff. ' + value + '×';
+      } catch (_) {
+        /* keep what is shown */
+      }
+    })
+  );
 }

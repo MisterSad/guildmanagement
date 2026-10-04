@@ -17,10 +17,9 @@ export async function getTransferGuilds(ctx: PortalContext): Promise<Response> {
   // migration group with it — mirrors the admin "Transfer Member"
   // dialog (gm_list_transfer_eligible_guilds), so a player is never
   // offered a target the transfer RPC would reject.
-  const { data: guilds, error: guildsErr } = await admin.rpc(
-    "gm_list_transfer_eligible_guilds",
-    { p_guild: member.guild }
-  );
+  const { data: guilds, error: guildsErr } = await admin.rpc("gm_list_transfer_eligible_guilds", {
+    p_guild: member.guild,
+  });
 
   if (guildsErr) {
     logger.error("Failed to fetch transfer guilds", guildsErr);
@@ -40,7 +39,7 @@ export async function submitTransferRequest(ctx: PortalContext): Promise<Respons
 
   const { data, error } = await admin.rpc("request_guild_transfer", {
     p_uid: uid,
-    p_target_guild: targetGuild
+    p_target_guild: targetGuild,
   });
 
   if (error) {
@@ -57,8 +56,8 @@ export async function submitTransferRequest(ctx: PortalContext): Promise<Respons
     metadata: {
       source_guild: member?.guild || identity.guild,
       target_guild: targetGuild,
-      result: data
-    }
+      result: data,
+    },
   });
 
   logger.info("Player submitted guild transfer request", { uid, targetGuild });

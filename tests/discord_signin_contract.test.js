@@ -27,7 +27,9 @@ describe('auth-discord is reachable without a session', () => {
 
   it('is deployed: the CI deploy enumerates every function directory', () => {
     expect(edgeSource('auth-discord').length).toBeGreaterThan(0);
-    expect(read('scripts/deploy-edge-functions.sh')).toContain('find "${FUNCTIONS_DIR}" -mindepth 1 -maxdepth 1 -type d');
+    expect(read('scripts/deploy-edge-functions.sh')).toContain(
+      'find "${FUNCTIONS_DIR}" -mindepth 1 -maxdepth 1 -type d'
+    );
   });
 
   it('fails closed when the OAuth secrets are missing', () => {
@@ -41,14 +43,14 @@ describe('auth-discord is reachable without a session', () => {
 
 describe('the code exchange cannot be replayed or hijacked', () => {
   it('consumes the state through the atomic RPC, never a select-then-delete', () => {
-    expect(fnCode).toContain("rpc(\"gm_consume_discord_oauth_state\"");
+    expect(fnCode).toContain('rpc("gm_consume_discord_oauth_state"');
     // A read followed by a delete would race; DELETE ... RETURNING cannot.
     expect(migration).toMatch(/DELETE FROM public\.discord_oauth_states[\s\S]{0,200}RETURNING/);
     expect(fnCode).not.toMatch(/from\("discord_oauth_states"\)[\s\S]{0,80}\.select\(/);
   });
 
   it('consumes the ticket the same way', () => {
-    expect(fnCode).toContain("rpc(\"gm_consume_discord_auth_ticket\"");
+    expect(fnCode).toContain('rpc("gm_consume_discord_auth_ticket"');
     expect(migration).toMatch(/DELETE FROM public\.discord_auth_tickets[\s\S]{0,200}RETURNING/);
   });
 
@@ -80,7 +82,10 @@ describe('the callback cannot become an open redirect', () => {
   });
 
   it('validates the origin at /start before it is ever persisted', () => {
-    const start = fnCode.slice(fnCode.indexOf('async function handleStart'), fnCode.indexOf('async function handleCallback'));
+    const start = fnCode.slice(
+      fnCode.indexOf('async function handleStart'),
+      fnCode.indexOf('async function handleCallback')
+    );
     expect(start).toContain('resolveOrigin(');
     expect(fnCode).toMatch(/function resolveOrigin[\s\S]{0,200}isAllowedOrigin\(raw\)/);
   });
@@ -137,11 +142,17 @@ describe('deny-all and least privilege on the new objects', () => {
     // Finding M15: a bare grant to PUBLIC is what made a maintenance function
     // callable by anyone holding the publishable key.
     const esc = (x) => x.replace(/[.()]/g, '\\$&');
-    for (const f of ['gm_consume_discord_oauth_state(text)', 'gm_consume_discord_auth_ticket(text)', 'gm_purge_discord_ephemera()']) {
-      expect(migration, `${f} must be revoked`)
-        .toMatch(new RegExp(`REVOKE ALL ON FUNCTION public\\.${esc(f)}\\s+FROM PUBLIC, anon, authenticated;`));
-      expect(migration, `${f} must be granted to service_role`)
-        .toMatch(new RegExp(`GRANT EXECUTE ON FUNCTION public\\.${esc(f)}\\s+TO service_role;`));
+    for (const f of [
+      'gm_consume_discord_oauth_state(text)',
+      'gm_consume_discord_auth_ticket(text)',
+      'gm_purge_discord_ephemera()',
+    ]) {
+      expect(migration, `${f} must be revoked`).toMatch(
+        new RegExp(`REVOKE ALL ON FUNCTION public\\.${esc(f)}\\s+FROM PUBLIC, anon, authenticated;`)
+      );
+      expect(migration, `${f} must be granted to service_role`).toMatch(
+        new RegExp(`GRANT EXECUTE ON FUNCTION public\\.${esc(f)}\\s+TO service_role;`)
+      );
     }
   });
 

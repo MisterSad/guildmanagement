@@ -4,7 +4,14 @@
  */
 
 import { getPlayer } from "../../_shared/member-lookup.ts";
-import { parseSafeScore, participantEventName, isOfficerRecorded, warSubmissionRows, getWeekStartIso, logPlayerAction } from "../../_shared/player-actions.ts";
+import {
+  parseSafeScore,
+  participantEventName,
+  isOfficerRecorded,
+  warSubmissionRows,
+  getWeekStartIso,
+  logPlayerAction,
+} from "../../_shared/player-actions.ts";
 import { getGuildAverages, type PortalContext } from "../context.ts";
 
 /** `get-active-sessions` */
@@ -50,7 +57,9 @@ export async function getActiveSessions(ctx: PortalContext): Promise<Response> {
     const sessionIds = activeSessions.map((s: any) => s.session_id);
     const { data: pRows, error: pErr } = await admin
       .from("event_participants")
-      .select("event_name, session_id, score, score_prep, score_pvp, participated, is_pending, late, excused, sub_present")
+      .select(
+        "event_name, session_id, score, score_prep, score_pvp, participated, is_pending, late, excused, sub_present"
+      )
       .eq("guild", member.guild)
       .eq("pseudo", member.pseudo)
       .in("session_id", sessionIds);
@@ -79,7 +88,7 @@ export async function getActiveSessions(ctx: PortalContext): Promise<Response> {
       in_session: !!p,
       late: p ? p.late : false,
       excused: p ? p.excused : false,
-      sub_present: p ? p.sub_present : false
+      sub_present: p ? p.sub_present : false,
     };
   });
 
@@ -168,7 +177,7 @@ export async function submitScores(ctx: PortalContext): Promise<Response> {
   }
 
   const update: Record<string, unknown> = {
-    is_pending: true
+    is_pending: true,
   };
 
   if (payload.participated !== undefined) {
@@ -267,8 +276,8 @@ export async function submitScores(ctx: PortalContext): Promise<Response> {
       event_name: eventName,
       session_id: sessionId,
       submitted_values: update,
-      previous_is_pending: existing?.is_pending
-    }
+      previous_is_pending: existing?.is_pending,
+    },
   });
 
   logger.info("Player submitted event scores", { pseudo: member.pseudo, eventName, sessionId });

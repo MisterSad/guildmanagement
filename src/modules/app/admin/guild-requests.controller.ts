@@ -7,7 +7,6 @@
  * showConfirm and feedback through dialogs showToast.
  */
 
-
 import { overviewViewLazy } from '../lazy-views';
 import { getActiveGuild } from '../../../core/auth/roles';
 import { adminAccounts } from '../../../core/auth/session';
@@ -17,7 +16,13 @@ import { type AccountRow, getAccounts, filterAccountsOut } from './admin-store';
 import { fetchAccounts, fetchGuilds } from './accounts.controller';
 import { showToast, showConfirm, openCustomMsgModal } from '../dialogs/dialogs.service';
 import { initChestTiersSettings, loadChestTiers } from '../../events/chest-settings';
-import { testDiscordWebhook, formatDiscordRoleMention, sendDiscordWebhookDetailed, configuredWebhooks, setDiscordWebhook } from '../../../core/integrations/discord';
+import {
+  testDiscordWebhook,
+  formatDiscordRoleMention,
+  sendDiscordWebhookDetailed,
+  configuredWebhooks,
+  setDiscordWebhook,
+} from '../../../core/integrations/discord';
 import { buildGvgDailyTaskEmbed } from '../../../core/config/gvg-tasks';
 import { queryPendingMemberAccounts } from './admin.service';
 
@@ -25,7 +30,7 @@ const GUILD_REQUEST_STATUS_META: Record<string, { label: string; cls: string }> 
   pending: { label: 'Pending', cls: 'gm-chip-warning' },
   approved: { label: 'Approved', cls: 'gm-chip-success' },
   rejected: { label: 'Rejected', cls: 'gm-chip-danger' },
-  expired: { label: 'Expired', cls: '' }
+  expired: { label: 'Expired', cls: '' },
 };
 
 export async function fetchGuildRequests(): Promise<void> {
@@ -40,7 +45,8 @@ export async function fetchGuildRequests(): Promise<void> {
     if (countEl) countEl.textContent = String(pendingCount);
     renderGuildRequestsList(requests);
   } catch (_err) {
-    listEl.innerHTML = '<div class="gm-empty" style="padding:2rem 1rem;"><p style="color:var(--text-muted);">Failed to load guild requests.</p></div>';
+    listEl.innerHTML =
+      '<div class="gm-empty" style="padding:2rem 1rem;"><p style="color:var(--text-muted);">Failed to load guild requests.</p></div>';
   }
 }
 
@@ -49,49 +55,76 @@ export function renderGuildRequestsList(requests: any[]): void {
   if (!listEl) return;
 
   if (!requests.length) {
-    listEl.innerHTML = '<div class="gm-empty" style="padding:2rem 1rem;"><i class="ph ph-tray gm-icon"></i><div class="gm-empty-title">No guild requests yet</div></div>';
+    listEl.innerHTML =
+      '<div class="gm-empty" style="padding:2rem 1rem;"><i class="ph ph-tray gm-icon"></i><div class="gm-empty-title">No guild requests yet</div></div>';
     return;
   }
 
-  const html = requests.map((r) => {
-    const meta = GUILD_REQUEST_STATUS_META[r.status] || { label: r.status, cls: '' };
-    const dateStr = r.created_at
-      ? new Date(r.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
-      : '-';
-    const noteHtml = r.note ? '<div style="color:var(--text-muted); font-size: var(--fs-sm); margin-top:.25rem;">' + esc(r.note) + '</div>' : '';
-    let actionsHtml = '';
-    if (r.status === 'pending') {
-      actionsHtml =
-        '<button class="gm-btn gm-btn-primary gm-btn-sm gm-guild-req-approve" data-id="' + esc(r.id) + '">' +
+  const html = requests
+    .map((r) => {
+      const meta = GUILD_REQUEST_STATUS_META[r.status] || { label: r.status, cls: '' };
+      const dateStr = r.created_at
+        ? new Date(r.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
+        : '-';
+      const noteHtml = r.note
+        ? '<div style="color:var(--text-muted); font-size: var(--fs-sm); margin-top:.25rem;">' + esc(r.note) + '</div>'
+        : '';
+      let actionsHtml = '';
+      if (r.status === 'pending') {
+        actionsHtml =
+          '<button class="gm-btn gm-btn-primary gm-btn-sm gm-guild-req-approve" data-id="' +
+          esc(r.id) +
+          '">' +
           '<i class="ph ph-check"></i><span>Approve</span>' +
-        '</button>' +
-        '<button class="gm-btn gm-btn-ghost gm-btn-sm gm-guild-req-reject" data-id="' + esc(r.id) + '">' +
+          '</button>' +
+          '<button class="gm-btn gm-btn-ghost gm-btn-sm gm-guild-req-reject" data-id="' +
+          esc(r.id) +
+          '">' +
           '<i class="ph ph-x"></i><span>Reject</span>' +
-        '</button>';
-    } else if (r.reject_reason) {
-      actionsHtml = '<span style="color:var(--text-muted); font-size: var(--fs-sm);">' + esc(r.reject_reason) + '</span>';
-    }
+          '</button>';
+      } else if (r.reject_reason) {
+        actionsHtml =
+          '<span style="color:var(--text-muted); font-size: var(--fs-sm);">' + esc(r.reject_reason) + '</span>';
+      }
 
-    return (
-      '<div class="gm-card gm-card-padded" style="margin-bottom:.75rem;" data-request-id="' + esc(r.id) + '">' +
+      return (
+        '<div class="gm-card gm-card-padded" style="margin-bottom:.75rem;" data-request-id="' +
+        esc(r.id) +
+        '">' +
         '<div class="gm-row" style="justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:.5rem;">' +
-          '<div>' +
-            '<div class="gm-row" style="gap:.5rem; align-items:center;">' +
-              '<strong>' + esc(r.guild_tag) + '</strong>' +
-              '<span style="color:var(--text-muted); font-size: var(--fs-base);">#' + esc(r.server_number) + '</span>' +
-              '<span class="gm-chip ' + meta.cls + '">' + esc(meta.label) + '</span>' +
-            '</div>' +
-            '<div style="color:var(--text-muted); font-size: var(--fs-base); margin-top:.25rem;">' +
-              'Admin login: <strong>' + esc(r.admin_id) + '</strong> &middot; Discord: ' + esc(r.discord_handle) + ' &middot; ' + dateStr +
-            '</div>' +
-            noteHtml +
-            '<div class="gm-guild-req-result" style="margin-top:.5rem;"></div>' +
-          '</div>' +
-          '<div class="gm-row" style="gap:.5rem;">' + actionsHtml + '</div>' +
+        '<div>' +
+        '<div class="gm-row" style="gap:.5rem; align-items:center;">' +
+        '<strong>' +
+        esc(r.guild_tag) +
+        '</strong>' +
+        '<span style="color:var(--text-muted); font-size: var(--fs-base);">#' +
+        esc(r.server_number) +
+        '</span>' +
+        '<span class="gm-chip ' +
+        meta.cls +
+        '">' +
+        esc(meta.label) +
+        '</span>' +
         '</div>' +
-      '</div>'
-    );
-  }).join('');
+        '<div style="color:var(--text-muted); font-size: var(--fs-base); margin-top:.25rem;">' +
+        'Admin login: <strong>' +
+        esc(r.admin_id) +
+        '</strong> &middot; Discord: ' +
+        esc(r.discord_handle) +
+        ' &middot; ' +
+        dateStr +
+        '</div>' +
+        noteHtml +
+        '<div class="gm-guild-req-result" style="margin-top:.5rem;"></div>' +
+        '</div>' +
+        '<div class="gm-row" style="gap:.5rem;">' +
+        actionsHtml +
+        '</div>' +
+        '</div>' +
+        '</div>'
+      );
+    })
+    .join('');
 
   listEl.innerHTML = html;
   wireGuildRequestListeners(listEl);
@@ -106,7 +139,9 @@ export function wireGuildRequestListeners(container: HTMLElement): void {
       const tag = strong ? strong.textContent || '' : 'this guild';
       showConfirm(
         'Approve Guild Request',
-        'Create guild <strong>' + esc(tag) + '</strong> and its first guild_admin account? A password will be generated for you to relay via Discord.',
+        'Create guild <strong>' +
+          esc(tag) +
+          '</strong> and its first guild_admin account? A password will be generated for you to relay via Discord.',
         async () => {
           (btn as HTMLButtonElement).disabled = true;
           try {
@@ -116,16 +151,31 @@ export function wireGuildRequestListeners(container: HTMLElement): void {
             if (resultEl) {
               resultEl.innerHTML =
                 '<div class="gm-cred-pass" style="display:inline-flex;">' +
-                  '<span class="gm-pwd-text">' + esc(res.password) + '</span>' +
-                  '<button class="gm-mini-btn gm-guild-req-copy" data-pass="' + esc(res.password) + '" title="Copy Password"><i class="ph ph-copy"></i></button>' +
+                '<span class="gm-pwd-text">' +
+                esc(res.password) +
+                '</span>' +
+                '<button class="gm-mini-btn gm-guild-req-copy" data-pass="' +
+                esc(res.password) +
+                '" title="Copy Password"><i class="ph ph-copy"></i></button>' +
                 '</div>';
               const copyBtn = resultEl.querySelector('.gm-guild-req-copy');
-              if (copyBtn) copyBtn.addEventListener('click', () => {
-                if (navigator.clipboard) navigator.clipboard.writeText(res.password).then(() => { showToast('Password copied to clipboard.', 'success'); });
-              });
+              if (copyBtn)
+                copyBtn.addEventListener('click', () => {
+                  if (navigator.clipboard)
+                    navigator.clipboard.writeText(res.password).then(() => {
+                      showToast('Password copied to clipboard.', 'success');
+                    });
+                });
             }
             if (navigator.clipboard) navigator.clipboard.writeText(res.password).catch(() => undefined);
-            showToast('Guild ' + res.guild + ' created. Admin ' + res.id + ' — password copied to clipboard, relay it via Discord.', 'success');
+            showToast(
+              'Guild ' +
+                res.guild +
+                ' created. Admin ' +
+                res.id +
+                ' — password copied to clipboard, relay it via Discord.',
+              'success'
+            );
             await fetchGuilds();
             await fetchGuildRequests();
           } catch (err: any) {
@@ -145,7 +195,9 @@ export function wireGuildRequestListeners(container: HTMLElement): void {
       const tag = strong ? strong.textContent || '' : 'this request';
       showConfirm(
         'Reject Guild Request',
-        'Reject the request for <strong>' + esc(tag) + '</strong>? The tag and admin login will become available again.',
+        'Reject the request for <strong>' +
+          esc(tag) +
+          '</strong>? The tag and admin login will become available again.',
         async () => {
           (btn as HTMLButtonElement).disabled = true;
           try {
@@ -165,8 +217,17 @@ export function wireGuildRequestListeners(container: HTMLElement): void {
 
 // ── Guild settings ───────────────────────────────────────────────────────────
 
-interface ConfigField { key: string; el: string; gated?: boolean; }
-interface CheckboxField { key: string; el: string; def: boolean; gated?: boolean; }
+interface ConfigField {
+  key: string;
+  el: string;
+  gated?: boolean;
+}
+interface CheckboxField {
+  key: string;
+  el: string;
+  def: boolean;
+  gated?: boolean;
+}
 
 const VALUE_FIELDS: ConfigField[] = [
   { key: 'coeff_svs', el: 'coeff-svs' },
@@ -183,7 +244,7 @@ const VALUE_FIELDS: ConfigField[] = [
   { key: 'discord_role_id_gvg', el: 'discord-role-id-gvg', gated: true },
   { key: 'discord_role_id_svs', el: 'discord-role-id-svs', gated: true },
   { key: 'discord_verification_channel_id', el: 'discord-verification-channel-id' },
-  { key: 'discord_audit_channel_id', el: 'discord-audit-channel-id' }
+  { key: 'discord_audit_channel_id', el: 'discord-audit-channel-id' },
 ];
 
 /**
@@ -199,7 +260,7 @@ const WEBHOOK_FIELDS: ConfigField[] = [
   { key: 'webhook_shadowfront', el: 'webhook-shadowfront' },
   { key: 'webhook_calamity', el: 'webhook-calamity', gated: true },
   { key: 'webhook_gvg', el: 'webhook-gvg', gated: true },
-  { key: 'webhook_svs', el: 'webhook-svs', gated: true }
+  { key: 'webhook_svs', el: 'webhook-svs', gated: true },
 ];
 
 const WEBHOOK_SET_PLACEHOLDER = 'Webhook set. Paste a new URL to replace it.';
@@ -212,10 +273,14 @@ function renderWebhookField(field: ConfigField, isSet: boolean): void {
   if (!input) return;
   if (!input.dataset.gmEmptyPlaceholder) input.dataset.gmEmptyPlaceholder = input.placeholder;
   input.value = '';
-  input.placeholder = isSet ? WEBHOOK_SET_PLACEHOLDER : (input.dataset.gmEmptyPlaceholder || '');
+  input.placeholder = isSet ? WEBHOOK_SET_PLACEHOLDER : input.dataset.gmEmptyPlaceholder || '';
   const wrapper = input.closest('.gm-ui-input') || input;
-  let remove = wrapper.parentElement?.querySelector<HTMLButtonElement>(`button[data-gm-webhook-remove="${field.key}"]`) || null;
-  if (!isSet) { remove?.remove(); return; }
+  let remove =
+    wrapper.parentElement?.querySelector<HTMLButtonElement>(`button[data-gm-webhook-remove="${field.key}"]`) || null;
+  if (!isSet) {
+    remove?.remove();
+    return;
+  }
   if (remove) return;
   remove = document.createElement('button');
   remove.type = 'button';
@@ -265,7 +330,7 @@ const CHECKBOX_FIELDS: CheckboxField[] = [
   // historical behaviour, where a Discord screenshot could create the roster
   // entry it was being checked against. Ticking it makes the roster the
   // authority -- see ADR-020.
-  { key: 'discord_verification_require_roster', el: 'discord-verification-require-roster', def: false }
+  { key: 'discord_verification_require_roster', el: 'discord-verification-require-roster', def: false },
 ];
 
 async function configGet(key: string): Promise<string> {
@@ -276,7 +341,7 @@ function setChecked(id: string, value: string | null, defaultValue: boolean): vo
   const el = byId<HTMLInputElement>(id);
   if (!el) return;
   if (value === null || value === undefined || value === '') el.checked = defaultValue;
-  else el.checked = (value === 'true' || value === '1');
+  else el.checked = value === 'true' || value === '1';
   // gm-ui switches expose role="switch": keep aria-checked in sync so the
   // ARIA contract never drifts after legacy imperative reads/writes.
   if (el.getAttribute('role') === 'switch') {
@@ -350,18 +415,15 @@ async function onGuildSettingsSubmit(e: Event): Promise<void> {
     let tagVal = '';
     if (tagSettingEl) {
       const rawTag = tagSettingEl.value.trim().toUpperCase();
-      if (rawTag) tagVal = (!rawTag.startsWith('[') && !rawTag.endsWith(']')) ? '[' + rawTag + ']' : rawTag;
+      if (rawTag) tagVal = !rawTag.startsWith('[') && !rawTag.endsWith(']') ? '[' + rawTag + ']' : rawTag;
     }
     const serverNumVal = (byId<HTMLInputElement>('guild-server-number-setting')?.value || '').trim();
 
-    const promises: Promise<unknown>[] = [
-      config.set('guild_tag', tagVal),
-      config.set('server_number', serverNumVal)
-    ];
+    const promises: Promise<unknown>[] = [config.set('guild_tag', tagVal), config.set('server_number', serverNumVal)];
     for (const field of VALUE_FIELDS) {
       const el = byId<HTMLInputElement>(field.el);
       const value = el ? el.value.trim() : '';
-      promises.push(config.set(field.key, (field.gated && !showCalamityGvgSvs) ? '' : value));
+      promises.push(config.set(field.key, field.gated && !showCalamityGvgSvs ? '' : value));
     }
     const webhookWrites: Array<{ field: ConfigField; url: string }> = [];
     for (const field of WEBHOOK_FIELDS) {
@@ -374,17 +436,19 @@ async function onGuildSettingsSubmit(e: Event): Promise<void> {
       }
     }
     for (const w of webhookWrites) {
-      promises.push(setDiscordWebhook(w.field.key, w.url).then((r) => {
-        if (!r.ok && r.error === 'invalid_discord_webhook_url') {
-          showToast('Not a Discord webhook URL: ' + w.field.key, 'error');
-        }
-        return r.ok;
-      }));
+      promises.push(
+        setDiscordWebhook(w.field.key, w.url).then((r) => {
+          if (!r.ok && r.error === 'invalid_discord_webhook_url') {
+            showToast('Not a Discord webhook URL: ' + w.field.key, 'error');
+          }
+          return r.ok;
+        })
+      );
     }
     for (const field of CHECKBOX_FIELDS) {
       const el = byId<HTMLInputElement>(field.el);
       const checked = el ? el.checked : field.def;
-      promises.push(config.set(field.key, (checked && (!field.gated || showCalamityGvgSvs)) ? 'true' : 'false'));
+      promises.push(config.set(field.key, checked && (!field.gated || showCalamityGvgSvs) ? 'true' : 'false'));
     }
 
     // P0 audit RC1: never validate a save that silently failed (RLS, expired
@@ -418,13 +482,17 @@ export async function renderPendingRegistrations(activeG?: string | null): Promi
   // H2: falls through to the canonical resolver, which returns null rather
   // than ALPHA. An unresolved tenant then matches no pending account.
   const guild = activeG || getActiveGuild();
-  const activeGUpper = String(guild || '').trim().toUpperCase();
+  const activeGUpper = String(guild || '')
+    .trim()
+    .toUpperCase();
 
   let pending: AccountRow[] = [];
   const accounts = getAccounts();
   if (accounts && accounts.length > 0) {
     pending = accounts.filter((acc) => {
-      const accGuildUpper = String(acc.guild || '').trim().toUpperCase();
+      const accGuildUpper = String(acc.guild || '')
+        .trim()
+        .toUpperCase();
       return acc.status === 'pending' && acc.role === 'member' && accGuildUpper === activeGUpper;
     });
   } else {
@@ -442,11 +510,15 @@ export async function renderPendingRegistrations(activeG?: string | null): Promi
   if (overviewCount) overviewCount.textContent = String(pending.length);
   if (adminCount) adminCount.textContent = String(pending.length);
 
-  const emptyHtml = '<div class="gm-empty" style="padding:1.25rem;"><i class="ph ph-hourglass gm-icon"></i><div class="gm-empty-title">No pending registrations</div></div>';
+  const emptyHtml =
+    '<div class="gm-empty" style="padding:1.25rem;"><i class="ph ph-hourglass gm-icon"></i><div class="gm-empty-title">No pending registrations</div></div>';
 
   const renderListTo = (container: HTMLElement | null): void => {
     if (!container) return;
-    if (pending.length === 0) { container.innerHTML = emptyHtml; return; }
+    if (pending.length === 0) {
+      container.innerHTML = emptyHtml;
+      return;
+    }
 
     let html = '<div class="gm-cred-grid">';
     pending.forEach((acc) => {
@@ -454,33 +526,49 @@ export async function renderPendingRegistrations(activeG?: string | null): Promi
         ? new Date(acc.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
         : '-';
       html +=
-        '<div class="gm-cred-card" data-acc-id="' + esc(acc.id) + '">' +
-          '<div class="gm-row" style="justify-content:space-between; margin-bottom: 0.25rem;">' +
-            '<div class="gm-cred-name" style="font-weight:700; color:var(--fg);">' + esc(acc.id) + '</div>' +
-            '<span class="gm-chip gm-chip-warning">Pending</span>' +
-          '</div>' +
-          '<div class="gm-row gm-dim" style="font-size: var(--fs-sm); gap: 0.75rem;">' +
-            '<span><i class="ph ph-identification-badge"></i> UID ' + esc(acc.uid || '?') + '</span>' +
-            '<span><i class="ph ph-calendar-blank"></i> ' + dateStr + '</span>' +
-          '</div>' +
-          '<div class="gm-row" style="gap: 0.5rem; margin-top: 0.6rem;">' +
-            '<button class="gm-btn gm-btn-sm gm-btn-success gm-pending-approve" data-id="' + esc(acc.id) + '">' +
-              '<i class="ph ph-check"></i><span>Approve</span>' +
-            '</button>' +
-            '<button class="gm-btn gm-btn-sm gm-btn-danger-ghost gm-pending-reject" data-id="' + esc(acc.id) + '">' +
-              '<i class="ph ph-x"></i><span>Reject</span>' +
-            '</button>' +
-          '</div>' +
+        '<div class="gm-cred-card" data-acc-id="' +
+        esc(acc.id) +
+        '">' +
+        '<div class="gm-row" style="justify-content:space-between; margin-bottom: 0.25rem;">' +
+        '<div class="gm-cred-name" style="font-weight:700; color:var(--fg);">' +
+        esc(acc.id) +
+        '</div>' +
+        '<span class="gm-chip gm-chip-warning">Pending</span>' +
+        '</div>' +
+        '<div class="gm-row gm-dim" style="font-size: var(--fs-sm); gap: 0.75rem;">' +
+        '<span><i class="ph ph-identification-badge"></i> UID ' +
+        esc(acc.uid || '?') +
+        '</span>' +
+        '<span><i class="ph ph-calendar-blank"></i> ' +
+        dateStr +
+        '</span>' +
+        '</div>' +
+        '<div class="gm-row" style="gap: 0.5rem; margin-top: 0.6rem;">' +
+        '<button class="gm-btn gm-btn-sm gm-btn-success gm-pending-approve" data-id="' +
+        esc(acc.id) +
+        '">' +
+        '<i class="ph ph-check"></i><span>Approve</span>' +
+        '</button>' +
+        '<button class="gm-btn gm-btn-sm gm-btn-danger-ghost gm-pending-reject" data-id="' +
+        esc(acc.id) +
+        '">' +
+        '<i class="ph ph-x"></i><span>Reject</span>' +
+        '</button>' +
+        '</div>' +
         '</div>';
     });
     html += '</div>';
     container.innerHTML = html;
 
     container.querySelectorAll('.gm-pending-approve').forEach((btn) => {
-      btn.addEventListener('click', () => { void resolveRegistration(btn.getAttribute('data-id') || '', 'approve'); });
+      btn.addEventListener('click', () => {
+        void resolveRegistration(btn.getAttribute('data-id') || '', 'approve');
+      });
     });
     container.querySelectorAll('.gm-pending-reject').forEach((btn) => {
-      btn.addEventListener('click', () => { void resolveRegistration(btn.getAttribute('data-id') || '', 'reject'); });
+      btn.addEventListener('click', () => {
+        void resolveRegistration(btn.getAttribute('data-id') || '', 'reject');
+      });
     });
   };
 
@@ -491,7 +579,7 @@ export async function renderPendingRegistrations(activeG?: string | null): Promi
 export async function resolveRegistration(id: string, action: 'approve' | 'reject'): Promise<void> {
   try {
     const res = await adminAccounts(action === 'approve' ? 'approve-registration' : 'reject-registration', { id });
-    if (!res.ok) throw new Error(res.error || (action + '_failed'));
+    if (!res.ok) throw new Error(res.error || action + '_failed');
     filterAccountsOut(id);
     await fetchAccounts();
     // Phase 7: the Overview reload was a `window` probe with a fallback that
@@ -508,7 +596,9 @@ export function initGuildRequestsUi(): void {
   const refreshBtn = byId<HTMLButtonElement>('guild-requests-refresh-btn');
   if (refreshBtn && !(refreshBtn as any).__gmAdminWired) {
     (refreshBtn as any).__gmAdminWired = true;
-    refreshBtn.addEventListener('click', () => { void fetchGuildRequests(); });
+    refreshBtn.addEventListener('click', () => {
+      void fetchGuildRequests();
+    });
   }
 
   const clearBtn = byId<HTMLButtonElement>('guild-requests-clear-history-btn');
@@ -523,7 +613,10 @@ export function initGuildRequestsUi(): void {
           try {
             const res = await adminAccounts('clear-resolved-guild-requests', {});
             if (!res.ok) throw new Error(res.error || 'clear_failed');
-            showToast(res.count > 0 ? ('Cleared ' + res.count + ' resolved request(s).') : 'No resolved requests to clear.', 'success');
+            showToast(
+              res.count > 0 ? 'Cleared ' + res.count + ' resolved request(s).' : 'No resolved requests to clear.',
+              'success'
+            );
             await fetchGuildRequests();
           } catch (err: any) {
             showToast('Could not clear history: ' + err.message, 'error');
@@ -538,7 +631,9 @@ export function initGuildRequestsUi(): void {
   const settingsForm = byId<HTMLFormElement>('guild-settings-form');
   if (settingsForm && !(settingsForm as any).__gmAdminWired) {
     (settingsForm as any).__gmAdminWired = true;
-    settingsForm.addEventListener('submit', (e) => { void onGuildSettingsSubmit(e); });
+    settingsForm.addEventListener('submit', (e) => {
+      void onGuildSettingsSubmit(e);
+    });
   }
 
   const testDefaultBtn = byId<HTMLButtonElement>('btn-test-default-webhook');
@@ -575,7 +670,11 @@ export function initGuildRequestsUi(): void {
         const now = new Date();
         let day = now.getUTCDay();
         if (day === 0) day = 1; // Default Sunday to Day 1
-        const roleId = (byId<HTMLInputElement>('discord-role-id-gvg')?.value || byId<HTMLInputElement>('discord-role-id')?.value || '').trim();
+        const roleId = (
+          byId<HTMLInputElement>('discord-role-id-gvg')?.value ||
+          byId<HTMLInputElement>('discord-role-id')?.value ||
+          ''
+        ).trim();
         const roleMention = formatDiscordRoleMention(roleId);
         const payload = buildGvgDailyTaskEmbed(day, roleMention);
         const res = await sendDiscordWebhookDetailed('gvg', payload);

@@ -21,7 +21,11 @@ const fixture = JSON.parse(fs.readFileSync(fixturePath, 'utf8'));
 const response = JSON.parse(fs.readFileSync(responsePath, 'utf8'));
 const players = Array.isArray(response.players) ? response.players : [];
 
-const key = (s) => String(s || '').replace(/^\[[^\]]*\]/, '').toLowerCase().replace(/\s+/g, '');
+const key = (s) =>
+  String(s || '')
+    .replace(/^\[[^\]]*\]/, '')
+    .toLowerCase()
+    .replace(/\s+/g, '');
 
 const byKey = new Map(players.map((p) => [key(p.pseudo), p]));
 const truthKeys = new Set(fixture.rows.map((r) => key(r.pseudo)));
@@ -30,7 +34,10 @@ const missed = [];
 const wrongScore = [];
 for (const row of fixture.rows) {
   const got = byKey.get(key(row.pseudo));
-  if (!got) { missed.push(`${row.position} ${row.pseudo}`); continue; }
+  if (!got) {
+    missed.push(`${row.position} ${row.pseudo}`);
+    continue;
+  }
   if (String(got.raw_score || '').replace(/\s+/g, '') !== row.raw_score) {
     wrongScore.push(`${row.position} ${row.pseudo}: ${got.raw_score} (expected ${row.raw_score})`);
   }

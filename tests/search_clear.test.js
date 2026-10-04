@@ -11,9 +11,12 @@ describe('Search Input Clear Button Feature', () => {
     expect(html).toContain('id="member-search-admin"');
     expect(html).toContain('id="banned-search"');
     expect(html).toContain('id="ocr-filter-search"');
-    
+
     // Check that member-search-admin has a clear button inside its wrapper
-    const adminSearchSnippet = html.slice(html.indexOf('id="member-search-admin"'), html.indexOf('id="member-search-admin"') + 500);
+    const adminSearchSnippet = html.slice(
+      html.indexOf('id="member-search-admin"'),
+      html.indexOf('id="member-search-admin"') + 500
+    );
     expect(adminSearchSnippet).toContain('gm-search-clear-btn');
     expect(adminSearchSnippet).toContain('data-gm-search-clear');
     // 'cancel' was a Material Symbols ligature; that font is gone.

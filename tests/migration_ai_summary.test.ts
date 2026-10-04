@@ -3,7 +3,7 @@
  *
  * Unit tests for Migration Hub AI Summary and Executive Briefing via Gemini.
  */
-import { describe, it, expect, } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import { MigrationHubView } from '../src/modules/migration/views/MigrationHubView';

@@ -108,7 +108,7 @@ describe('choosing an account is not an oracle', () => {
     expect(choose).toMatch(/consumeTicket\(admin, parsed\.data\.ticket/);
   });
 
-  it('verifies the chosen id against THAT identity\'s links', () => {
+  it("verifies the chosen id against THAT identity's links", () => {
     // Without this the endpoint would mint a session for any account id you
     // name -- a complete authentication bypass.
     expect(choose).toMatch(/\.eq\("discord_user_id", consumed\.discordUserId\)/);
@@ -184,11 +184,16 @@ describe('the client asks instead of guessing', () => {
     // owner mid-decision.
     const fnSrc = edgeSource('auth-discord');
     expect(fnSrc).toMatch(/const CONTINUATION_TTL_MS = 15 \* 60_000;/);
-    expect(squash(fnSrc)).toMatch(/issueTicket\(\s*admin, \{ discordUserId, discordUsername, displayName, attempts: 0 \}, logger, TICKET_TTL_MS,?\s*\)/);
+    expect(squash(fnSrc)).toMatch(
+      /issueTicket\(\s*admin, \{ discordUserId, discordUsername, displayName, attempts: 0 \}, logger, TICKET_TTL_MS,?\s*\)/
+    );
   });
 
   it('escapes every value it renders', () => {
-    const dlg = ctrl.slice(ctrl.indexOf('export function openAccountChooser'), ctrl.indexOf('export function openLinkAccountDialog'));
+    const dlg = ctrl.slice(
+      ctrl.indexOf('export function openAccountChooser'),
+      ctrl.indexOf('export function openLinkAccountDialog')
+    );
     // Account ids and guild tags are constrained, but they still reach innerHTML.
     expect(dlg).toMatch(/escapeDialogText\(a\.id\)/);
     expect(dlg).toMatch(/escapeDialogText\(a\.guild\)/);

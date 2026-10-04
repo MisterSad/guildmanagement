@@ -36,15 +36,21 @@ describe('roles_rls_session_hardening migration', () => {
   });
 
   it('is_super_admin matches the exact role only, gated on status = active', () => {
-    expect(strippedMigration).toMatch(/CREATE OR REPLACE FUNCTION public\.is_super_admin\(\)[\s\S]*?AND a\.role = 'super_admin'/);
+    expect(strippedMigration).toMatch(
+      /CREATE OR REPLACE FUNCTION public\.is_super_admin\(\)[\s\S]*?AND a\.role = 'super_admin'/
+    );
   });
 
   it('is_server_admin matches super_admin or server_admin only', () => {
-    expect(strippedMigration).toMatch(/CREATE OR REPLACE FUNCTION public\.is_server_admin\(\)[\s\S]*?role IN \('super_admin', 'server_admin'\)/);
+    expect(strippedMigration).toMatch(
+      /CREATE OR REPLACE FUNCTION public\.is_server_admin\(\)[\s\S]*?role IN \('super_admin', 'server_admin'\)/
+    );
   });
 
   it('gm_can_read_guilds matches the three canonical admin roles only', () => {
-    expect(strippedMigration).toMatch(/CREATE OR REPLACE FUNCTION public\.gm_can_read_guilds\(\)[\s\S]*?role IN \('super_admin', 'server_admin', 'guild_admin'\)/);
+    expect(strippedMigration).toMatch(
+      /CREATE OR REPLACE FUNCTION public\.gm_can_read_guilds\(\)[\s\S]*?role IN \('super_admin', 'server_admin', 'guild_admin'\)/
+    );
   });
 
   it('adds accounts.session_version and the gm_session_is_valid() gate', () => {
@@ -54,7 +60,9 @@ describe('roles_rls_session_hardening migration', () => {
   });
 
   it('player_absences self-read resolves through public.accounts (a.uid)', () => {
-    expect(strippedMigration).toMatch(/CREATE POLICY player_absences_select_policy ON public\.player_absences[\s\S]*?FROM public\.accounts a[\s\S]*?a\.uid = player_absences\.uid/);
+    expect(strippedMigration).toMatch(
+      /CREATE POLICY player_absences_select_policy ON public\.player_absences[\s\S]*?FROM public\.accounts a[\s\S]*?a\.uid = player_absences\.uid/
+    );
   });
 });
 
@@ -78,25 +86,34 @@ describe('admin-accounts Edge (H1/H2/H3, M4)', () => {
     // Since M2 the role is normalised once, by the shared resolver the
     // function calls; admin-accounts decides on the normalised role only.
     expect(adminAccountsContent).toContain('await resolveCaller(req, admin)');
-    expect(fs.readFileSync(path.resolve(__dirname, '../supabase/functions/_shared/auth.ts'), 'utf-8')).toContain('role: normalizeRole(acc.role)');
+    expect(fs.readFileSync(path.resolve(__dirname, '../supabase/functions/_shared/auth.ts'), 'utf-8')).toContain(
+      'role: normalizeRole(acc.role)'
+    );
     expect(adminAccountsContent).toContain('from "../_shared/admin-authz.ts"');
     expect(adminAccountsContent).not.toMatch(/s === "super_admin" \|\| s === "r5" \|\| s === "admin"/);
     expect(adminAccountsContent).not.toMatch(/s === "guild_admin" \|\| s === "r4"/);
   });
 
   it('bumps session_version on password reset', () => {
-    expect(adminAccountsContent).toMatch(/await bumpSessionVersion\(admin, canonicalId, targetAcc\.role [\s\S]*?targetAcc\.auth_user_id/);
+    expect(adminAccountsContent).toMatch(
+      /await bumpSessionVersion\(admin, canonicalId, targetAcc\.role [\s\S]*?targetAcc\.auth_user_id/
+    );
   });
 
   it('bumps session_version on role change and stamps the GoTrue app_metadata', () => {
     expect(adminAccountsContent).toContain('const nextSessionVersion = ((curVer?.session_version ?? 0) | 0) + 1;');
-    expect(adminAccountsContent).toMatch(/app_metadata: \{ app_role: newRole, account_id: targetAcc\.id, session_version: nextSessionVersion \}/);
+    expect(adminAccountsContent).toMatch(
+      /app_metadata: \{ app_role: newRole, account_id: targetAcc\.id, session_version: nextSessionVersion \}/
+    );
   });
 
   it('bumps session_version on registration rejection (suspension)', () => {
     // The decision moved to _shared/registration-decision.ts on 2026-10-03,
     // shared by the app and the Discord join-request buttons.
-    const decision = fs.readFileSync(path.resolve(__dirname, '../supabase/functions/_shared/registration-decision.ts'), 'utf8');
+    const decision = fs.readFileSync(
+      path.resolve(__dirname, '../supabase/functions/_shared/registration-decision.ts'),
+      'utf8'
+    );
     expect(decision).toMatch(/await bumpSessionVersion\(admin, id, target\.role/);
     expect(adminAccountsContent).toContain('decideRegistration(');
   });

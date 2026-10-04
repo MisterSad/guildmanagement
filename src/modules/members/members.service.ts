@@ -5,7 +5,6 @@
  * from gm-utils.js.
  */
 
-
 import { APP_VERSION } from '../../core/config/constants';
 import { detectClientEnvironment } from '../../core/auth/roles';
 import { guildWrite } from '../../core/api/guild-rpc';
@@ -37,10 +36,14 @@ export function filterBulkEligibleMembers(
   const list = members || [];
   const selArr = Array.isArray(selectedPseudos)
     ? selectedPseudos
-    : (selectedPseudos && typeof (selectedPseudos as any).forEach === 'function' ? Array.from(selectedPseudos as Set<string>) : []);
+    : selectedPseudos && typeof (selectedPseudos as any).forEach === 'function'
+      ? Array.from(selectedPseudos as Set<string>)
+      : [];
 
   const selSet: Record<string, boolean> = {};
-  selArr.forEach((p) => { if (p) selSet[String(p).toLowerCase()] = true; });
+  selArr.forEach((p) => {
+    if (p) selSet[String(p).toLowerCase()] = true;
+  });
 
   const eligible: string[] = [];
   let excludedR5 = 0;
@@ -69,17 +72,25 @@ export function formatTicketDescription(sections: TicketDescriptionSections): st
   if (!sections || typeof sections !== 'object') return '';
   const parts: string[] = [];
 
-  if (sections.currentBehavior && sections.currentBehavior.trim()) parts.push('**Current Behavior / Issue**\n' + sections.currentBehavior.trim());
-  if (sections.expectedBehavior && sections.expectedBehavior.trim()) parts.push('**Expected Behavior**\n' + sections.expectedBehavior.trim());
+  if (sections.currentBehavior && sections.currentBehavior.trim())
+    parts.push('**Current Behavior / Issue**\n' + sections.currentBehavior.trim());
+  if (sections.expectedBehavior && sections.expectedBehavior.trim())
+    parts.push('**Expected Behavior**\n' + sections.expectedBehavior.trim());
   if (sections.steps && sections.steps.trim()) parts.push('**Steps to Reproduce**\n' + sections.steps.trim());
-  if (sections.additionalContext && sections.additionalContext.trim()) parts.push('**Additional Context / Information**\n' + sections.additionalContext.trim());
+  if (sections.additionalContext && sections.additionalContext.trim())
+    parts.push('**Additional Context / Information**\n' + sections.additionalContext.trim());
 
   const env = sections.env || detectClientEnvironment();
   parts.push(
     '**Environment**\n' +
-    '• FGF Mgmt Tool Version: ' + (env.appVersion || APP_VERSION) + '\n' +
-    '• OS + Version: ' + (env.os || 'Unknown OS') + '\n' +
-    '• Browser + Version: ' + (env.browser || 'Unknown Browser')
+      '• FGF Mgmt Tool Version: ' +
+      (env.appVersion || APP_VERSION) +
+      '\n' +
+      '• OS + Version: ' +
+      (env.os || 'Unknown OS') +
+      '\n' +
+      '• Browser + Version: ' +
+      (env.browser || 'Unknown Browser')
   );
 
   return parts.join('\n\n');
@@ -89,14 +100,25 @@ export function formatTicketDescription(sections: TicketDescriptionSections): st
 // Each is one database function: all of it happens, or none of it.
 
 /** Bans a UID and removes it from the roster together. Throws on refusal (`already_banned`, an R5...). */
-export function banMember(uid: string, pseudo: string | null, reason: string | null): Promise<{ ok: true; removed: string | null }> {
+export function banMember(
+  uid: string,
+  pseudo: string | null,
+  reason: string | null
+): Promise<{ ok: true; removed: string | null }> {
   return guildWrite('gm_ban_member', { p_uid: uid, p_pseudo: pseudo, p_reason: reason });
 }
 
 export interface NewMember {
-  pseudo: string; uid: string; role: string; overall_power: number;
-  fleet_rating?: number; tech_power?: number; flagship_power?: number;
-  champion_power?: number; crew_power?: number; glory_score?: number;
+  pseudo: string;
+  uid: string;
+  role: string;
+  overall_power: number;
+  fleet_rating?: number;
+  tech_power?: number;
+  flagship_power?: number;
+  champion_power?: number;
+  crew_power?: number;
+  glory_score?: number;
 }
 
 /** Adds a member, its first metrics snapshot and its enrolment in running events. Returns the stored row. */
@@ -124,7 +146,11 @@ export function listGuildMembers(db: DbClient, guild: string | null) {
 
 /** Lists every pending guild transfer, oldest first. */
 export function listPendingTransfers(db: DbClient) {
-  return db.from('guild_transfers').select('id, uid, pseudo, source_guild, target_guild, requested_by').eq('status', 'pending').order('created_at', { ascending: true });
+  return db
+    .from('guild_transfers')
+    .select('id, uid, pseudo, source_guild, target_guild, requested_by')
+    .eq('status', 'pending')
+    .order('created_at', { ascending: true });
 }
 
 /** Lists a guild's player absences. */
@@ -204,8 +230,9 @@ export function deleteBannedPlayerRow(db: DbClient, uid: string, guild: string |
 
 /** Sets the same role on several members of a guild. */
 export function bulkSetMemberRole(db: DbClient, guild: string | null, pseudos: string[], targetRole: string) {
-  return db.from('guild_members')
-      .update({ role: targetRole, metrics_updated_at: new Date().toISOString() })
-      .eq('guild', guild)
-      .in('pseudo', pseudos);
+  return db
+    .from('guild_members')
+    .update({ role: targetRole, metrics_updated_at: new Date().toISOString() })
+    .eq('guild', guild)
+    .in('pseudo', pseudos);
 }

@@ -11,7 +11,7 @@ const timestamps: Record<string, number> = {};
 
 export function isFresh(key: string, ttlMs: number): boolean {
   const t = timestamps[key];
-  return !!t && (Date.now() - t) < ttlMs;
+  return !!t && Date.now() - t < ttlMs;
 }
 
 export function markFresh(key: string): void {
@@ -22,7 +22,9 @@ export function invalidate(key?: string | null): void {
   if (key) {
     delete timestamps[key];
   } else {
-    Object.keys(timestamps).forEach((k) => { delete timestamps[k]; });
+    Object.keys(timestamps).forEach((k) => {
+      delete timestamps[k];
+    });
   }
 }
 

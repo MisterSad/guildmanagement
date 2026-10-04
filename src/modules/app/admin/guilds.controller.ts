@@ -16,7 +16,6 @@
  * choosing it failed the save.
  */
 
-
 import { t, esc, byId, getDb, ls } from './utils';
 import { fetchGuilds } from './accounts.controller';
 import { showToast, showConfirm } from '../dialogs/dialogs.service';
@@ -27,8 +26,7 @@ import { queryGuildList, updateGuildServerNumber, deleteGuild } from './admin.se
 /** Server number the app already knows for a guild (state, then localStorage). */
 function knownServerNumber(guildId: string): any {
   const entry = getAppState().guildsData[guildId];
-  return (entry ? entry.server_number : '')
-    || (ls() ? ls()!.getItem('gm_server_number_' + guildId) : '');
+  return (entry ? entry.server_number : '') || (ls() ? ls()!.getItem('gm_server_number_' + guildId) : '');
 }
 
 export async function renderGuildsList(): Promise<void> {
@@ -41,7 +39,8 @@ export async function renderGuildsList(): Promise<void> {
     if (res.error) throw res.error;
     const guildsListRaw = res.data;
     if (!guildsListRaw || guildsListRaw.length === 0) {
-      container.innerHTML = '<div class="gm-empty"><i class="ph ph-ghost gm-icon"></i><div class="gm-empty-title">No guild found</div></div>';
+      container.innerHTML =
+        '<div class="gm-empty"><i class="ph ph-ghost gm-icon"></i><div class="gm-empty-title">No guild found</div></div>';
       return;
     }
 
@@ -49,7 +48,7 @@ export async function renderGuildsList(): Promise<void> {
     guildsListRaw.forEach((g: any) => {
       const guildId = g.id;
       const serverNum = g.server_number || knownServerNumber(guildId) || '';
-      const sKey = serverNum ? ('Server #' + serverNum) : 'Unassigned Server';
+      const sKey = serverNum ? 'Server #' + serverNum : 'Unassigned Server';
       if (!groupedByServer[sKey]) groupedByServer[sKey] = { serverKey: sKey, sNum: serverNum, guilds: [] };
       groupedByServer[sKey].guilds.push(g);
     });
@@ -64,55 +63,87 @@ export async function renderGuildsList(): Promise<void> {
     let html = '';
     serverKeys.forEach((sKey, index) => {
       const group = groupedByServer[sKey];
-      const guildsListStr = group.guilds.map((item) => item.id).sort().join(', ');
+      const guildsListStr = group.guilds
+        .map((item) => item.id)
+        .sort()
+        .join(', ');
       const gCount = group.guilds.length;
       const isFirst = index === 0;
 
       html +=
         '<div class="gm-card glass-card" style="margin-bottom:1rem; padding:0; overflow:hidden;">' +
-          '<div class="gm-accordion-header" style="padding:0.9rem 1.2rem; display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none; background:rgba(255,255,255,0.03); border-bottom:1px solid var(--border-soft); transition:background 0.2s ease;">' +
-            '<div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">' +
-              '<span style="background:rgba(59, 130, 246, 0.15); color:#60a5fa; border:1px solid rgba(59, 130, 246, 0.3); border-radius:6px; padding:3px 10px; font-weight:800; font-size: var(--fs-base); font-family:var(--font-display);">' +
-                '<i class="ph ph-hard-drives" style="margin-right:4px;"></i>' + esc(sKey) +
-              '</span>' +
-              '<span style="font-weight:700; color:var(--fg); font-size: var(--fs-md);">' + esc(guildsListStr) + '</span>' +
-              '<span class="gm-badge" style="background:var(--accent-soft); color:var(--accent); font-weight:700; font-size: var(--fs-sm);">' + gCount + ' guild' + (gCount > 1 ? 's' : '') + '</span>' +
-            '</div>' +
-            '<i class="ph ph-caret-down gm-accordion-arrow" style="font-size: var(--fs-xl); color:var(--fg-dim); transition:transform 0.25s ease;' + (isFirst ? ' transform:rotate(180deg);' : '') + '"></i>' +
-          '</div>' +
-          '<div class="gm-accordion-body" style="padding:1rem 1.25rem;' + (isFirst ? ' display:block;' : ' display:none;') + '">' +
-            '<div class="gm-cred-grid">';
+        '<div class="gm-accordion-header" style="padding:0.9rem 1.2rem; display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none; background:rgba(255,255,255,0.03); border-bottom:1px solid var(--border-soft); transition:background 0.2s ease;">' +
+        '<div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">' +
+        '<span style="background:rgba(59, 130, 246, 0.15); color:#60a5fa; border:1px solid rgba(59, 130, 246, 0.3); border-radius:6px; padding:3px 10px; font-weight:800; font-size: var(--fs-base); font-family:var(--font-display);">' +
+        '<i class="ph ph-hard-drives" style="margin-right:4px;"></i>' +
+        esc(sKey) +
+        '</span>' +
+        '<span style="font-weight:700; color:var(--fg); font-size: var(--fs-md);">' +
+        esc(guildsListStr) +
+        '</span>' +
+        '<span class="gm-badge" style="background:var(--accent-soft); color:var(--accent); font-weight:700; font-size: var(--fs-sm);">' +
+        gCount +
+        ' guild' +
+        (gCount > 1 ? 's' : '') +
+        '</span>' +
+        '</div>' +
+        '<i class="ph ph-caret-down gm-accordion-arrow" style="font-size: var(--fs-xl); color:var(--fg-dim); transition:transform 0.25s ease;' +
+        (isFirst ? ' transform:rotate(180deg);' : '') +
+        '"></i>' +
+        '</div>' +
+        '<div class="gm-accordion-body" style="padding:1rem 1.25rem;' +
+        (isFirst ? ' display:block;' : ' display:none;') +
+        '">' +
+        '<div class="gm-cred-grid">';
 
       group.guilds.forEach((g: any) => {
         const guildId = g.id;
         const serverNum = g.server_number || knownServerNumber(guildId) || '';
 
         const serverTag = serverNum
-          ? ' <span style="font-size: var(--fs-sm); font-weight:500; color:var(--fg-dim);">(Server #' + esc(serverNum) + ')</span>'
+          ? ' <span style="font-size: var(--fs-sm); font-weight:500; color:var(--fg-dim);">(Server #' +
+            esc(serverNum) +
+            ')</span>'
           : ' <span class="gm-chip gm-chip-warning" style="font-size: var(--fs-sm); font-weight:700;">No server number</span>';
 
         html +=
-          '<div class="gm-cred-card" data-guild-id="' + esc(guildId) + '">' +
-            '<div class="gm-row" style="justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">' +
-              '<div class="gm-cred-name" style="font-size: var(--fs-xl); display: flex; align-items: center; gap: 0.5rem; margin-bottom:0; font-weight:600;">' +
-                '<i class="ph ph-shield"></i> ' + esc(guildId) + serverTag +
-              '</div>' +
-            '</div>' +
-            '<div class="gm-row" style="gap: 0.5rem; align-items: center; flex-wrap: wrap;">' +
-              '<div class="gm-col" style="flex: 1; gap: 0.25rem; min-width:100px;">' +
-                '<label class="gm-dim" style="font-size: var(--fs-sm); margin-bottom:0;">Server #</label>' +
-                '<input type="text" maxlength="4" pattern="\\d{4}" class="gm-input gm-input-sm guild-server-number" data-guild="' + esc(guildId) + '" aria-label="' + esc('Server number of ' + guildId) + '" value="' + esc(serverNum) + '" style="padding: 0.25rem 0.5rem; font-size: var(--fs-sm); height: auto;" placeholder="e.g. 1089">' +
-              '</div>' +
-              '<button class="gm-btn gm-btn-primary save-guild-btn" data-guild="' + esc(guildId) + '" style="margin-top: 1.15rem; padding: 0.35rem 0.65rem; font-size: var(--fs-sm); display:flex; align-items:center; gap:0.25rem; height: auto; line-height: 1.2;">' +
-                '<i class="ph ph-floppy-disk"></i> Save' +
-              '</button>' +
-              '<button class="gm-btn gm-btn-ghost rename-guild-btn" data-guild="' + esc(guildId) + '" style="margin-top: 1.15rem; padding: 0.35rem 0.65rem; font-size: var(--fs-sm); display:flex; align-items:center; gap:0.25rem; height: auto; line-height: 1.2;">' +
-                '<i class="ph ph-tag"></i> Rename' +
-              '</button>' +
-              '<button class="gm-btn gm-btn-danger-ghost delete-guild-btn" data-guild="' + esc(guildId) + '" style="margin-top: 1.15rem; padding: 0.35rem 0.65rem; font-size: var(--fs-sm); display:flex; align-items:center; gap:0.25rem; height: auto; line-height: 1.2;">' +
-                '<i class="ph ph-trash"></i> Delete' +
-              '</button>' +
-            '</div>' +
+          '<div class="gm-cred-card" data-guild-id="' +
+          esc(guildId) +
+          '">' +
+          '<div class="gm-row" style="justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">' +
+          '<div class="gm-cred-name" style="font-size: var(--fs-xl); display: flex; align-items: center; gap: 0.5rem; margin-bottom:0; font-weight:600;">' +
+          '<i class="ph ph-shield"></i> ' +
+          esc(guildId) +
+          serverTag +
+          '</div>' +
+          '</div>' +
+          '<div class="gm-row" style="gap: 0.5rem; align-items: center; flex-wrap: wrap;">' +
+          '<div class="gm-col" style="flex: 1; gap: 0.25rem; min-width:100px;">' +
+          '<label class="gm-dim" style="font-size: var(--fs-sm); margin-bottom:0;">Server #</label>' +
+          '<input type="text" maxlength="4" pattern="\\d{4}" class="gm-input gm-input-sm guild-server-number" data-guild="' +
+          esc(guildId) +
+          '" aria-label="' +
+          esc('Server number of ' + guildId) +
+          '" value="' +
+          esc(serverNum) +
+          '" style="padding: 0.25rem 0.5rem; font-size: var(--fs-sm); height: auto;" placeholder="e.g. 1089">' +
+          '</div>' +
+          '<button class="gm-btn gm-btn-primary save-guild-btn" data-guild="' +
+          esc(guildId) +
+          '" style="margin-top: 1.15rem; padding: 0.35rem 0.65rem; font-size: var(--fs-sm); display:flex; align-items:center; gap:0.25rem; height: auto; line-height: 1.2;">' +
+          '<i class="ph ph-floppy-disk"></i> Save' +
+          '</button>' +
+          '<button class="gm-btn gm-btn-ghost rename-guild-btn" data-guild="' +
+          esc(guildId) +
+          '" style="margin-top: 1.15rem; padding: 0.35rem 0.65rem; font-size: var(--fs-sm); display:flex; align-items:center; gap:0.25rem; height: auto; line-height: 1.2;">' +
+          '<i class="ph ph-tag"></i> Rename' +
+          '</button>' +
+          '<button class="gm-btn gm-btn-danger-ghost delete-guild-btn" data-guild="' +
+          esc(guildId) +
+          '" style="margin-top: 1.15rem; padding: 0.35rem 0.65rem; font-size: var(--fs-sm); display:flex; align-items:center; gap:0.25rem; height: auto; line-height: 1.2;">' +
+          '<i class="ph ph-trash"></i> Delete' +
+          '</button>' +
+          '</div>' +
           '</div>';
       });
 
@@ -126,7 +157,7 @@ export async function renderGuildsList(): Promise<void> {
         const bodyEl = headerEl.nextElementSibling as HTMLElement | null;
         const arrowEl = headerEl.querySelector('.gm-accordion-arrow') as HTMLElement | null;
         if (!bodyEl) return;
-        const isHidden = (bodyEl.style.display === 'none');
+        const isHidden = bodyEl.style.display === 'none';
         if (isHidden) {
           bodyEl.style.display = 'block';
           if (arrowEl) arrowEl.style.transform = 'rotate(180deg)';
@@ -144,13 +175,20 @@ export async function renderGuildsList(): Promise<void> {
         if (!card) return;
         const serverNumInput = card.querySelector('.guild-server-number') as HTMLInputElement | null;
         const serverNum = serverNumInput ? serverNumInput.value.trim() : '';
-        if (serverNum && !/^\d{4}$/.test(serverNum)) { showToast('Server number must be exactly 4 digits (e.g. 1089).', 'error'); return; }
+        if (serverNum && !/^\d{4}$/.test(serverNum)) {
+          showToast('Server number must be exactly 4 digits (e.g. 1089).', 'error');
+          return;
+        }
 
         (btn as HTMLButtonElement).disabled = true;
         const origText = btn.innerHTML;
         btn.innerHTML = '<i class="ph ph-circle-notch spinner"></i>...';
 
-        try { ls()?.setItem('gm_server_number_' + guildId, serverNum); } catch (_) { /* ignore */ }
+        try {
+          ls()?.setItem('gm_server_number_' + guildId, serverNum);
+        } catch (_) {
+          /* ignore */
+        }
         const knownGuilds = getAppState().guildsData;
         const knownEntry = knownGuilds[guildId];
         if (knownEntry) {
@@ -160,7 +198,10 @@ export async function renderGuildsList(): Promise<void> {
         try {
           const res = await updateGuildServerNumber(db, guildId, serverNum);
           if (res.error) throw new Error(res.error.message || JSON.stringify(res.error));
-          showToast('Guild ' + guildId + (serverNum ? ' (Server #' + serverNum + ')' : '') + ' updated successfully!', 'success');
+          showToast(
+            'Guild ' + guildId + (serverNum ? ' (Server #' + serverNum + ')' : '') + ' updated successfully!',
+            'success'
+          );
           await fetchGuilds();
           await renderGuildsList();
         } catch (err: any) {
@@ -206,7 +247,7 @@ export async function renderGuildsList(): Promise<void> {
               delete remainingData[guildId];
               patchAppState({
                 guildsData: remainingData,
-                guildsList: st.guildsList.filter((id) => id !== guildId)
+                guildsList: st.guildsList.filter((id) => id !== guildId),
               });
               showToast('Guild ' + guildId + ' deleted successfully', 'success');
               await fetchGuilds();
@@ -221,6 +262,9 @@ export async function renderGuildsList(): Promise<void> {
       });
     });
   } catch (err: any) {
-    container.innerHTML = '<div class="gm-empty"><i class="ph ph-warning-octagon gm-icon" style="color:var(--danger);"></i><div class="gm-empty-title">Error: ' + esc(err.message) + '</div></div>';
+    container.innerHTML =
+      '<div class="gm-empty"><i class="ph ph-warning-octagon gm-icon" style="color:var(--danger);"></i><div class="gm-empty-title">Error: ' +
+      esc(err.message) +
+      '</div></div>';
   }
 }

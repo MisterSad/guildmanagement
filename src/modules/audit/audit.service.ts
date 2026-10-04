@@ -51,9 +51,7 @@ export class AuditService {
     const limit = Math.min(filters.limit || 100, 300);
     const offset = filters.offset || 0;
 
-    let query = supabase
-      .from('system_audit_logs')
-      .select('*', { count: 'exact' });
+    let query = supabase.from('system_audit_logs').select('*', { count: 'exact' });
 
     if (filters.level && filters.level !== 'ALL') {
       query = query.eq('level', filters.level);
@@ -79,7 +77,9 @@ export class AuditService {
       // route across a tenant boundary; it was a query whose meaning the user
       // could change by accident.
       const s = escapeOrFilterValue(filters.search.trim());
-      query = query.or(`pseudo.ilike.%${s}%,uid.ilike.%${s}%,message.ilike.%${s}%,server_number.ilike.%${s}%,guild.ilike.%${s}%,user_identifier.ilike.%${s}%`);
+      query = query.or(
+        `pseudo.ilike.%${s}%,uid.ilike.%${s}%,message.ilike.%${s}%,server_number.ilike.%${s}%,guild.ilike.%${s}%,user_identifier.ilike.%${s}%`
+      );
     }
 
     query = query.order('created_at', { ascending: false }).range(offset, offset + limit - 1);
@@ -119,7 +119,12 @@ export class AuditService {
 
     for (const row of data) {
       if (row.action_type === 'score_submission') scores24h++;
-      if (row.action_type === 'metrics_update' || row.action_type === 'power_update' || row.action_type === 'glory_update') metrics24h++;
+      if (
+        row.action_type === 'metrics_update' ||
+        row.action_type === 'power_update' ||
+        row.action_type === 'glory_update'
+      )
+        metrics24h++;
       if (row.level === 'ERROR' || row.level === 'FATAL') errors24h++;
       if (row.uid) {
         uniquePlayers.add(row.uid);

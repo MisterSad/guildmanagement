@@ -7,8 +7,8 @@
  * svs.ts, calamity.ts -- only decides WHEN to post and WHAT to say.
  */
 
-import type { EdgeLogger } from "../_shared/logger.ts";
-import type { AdminClient } from "../_shared/db.ts";
+import type { EdgeLogger } from '../_shared/logger.ts';
+import type { AdminClient } from '../_shared/db.ts';
 
 export type Config = Record<string, string>;
 
@@ -107,11 +107,7 @@ async function acquireReminderLock(run: GuildRun, lockKey: string): Promise<bool
 }
 
 async function releaseLock(run: GuildRun, lockKey: string): Promise<void> {
-  await run.supabase
-    .from('guild_config')
-    .delete()
-    .eq('guild', run.guild)
-    .eq('key', lockKey);
+  await run.supabase.from('guild_config').delete().eq('guild', run.guild).eq('key', lockKey);
 }
 
 /**
@@ -127,10 +123,12 @@ export async function claimSlot(run: GuildRun, lockKey: string, what: string, fo
     const updatedStr = run.lockTimes[lockKey];
     const lockAgeMins = updatedStr ? (run.now - new Date(updatedStr).getTime()) / 60000 : 999;
     if (lockAgeMins < 5) return false;
-    run.logger.info(`[${run.guild}] Stale sending lock detected for ${lockKey} (age: ${lockAgeMins.toFixed(1)} mins). Cleaning up and retrying.`);
+    run.logger.info(
+      `[${run.guild}] Stale sending lock detected for ${lockKey} (age: ${lockAgeMins.toFixed(1)} mins). Cleaning up and retrying.`
+    );
     await releaseLock(run, lockKey);
   }
-  if (!await acquireReminderLock(run, lockKey)) {
+  if (!(await acquireReminderLock(run, lockKey))) {
     run.logger.info(`[${run.guild}] Lock already exists for ${what}, skipping`);
     return false;
   }
@@ -138,7 +136,13 @@ export async function claimSlot(run: GuildRun, lockKey: string, what: string, fo
 }
 
 /** Marks a claimed slot 'sent', or releases it so the next tick retries. */
-export async function settleSlot(run: GuildRun, lockKey: string, sent: boolean, result: Record<string, unknown>, what: string): Promise<void> {
+export async function settleSlot(
+  run: GuildRun,
+  lockKey: string,
+  sent: boolean,
+  result: Record<string, unknown>,
+  what: string
+): Promise<void> {
   if (sent) {
     try {
       await run.supabase
@@ -173,10 +177,17 @@ function isValidDiscordWebhook(url: string): boolean {
   const cleanUrl = url.replace(/^[<"'\s]+|[>'"\s]+$/g, '').trim();
   try {
     const u = new URL(cleanUrl.startsWith('http') ? cleanUrl : 'https://' + cleanUrl);
-    return u.protocol === 'https:' &&
-      (u.hostname === 'discord.com' || u.hostname === 'discordapp.com' || u.hostname.endsWith('.discord.com') || u.hostname.endsWith('.discordapp.com')) &&
-      u.pathname.includes('/webhooks/');
-  } catch { return false; }
+    return (
+      u.protocol === 'https:' &&
+      (u.hostname === 'discord.com' ||
+        u.hostname === 'discordapp.com' ||
+        u.hostname.endsWith('.discord.com') ||
+        u.hostname.endsWith('.discordapp.com')) &&
+      u.pathname.includes('/webhooks/')
+    );
+  } catch {
+    return false;
+  }
 }
 
 function maskWebhookUrl(url: string | null | undefined): string {
@@ -201,7 +212,7 @@ async function sendDiscordWebhookWithRetry(logger: EdgeLogger, url: string, body
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
-        signal: AbortSignal.timeout(8000)
+        signal: AbortSignal.timeout(8000),
       });
 
       if (res.ok) {
@@ -218,23 +229,22 @@ async function sendDiscordWebhookWithRetry(logger: EdgeLogger, url: string, body
           }
         }
         logger.warn(`Discord Rate Limit (429) hit. Waiting ${waitMs}ms before retry...`);
-        await new Promise(resolve => setTimeout(resolve, waitMs));
+        await new Promise((resolve) => setTimeout(resolve, waitMs));
         continue;
       }
 
       if (res.status >= 500) {
         logger.warn(`Discord server error (${res.status}). Retrying in ${delay}ms...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
+        await new Promise((resolve) => setTimeout(resolve, delay));
         delay *= 2; // exponential backoff
         continue;
       }
 
       logger.error(`Discord webhook failed with non-retriable status: ${res.status}`);
       return false;
-
     } catch (err: any) {
       logger.error(`Network error sending Discord webhook: ${err.message}. Retrying in ${delay}ms...`, err);
-      await new Promise(resolve => setTimeout(resolve, delay));
+      await new Promise((resolve) => setTimeout(resolve, delay));
       delay *= 2;
     }
   }
@@ -254,15 +264,17 @@ export async function postToDiscord(run: GuildRun, webhookUrl: string, body: unk
 export function reminderBody(content: string, title: string, description: string, color: number, fields: unknown[]) {
   return {
     content,
-    embeds: [{
-      title,
-      description,
-      color,
-      fields,
-      timestamp: new Date().toISOString(),
-      footer: { text: 'FGF Guild Management Tool' }
-    }],
-    allowed_mentions: { parse: ['roles', 'users', 'everyone'] }
+    embeds: [
+      {
+        title,
+        description,
+        color,
+        fields,
+        timestamp: new Date().toISOString(),
+        footer: { text: 'FGF Guild Management Tool' },
+      },
+    ],
+    allowed_mentions: { parse: ['roles', 'users', 'everyone'] },
   };
 }
 
@@ -280,19 +292,26 @@ export function formatDiscordRoleMention(input: string | undefined | null): stri
 /** `<@&role>` for the block's own role, else the guild's, else @everyone. */
 export function blockRoleTag(config: Config, roleKey: string): { roleId: string | undefined; tag: string } {
   const specific = config[roleKey];
-  const roleId = (specific && specific.trim() !== '') ? specific : config['discord_role_id'];
-  const tag = (roleId && roleId.trim() !== '') ? `<@&${roleId.trim()}>` : '@everyone';
+  const roleId = specific && specific.trim() !== '' ? specific : config['discord_role_id'];
+  const tag = roleId && roleId.trim() !== '' ? `<@&${roleId.trim()}>` : '@everyone';
   return { roleId, tag };
 }
 
 // ── Weekly clock ─────────────────────────────────────────────────────────────
 
-export function getMinutesDiff(curDay: number, curHour: number, curMin: number, targetDay: number, targetHour: number, targetMin: number): number {
+export function getMinutesDiff(
+  curDay: number,
+  curHour: number,
+  curMin: number,
+  targetDay: number,
+  targetHour: number,
+  targetMin: number
+): number {
   const curWeeklyMins = curDay * 1440 + curHour * 60 + curMin;
   const targetWeeklyMins = targetDay * 1440 + targetHour * 60 + targetMin;
   let diff = curWeeklyMins - targetWeeklyMins;
   // Normalize difference to [-5040, 5040] to handle weekly rollover
-  diff = (diff + 10080 + 5040) % 10080 - 5040;
+  diff = ((diff + 10080 + 5040) % 10080) - 5040;
   return diff;
 }
 
@@ -308,7 +327,11 @@ export function getSlotDateString(now: number, slotDay: number): string {
   return d.toISOString().split('T')[0]; // YYYY-MM-DD
 }
 
-export interface WeeklySlot { day: number; hour: number; minute: number }
+export interface WeeklySlot {
+  day: number;
+  hour: number;
+  minute: number;
+}
 
 /** The slots of a weekly schedule that fell in the last 10 minutes. */
 export function dueSlots<T extends WeeklySlot>(now: number, schedule: T[]): T[] {

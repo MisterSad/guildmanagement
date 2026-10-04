@@ -60,10 +60,7 @@ function makeJson(req: Request) {
 /**
  * Resolves player identity cryptographically from the JWT via accounts.auth_user_id.
  */
-async function getIdentity(
-  req: Request,
-  admin: AdminClient
-): Promise<PlayerIdentity | null> {
+async function getIdentity(req: Request, admin: AdminClient): Promise<PlayerIdentity | null> {
   // One resolver for every function (_shared/auth.ts): JWT, active account,
   // session epoch (C1), normalised role.
   const caller = await resolveCaller(req, admin);
@@ -96,22 +93,29 @@ export async function handler(req: Request): Promise<Response> {
     const bodyParsed = RequestBodySchema.safeParse(rawBody);
     if (!bodyParsed.success) {
       const hasAction = typeof (rawBody as any)?.action === "string" && (rawBody as any).action.trim().length > 0;
-      return json({ ok: false, error: hasAction ? "bad_request" : "missing_action", issues: bodyParsed.error.issues }, 400);
+      return json(
+        { ok: false, error: hasAction ? "bad_request" : "missing_action", issues: bodyParsed.error.issues },
+        400
+      );
     }
 
     const action = bodyParsed.data.action;
-    let payload: any = (bodyParsed.data.payload && typeof bodyParsed.data.payload === "object") ? bodyParsed.data.payload : {};
+    let payload: any =
+      bodyParsed.data.payload && typeof bodyParsed.data.payload === "object" ? bodyParsed.data.payload : {};
 
     const schema = ActionPayloadSchemas[action];
     if (schema) {
       const payloadParsed = schema.safeParse(payload);
       if (!payloadParsed.success) {
         logger.warn("Payload validation failed for action", { action, issues: payloadParsed.error.issues });
-        return json({
-          ok: false,
-          error: "invalid_payload",
-          issues: payloadParsed.error.issues
-        }, 422);
+        return json(
+          {
+            ok: false,
+            error: "invalid_payload",
+            issues: payloadParsed.error.issues,
+          },
+          422
+        );
       }
       payload = payloadParsed.data;
     }

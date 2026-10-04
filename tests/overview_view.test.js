@@ -18,65 +18,80 @@ const mocks = vi.hoisted(() => ({
   showToast: vi.fn(),
   exportGuildData: vi.fn(async () => ({ ok: true })),
   configGet: vi.fn(async () => null),
-  configSet: vi.fn(async () => ({}))
+  configSet: vi.fn(async () => ({})),
 }));
 
 vi.mock('../src/core/auth/roles', async (importOriginal) => ({
   ...(await importOriginal()),
-  getActiveGuild: () => 'ALPHA'
+  getActiveGuild: () => 'ALPHA',
 }));
 vi.mock('../src/core/utils/date', async (importOriginal) => ({
   ...(await importOriginal()),
   getWeekStart: () => '2026-08-03',
-  getPrevWeekStart: () => '2026-07-27'
+  getPrevWeekStart: () => '2026-07-27',
 }));
 vi.mock('../src/core/dom/toast', async (importOriginal) => ({
   ...(await importOriginal()),
-  showToast: mocks.showToast
+  showToast: mocks.showToast,
 }));
 vi.mock('../src/core/config/guild-config', async (importOriginal) => ({
   ...(await importOriginal()),
-  config: { get: mocks.configGet, set: mocks.configSet }
+  config: { get: mocks.configGet, set: mocks.configSet },
 }));
 vi.mock('../src/modules/ocr/ocr.service', async (importOriginal) => ({
   ...(await importOriginal()),
-  exportGuildData: mocks.exportGuildData
+  exportGuildData: mocks.exportGuildData,
 }));
 
 const TABLES = {
   guild_members: [
     { pseudo: 'Alpha', guild: 'ALPHA', overall_power: 1000000, created_at: '2026-08-01T00:00:00Z', uid: 'u1' },
-    { pseudo: 'Bravo', guild: 'ALPHA', overall_power: 500000, created_at: '2026-07-01T00:00:00Z', uid: 'u2' }
+    { pseudo: 'Bravo', guild: 'ALPHA', overall_power: 500000, created_at: '2026-07-01T00:00:00Z', uid: 'u2' },
   ],
   event_status: [
-    { event_name: 'SvS', guild: 'ALPHA', is_active: true, updated_at: '2026-08-02T10:00:00Z', session_id: 'S1', start_at: '2099-01-01T00:00:00Z' }
+    {
+      event_name: 'SvS',
+      guild: 'ALPHA',
+      is_active: true,
+      updated_at: '2026-08-02T10:00:00Z',
+      session_id: 'S1',
+      start_at: '2099-01-01T00:00:00Z',
+    },
   ],
   event_participants: [
     { pseudo: 'Alpha', guild: 'ALPHA', event_name: 'Glory', week_start: W_CUR, score: 1000 },
-    { pseudo: 'Alpha', guild: 'ALPHA', event_name: 'Glory', week_start: W_PREV, score: 400 }
+    { pseudo: 'Alpha', guild: 'ALPHA', event_name: 'Glory', week_start: W_PREV, score: 400 },
   ],
   sanctions: [
-    { id: 1, pseudo: 'Bravo', guild: 'ALPHA', comment: 'x', created_by: 'HawkEye', created_at: '2026-08-02T09:00:00Z' }
+    { id: 1, pseudo: 'Bravo', guild: 'ALPHA', comment: 'x', created_by: 'HawkEye', created_at: '2026-08-02T09:00:00Z' },
   ],
   guild_transfers: [],
-  guild_config: []
+  guild_config: [],
 };
 
 function chained(value) {
   const filters = [];
   const apply = () => {
     let res = (value || []).slice();
-    filters.forEach((f) => { res = res.filter(f); });
+    filters.forEach((f) => {
+      res = res.filter(f);
+    });
     return res;
   };
   const chain = {
     select: () => chain,
     order: () => chain,
     limit: () => chain,
-    eq: (field, val) => { filters.push((r) => r[field] === val); return chain; },
-    in: (field, vals) => { filters.push((r) => vals.indexOf(r[field]) !== -1); return chain; },
+    eq: (field, val) => {
+      filters.push((r) => r[field] === val);
+      return chain;
+    },
+    in: (field, vals) => {
+      filters.push((r) => vals.indexOf(r[field]) !== -1);
+      return chain;
+    },
     or: () => chain,
-    then: (resolve) => Promise.resolve({ data: apply(), error: null }).then(resolve)
+    then: (resolve) => Promise.resolve({ data: apply(), error: null }).then(resolve),
   };
   return chain;
 }
@@ -84,9 +99,17 @@ function chained(value) {
 function installDb() {
   setDbClient({
     // ARC-04: the webhook keys that are set, never their values.
-    rpc: (name, args) => Promise.resolve(name === 'gm_configured_webhooks'
-      ? { data: TABLES.guild_config.filter((r) => r.guild === args.p_guild && String(r.value || '').trim() !== '').map((r) => r.key), error: null }
-      : { data: null, error: { message: 'unknown rpc' } }),
+    rpc: (name, args) =>
+      Promise.resolve(
+        name === 'gm_configured_webhooks'
+          ? {
+              data: TABLES.guild_config
+                .filter((r) => r.guild === args.p_guild && String(r.value || '').trim() !== '')
+                .map((r) => r.key),
+              error: null,
+            }
+          : { data: null, error: { message: 'unknown rpc' } }
+      ),
     from: (table) => {
       if (table === 'guild_members') {
         return {
@@ -95,11 +118,11 @@ function installDb() {
               return { eq: () => ({ then: (r) => Promise.resolve({ count: 3, data: null, error: null }).then(r) }) };
             }
             return chained(TABLES.guild_members);
-          }
+          },
         };
       }
       return chained(TABLES[table] || []);
-    }
+    },
   });
 }
 
@@ -186,10 +209,11 @@ describe('OverviewView — Clocks modal', () => {
   });
 });
 
-
 describe('Overview: "Discord reminders are not set up" callout', () => {
   const flush = () => new Promise((r) => setTimeout(r, 0));
-  afterEach(() => { TABLES.guild_config = []; });
+  afterEach(() => {
+    TABLES.guild_config = [];
+  });
 
   it('shows when the guild has no webhook anywhere', async () => {
     await new OverviewView().load();
@@ -204,8 +228,10 @@ describe('Overview: "Discord reminders are not set up" callout', () => {
     expect(document.getElementById('gm-overview').textContent).not.toContain('Discord reminders are not set up');
   });
 
-  it('ignores another guild\'s webhook', async () => {
-    TABLES.guild_config = [{ guild: 'OMEGA', key: 'discord_webhook_url', value: 'https://discord.com/api/webhooks/1/x' }];
+  it("ignores another guild's webhook", async () => {
+    TABLES.guild_config = [
+      { guild: 'OMEGA', key: 'discord_webhook_url', value: 'https://discord.com/api/webhooks/1/x' },
+    ];
     await new OverviewView().load();
     await flush();
     expect(document.getElementById('gm-overview').textContent).toContain('Discord reminders are not set up');

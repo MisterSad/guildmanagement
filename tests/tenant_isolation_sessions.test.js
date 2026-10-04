@@ -26,7 +26,11 @@ describe('session revocation reaches every caller lookup (BE-B-07, DB-06)', () =
     expect(sql).toContain("'auth_user_id = auth.uid() AND (SELECT public.gm_session_is_valid())'");
     expect(sql).toContain("RAISE EXCEPTION 'a function still resolves its caller without a session check'");
     expect(sql).toContain("RAISE EXCEPTION 'a policy still resolves its caller without a session check'");
-    for (const fn of ['gm_transfer_guild_member(text,text,text)', 'resolve_guild_transfer(uuid,text)', 'gm_reset_account_password(text,text)']) {
+    for (const fn of [
+      'gm_transfer_guild_member(text,text,text)',
+      'resolve_guild_transfer(uuid,text)',
+      'gm_reset_account_password(text,text)',
+    ]) {
       expect(sql).toContain(`'${fn}'`);
     }
   });
@@ -48,9 +52,10 @@ describe('a member cannot move players (SEC-05)', () => {
 });
 
 describe('migration wiki: the author guild owns its pages (SEC-08, DB-07)', () => {
-
   it('gives owner_guild an ADR-022 foreign key', () => {
-    expect(sql).toMatch(/FOREIGN KEY \(owner_guild\)\s+REFERENCES public\.guilds\(id\) ON UPDATE CASCADE ON DELETE SET NULL DEFERRABLE INITIALLY IMMEDIATE/);
+    expect(sql).toMatch(
+      /FOREIGN KEY \(owner_guild\)\s+REFERENCES public\.guilds\(id\) ON UPDATE CASCADE ON DELETE SET NULL DEFERRABLE INITIALLY IMMEDIATE/
+    );
   });
 
   it('the front shows Edit and Delete only to the author guild, and sends no author fields', async () => {
@@ -59,7 +64,9 @@ describe('migration wiki: the author guild owns its pages (SEC-08, DB-07)', () =
     expect(canManageWikiPage({ owner_guild: 'BETA' }, 'ALPHA', 'guild_admin')).toBe(false);
     expect(canManageWikiPage({ owner_guild: 'BETA' }, null, 'super_admin')).toBe(true);
     const view = read('src/modules/migration/views/MigrationHubView.ts');
-    expect(view).not.toMatch(/created_by_account_id:|updated_by_account_id:|author_account_id:|author_role:|author_guild_id:/);
+    expect(view).not.toMatch(
+      /created_by_account_id:|updated_by_account_id:|author_account_id:|author_role:|author_guild_id:/
+    );
     expect(view).toContain("const editBtnEl = document.getElementById('migration-hub-edit-btn');");
   });
 });
@@ -68,14 +75,15 @@ describe('banned players stay off the roster (BE-B-06)', () => {
   it('refuses a banned UID on insert and on a guild or UID change', () => {
     expect(sql).toContain('BEFORE INSERT OR UPDATE OF guild, uid ON public.guild_members');
     expect(sql).toContain("RAISE EXCEPTION 'uid_banned' USING ERRCODE = 'check_violation'");
-    expect(sql).toMatch(/AND NEW\.guild IS NOT DISTINCT FROM OLD\.guild\s+AND NEW\.uid IS NOT DISTINCT FROM OLD\.uid THEN\s+RETURN NEW;/);
+    expect(sql).toMatch(
+      /AND NEW\.guild IS NOT DISTINCT FROM OLD\.guild\s+AND NEW\.uid IS NOT DISTINCT FROM OLD\.uid THEN\s+RETURN NEW;/
+    );
   });
 });
 
 describe('deleting an account ends its sessions (SEC-07, BE-B-21, DB-05)', () => {
-
   it('revokes sessions on guild deletion and GDPR erasure, service-role only', () => {
-    expect(sql).toContain("GRANT EXECUTE ON FUNCTION public.gm_revoke_auth_sessions(uuid) TO service_role;");
+    expect(sql).toContain('GRANT EXECUTE ON FUNCTION public.gm_revoke_auth_sessions(uuid) TO service_role;');
     expect(sql).toContain('DELETE FROM auth.sessions WHERE user_id = p_auth_user_id;');
     expect(sql).toContain('DELETE FROM auth.refresh_tokens WHERE user_id = p_auth_user_id::text;');
     expect(sql).toContain("RAISE EXCEPTION 'guild deletion still deletes server_admin accounts or leaves sessions'");
@@ -84,7 +92,10 @@ describe('deleting an account ends its sessions (SEC-07, BE-B-21, DB-05)', () =>
 
   it('bumpSessionVersion ends the sessions instead of re-stamping the next token only', () => {
     const src = read('supabase/functions/_shared/registration-decision.ts');
-    const fn = src.slice(src.indexOf('export async function bumpSessionVersion('), src.indexOf('export async function getTargetCtx('));
+    const fn = src.slice(
+      src.indexOf('export async function bumpSessionVersion('),
+      src.indexOf('export async function getTargetCtx(')
+    );
     expect(fn).toContain('admin.rpc("gm_revoke_auth_sessions", { p_auth_user_id: authUserId })');
   });
 });

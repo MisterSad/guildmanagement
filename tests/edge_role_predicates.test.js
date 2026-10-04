@@ -8,7 +8,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const fnDir = path.resolve(__dirname, '../supabase/functions');
-const ROLE_LITERAL_COMPARISON = /[=!]==\s*["'](super_admin|server_admin|guild_admin|member)["']|["'](super_admin|server_admin|guild_admin|member)["']\s*[=!]==/;
+const ROLE_LITERAL_COMPARISON =
+  /[=!]==\s*["'](super_admin|server_admin|guild_admin|member)["']|["'](super_admin|server_admin|guild_admin|member)["']\s*[=!]==/;
 const ROLE_LIST = /\[\s*["'](super_admin|server_admin|guild_admin)["']\s*,[^\]]*\]\s*\.includes\(/;
 
 function sources() {
@@ -30,7 +31,8 @@ describe('role decisions go through admin-authz predicates', () => {
       if (rel === path.join('_shared', 'admin-authz.ts')) continue;
       const lines = fs.readFileSync(path.join(fnDir, rel), 'utf8').split('\n');
       lines.forEach((l, i) => {
-        if (ROLE_LITERAL_COMPARISON.test(l) || ROLE_LIST.test(l) || /\bADMIN_ROLES\b/.test(l)) offenders.push(`${rel}:${i + 1}: ${l.trim()}`);
+        if (ROLE_LITERAL_COMPARISON.test(l) || ROLE_LIST.test(l) || /\bADMIN_ROLES\b/.test(l))
+          offenders.push(`${rel}:${i + 1}: ${l.trim()}`);
       });
     }
     expect(offenders).toEqual([]);

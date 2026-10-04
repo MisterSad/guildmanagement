@@ -66,7 +66,7 @@ export interface DateHolder {
  */
 export function formatChartDate(h?: string | DateHolder | null): string {
   if (!h) return '';
-  const raw = typeof h === 'string' ? h : (h.week_start || h.battle_date || h.start_at || h.date || h.session_id || '');
+  const raw = typeof h === 'string' ? h : h.week_start || h.battle_date || h.start_at || h.date || h.session_id || '';
   if (!raw) return '';
 
   // 1. Direct YYYY-MM-DD pattern (e.g. 2026-08-10 or 2026-08-10T...)

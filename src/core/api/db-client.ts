@@ -13,6 +13,5 @@
  * (setDbClient / getClient), not by `window.GM.db`.
  */
 
-
 /** The guarded Supabase client. Typed loosely, as every call site already treats it. */
 export type DbClient = any;

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { getValidatedEnv, ConfigurationError, } from '../supabase/functions/_shared/env.ts';
+import { getValidatedEnv, ConfigurationError } from '../supabase/functions/_shared/env.ts';
 
 describe('Ticket 2.1: Zod Runtime Environment Validator (env.ts)', () => {
   const validBaseEnv = {
@@ -71,7 +71,9 @@ describe('Ticket 2.1: Zod Runtime Environment Validator (env.ts)', () => {
     expect(() => getValidatedEnv(validBaseEnv, { requireGemini: true })).toThrow(ConfigurationError);
 
     // Empty string when required
-    expect(() => getValidatedEnv({ ...validBaseEnv, GEMINI_API_KEY: '' }, { requireGemini: true })).toThrow(ConfigurationError);
+    expect(() => getValidatedEnv({ ...validBaseEnv, GEMINI_API_KEY: '' }, { requireGemini: true })).toThrow(
+      ConfigurationError
+    );
 
     // Success when provided
     const validWithGemini = { ...validBaseEnv, GEMINI_API_KEY: 'valid-gemini-key' };

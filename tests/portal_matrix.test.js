@@ -11,128 +11,186 @@ const portalContent = edgeSource('member-portal');
 
 // Schemas matching the definitions in supabase/functions/member-portal/index.ts
 export const RequestBodySchema = z.object({
-  action: z.string().trim().min(1, "action is required"),
+  action: z.string().trim().min(1, 'action is required'),
   payload: z.unknown().optional(),
 });
 
-export const SubmitScoresSchema = z.object({
-  event_name: z.string().trim().min(1, "event_name is required").max(64),
-  session_id: z.string().trim().min(1, "session_id is required").max(64),
-  participated: z.union([z.boolean(), z.number()]).optional(),
-  score: z.union([
-    z.number().min(0).max(MAX_ALLOWED_EVENT_SCORE),
-    z.string().regex(/^\s*\d+(?:,\d+)*(?:\.\d+)?\s*$/).refine((val) => {
+export const SubmitScoresSchema = z
+  .object({
+    event_name: z.string().trim().min(1, 'event_name is required').max(64),
+    session_id: z.string().trim().min(1, 'session_id is required').max(64),
+    participated: z.union([z.boolean(), z.number()]).optional(),
+    score: z
+      .union([
+        z.number().min(0).max(MAX_ALLOWED_EVENT_SCORE),
+        z
+          .string()
+          .regex(/^\s*\d+(?:,\d+)*(?:\.\d+)?\s*$/)
+          .refine(
+            (val) => {
+              const parsed = parseSafeScore(val);
+              return parsed !== null && parsed >= 0 && parsed <= MAX_ALLOWED_EVENT_SCORE;
+            },
+            { message: `Score must be between 0 and ${MAX_ALLOWED_EVENT_SCORE}` }
+          ),
+      ])
+      .optional(),
+    score_prep: z
+      .union([
+        z.number().min(0).max(MAX_ALLOWED_EVENT_SCORE),
+        z
+          .string()
+          .regex(/^\s*\d+(?:,\d+)*(?:\.\d+)?\s*$/)
+          .refine(
+            (val) => {
+              const parsed = parseSafeScore(val);
+              return parsed !== null && parsed >= 0 && parsed <= MAX_ALLOWED_EVENT_SCORE;
+            },
+            { message: `Score prep must be between 0 and ${MAX_ALLOWED_EVENT_SCORE}` }
+          ),
+      ])
+      .optional(),
+    score_pvp: z
+      .union([
+        z.number().min(0).max(MAX_ALLOWED_EVENT_SCORE),
+        z
+          .string()
+          .regex(/^\s*\d+(?:,\d+)*(?:\.\d+)?\s*$/)
+          .refine(
+            (val) => {
+              const parsed = parseSafeScore(val);
+              return parsed !== null && parsed >= 0 && parsed <= MAX_ALLOWED_EVENT_SCORE;
+            },
+            { message: `Score pvp must be between 0 and ${MAX_ALLOWED_EVENT_SCORE}` }
+          ),
+      ])
+      .optional(),
+    late: z.union([z.boolean(), z.number()]).optional(),
+  })
+  .passthrough();
+
+export const UpdatePowerSchema = z
+  .object({
+    power: z.union([z.number().min(0).max(MAX_ALLOWED_POWER), z.string().regex(/^\s*\d+\s*$/)]).refine(
+      (val) => {
+        const n = Number(val);
+        return Number.isFinite(n) && n >= 0 && n <= MAX_ALLOWED_POWER;
+      },
+      { message: `Power must be between 0 and ${MAX_ALLOWED_POWER}` }
+    ),
+  })
+  .passthrough();
+
+const metricPowerField = z
+  .union([z.number().min(0).max(MAX_ALLOWED_POWER), z.string().regex(/^\s*\d+\s*$/)])
+  .refine(
+    (val) => {
+      const n = Number(val);
+      return Number.isFinite(n) && n >= 0 && n <= MAX_ALLOWED_POWER;
+    },
+    { message: `Power metric must be between 0 and ${MAX_ALLOWED_POWER}` }
+  )
+  .optional();
+
+const metricGloryField = z
+  .union([z.number().min(0).max(MAX_ALLOWED_EVENT_SCORE), z.string().regex(/^\s*\d+(?:,\d+)*(?:\.\d+)?\s*$/)])
+  .refine(
+    (val) => {
       const parsed = parseSafeScore(val);
       return parsed !== null && parsed >= 0 && parsed <= MAX_ALLOWED_EVENT_SCORE;
-    }, { message: `Score must be between 0 and ${MAX_ALLOWED_EVENT_SCORE}` })
-  ]).optional(),
-  score_prep: z.union([
-    z.number().min(0).max(MAX_ALLOWED_EVENT_SCORE),
-    z.string().regex(/^\s*\d+(?:,\d+)*(?:\.\d+)?\s*$/).refine((val) => {
-      const parsed = parseSafeScore(val);
-      return parsed !== null && parsed >= 0 && parsed <= MAX_ALLOWED_EVENT_SCORE;
-    }, { message: `Score prep must be between 0 and ${MAX_ALLOWED_EVENT_SCORE}` })
-  ]).optional(),
-  score_pvp: z.union([
-    z.number().min(0).max(MAX_ALLOWED_EVENT_SCORE),
-    z.string().regex(/^\s*\d+(?:,\d+)*(?:\.\d+)?\s*$/).refine((val) => {
-      const parsed = parseSafeScore(val);
-      return parsed !== null && parsed >= 0 && parsed <= MAX_ALLOWED_EVENT_SCORE;
-    }, { message: `Score pvp must be between 0 and ${MAX_ALLOWED_EVENT_SCORE}` })
-  ]).optional(),
-  late: z.union([z.boolean(), z.number()]).optional(),
-}).passthrough();
+    },
+    { message: `Glory metric must be between 0 and ${MAX_ALLOWED_EVENT_SCORE}` }
+  )
+  .optional();
 
-export const UpdatePowerSchema = z.object({
-  power: z.union([
-    z.number().min(0).max(MAX_ALLOWED_POWER),
-    z.string().regex(/^\s*\d+\s*$/)
-  ]).refine((val) => {
-    const n = Number(val);
-    return Number.isFinite(n) && n >= 0 && n <= MAX_ALLOWED_POWER;
-  }, { message: `Power must be between 0 and ${MAX_ALLOWED_POWER}` })
-}).passthrough();
+export const UpdateMetricsSchema = z
+  .object({
+    total_power: metricPowerField,
+    power: metricPowerField,
+    tech_power: metricPowerField,
+    champion_power: metricPowerField,
+    crew_power: metricPowerField,
+    flagship_power: metricPowerField,
+    fleet_rating: metricPowerField,
+    glory_score: metricGloryField,
+  })
+  .passthrough();
 
-const metricPowerField = z.union([
-  z.number().min(0).max(MAX_ALLOWED_POWER),
-  z.string().regex(/^\s*\d+\s*$/)
-]).refine((val) => {
-  const n = Number(val);
-  return Number.isFinite(n) && n >= 0 && n <= MAX_ALLOWED_POWER;
-}, { message: `Power metric must be between 0 and ${MAX_ALLOWED_POWER}` }).optional();
+export const GetMetricsHistorySchema = z
+  .object({
+    limit: z
+      .union([
+        z.number().int().min(1).max(100),
+        z
+          .string()
+          .regex(/^\d+$/)
+          .transform((v) => parseInt(v, 10)),
+      ])
+      .optional(),
+  })
+  .passthrough();
 
-const metricGloryField = z.union([
-  z.number().min(0).max(MAX_ALLOWED_EVENT_SCORE),
-  z.string().regex(/^\s*\d+(?:,\d+)*(?:\.\d+)?\s*$/)
-]).refine((val) => {
-  const parsed = parseSafeScore(val);
-  return parsed !== null && parsed >= 0 && parsed <= MAX_ALLOWED_EVENT_SCORE;
-}, { message: `Glory metric must be between 0 and ${MAX_ALLOWED_EVENT_SCORE}` }).optional();
+export const UpdateGlorySchema = z
+  .object({
+    glory: z
+      .union([z.number().min(0).max(MAX_ALLOWED_EVENT_SCORE), z.string().regex(/^\s*\d+(?:,\d+)*(?:\.\d+)?\s*$/)])
+      .refine(
+        (val) => {
+          const parsed = parseSafeScore(val);
+          return parsed !== null && parsed >= 0 && parsed <= MAX_ALLOWED_EVENT_SCORE;
+        },
+        { message: `Glory score must be between 0 and ${MAX_ALLOWED_EVENT_SCORE}` }
+      ),
+  })
+  .passthrough();
 
-export const UpdateMetricsSchema = z.object({
-  total_power: metricPowerField,
-  power: metricPowerField,
-  tech_power: metricPowerField,
-  champion_power: metricPowerField,
-  crew_power: metricPowerField,
-  flagship_power: metricPowerField,
-  fleet_rating: metricPowerField,
-  glory_score: metricGloryField,
-}).passthrough();
+export const SubmitTransferRequestSchema = z
+  .object({
+    targetGuild: z.string().trim().min(1, 'targetGuild is required').max(32),
+  })
+  .passthrough();
 
-export const GetMetricsHistorySchema = z.object({
-  limit: z.union([
-    z.number().int().min(1).max(100),
-    z.string().regex(/^\d+$/).transform(v => parseInt(v, 10))
-  ]).optional(),
-}).passthrough();
+export const SetAbsenceSchema = z
+  .object({
+    start_date: z.string().trim().min(1, 'start_date is required').max(32),
+    end_date: z.string().trim().min(1, 'end_date is required').max(32),
+    kind: z.enum(['full', 'partial', 'war', 'prep', 'svs']).optional().default('full'),
+    note: z.string().trim().max(500).optional().default(''),
+    id: z.string().trim().max(64).nullish(),
+  })
+  .passthrough();
 
-export const UpdateGlorySchema = z.object({
-  glory: z.union([
-    z.number().min(0).max(MAX_ALLOWED_EVENT_SCORE),
-    z.string().regex(/^\s*\d+(?:,\d+)*(?:\.\d+)?\s*$/)
-  ]).refine((val) => {
-    const parsed = parseSafeScore(val);
-    return parsed !== null && parsed >= 0 && parsed <= MAX_ALLOWED_EVENT_SCORE;
-  }, { message: `Glory score must be between 0 and ${MAX_ALLOWED_EVENT_SCORE}` })
-}).passthrough();
-
-export const SubmitTransferRequestSchema = z.object({
-  targetGuild: z.string().trim().min(1, "targetGuild is required").max(32)
-}).passthrough();
-
-export const SetAbsenceSchema = z.object({
-  start_date: z.string().trim().min(1, "start_date is required").max(32),
-  end_date: z.string().trim().min(1, "end_date is required").max(32),
-  kind: z.enum(["full", "partial", "war", "prep", "svs"]).optional().default("full"),
-  note: z.string().trim().max(500).optional().default(""),
-  id: z.string().trim().max(64).nullish(),
-}).passthrough();
-
-export const DeleteAbsenceSchema = z.object({
-  id: z.string().trim().min(1, "id is required").max(64)
-}).passthrough();
+export const DeleteAbsenceSchema = z
+  .object({
+    id: z.string().trim().min(1, 'id is required').max(64),
+  })
+  .passthrough();
 
 const isQuarterHourOffset = (v) => Number.isFinite(v) && v >= -12 && v <= 14 && Number.isInteger(v * 4);
 
-export const UpdateTimezoneSchema = z.object({
-  offset: z.union([
-    z.number().refine(isQuarterHourOffset, { message: "Offset must be between -12 and 14, in quarter hours" }),
-    z.string().regex(/^-?\d+(\.\d+)?$/).transform(v => Number(v))
-      .refine(isQuarterHourOffset, { message: "Offset must be between -12 and 14, in quarter hours" })
-  ])
-}).passthrough();
+export const UpdateTimezoneSchema = z
+  .object({
+    offset: z.union([
+      z.number().refine(isQuarterHourOffset, { message: 'Offset must be between -12 and 14, in quarter hours' }),
+      z
+        .string()
+        .regex(/^-?\d+(\.\d+)?$/)
+        .transform((v) => Number(v))
+        .refine(isQuarterHourOffset, { message: 'Offset must be between -12 and 14, in quarter hours' }),
+    ]),
+  })
+  .passthrough();
 
 export const ActionPayloadSchemas = {
-  "submit-scores": SubmitScoresSchema,
-  "update-power": UpdatePowerSchema,
-  "update-metrics": UpdateMetricsSchema,
-  "get-metrics-history": GetMetricsHistorySchema,
-  "update-glory": UpdateGlorySchema,
-  "submit-transfer-request": SubmitTransferRequestSchema,
-  "set-absence": SetAbsenceSchema,
-  "delete-absence": DeleteAbsenceSchema,
-  "update-timezone": UpdateTimezoneSchema,
+  'submit-scores': SubmitScoresSchema,
+  'update-power': UpdatePowerSchema,
+  'update-metrics': UpdateMetricsSchema,
+  'get-metrics-history': GetMetricsHistorySchema,
+  'update-glory': UpdateGlorySchema,
+  'submit-transfer-request': SubmitTransferRequestSchema,
+  'set-absence': SetAbsenceSchema,
+  'delete-absence': DeleteAbsenceSchema,
+  'update-timezone': UpdateTimezoneSchema,
 };
 
 describe('Ticket 2.3: Static Containment - Zod Schema Validation in member-portal', () => {
@@ -225,21 +283,37 @@ describe('Ticket 2.3: Zod Schema Unit Validation', () => {
     });
 
     it('accepts scores above 500M up to the 9,999,999,999 bound', () => {
-      expect(SubmitScoresSchema.safeParse({ event_name: 'SVS', session_id: 's1', score: 500_000_001 }).success).toBe(true);
-      expect(SubmitScoresSchema.safeParse({ event_name: 'SVS', session_id: 's1', score_prep: 4_999_999_999 }).success).toBe(true);
-      expect(SubmitScoresSchema.safeParse({ event_name: 'SVS', session_id: 's1', score_pvp: 9_999_999_999 }).success).toBe(true);
-      expect(SubmitScoresSchema.safeParse({ event_name: 'SVS', session_id: 's1', score: '9,999,999,999' }).success).toBe(true);
+      expect(SubmitScoresSchema.safeParse({ event_name: 'SVS', session_id: 's1', score: 500_000_001 }).success).toBe(
+        true
+      );
+      expect(
+        SubmitScoresSchema.safeParse({ event_name: 'SVS', session_id: 's1', score_prep: 4_999_999_999 }).success
+      ).toBe(true);
+      expect(
+        SubmitScoresSchema.safeParse({ event_name: 'SVS', session_id: 's1', score_pvp: 9_999_999_999 }).success
+      ).toBe(true);
+      expect(
+        SubmitScoresSchema.safeParse({ event_name: 'SVS', session_id: 's1', score: '9,999,999,999' }).success
+      ).toBe(true);
     });
 
     it('rejects negative scores or scores exceeding the 9,999,999,999 bound', () => {
       expect(SubmitScoresSchema.safeParse({ event_name: 'SVS', session_id: 's1', score: -1 }).success).toBe(false);
-      expect(SubmitScoresSchema.safeParse({ event_name: 'SVS', session_id: 's1', score: 10_000_000_000 }).success).toBe(false);
-      expect(SubmitScoresSchema.safeParse({ event_name: 'SVS', session_id: 's1', score_prep: -10 }).success).toBe(false);
-      expect(SubmitScoresSchema.safeParse({ event_name: 'SVS', session_id: 's1', score_pvp: 10_000_000_000 }).success).toBe(false);
+      expect(SubmitScoresSchema.safeParse({ event_name: 'SVS', session_id: 's1', score: 10_000_000_000 }).success).toBe(
+        false
+      );
+      expect(SubmitScoresSchema.safeParse({ event_name: 'SVS', session_id: 's1', score_prep: -10 }).success).toBe(
+        false
+      );
+      expect(
+        SubmitScoresSchema.safeParse({ event_name: 'SVS', session_id: 's1', score_pvp: 10_000_000_000 }).success
+      ).toBe(false);
     });
 
     it('rejects malformed string scores', () => {
-      expect(SubmitScoresSchema.safeParse({ event_name: 'SVS', session_id: 's1', score: 'not-a-number' }).success).toBe(false);
+      expect(SubmitScoresSchema.safeParse({ event_name: 'SVS', session_id: 's1', score: 'not-a-number' }).success).toBe(
+        false
+      );
       expect(SubmitScoresSchema.safeParse({ event_name: 'SVS', session_id: 's1', score: '-50' }).success).toBe(false);
     });
   });
@@ -337,27 +411,33 @@ describe('Ticket 2.3: Zod Schema Unit Validation', () => {
 
   describe('SetAbsenceSchema', () => {
     it('accepts valid absence dates and kind', () => {
-      expect(SetAbsenceSchema.safeParse({
-        start_date: '2026-09-10',
-        end_date: '2026-09-15',
-        kind: 'full',
-        note: 'Vacation',
-      }).success).toBe(true);
+      expect(
+        SetAbsenceSchema.safeParse({
+          start_date: '2026-09-10',
+          end_date: '2026-09-15',
+          kind: 'full',
+          note: 'Vacation',
+        }).success
+      ).toBe(true);
 
-      expect(SetAbsenceSchema.safeParse({
-        start_date: '2026-09-10',
-        end_date: '2026-09-15',
-      }).success).toBe(true);
+      expect(
+        SetAbsenceSchema.safeParse({
+          start_date: '2026-09-10',
+          end_date: '2026-09-15',
+        }).success
+      ).toBe(true);
     });
 
     it('rejects missing dates or invalid kinds', () => {
       expect(SetAbsenceSchema.safeParse({ end_date: '2026-09-15' }).success).toBe(false);
       expect(SetAbsenceSchema.safeParse({ start_date: '2026-09-10' }).success).toBe(false);
-      expect(SetAbsenceSchema.safeParse({
-        start_date: '2026-09-10',
-        end_date: '2026-09-15',
-        kind: 'holiday',
-      }).success).toBe(false);
+      expect(
+        SetAbsenceSchema.safeParse({
+          start_date: '2026-09-10',
+          end_date: '2026-09-15',
+          kind: 'holiday',
+        }).success
+      ).toBe(false);
     });
   });
 
@@ -394,7 +474,6 @@ describe('Ticket 2.3: Zod Schema Unit Validation', () => {
       expect(UpdateTimezoneSchema.safeParse({}).success).toBe(false);
     });
   });
-
 });
 
 describe('Ticket 2.3: Validation Dispatch Simulation', () => {
@@ -402,11 +481,14 @@ describe('Ticket 2.3: Validation Dispatch Simulation', () => {
     const bodyParsed = RequestBodySchema.safeParse(rawBody);
     if (!bodyParsed.success) {
       const hasAction = typeof rawBody?.action === 'string' && rawBody.action.trim().length > 0;
-      return { status: 400, body: { ok: false, error: hasAction ? 'bad_request' : 'missing_action', issues: bodyParsed.error.issues } };
+      return {
+        status: 400,
+        body: { ok: false, error: hasAction ? 'bad_request' : 'missing_action', issues: bodyParsed.error.issues },
+      };
     }
 
     const action = bodyParsed.data.action;
-    let payload = (bodyParsed.data.payload && typeof bodyParsed.data.payload === 'object') ? bodyParsed.data.payload : {};
+    let payload = bodyParsed.data.payload && typeof bodyParsed.data.payload === 'object' ? bodyParsed.data.payload : {};
 
     const schema = ActionPayloadSchemas[action];
     if (schema) {

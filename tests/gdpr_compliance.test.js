@@ -36,7 +36,10 @@ const rootDir = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(rootDir, p), 'utf8');
 const exists = (p) => fs.existsSync(path.join(rootDir, p));
 const stripComments = (s) =>
-  s.replace(/<!--[\s\S]*?-->/g, '').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  s
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '');
 
 const privacy = read('privacy.html');
 const privacyText = stripComments(privacy);
@@ -87,8 +90,9 @@ describe('the privacy policy exists and is reachable', () => {
   it('is linked from the login footer, the app shell and the terms page', () => {
     const index = read('index.html');
     expect((index.match(/privacy\.html/g) || []).length, 'both index.html footers').toBeGreaterThanOrEqual(2);
-    expect((read('src/modules/shell/views/ShellView.ts').match(/privacy\.html/g) || []).length)
-      .toBeGreaterThanOrEqual(2);
+    expect((read('src/modules/shell/views/ShellView.ts').match(/privacy\.html/g) || []).length).toBeGreaterThanOrEqual(
+      2
+    );
     expect(read('terms.html')).toContain('privacy.html');
     // The label goes through i18n like every other footer link.
     expect(read('src/core/i18n/i18n.dictionary.ts')).toContain('footer_privacy');
@@ -124,8 +128,8 @@ describe('every host the browser is allowed to reach is disclosed as a processor
   // The enforceable version of "keep the processor list current": the CSP
   // `connect-src` in vercel.json is the authoritative list of third parties the
   // page can talk to. Add one without disclosing it and this fails.
-  const csp = JSON.parse(read('vercel.json')).headers
-    .flatMap((h) => h.headers)
+  const csp = JSON.parse(read('vercel.json'))
+    .headers.flatMap((h) => h.headers)
     .find((h) => h.key === 'Content-Security-Policy').value;
   const connectSrc = csp.slice(csp.indexOf('connect-src'), csp.indexOf(';', csp.indexOf('connect-src')));
 
@@ -134,7 +138,7 @@ describe('every host the browser is allowed to reach is disclosed as a processor
   const DISCLOSED = [
     [/supabase\.co/, 'Supabase'],
     [/discord\.com/, 'Discord'],
-    [/sentry\.io/, 'Sentry']
+    [/sentry\.io/, 'Sentry'],
   ];
 
   it('parses a non-empty connect-src, so the check cannot be vacuous', () => {
@@ -152,7 +156,10 @@ describe('every host the browser is allowed to reach is disclosed as a processor
     const undisclosed = [];
     for (const host of hosts) {
       const match = DISCLOSED.find(([re]) => re.test(host));
-      if (!match) { undisclosed.push(`${host} (no entry in DISCLOSED)`); continue; }
+      if (!match) {
+        undisclosed.push(`${host} (no entry in DISCLOSED)`);
+        continue;
+      }
       if (!privacyText.includes(match[1])) undisclosed.push(`${host} -> "${match[1]}" not in privacy.html`);
     }
     expect(undisclosed, `undisclosed third parties:\n${undisclosed.join('\n')}`).toEqual([]);
@@ -179,15 +186,18 @@ describe('every host the browser is allowed to reach is disclosed as a processor
 
 describe('no consent banner is required, and the reason is verifiable', () => {
   it('sets no cookies anywhere in src/', () => {
-    const offenders = walk('src')
-      .filter((f) => f.endsWith('.ts') && /document\s*\.\s*cookie/.test(stripComments(read(f))));
+    const offenders = walk('src').filter(
+      (f) => f.endsWith('.ts') && /document\s*\.\s*cookie/.test(stripComments(read(f)))
+    );
     expect(offenders).toEqual([]);
   });
 
   it('embeds no analytics, tag manager or tracking pixel', () => {
-    const banned = /googletagmanager|google-analytics|gtag\(|connect\.facebook\.net|hotjar|plausible\.io|posthog|mixpanel|segment\.com|clarity\.ms/;
-    const offenders = [...walk('src'), 'index.html', 'terms.html', 'privacy.html']
-      .filter((f) => /\.(ts|html)$/.test(f) && banned.test(stripComments(read(f))));
+    const banned =
+      /googletagmanager|google-analytics|gtag\(|connect\.facebook\.net|hotjar|plausible\.io|posthog|mixpanel|segment\.com|clarity\.ms/;
+    const offenders = [...walk('src'), 'index.html', 'terms.html', 'privacy.html'].filter(
+      (f) => /\.(ts|html)$/.test(f) && banned.test(stripComments(read(f)))
+    );
     expect(offenders, `tracker found in: ${offenders.join(', ')}`).toEqual([]);
   });
 
@@ -287,7 +297,7 @@ describe('the policy states the things a GDPR notice must state', () => {
     [/Article 6\(1\)\(f\)/, 'legitimate interests by article'],
     [/Article 17\(3\) GDPR/, 'the basis for the ban-record exception'],
     [/Article 28\(3\) GDPR/, 'the processor-contract requirement'],
-    [/Article 82 of Law No\. 78-17/, 'the French transposition on terminal storage']
+    [/Article 82 of Law No\. 78-17/, 'the French transposition on terminal storage'],
   ];
   for (const [re, what] of required) {
     it(`states ${what}`, () => {

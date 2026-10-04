@@ -34,7 +34,9 @@ describe('Ticket 1.1 — ar_subtitle i18n tag and Event History modal safety', (
     const footerSnippet = historyJs.slice(historyJs.indexOf('gm-modal-footer'));
     expect(footerSnippet).toContain('history-modal-footer-left');
     expect(footerSnippet).toContain('history-modal-footer-close');
-    expect(footerSnippet.indexOf('history-modal-footer-left')).toBeLessThan(footerSnippet.indexOf('history-modal-footer-close'));
+    expect(footerSnippet.indexOf('history-modal-footer-left')).toBeLessThan(
+      footerSnippet.indexOf('history-modal-footer-close')
+    );
   });
 
   it('HistoryView requires explicit confirmation dialog before executing session deletion', () => {

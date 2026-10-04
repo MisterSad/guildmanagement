@@ -27,7 +27,7 @@ const SENSITIVE_KEYS = new Set([
   'apikey',
   'key',
   'p_secret',
-  'p_password'
+  'p_password',
 ]);
 
 // Key-based redaction (sanitizeClientData) only catches values under a
@@ -61,7 +61,12 @@ function sanitizeClientData(data: unknown, depth = 0): unknown {
   const sanitized: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
     const lower = key.toLowerCase();
-    if (SENSITIVE_KEYS.has(lower) || lower.includes('password') || lower.includes('secret') || lower.includes('token')) {
+    if (
+      SENSITIVE_KEYS.has(lower) ||
+      lower.includes('password') ||
+      lower.includes('secret') ||
+      lower.includes('token')
+    ) {
       sanitized[key] = '[REDACTED]';
     } else if (typeof value === 'object' && value !== null) {
       sanitized[key] = sanitizeClientData(value, depth + 1);
@@ -121,7 +126,8 @@ class ClientLogger {
       level,
       service: this.service,
       correlationId: this.correlationId,
-      tenantId: this.tenantId || (typeof localStorage !== 'undefined' ? localStorage.getItem('gm_current_guild') : null),
+      tenantId:
+        this.tenantId || (typeof localStorage !== 'undefined' ? localStorage.getItem('gm_current_guild') : null),
       userId: this.userId || (typeof localStorage !== 'undefined' ? localStorage.getItem('gm_user') : null),
       message: redactSensitiveText(message),
       metadata: meta ? (sanitizeClientData(meta) as Record<string, unknown>) : undefined,

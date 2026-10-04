@@ -30,7 +30,11 @@ async function stubRenameRpcs(page, history) {
   });
   await page.route('**/rest/v1/rpc/gm_rename_guild', (route) => {
     calls.push({ name: 'gm_rename_guild', args: route.request().postDataJSON() });
-    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: false, error: 'tag_taken' }) });
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ ok: false, error: 'tag_taken' }),
+    });
   });
   return calls;
 }
@@ -52,13 +56,20 @@ test.beforeEach(async ({ page }) => {
   await page.goto('/');
 });
 
-test('the Guild TAG card is shown when the server allows a rename, and the dialog reports refusals', async ({ page }) => {
+test('the Guild TAG card is shown when the server allows a rename, and the dialog reports refusals', async ({
+  page,
+}) => {
   const errors = [];
   page.on('pageerror', (err) => errors.push(String(err)));
-  page.on('console', (msg) => { if (msg.type() === 'error' && /Content Security Policy/i.test(msg.text())) errors.push(msg.text()); });
+  page.on('console', (msg) => {
+    if (msg.type() === 'error' && /Content Security Policy/i.test(msg.text())) errors.push(msg.text());
+  });
 
   const calls = await openAccountsTab(page, {
-    ok: true, can_rename: true, cooldown_applies: true, next_allowed_at: null,
+    ok: true,
+    can_rename: true,
+    cooldown_applies: true,
+    next_allowed_at: null,
     history: [{ old_tag: 'OLD', new_tag: 'AB', changed_at: '2026-09-01T10:00:00Z' }],
   });
 
@@ -82,7 +93,9 @@ test('the Guild TAG card is shown when the server allows a rename, and the dialo
   await expect(page.locator('#guild-rename-error')).toContainText('Another guild already uses this TAG');
   await expect(dialog).toBeVisible();
 
-  expect(calls.filter((c) => c.name === 'gm_rename_guild')).toEqual([{ name: 'gm_rename_guild', args: { p_guild: 'AB', p_new_tag: 'CD' } }]);
+  expect(calls.filter((c) => c.name === 'gm_rename_guild')).toEqual([
+    { name: 'gm_rename_guild', args: { p_guild: 'AB', p_new_tag: 'CD' } },
+  ]);
 
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);
@@ -90,7 +103,13 @@ test('the Guild TAG card is shown when the server allows a rename, and the dialo
 });
 
 test('the card stays hidden when the server says the caller cannot rename', async ({ page }) => {
-  const calls = await openAccountsTab(page, { ok: true, can_rename: false, cooldown_applies: true, next_allowed_at: null, history: [] });
+  const calls = await openAccountsTab(page, {
+    ok: true,
+    can_rename: false,
+    cooldown_applies: true,
+    next_allowed_at: null,
+    history: [],
+  });
   await expect.poll(() => calls.some((c) => c.name === 'gm_guild_tag_history')).toBe(true);
   await expect(page.locator('#guild-tag-card')).toBeHidden();
 });

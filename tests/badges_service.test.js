@@ -5,13 +5,7 @@
  * cutover), pinning the 45-badge catalog and representative computations.
  */
 import { describe, it, expect } from 'vitest';
-import {
-  computeBadges,
-  parseRank,
-  daysSince,
-  CATALOG,
-  CATEGORIES
-} from '../src/modules/badges/badges.service';
+import { computeBadges, parseRank, daysSince, CATALOG, CATEGORIES } from '../src/modules/badges/badges.service';
 
 describe('BadgesService catalog', () => {
   it('keeps the exact 45-badge / 5-category catalog', () => {
@@ -45,7 +39,7 @@ describe('BadgesService golden computations', () => {
       created_at: '2024-01-01T00:00:00Z',
       overall_power: 312000000,
       attended: 1600,
-      glory_best: 60000000
+      glory_best: 60000000,
     });
     expect(c.earned).toBe(45);
     expect(c.total).toBe(45);
@@ -57,7 +51,7 @@ describe('BadgesService golden computations', () => {
       created_at: null,
       overall_power: 80000000,
       attended: 42,
-      glory_best: 6000
+      glory_best: 6000,
     });
     // rank R1-R3 (3) + tenure 0 + power 10/25/50/75M (4) + part 10/25 (2) + glory 1K (1)
     expect(c.earned).toBe(10);

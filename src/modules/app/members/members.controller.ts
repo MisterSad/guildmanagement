@@ -7,13 +7,20 @@
  * dialogs service.
  */
 
-
 import { adoptDialog } from '../../../components/ui/Dialog';
 import { eventsViewLazy, armsRaceViewLazy, shadowfrontViewLazy } from '../lazy-views';
 import { t, esc, byId } from '../admin/utils';
 import { getActiveGuild } from '../../../core/auth/roles';
 import { patchAppState } from '../../../core/state/app-state';
-import { getGuildMembers, setGuildMembers, pushGuildMember, filterGuildMembersOut, getPendingTransfers, setPendingTransfers, transferActionFor } from './members.store';
+import {
+  getGuildMembers,
+  setGuildMembers,
+  pushGuildMember,
+  filterGuildMembersOut,
+  getPendingTransfers,
+  setPendingTransfers,
+  transferActionFor,
+} from './members.store';
 import { renderGuildMembers, membersSkeletonHtml } from './members.render';
 import { showToast, showConfirm } from '../dialogs/dialogs.service';
 import { getClient } from '../../../core/api/supabase';
@@ -21,11 +28,23 @@ import { cache } from '../../../core/cache/cache';
 import { avatarInit, formatPower, validatePseudo, validateUid } from '../../../core/utils/text';
 import { getUidStatus } from '../../ocr/ocr.service';
 import {
-  addMember, updateMember,
-  listGuildMembers, listPendingTransfers, listPlayerAbsences, fetchLatestGloryScores,
-  resolveGuildTransfer, requestGuildTransfer, checkUidExistsGlobally, findPlayerByUid,
-  findBannedUid, deleteGuildMemberRow, listTransferEligibleGuilds, fetchGuildServerNumber,
-  transferGuildMember, listNameHistory, deleteNameHistoryEntry
+  addMember,
+  updateMember,
+  listGuildMembers,
+  listPendingTransfers,
+  listPlayerAbsences,
+  fetchLatestGloryScores,
+  resolveGuildTransfer,
+  requestGuildTransfer,
+  checkUidExistsGlobally,
+  findPlayerByUid,
+  findBannedUid,
+  deleteGuildMemberRow,
+  listTransferEligibleGuilds,
+  fetchGuildServerNumber,
+  transferGuildMember,
+  listNameHistory,
+  deleteNameHistoryEntry,
 } from '../../members/members.service';
 import { toastFetchError, isAbortError } from '../../../core/api/fetch-errors';
 import { COMMON_TIMEZONES, detectUserTimezone, getTimezoneOffset } from '../../../utils/timezone';
@@ -58,7 +77,9 @@ function gmDebounce(fn: () => void, wait: number): () => void {
   let timer: ReturnType<typeof setTimeout> | null = null;
   return () => {
     if (timer) clearTimeout(timer);
-    timer = setTimeout(() => { fn(); }, wait);
+    timer = setTimeout(() => {
+      fn();
+    }, wait);
   };
 }
 
@@ -103,12 +124,15 @@ export function initMembersUi(): void {
   if (sortAdminSelect) sortAdminSelect.addEventListener('change', () => renderGuildMembers(true));
 }
 
-
 // ── Fetch ────────────────────────────────────────────────────────────────────
 
 function applySignal(builder: any, signal?: AbortSignal): any {
   if (!signal || !builder || typeof builder.abortSignal !== 'function') return builder;
-  try { return builder.abortSignal(signal); } catch { return builder; }
+  try {
+    return builder.abortSignal(signal);
+  } catch {
+    return builder;
+  }
 }
 
 /**
@@ -135,7 +159,7 @@ export async function fetchGuildMembers(opts?: { signal?: AbortSignal }): Promis
       applySignal(listPlayerAbsences(client, currentG), signal),
       // One row per player, newest first: the full history crossed 1,000 rows
       // for one guild and lost its oldest scores (audit PERF-05).
-      applySignal(fetchLatestGloryScores(client, currentG), signal)
+      applySignal(fetchLatestGloryScores(client, currentG), signal),
     ]);
 
     if (res.error) throw res.error;
@@ -150,26 +174,35 @@ export async function fetchGuildMembers(opts?: { signal?: AbortSignal }): Promis
       });
     }
 
-    setGuildMembers((res.data || []).map((m: any) => {
-      const pKey = String(m.pseudo || '').trim().toLowerCase();
-      const lastGlory = latestGloryMap[pKey];
-      if (lastGlory !== undefined && lastGlory > 0) {
-        if (!m.glory_score || parseInt(m.glory_score, 10) === 0 || parseInt(m.glory_score, 10) !== lastGlory) m.glory_score = lastGlory;
-      }
-      return m;
-    }));
+    setGuildMembers(
+      (res.data || []).map((m: any) => {
+        const pKey = String(m.pseudo || '')
+          .trim()
+          .toLowerCase();
+        const lastGlory = latestGloryMap[pKey];
+        if (lastGlory !== undefined && lastGlory > 0) {
+          if (!m.glory_score || parseInt(m.glory_score, 10) === 0 || parseInt(m.glory_score, 10) !== lastGlory)
+            m.glory_score = lastGlory;
+        }
+        return m;
+      })
+    );
 
     if (!transfersRes.error) {
-      setPendingTransfers((transfersRes.data || []).filter((tr: any) => tr.target_guild === currentG || tr.source_guild === currentG));
+      setPendingTransfers(
+        (transfersRes.data || []).filter((tr: any) => tr.target_guild === currentG || tr.source_guild === currentG)
+      );
     }
 
-    patchAppState({ guildAbsences: (!absencesRes.error ? (absencesRes.data || []) : []) });
+    patchAppState({ guildAbsences: !absencesRes.error ? absencesRes.data || [] : [] });
 
     renderPendingTransfers();
     renderGuildMembers();
   } catch (err: any) {
     if (isAbortError(err)) return;
-    toastFetchError(err, t('toast_err_fetch_members') || 'members', () => { void fetchGuildMembers(); });
+    toastFetchError(err, t('toast_err_fetch_members') || 'members', () => {
+      void fetchGuildMembers();
+    });
   }
 }
 
@@ -181,7 +214,7 @@ const TRANSFER_ERROR_MESSAGES: Record<string, string> = {
   member_no_longer_in_source: 'This player has already left their original guild — the transfer is no longer valid.',
   uid_already_in_target: 'A member with this UID already exists in your guild.',
   duplicate_pseudo_in_target: 'A member with this name already exists in your guild.',
-  invalid_action: 'Unrecognized action.'
+  invalid_action: 'Unrecognized action.',
 };
 
 export function renderPendingTransfers(): void {
@@ -206,26 +239,60 @@ export function renderPendingTransfers(): void {
     const directionBadge = isIncoming
       ? '<span class="gm-chip gm-chip-success" style="font-size: var(--fs-xs);"><i class="ph ph-arrow-down-left"></i> IN</span>'
       : '<span class="gm-chip" style="font-size: var(--fs-xs); background:rgba(251,191,36,0.12); color:#fbbf24; border:1px solid rgba(251,191,36,0.3);"><i class="ph ph-arrow-up-right"></i> OUT</span>';
-    const actions = mode === 'decide'
-      ? '<button type="button" class="gm-btn gm-btn-sm gm-btn-success" data-transfer-action="approve" data-transfer-dir="' + (isIncoming ? 'in' : 'out') + '" data-transfer-id="' + esc(tr.id) + '" style="margin-right: 0.25rem;" title="Approve Transfer"><i class="ph ph-check"></i></button>' +
-        '<button type="button" class="gm-btn gm-btn-sm gm-btn-danger" data-transfer-action="reject" data-transfer-dir="' + (isIncoming ? 'in' : 'out') + '" data-transfer-id="' + esc(tr.id) + '" title="Reject Transfer"><i class="ph ph-x"></i></button>'
-      : mode === 'withdraw'
-        ? '<span style="font-size: var(--fs-xs); color:var(--text-dim); margin-right: 0.35rem;"><i class="ph ph-hourglass"></i> Awaiting approval from ' + esc(approverGuild) + '</span>' +
-          '<button type="button" class="gm-btn gm-btn-sm gm-btn-ghost" data-transfer-action="reject" data-transfer-dir="withdraw" data-transfer-id="' + esc(tr.id) + '" title="Withdraw your request"><i class="ph ph-x"></i></button>'
-        : '<span style="font-size: var(--fs-xs); color:var(--text-dim);"><i class="ph ph-hourglass"></i> Awaiting approval from ' + esc(approverGuild) + '</span>';
+    const actions =
+      mode === 'decide'
+        ? '<button type="button" class="gm-btn gm-btn-sm gm-btn-success" data-transfer-action="approve" data-transfer-dir="' +
+          (isIncoming ? 'in' : 'out') +
+          '" data-transfer-id="' +
+          esc(tr.id) +
+          '" style="margin-right: 0.25rem;" title="Approve Transfer"><i class="ph ph-check"></i></button>' +
+          '<button type="button" class="gm-btn gm-btn-sm gm-btn-danger" data-transfer-action="reject" data-transfer-dir="' +
+          (isIncoming ? 'in' : 'out') +
+          '" data-transfer-id="' +
+          esc(tr.id) +
+          '" title="Reject Transfer"><i class="ph ph-x"></i></button>'
+        : mode === 'withdraw'
+          ? '<span style="font-size: var(--fs-xs); color:var(--text-dim); margin-right: 0.35rem;"><i class="ph ph-hourglass"></i> Awaiting approval from ' +
+            esc(approverGuild) +
+            '</span>' +
+            '<button type="button" class="gm-btn gm-btn-sm gm-btn-ghost" data-transfer-action="reject" data-transfer-dir="withdraw" data-transfer-id="' +
+            esc(tr.id) +
+            '" title="Withdraw your request"><i class="ph ph-x"></i></button>'
+          : '<span style="font-size: var(--fs-xs); color:var(--text-dim);"><i class="ph ph-hourglass"></i> Awaiting approval from ' +
+            esc(approverGuild) +
+            '</span>';
 
-    html += '<tr>' +
-      '<td data-label="Player"><div class="gm-member-name"><div class="gm-avatar gm-avatar-sm gm-avatar-info">' + esc(avatarInit(tr.pseudo)) + '</div>' + esc(tr.pseudo) + '</div></td>' +
-      '<td data-label="UID"><div class="gm-uid-badge">' + esc(tr.uid) + '</div></td>' +
-      '<td data-label="Direction">' + directionBadge + '</td>' +
-      '<td data-label="From">' + esc(tr.source_guild) + ' &rarr; ' + esc(tr.target_guild) + '</td>' +
-      '<td class="gm-center" data-label="Actions" style="white-space: nowrap;">' + actions + '</td>' +
-    '</tr>';
+    html +=
+      '<tr>' +
+      '<td data-label="Player"><div class="gm-member-name"><div class="gm-avatar gm-avatar-sm gm-avatar-info">' +
+      esc(avatarInit(tr.pseudo)) +
+      '</div>' +
+      esc(tr.pseudo) +
+      '</div></td>' +
+      '<td data-label="UID"><div class="gm-uid-badge">' +
+      esc(tr.uid) +
+      '</div></td>' +
+      '<td data-label="Direction">' +
+      directionBadge +
+      '</td>' +
+      '<td data-label="From">' +
+      esc(tr.source_guild) +
+      ' &rarr; ' +
+      esc(tr.target_guild) +
+      '</td>' +
+      '<td class="gm-center" data-label="Actions" style="white-space: nowrap;">' +
+      actions +
+      '</td>' +
+      '</tr>';
   });
   list.innerHTML = html;
   list.querySelectorAll('[data-transfer-action]').forEach((btn) => {
     btn.addEventListener('click', () => {
-      void resolveTransfer(btn.getAttribute('data-transfer-id') || '', btn.getAttribute('data-transfer-action') || '', btn.getAttribute('data-transfer-dir') || 'in');
+      void resolveTransfer(
+        btn.getAttribute('data-transfer-id') || '',
+        btn.getAttribute('data-transfer-action') || '',
+        btn.getAttribute('data-transfer-dir') || 'in'
+      );
     });
   });
 }
@@ -234,13 +301,14 @@ export async function resolveTransfer(transferId: string, action: string, dir: s
   const client = db();
   if (!client) return;
   const title = dir === 'withdraw' ? 'Withdraw Request' : action === 'approve' ? 'Approve Transfer' : 'Reject Transfer';
-  const message = dir === 'withdraw'
-    ? 'Withdraw your transfer request?'
-    : action === 'approve'
-      ? (dir === 'out'
-        ? 'Another guild asked to take this player. Approve, and the player leaves your guild with their history?'
-        : 'Approve this transfer and add the player to your guild?')
-      : 'Reject this transfer request?';
+  const message =
+    dir === 'withdraw'
+      ? 'Withdraw your transfer request?'
+      : action === 'approve'
+        ? dir === 'out'
+          ? 'Another guild asked to take this player. Approve, and the player leaves your guild with their history?'
+          : 'Approve this transfer and add the player to your guild?'
+        : 'Reject this transfer request?';
   showConfirm(title, message, async () => {
     try {
       const { data, error } = await resolveGuildTransfer(client, transferId, action);
@@ -274,23 +342,35 @@ export async function showUidTakenDialog(typedPseudo: string, uid: string, info:
 
   const isSameGuild = Boolean(
     (p.guild && currentG && String(p.guild).trim().toUpperCase() === String(currentG).trim().toUpperCase()) ||
-    members.some((m) => m.uid && String(m.uid).trim() === String(uid).trim())
+      members.some((m) => m.uid && String(m.uid).trim() === String(uid).trim())
   );
 
   const history = info.name_history || [];
-  const historyHtml = history.length > 0
-    ? '<div style="margin-top:0.75rem; border-top:1px solid var(--border-soft); padding-top:0.65rem;">' +
+  const historyHtml =
+    history.length > 0
+      ? '<div style="margin-top:0.75rem; border-top:1px solid var(--border-soft); padding-top:0.65rem;">' +
         '<div style="font-size: var(--fs-xs); font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--text-muted); margin-bottom:0.35rem;">Name history</div>' +
         '<div style="display:flex; flex-direction:column; gap:0.2rem;">' +
-          history.slice(0, 5).map((h: any) =>
-            '<div style="font-size: var(--fs-sm); color:var(--text-dim);">' +
-              '<span style="color:var(--text-muted); text-decoration:line-through;">' + esc(h.old_pseudo) + '</span>' +
-              ' &rarr; <span style="color:var(--accent); font-weight:600;">' + esc(h.new_pseudo) + '</span>' +
-              '<span style="margin-left:0.5rem; font-size: var(--fs-xs);">(' + esc(String(h.changed_at || '').slice(0, 10)) + ')</span>' +
-            '</div>').join('') +
+        history
+          .slice(0, 5)
+          .map(
+            (h: any) =>
+              '<div style="font-size: var(--fs-sm); color:var(--text-dim);">' +
+              '<span style="color:var(--text-muted); text-decoration:line-through;">' +
+              esc(h.old_pseudo) +
+              '</span>' +
+              ' &rarr; <span style="color:var(--accent); font-weight:600;">' +
+              esc(h.new_pseudo) +
+              '</span>' +
+              '<span style="margin-left:0.5rem; font-size: var(--fs-xs);">(' +
+              esc(String(h.changed_at || '').slice(0, 10)) +
+              ')</span>' +
+              '</div>'
+          )
+          .join('') +
         '</div>' +
-      '</div>'
-    : '';
+        '</div>'
+      : '';
 
   const overlay = document.createElement('div');
   overlay.id = 'uid-taken-overlay';
@@ -302,65 +382,104 @@ export async function showUidTakenDialog(typedPseudo: string, uid: string, info:
   let footerHtml = '';
 
   const detailRow = (label: string, value: string, strong = false): string =>
-    '<div style="display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap;"><span style="color:var(--text-muted);">' + esc(label) + '</span>' +
-    (strong ? '<strong style="color:var(--fg);">' + esc(value) + '</strong>' : '<span>' + esc(value) + '</span>') + '</div>';
+    '<div style="display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap;"><span style="color:var(--text-muted);">' +
+    esc(label) +
+    '</span>' +
+    (strong ? '<strong style="color:var(--fg);">' + esc(value) + '</strong>' : '<span>' + esc(value) + '</span>') +
+    '</div>';
 
   if (isSameGuild) {
     const localExisting = members.find((m) => m.uid && String(m.uid).trim() === String(uid).trim());
     const existingPseudo = p.pseudo || (localExisting ? localExisting.pseudo : 'Existing Player');
-    const displayPower = extraData && !isNaN(extraData.power) ? extraData.power : (p.overall_power || (localExisting ? localExisting.overall_power : 0));
+    const displayPower =
+      extraData && !isNaN(extraData.power)
+        ? extraData.power
+        : p.overall_power || (localExisting ? localExisting.overall_power : 0);
     const displayRole = (extraData && extraData.role) || p.role || (localExisting ? localExisting.role : 'R1');
 
-    titleHtml = '<div style="display:flex; align-items:center; gap:0.5rem;"><i class="ph ph-user-switch" style="font-size: var(--fs-3xl); color:var(--accent);"></i><h3 style="margin:0; font-size: var(--fs-xl);">Player Already in Guild</h3></div>';
-    bodyHtml = '<div style="background: rgba(255,255,255,0.03); border:1px solid var(--border-soft); border-radius:8px; padding:0.9rem; display:flex; flex-direction:column; gap:0.4rem;">' +
-      detailRow('Current Name', existingPseudo, true) + detailRow('New Name', typedPseudo, true) +
-      detailRow('Player ID', uid) + detailRow('Guild', p.guild || currentG, true) +
-      detailRow('Server', server) + detailRow('Rank', displayRole) +
-      detailRow('Power', formatPower(displayPower)) + historyHtml +
-    '</div>';
-    noticeHtml = '<div style="background: var(--info-soft); color: var(--info); padding:0.75rem; border-radius:6px; font-size: var(--fs-sm); line-height:1.45; margin-top:0.85rem;">' +
-      '<i class="ph ph-info" style="margin-right:4px;"></i>This player (<strong>' + esc(existingPseudo) + '</strong>) already belongs to <strong>' + esc(p.guild || currentG) + '</strong>. Would you like to update their name to <strong>' + esc(typedPseudo) + '</strong>?' +
-    '</div>';
-    footerHtml = '<div class="gm-modal-footer" style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1.4rem;">' +
+    titleHtml =
+      '<div style="display:flex; align-items:center; gap:0.5rem;"><i class="ph ph-user-switch" style="font-size: var(--fs-3xl); color:var(--accent);"></i><h3 style="margin:0; font-size: var(--fs-xl);">Player Already in Guild</h3></div>';
+    bodyHtml =
+      '<div style="background: rgba(255,255,255,0.03); border:1px solid var(--border-soft); border-radius:8px; padding:0.9rem; display:flex; flex-direction:column; gap:0.4rem;">' +
+      detailRow('Current Name', existingPseudo, true) +
+      detailRow('New Name', typedPseudo, true) +
+      detailRow('Player ID', uid) +
+      detailRow('Guild', p.guild || currentG, true) +
+      detailRow('Server', server) +
+      detailRow('Rank', displayRole) +
+      detailRow('Power', formatPower(displayPower)) +
+      historyHtml +
+      '</div>';
+    noticeHtml =
+      '<div style="background: var(--info-soft); color: var(--info); padding:0.75rem; border-radius:6px; font-size: var(--fs-sm); line-height:1.45; margin-top:0.85rem;">' +
+      '<i class="ph ph-info" style="margin-right:4px;"></i>This player (<strong>' +
+      esc(existingPseudo) +
+      '</strong>) already belongs to <strong>' +
+      esc(p.guild || currentG) +
+      '</strong>. Would you like to update their name to <strong>' +
+      esc(typedPseudo) +
+      '</strong>?' +
+      '</div>';
+    footerHtml =
+      '<div class="gm-modal-footer" style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1.4rem;">' +
       '<button type="button" class="gm-btn gm-btn-ghost gm-close-uid">Cancel</button>' +
       '<button type="button" id="uid-rename-btn" class="gm-btn gm-btn-primary"><i class="ph ph-pencil-simple"></i> <span>Update Player Name</span></button>' +
-    '</div>';
+      '</div>';
   } else {
-    titleHtml = '<div style="display:flex; align-items:center; gap:0.5rem;"><i class="ph ph-user-circle-gear" style="font-size: var(--fs-3xl); color:var(--accent);"></i><h3 style="margin:0; font-size: var(--fs-xl);">Player ID already exists</h3></div>';
-    bodyHtml = '<div style="background: rgba(255,255,255,0.03); border:1px solid var(--border-soft); border-radius:8px; padding:0.9rem; display:flex; flex-direction:column; gap:0.4rem;">' +
-      detailRow('Player', p.pseudo || typedPseudo, true) + detailRow('Player ID', uid) +
-      detailRow('Current Guild', p.guild || '?', true) + detailRow('Server', server) +
-      (p.role ? detailRow('Rank', p.role) : '') + historyHtml +
-    '</div>';
-    noticeHtml = '<div style="background: var(--info-soft); color: var(--info); padding:0.75rem; border-radius:6px; font-size: var(--fs-sm); line-height:1.45; margin-top:0.85rem;">' +
-      '<i class="ph ph-info" style="margin-right:4px;"></i>This player already belongs to <strong>' + esc(p.guild || 'another guild') + '</strong>. You cannot add them directly here. You can send a transfer request so an admin approves moving them to <strong>' + esc(currentG) + '</strong>.' +
-    '</div>' +
-    '<label style="display:flex; align-items:flex-start; gap:0.5rem; margin-top:0.85rem; cursor:pointer; font-size: var(--fs-sm); color:var(--text-muted);">' +
+    titleHtml =
+      '<div style="display:flex; align-items:center; gap:0.5rem;"><i class="ph ph-user-circle-gear" style="font-size: var(--fs-3xl); color:var(--accent);"></i><h3 style="margin:0; font-size: var(--fs-xl);">Player ID already exists</h3></div>';
+    bodyHtml =
+      '<div style="background: rgba(255,255,255,0.03); border:1px solid var(--border-soft); border-radius:8px; padding:0.9rem; display:flex; flex-direction:column; gap:0.4rem;">' +
+      detailRow('Player', p.pseudo || typedPseudo, true) +
+      detailRow('Player ID', uid) +
+      detailRow('Current Guild', p.guild || '?', true) +
+      detailRow('Server', server) +
+      (p.role ? detailRow('Rank', p.role) : '') +
+      historyHtml +
+      '</div>';
+    noticeHtml =
+      '<div style="background: var(--info-soft); color: var(--info); padding:0.75rem; border-radius:6px; font-size: var(--fs-sm); line-height:1.45; margin-top:0.85rem;">' +
+      '<i class="ph ph-info" style="margin-right:4px;"></i>This player already belongs to <strong>' +
+      esc(p.guild || 'another guild') +
+      '</strong>. You cannot add them directly here. You can send a transfer request so an admin approves moving them to <strong>' +
+      esc(currentG) +
+      '</strong>.' +
+      '</div>' +
+      '<label style="display:flex; align-items:flex-start; gap:0.5rem; margin-top:0.85rem; cursor:pointer; font-size: var(--fs-sm); color:var(--text-muted);">' +
       '<input type="checkbox" id="uid-taken-confirm" style="margin-top:2px; accent-color: var(--accent);">' +
-      '<span>I understand this process cannot be undone without reporting an issue or bug, and that the transfer must be approved by the player\'s current guild.</span>' +
-    '</label>';
-    footerHtml = '<div class="gm-modal-footer" style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1.4rem;">' +
+      "<span>I understand this process cannot be undone without reporting an issue or bug, and that the transfer must be approved by the player's current guild.</span>" +
+      '</label>';
+    footerHtml =
+      '<div class="gm-modal-footer" style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1.4rem;">' +
       '<button type="button" class="gm-btn gm-btn-ghost gm-close-uid">Cancel</button>' +
       '<button type="button" id="uid-taken-request-btn" class="gm-btn gm-btn-primary" disabled><i class="ph ph-arrows-left-right"></i> <span>Request Transfer</span></button>' +
-    '</div>';
+      '</div>';
   }
 
   overlay.innerHTML =
     '<div class="gm-modal-card" style="max-width: 520px; width: 92%; position: relative; text-align:left;">' +
-      '<div class="gm-modal-header" style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">' +
-        titleHtml + '<button type="button" class="gm-mini-btn gm-close-uid" style="cursor:pointer;" aria-label="Close"><i class="ph ph-x" aria-hidden="true"></i></button>' +
-      '</div>' + bodyHtml + noticeHtml + footerHtml +
+    '<div class="gm-modal-header" style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">' +
+    titleHtml +
+    '<button type="button" class="gm-mini-btn gm-close-uid" style="cursor:pointer;" aria-label="Close"><i class="ph ph-x" aria-hidden="true"></i></button>' +
+    '</div>' +
+    bodyHtml +
+    noticeHtml +
+    footerHtml +
     '</div>';
   document.body.appendChild(overlay);
   requestAnimationFrame(() => overlay.classList.add('visible'));
 
   const closeDialog = (): void => {
     overlay.classList.remove('visible');
-    setTimeout(() => { overlay.remove(); }, 200);
+    setTimeout(() => {
+      overlay.remove();
+    }, 200);
   };
   adoptDialog(overlay, { onEscape: closeDialog });
   overlay.querySelectorAll('.gm-close-uid').forEach((btn) => btn.addEventListener('click', closeDialog));
-  overlay.addEventListener('click', (ev) => { if (ev.target === overlay) closeDialog(); });
+  overlay.addEventListener('click', (ev) => {
+    if (ev.target === overlay) closeDialog();
+  });
 
   if (isSameGuild) {
     const renameBtn = byId<HTMLButtonElement>('uid-rename-btn');
@@ -371,16 +490,28 @@ export async function showUidTakenDialog(typedPseudo: string, uid: string, info:
         if (span) span.textContent = 'Updating...';
         const localExisting = members.find((m) => m.uid && String(m.uid).trim() === String(uid).trim());
         const existingPseudo = p.pseudo || (localExisting ? localExisting.pseudo : typedPseudo);
-        const newPower = extraData && !isNaN(extraData.power) ? extraData.power : (p.overall_power || (localExisting ? localExisting.overall_power : 0));
+        const newPower =
+          extraData && !isNaN(extraData.power)
+            ? extraData.power
+            : p.overall_power || (localExisting ? localExisting.overall_power : 0);
         const newRole = (extraData && extraData.role) || p.role || (localExisting ? localExisting.role : 'R1');
-        const extraMetrics = extraData ? {
-          fleet_rating: extraData.fleet_rating, tech_power: extraData.tech_power, flagship_power: extraData.flagship_power,
-          champion_power: extraData.champion_power, crew_power: extraData.crew_power, glory_score: extraData.glory_score
-        } : {};
+        const extraMetrics = extraData
+          ? {
+              fleet_rating: extraData.fleet_rating,
+              tech_power: extraData.tech_power,
+              flagship_power: extraData.flagship_power,
+              champion_power: extraData.champion_power,
+              crew_power: extraData.crew_power,
+              glory_score: extraData.glory_score,
+            }
+          : {};
         try {
           const ok = await renameGuildMember(existingPseudo, typedPseudo, uid, newPower, newRole, extraMetrics);
           if (ok) closeDialog();
-          else { renameBtn.disabled = false; if (span) span.textContent = 'Update Player Name'; }
+          else {
+            renameBtn.disabled = false;
+            if (span) span.textContent = 'Update Player Name';
+          }
         } catch (err: any) {
           showToast('Failed to update player name: ' + err.message, 'error');
           renameBtn.disabled = false;
@@ -391,7 +522,10 @@ export async function showUidTakenDialog(typedPseudo: string, uid: string, info:
   } else {
     const confirmCb = byId<HTMLInputElement>('uid-taken-confirm');
     const requestBtn = byId<HTMLButtonElement>('uid-taken-request-btn');
-    if (confirmCb && requestBtn) confirmCb.addEventListener('change', () => { requestBtn.disabled = !confirmCb.checked; });
+    if (confirmCb && requestBtn)
+      confirmCb.addEventListener('change', () => {
+        requestBtn.disabled = !confirmCb.checked;
+      });
     if (requestBtn) {
       requestBtn.addEventListener('click', async () => {
         requestBtn.disabled = true;
@@ -403,7 +537,10 @@ export async function showUidTakenDialog(typedPseudo: string, uid: string, info:
           if (error) throw error;
           if (!data || !data.ok) throw new Error((data && data.error) || 'request_failed');
           closeDialog();
-          showToast('Transfer request sent. The player\'s current guild must approve it: it appears in their Pending Transfers.', 'success');
+          showToast(
+            "Transfer request sent. The player's current guild must approve it: it appears in their Pending Transfers.",
+            'success'
+          );
           void fetchGuildMembers();
         } catch (err: any) {
           showToast('Could not request transfer: ' + err.message, 'error');
@@ -417,7 +554,12 @@ export async function showUidTakenDialog(typedPseudo: string, uid: string, info:
 
 // ── Add member ───────────────────────────────────────────────────────────────
 
-export async function handleAddMember(inputId: string, uidInputId: string, powerInputId: string, roleInputId: string): Promise<void> {
+export async function handleAddMember(
+  inputId: string,
+  uidInputId: string,
+  powerInputId: string,
+  roleInputId: string
+): Promise<void> {
   const client = db();
   if (!client) return;
   const input = byId<HTMLInputElement>(inputId);
@@ -429,16 +571,31 @@ export async function handleAddMember(inputId: string, uidInputId: string, power
   const roleInput = roleInputId ? byId<HTMLSelectElement>(roleInputId) : null;
   const roleVal = roleInput ? roleInput.value : 'R1';
 
-  if (!pseudo || !uidVal || isNaN(powerVal) || powerVal < 0) { showToast('Please enter a valid power value.', 'error'); return; }
+  if (!pseudo || !uidVal || isNaN(powerVal) || powerVal < 0) {
+    showToast('Please enter a valid power value.', 'error');
+    return;
+  }
   const pseudoErr = validatePseudo(pseudo);
-  if (pseudoErr) { showToast(t(pseudoErr), 'error'); return; }
+  if (pseudoErr) {
+    showToast(t(pseudoErr), 'error');
+    return;
+  }
   const uidErr = validateUid(uidVal);
-  if (uidErr) { showToast(t(uidErr), 'error'); return; }
+  if (uidErr) {
+    showToast(t(uidErr), 'error');
+    return;
+  }
 
   const members = getGuildMembers();
-  if (members.some((m) => String(m.pseudo).toLowerCase() === pseudo.toLowerCase())) { showToast(t('toast_duplicate_member'), 'error'); return; }
+  if (members.some((m) => String(m.pseudo).toLowerCase() === pseudo.toLowerCase())) {
+    showToast(t('toast_duplicate_member'), 'error');
+    return;
+  }
 
-  const readInt = (id: string): number => { const el = byId<HTMLInputElement>(id); return el ? (parseInt(el.value, 10) || 0) : 0; };
+  const readInt = (id: string): number => {
+    const el = byId<HTMLInputElement>(id);
+    return el ? parseInt(el.value, 10) || 0 : 0;
+  };
   const fleetVal = readInt('member-fleet');
   const techVal = readInt('member-tech');
   const flagshipVal = readInt('member-flagship');
@@ -447,8 +604,14 @@ export async function handleAddMember(inputId: string, uidInputId: string, power
   const gloryVal = readInt('member-glory');
 
   const extraData = {
-    power: powerVal, role: roleVal, fleet_rating: fleetVal, tech_power: techVal, flagship_power: flagshipVal,
-    champion_power: champVal, crew_power: crewVal, glory_score: gloryVal
+    power: powerVal,
+    role: roleVal,
+    fleet_rating: fleetVal,
+    tech_power: techVal,
+    flagship_power: flagshipVal,
+    champion_power: champVal,
+    crew_power: crewVal,
+    glory_score: gloryVal,
   };
 
   try {
@@ -459,7 +622,10 @@ export async function handleAddMember(inputId: string, uidInputId: string, power
       if (lookup.error) throw lookup.error;
       const info = lookup.data || {};
       if (!info.ok) throw new Error(info.error || 'lookup_failed');
-      if (info.found || info.player) { await showUidTakenDialog(pseudo, uidVal, info, extraData); return; }
+      if (info.found || info.player) {
+        await showUidTakenDialog(pseudo, uidVal, info, extraData);
+        return;
+      }
       showToast('Player ID is already in use. Use Transfer instead.', 'error');
       return;
     }
@@ -467,11 +633,23 @@ export async function handleAddMember(inputId: string, uidInputId: string, power
     console.error('Global UID check failed', err);
     const localExisting = members.find((m) => m.uid && String(m.uid).trim() === String(uidVal).trim());
     if (localExisting) {
-      await showUidTakenDialog(pseudo, uidVal, {
-        ok: true, found: true,
-        player: { pseudo: localExisting.pseudo, uid: localExisting.uid, guild: activeGuild(), role: localExisting.role, overall_power: localExisting.overall_power },
-        name_history: []
-      }, extraData);
+      await showUidTakenDialog(
+        pseudo,
+        uidVal,
+        {
+          ok: true,
+          found: true,
+          player: {
+            pseudo: localExisting.pseudo,
+            uid: localExisting.uid,
+            guild: activeGuild(),
+            role: localExisting.role,
+            overall_power: localExisting.overall_power,
+          },
+          name_history: [],
+        },
+        extraData
+      );
       return;
     }
   }
@@ -479,21 +657,45 @@ export async function handleAddMember(inputId: string, uidInputId: string, power
   try {
     const banCheck = await findBannedUid(client, uidVal);
     if (banCheck.error) throw banCheck.error;
-    if (banCheck.data && banCheck.data.length > 0) { showToast(t('toast_cannot_add_banned_player'), 'error'); return; }
-  } catch (err) { console.error('Ban check failed', err); }
+    if (banCheck.data && banCheck.data.length > 0) {
+      showToast(t('toast_cannot_add_banned_player'), 'error');
+      return;
+    }
+  } catch (err) {
+    console.error('Ban check failed', err);
+  }
 
   try {
     // The row, its first metrics snapshot and its enrolment in the running
     // events are one transaction (M4a); the row pushed is the one stored.
     const added = await addMember({
-      pseudo, uid: uidVal, overall_power: powerVal, role: roleVal,
-      fleet_rating: fleetVal, tech_power: techVal, flagship_power: flagshipVal,
-      champion_power: champVal, crew_power: crewVal, glory_score: gloryVal
+      pseudo,
+      uid: uidVal,
+      overall_power: powerVal,
+      role: roleVal,
+      fleet_rating: fleetVal,
+      tech_power: techVal,
+      flagship_power: flagshipVal,
+      champion_power: champVal,
+      crew_power: crewVal,
+      glory_score: gloryVal,
     });
     pushGuildMember(added.member);
 
-    ['member-pseudo', 'member-uid', 'member-power', 'member-fleet', 'member-tech', 'member-flagship', 'member-champ', 'member-crew', 'member-glory']
-      .forEach((id) => { const el = byId<HTMLInputElement>(id); if (el) el.value = ''; });
+    [
+      'member-pseudo',
+      'member-uid',
+      'member-power',
+      'member-fleet',
+      'member-tech',
+      'member-flagship',
+      'member-champ',
+      'member-crew',
+      'member-glory',
+    ].forEach((id) => {
+      const el = byId<HTMLInputElement>(id);
+      if (el) el.value = '';
+    });
     if (roleInput) roleInput.value = 'R1';
 
     renderGuildMembers();
@@ -522,7 +724,10 @@ export async function deleteGuildMember(pseudo: string): Promise<void> {
   const client = db();
   if (!client) return;
   const target = getGuildMembers().find((m) => m.pseudo === pseudo);
-  if (target && target.role === 'R5') { showToast(R5_DELETE_MESSAGE, 'warning'); return; }
+  if (target && target.role === 'R5') {
+    showToast(R5_DELETE_MESSAGE, 'warning');
+    return;
+  }
   try {
     const currentG = activeGuild();
     const res = await deleteGuildMemberRow(client, pseudo, currentG);
@@ -543,7 +748,12 @@ export async function deleteGuildMember(pseudo: string): Promise<void> {
 // ── Rename / update member ───────────────────────────────────────────────────
 
 export async function renameGuildMember(
-  oldPseudo: string, newPseudoInput: string, newUidInput: string, newPower: unknown, newRole: string, extraMetrics?: any
+  oldPseudo: string,
+  newPseudoInput: string,
+  newUidInput: string,
+  newPower: unknown,
+  newRole: string,
+  extraMetrics?: any
 ): Promise<boolean> {
   const client = db();
   if (!client) return false;
@@ -554,14 +764,22 @@ export async function renameGuildMember(
   extraMetrics = extraMetrics || {};
 
   const pseudoErr = validatePseudo(newPseudo);
-  if (pseudoErr) { showToast(t(pseudoErr), 'error'); return false; }
+  if (pseudoErr) {
+    showToast(t(pseudoErr), 'error');
+    return false;
+  }
   const uidErr = validateUid(newUid);
-  if (uidErr) { showToast(t(uidErr), 'error'); return false; }
+  if (uidErr) {
+    showToast(t(uidErr), 'error');
+    return false;
+  }
 
   const members = getGuildMembers();
-  const member = members.find((m) =>
-    (m.pseudo && String(m.pseudo).toLowerCase() === oldPseudo.toLowerCase()) ||
-    (m.uid && newUid && String(m.uid).trim() === String(newUid).trim()));
+  const member = members.find(
+    (m) =>
+      (m.pseudo && String(m.pseudo).toLowerCase() === oldPseudo.toLowerCase()) ||
+      (m.uid && newUid && String(m.uid).trim() === String(newUid).trim())
+  );
 
   const oldPower = member ? parseInt(String(member.overall_power), 10) || 0 : 0;
   const oldRole = member ? member.role || 'R1' : 'R1';
@@ -569,26 +787,47 @@ export async function renameGuildMember(
   const uidChanged = !!member && (member.uid || '') !== newUid;
   const powerChanged = oldPower !== powerVal;
   const roleChanged = oldRole !== roleVal;
-  const metricsChanged = extraMetrics.tech_power !== undefined || extraMetrics.champion_power !== undefined ||
-    extraMetrics.crew_power !== undefined || extraMetrics.flagship_power !== undefined ||
-    extraMetrics.fleet_rating !== undefined || extraMetrics.glory_score !== undefined;
-  const tzChanged = extraMetrics.timezone !== undefined && (member ? (member.timezone || null) !== (extraMetrics.timezone || null) : true);
-  const offsetChanged = extraMetrics.timezone_offset !== undefined && (member ? member.timezone_offset !== extraMetrics.timezone_offset : true);
+  const metricsChanged =
+    extraMetrics.tech_power !== undefined ||
+    extraMetrics.champion_power !== undefined ||
+    extraMetrics.crew_power !== undefined ||
+    extraMetrics.flagship_power !== undefined ||
+    extraMetrics.fleet_rating !== undefined ||
+    extraMetrics.glory_score !== undefined;
+  const tzChanged =
+    extraMetrics.timezone !== undefined &&
+    (member ? (member.timezone || null) !== (extraMetrics.timezone || null) : true);
+  const offsetChanged =
+    extraMetrics.timezone_offset !== undefined &&
+    (member ? member.timezone_offset !== extraMetrics.timezone_offset : true);
 
-  if (!pseudoChanged && !uidChanged && !powerChanged && !roleChanged && !metricsChanged && !tzChanged && !offsetChanged) return true;
+  if (!pseudoChanged && !uidChanged && !powerChanged && !roleChanged && !metricsChanged && !tzChanged && !offsetChanged)
+    return true;
 
-  if (pseudoChanged && members.some((m) => String(m.pseudo).toLowerCase() === newPseudo.toLowerCase() && (member ? m.pseudo !== member.pseudo : true))) {
-    showToast(t('toast_duplicate_member'), 'error'); return false;
+  if (
+    pseudoChanged &&
+    members.some(
+      (m) => String(m.pseudo).toLowerCase() === newPseudo.toLowerCase() && (member ? m.pseudo !== member.pseudo : true)
+    )
+  ) {
+    showToast(t('toast_duplicate_member'), 'error');
+    return false;
   }
   if (uidChanged && newUid && members.some((m) => m.pseudo !== oldPseudo && (m.uid || '') === newUid)) {
-    showToast(t('toast_duplicate_uid'), 'error'); return false;
+    showToast(t('toast_duplicate_uid'), 'error');
+    return false;
   }
   if (uidChanged && newUid) {
     try {
       const banCheck = await findBannedUid(client, newUid);
       if (banCheck.error) throw banCheck.error;
-      if (banCheck.data && banCheck.data.length > 0) { showToast(t('toast_cannot_rename_banned_player'), 'error'); return false; }
-    } catch (err) { console.error('Ban check failed', err); }
+      if (banCheck.data && banCheck.data.length > 0) {
+        showToast(t('toast_cannot_rename_banned_player'), 'error');
+        return false;
+      }
+    } catch (err) {
+      console.error('Ban check failed', err);
+    }
   }
 
   try {
@@ -600,9 +839,11 @@ export async function renameGuildMember(
     update.overall_power = powerVal;
     update.role = roleVal;
     if (extraMetrics.tech_power !== undefined) update.tech_power = parseInt(extraMetrics.tech_power, 10) || 0;
-    if (extraMetrics.champion_power !== undefined) update.champion_power = parseInt(extraMetrics.champion_power, 10) || 0;
+    if (extraMetrics.champion_power !== undefined)
+      update.champion_power = parseInt(extraMetrics.champion_power, 10) || 0;
     if (extraMetrics.crew_power !== undefined) update.crew_power = parseInt(extraMetrics.crew_power, 10) || 0;
-    if (extraMetrics.flagship_power !== undefined) update.flagship_power = parseInt(extraMetrics.flagship_power, 10) || 0;
+    if (extraMetrics.flagship_power !== undefined)
+      update.flagship_power = parseInt(extraMetrics.flagship_power, 10) || 0;
     if (extraMetrics.fleet_rating !== undefined) update.fleet_rating = parseInt(extraMetrics.fleet_rating, 10) || 0;
     if (extraMetrics.glory_score !== undefined) update.glory_score = parseInt(extraMetrics.glory_score, 10) || 0;
     if (extraMetrics.timezone !== undefined) update.timezone = extraMetrics.timezone || null;
@@ -641,10 +882,15 @@ export async function showTransferMemberDialog(member: any): Promise<void> {
     const eligRes = await eligPromise;
     if (eligRes.error) throw eligRes.error;
     eligibleGuilds = eligRes.data || [];
-  } catch (err) { console.error('Failed to fetch transfer-eligible guilds', err); }
+  } catch (err) {
+    console.error('Failed to fetch transfer-eligible guilds', err);
+  }
 
   if (eligibleGuilds.length === 0) {
-    showToast('No other guild is eligible for transfer right now. Set a server number in Super Admin > Guilds & Server Numbers, or ask a super admin to open a cross-server migration window.', 'warning');
+    showToast(
+      'No other guild is eligible for transfer right now. Set a server number in Super Admin > Guilds & Server Numbers, or ask a super admin to open a cross-server migration window.',
+      'warning'
+    );
     return;
   }
 
@@ -652,46 +898,69 @@ export async function showTransferMemberDialog(member: any): Promise<void> {
   try {
     const curRes = await curPromise;
     currentServer = curRes.data ? curRes.data.server_number : null;
-  } catch (err) { console.warn('Failed to fetch current guild server number', err); }
+  } catch (err) {
+    console.warn('Failed to fetch current guild server number', err);
+  }
 
-  const optionsHtml = eligibleGuilds.map((gg) => {
-    const label = gg.is_same_server
-      ? (gg.id + ' (Server #' + gg.server_number + ')')
-      : (gg.id + ' (Server #' + gg.server_number + ' — Migration Window)');
-    return '<option value="' + esc(gg.id) + '" data-server="' + esc(gg.server_number) + '">' + esc(label) + '</option>';
-  }).join('');
+  const optionsHtml = eligibleGuilds
+    .map((gg) => {
+      const label = gg.is_same_server
+        ? gg.id + ' (Server #' + gg.server_number + ')'
+        : gg.id + ' (Server #' + gg.server_number + ' — Migration Window)';
+      return (
+        '<option value="' + esc(gg.id) + '" data-server="' + esc(gg.server_number) + '">' + esc(label) + '</option>'
+      );
+    })
+    .join('');
 
   const html =
     '<div id="transfer-member-overlay" class="gm-modal-overlay">' +
-      '<div class="gm-modal-card" style="max-width: 480px; width: 90%; position: relative;">' +
-        '<div class="gm-modal-header" style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 1rem;">' +
-          '<div style="display:flex; align-items:center; gap:0.5rem;"><i class="ph ph-arrows-left-right" style="font-size: var(--fs-3xl); color: var(--accent);"></i><h3 style="margin:0; font-size: var(--fs-xl);">Transfer Member</h3></div>' +
-          '<button type="button" class="gm-mini-btn gm-close-modal" aria-label="Close"><i class="ph ph-x" aria-hidden="true"></i></button>' +
-        '</div>' +
-        '<div class="gm-modal-body" style="display:flex; flex-direction:column; gap:1rem;">' +
-          '<div style="background: rgba(255,255,255,0.03); padding: 0.75rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.08);">' +
-            '<div><strong>Player:</strong> <span style="color: var(--accent); font-weight: 700;">' + esc(member.pseudo) + '</span> (UID: ' + esc(member.uid) + ')</div>' +
-            '<div style="font-size: var(--fs-base); color: var(--text-dim); margin-top: 0.25rem;">Current Guild: <strong>' + esc(currentG) + '</strong> (Server #' + esc(currentServer) + ')</div>' +
-          '</div>' +
-          '<div class="gm-form-group">' +
-            '<label class="gm-label" for="transfer-target-guild" style="font-size: var(--fs-base); font-weight: 600; margin-bottom: 0.35rem; display:block;">Select Target Guild:</label>' +
-            '<select id="transfer-target-guild" class="gm-select gm-input">' + optionsHtml + '</select>' +
-          '</div>' +
-        '</div>' +
-        '<div class="gm-modal-footer" style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top: 1.5rem;">' +
-          '<button type="button" class="gm-btn gm-btn-ghost gm-close-modal">Cancel</button>' +
-          '<button type="button" id="confirm-transfer-btn" class="gm-btn gm-btn-primary"><i class="ph ph-arrows-left-right"></i><span>Confirm Transfer</span></button>' +
-        '</div>' +
-      '</div>' +
+    '<div class="gm-modal-card" style="max-width: 480px; width: 90%; position: relative;">' +
+    '<div class="gm-modal-header" style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 1rem;">' +
+    '<div style="display:flex; align-items:center; gap:0.5rem;"><i class="ph ph-arrows-left-right" style="font-size: var(--fs-3xl); color: var(--accent);"></i><h3 style="margin:0; font-size: var(--fs-xl);">Transfer Member</h3></div>' +
+    '<button type="button" class="gm-mini-btn gm-close-modal" aria-label="Close"><i class="ph ph-x" aria-hidden="true"></i></button>' +
+    '</div>' +
+    '<div class="gm-modal-body" style="display:flex; flex-direction:column; gap:1rem;">' +
+    '<div style="background: rgba(255,255,255,0.03); padding: 0.75rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.08);">' +
+    '<div><strong>Player:</strong> <span style="color: var(--accent); font-weight: 700;">' +
+    esc(member.pseudo) +
+    '</span> (UID: ' +
+    esc(member.uid) +
+    ')</div>' +
+    '<div style="font-size: var(--fs-base); color: var(--text-dim); margin-top: 0.25rem;">Current Guild: <strong>' +
+    esc(currentG) +
+    '</strong> (Server #' +
+    esc(currentServer) +
+    ')</div>' +
+    '</div>' +
+    '<div class="gm-form-group">' +
+    '<label class="gm-label" for="transfer-target-guild" style="font-size: var(--fs-base); font-weight: 600; margin-bottom: 0.35rem; display:block;">Select Target Guild:</label>' +
+    '<select id="transfer-target-guild" class="gm-select gm-input">' +
+    optionsHtml +
+    '</select>' +
+    '</div>' +
+    '</div>' +
+    '<div class="gm-modal-footer" style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top: 1.5rem;">' +
+    '<button type="button" class="gm-btn gm-btn-ghost gm-close-modal">Cancel</button>' +
+    '<button type="button" id="confirm-transfer-btn" class="gm-btn gm-btn-primary"><i class="ph ph-arrows-left-right"></i><span>Confirm Transfer</span></button>' +
+    '</div>' +
+    '</div>' +
     '</div>';
 
   document.body.insertAdjacentHTML('beforeend', html);
   const overlay = byId('transfer-member-overlay');
   if (!overlay) return;
   requestAnimationFrame(() => overlay.classList.add('visible'));
-  const closeModal = (): void => { overlay.classList.remove('visible'); setTimeout(() => { overlay.remove(); }, 200); };
+  const closeModal = (): void => {
+    overlay.classList.remove('visible');
+    setTimeout(() => {
+      overlay.remove();
+    }, 200);
+  };
   overlay.querySelectorAll('.gm-close-modal').forEach((btn) => btn.addEventListener('click', closeModal));
-  overlay.addEventListener('click', (ev) => { if (ev.target === overlay) closeModal(); });
+  overlay.addEventListener('click', (ev) => {
+    if (ev.target === overlay) closeModal();
+  });
   adoptDialog(overlay, { onEscape: closeModal });
 
   const confirmBtn = byId<HTMLButtonElement>('confirm-transfer-btn');
@@ -736,105 +1005,193 @@ export async function showEditMemberDialog(member: any): Promise<void> {
     try {
       const res = await listNameHistory(client, member.uid);
       if (!res.error) nameHistory = res.data || [];
-    } catch (err) { console.error('Fetch name history failed', err); }
+    } catch (err) {
+      console.error('Fetch name history failed', err);
+    }
   }
 
   const overlay = document.createElement('div');
   overlay.id = 'edit-member-overlay';
   overlay.className = 'gm-modal-overlay';
 
-  const historyHtml = nameHistory.length > 0
-    ? '<div style="margin-top: 1rem; border-top: 1px solid var(--border-soft); padding-top: 1rem; text-align: left;">' +
-        '<h4 style="margin: 0 0 0.5rem 0; font-size: var(--fs-md); color: var(--text-muted);"><i class="ph ph-clock-counter-clockwise"></i> ' + t('Name History') + '</h4>' +
+  const historyHtml =
+    nameHistory.length > 0
+      ? '<div style="margin-top: 1rem; border-top: 1px solid var(--border-soft); padding-top: 1rem; text-align: left;">' +
+        '<h4 style="margin: 0 0 0.5rem 0; font-size: var(--fs-md); color: var(--text-muted);"><i class="ph ph-clock-counter-clockwise"></i> ' +
+        t('Name History') +
+        '</h4>' +
         '<div style="max-height: 120px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.35rem;">' +
-          nameHistory.map((h) => {
-            const date = new Date(h.changed_at).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
-            return '<div style="display: flex; justify-content: space-between; align-items: center; font-size: var(--fs-sm); background: var(--bg-dim); border: 1px solid var(--border-soft); padding: 0.35rem 0.5rem; border-radius: var(--radius-sm);">' +
-              '<span><strong>' + esc(h.old_pseudo) + '</strong> ➔ <strong>' + esc(h.new_pseudo) + '</strong> <span class="gm-dim" style="font-size: var(--fs-sm);">(' + date + ' by ' + esc(h.changed_by) + ')</span></span>' +
-              '<button type="button" class="delete-history-btn" data-id="' + esc(h.id) + '" aria-label="Delete this name change" style="background: none; border: none; color: var(--error); cursor: pointer; padding: 2px;"><i class="ph ph-trash" aria-hidden="true"></i></button>' +
-            '</div>';
-          }).join('') +
+        nameHistory
+          .map((h) => {
+            const date = new Date(h.changed_at).toLocaleDateString('en-GB', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+            });
+            return (
+              '<div style="display: flex; justify-content: space-between; align-items: center; font-size: var(--fs-sm); background: var(--bg-dim); border: 1px solid var(--border-soft); padding: 0.35rem 0.5rem; border-radius: var(--radius-sm);">' +
+              '<span><strong>' +
+              esc(h.old_pseudo) +
+              '</strong> ➔ <strong>' +
+              esc(h.new_pseudo) +
+              '</strong> <span class="gm-dim" style="font-size: var(--fs-sm);">(' +
+              date +
+              ' by ' +
+              esc(h.changed_by) +
+              ')</span></span>' +
+              '<button type="button" class="delete-history-btn" data-id="' +
+              esc(h.id) +
+              '" aria-label="Delete this name change" style="background: none; border: none; color: var(--error); cursor: pointer; padding: 2px;"><i class="ph ph-trash" aria-hidden="true"></i></button>' +
+              '</div>'
+            );
+          })
+          .join('') +
         '</div></div>'
-    : '';
+      : '';
 
   const uidStat = getUidStatus(member.uid);
   const isTempUid = !uidStat.valid;
   const uidHelperHtml = isTempUid
-    ? '<div id="edit-uid-helper" style="font-size: var(--fs-sm); color:#f87171; margin-top:0.35rem; display:flex; align-items:center; gap:0.25rem;"><i class="ph ph-warning"></i> ' + esc(uidStat.label || '') + ' (' + esc(uidStat.reason || 'Enter real 6-10 digit game UID') + ')</div>'
+    ? '<div id="edit-uid-helper" style="font-size: var(--fs-sm); color:#f87171; margin-top:0.35rem; display:flex; align-items:center; gap:0.25rem;"><i class="ph ph-warning"></i> ' +
+      esc(uidStat.label || '') +
+      ' (' +
+      esc(uidStat.reason || 'Enter real 6-10 digit game UID') +
+      ')</div>'
     : '';
 
   const metricInput = (id: string, label: string, value: unknown, placeholder: string): string =>
-    '<div class="input-group"><label for="' + id + '" style="font-size: var(--fs-sm);">' + label + '</label>' +
-    '<input type="number" id="' + id + '" class="gm-input" value="' + esc(value || '') + '" placeholder="' + placeholder + '" style="padding:0.35rem 0.5rem; font-size: var(--fs-sm);"></div>';
+    '<div class="input-group"><label for="' +
+    id +
+    '" style="font-size: var(--fs-sm);">' +
+    label +
+    '</label>' +
+    '<input type="number" id="' +
+    id +
+    '" class="gm-input" value="' +
+    esc(value || '') +
+    '" placeholder="' +
+    placeholder +
+    '" style="padding:0.35rem 0.5rem; font-size: var(--fs-sm);"></div>';
 
   const memberTz = member.timezone || '';
   const tzRegions = Array.from(new Set(COMMON_TIMEZONES.map((z) => z.region)));
   const tzOptionsHtml =
     '<option value="">-- No timezone set --</option>' +
-    tzRegions.map((region) => {
-      const zones = COMMON_TIMEZONES.filter((z) => z.region === region);
-      return '<optgroup label="' + esc(region) + '">' +
-        zones.map((z) => '<option value="' + esc(z.zone) + '"' + (memberTz === z.zone ? ' selected' : '') + '>' + esc(z.label) + '</option>').join('') +
-        '</optgroup>';
-    }).join('') +
+    tzRegions
+      .map((region) => {
+        const zones = COMMON_TIMEZONES.filter((z) => z.region === region);
+        return (
+          '<optgroup label="' +
+          esc(region) +
+          '">' +
+          zones
+            .map(
+              (z) =>
+                '<option value="' +
+                esc(z.zone) +
+                '"' +
+                (memberTz === z.zone ? ' selected' : '') +
+                '>' +
+                esc(z.label) +
+                '</option>'
+            )
+            .join('') +
+          '</optgroup>'
+        );
+      })
+      .join('') +
     (memberTz && !COMMON_TIMEZONES.some((z) => z.zone === memberTz)
-      ? '<optgroup label="Custom"><option value="' + esc(memberTz) + '" selected>' + esc(memberTz) + '</option></optgroup>'
+      ? '<optgroup label="Custom"><option value="' +
+        esc(memberTz) +
+        '" selected>' +
+        esc(memberTz) +
+        '</option></optgroup>'
       : '');
 
   overlay.innerHTML =
     '<div class="gm-modal-card" style="max-width: 480px; width: 95vw;">' +
-      '<div class="confirm-icon"><i class="ph ph-pencil-simple text-accent"></i></div>' +
-      '<h3>' + t('edit_member_title') + '</h3>' +
-      '<p>' + t('edit_member_body') + '</p>' +
-      '<form id="edit-member-form" style="display:flex; flex-direction:column; gap: 1rem; margin-top: 1rem;">' +
-        '<div class="input-group"><label for="edit-pseudo">' + t('label_pseudo') + '</label><div class="input-wrapper"><i class="ph ph-game-controller"></i>' +
-          '<input type="text" id="edit-pseudo" required value="' + esc(member.pseudo) + '"></div></div>' +
-        '<div class="input-group"><label for="edit-uid">UID</label><div class="input-wrapper"><i class="ph ph-identification-badge"></i>' +
-          '<input type="text" id="edit-uid" value="' + esc(member.uid || '') + '" placeholder="e.g. 1917131" ' + (isTempUid ? 'style="border-color:rgba(239,68,68,0.7);"' : '') + '></div>' + uidHelperHtml + '</div>' +
-        '<div style="display: flex; gap: 1rem;">' +
-          '<div class="input-group" style="flex: 1;"><label for="edit-power">Overall Power</label><div class="input-wrapper"><i class="ph ph-sword"></i>' +
-            '<input type="number" id="edit-power" value="' + esc(member.overall_power || '') + '" placeholder="e.g. 80000000"></div></div>' +
-          '<div class="input-group" style="flex: 1;"><label for="edit-role"><i class="ph ph-crown"></i> Role</label>' +
-            '<select id="edit-role" style="background: var(--bg-1); border: 1px solid var(--border-soft); color: var(--text-normal); width: 100%; border-radius: var(--radius-md); padding: 0.65rem 0.75rem;">' +
-              ['R1', 'R2', 'R3', 'R4', 'R5'].map((r) => '<option value="' + r + '"' + (member.role === r ? ' selected' : '') + '>' + r + '</option>').join('') +
-            '</select></div>' +
-        '</div>' +
-        '<div class="input-group">' +
-          '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">' +
-            '<label for="edit-timezone" style="font-size: var(--fs-sm);"><i class="ph ph-clock"></i> Timezone</label>' +
-            '<button type="button" id="edit-detect-tz-btn" class="gm-btn gm-btn-ghost" style="padding: 0.15rem 0.4rem; font-size: var(--fs-xs); display: inline-flex; align-items: center; gap: 0.25rem;" title="Detect browser timezone">' +
-              '<i class="ph ph-crosshair"></i> Auto-detect' +
-            '</button>' +
-          '</div>' +
-          '<div class="input-wrapper"><i class="ph ph-globe"></i>' +
-            '<select id="edit-timezone" style="background: var(--bg-1); border: 1px solid var(--border-soft); color: var(--text-normal); width: 100%; border-radius: var(--radius-md); padding: 0.65rem 0.75rem;">' +
-              tzOptionsHtml +
-            '</select></div>' +
-        '</div>' +
-        '<div style="background: var(--bg-dim); border: 1px solid var(--border-soft); border-radius: var(--radius-md); padding: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem;">' +
-          '<div style="font-size: var(--fs-sm); font-weight: 700; color: var(--accent);"><i class="ph ph-crosshair"></i> Tactical Military Scores</div>' +
-          '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.5rem;">' +
-            metricInput('edit-fleet', '⚔️ Fleet Rating', member.fleet_rating, 'e.g. 2000000') +
-            metricInput('edit-tech', '🔬 Tech Power', member.tech_power, 'e.g. 15000000') +
-            metricInput('edit-flagship', '🚀 Flagship Power', member.flagship_power, 'e.g. 10000000') +
-            metricInput('edit-champ', '👑 Champions Power', member.champion_power, 'e.g. 30000000') +
-            metricInput('edit-crew', '👥 Crew Power', member.crew_power, 'e.g. 5000000') +
-            metricInput('edit-glory', '🏆 Glory Score', member.glory_score, 'e.g. 50000000') +
-          '</div>' +
-        '</div>' + historyHtml +
-        '<div class="confirm-actions">' +
-          '<button type="button" id="edit-cancel" class="gm-btn gm-btn-ghost">' + t('confirm_cancel') + '</button>' +
-          '<button type="submit" class="gm-btn gm-btn-primary">' + t('confirm_ok') + '</button>' +
-        '</div>' +
-      '</form>' +
+    '<div class="confirm-icon"><i class="ph ph-pencil-simple text-accent"></i></div>' +
+    '<h3>' +
+    t('edit_member_title') +
+    '</h3>' +
+    '<p>' +
+    t('edit_member_body') +
+    '</p>' +
+    '<form id="edit-member-form" style="display:flex; flex-direction:column; gap: 1rem; margin-top: 1rem;">' +
+    '<div class="input-group"><label for="edit-pseudo">' +
+    t('label_pseudo') +
+    '</label><div class="input-wrapper"><i class="ph ph-game-controller"></i>' +
+    '<input type="text" id="edit-pseudo" required value="' +
+    esc(member.pseudo) +
+    '"></div></div>' +
+    '<div class="input-group"><label for="edit-uid">UID</label><div class="input-wrapper"><i class="ph ph-identification-badge"></i>' +
+    '<input type="text" id="edit-uid" value="' +
+    esc(member.uid || '') +
+    '" placeholder="e.g. 1917131" ' +
+    (isTempUid ? 'style="border-color:rgba(239,68,68,0.7);"' : '') +
+    '></div>' +
+    uidHelperHtml +
+    '</div>' +
+    '<div style="display: flex; gap: 1rem;">' +
+    '<div class="input-group" style="flex: 1;"><label for="edit-power">Overall Power</label><div class="input-wrapper"><i class="ph ph-sword"></i>' +
+    '<input type="number" id="edit-power" value="' +
+    esc(member.overall_power || '') +
+    '" placeholder="e.g. 80000000"></div></div>' +
+    '<div class="input-group" style="flex: 1;"><label for="edit-role"><i class="ph ph-crown"></i> Role</label>' +
+    '<select id="edit-role" style="background: var(--bg-1); border: 1px solid var(--border-soft); color: var(--text-normal); width: 100%; border-radius: var(--radius-md); padding: 0.65rem 0.75rem;">' +
+    ['R1', 'R2', 'R3', 'R4', 'R5']
+      .map((r) => '<option value="' + r + '"' + (member.role === r ? ' selected' : '') + '>' + r + '</option>')
+      .join('') +
+    '</select></div>' +
+    '</div>' +
+    '<div class="input-group">' +
+    '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">' +
+    '<label for="edit-timezone" style="font-size: var(--fs-sm);"><i class="ph ph-clock"></i> Timezone</label>' +
+    '<button type="button" id="edit-detect-tz-btn" class="gm-btn gm-btn-ghost" style="padding: 0.15rem 0.4rem; font-size: var(--fs-xs); display: inline-flex; align-items: center; gap: 0.25rem;" title="Detect browser timezone">' +
+    '<i class="ph ph-crosshair"></i> Auto-detect' +
+    '</button>' +
+    '</div>' +
+    '<div class="input-wrapper"><i class="ph ph-globe"></i>' +
+    '<select id="edit-timezone" style="background: var(--bg-1); border: 1px solid var(--border-soft); color: var(--text-normal); width: 100%; border-radius: var(--radius-md); padding: 0.65rem 0.75rem;">' +
+    tzOptionsHtml +
+    '</select></div>' +
+    '</div>' +
+    '<div style="background: var(--bg-dim); border: 1px solid var(--border-soft); border-radius: var(--radius-md); padding: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem;">' +
+    '<div style="font-size: var(--fs-sm); font-weight: 700; color: var(--accent);"><i class="ph ph-crosshair"></i> Tactical Military Scores</div>' +
+    '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.5rem;">' +
+    metricInput('edit-fleet', '⚔️ Fleet Rating', member.fleet_rating, 'e.g. 2000000') +
+    metricInput('edit-tech', '🔬 Tech Power', member.tech_power, 'e.g. 15000000') +
+    metricInput('edit-flagship', '🚀 Flagship Power', member.flagship_power, 'e.g. 10000000') +
+    metricInput('edit-champ', '👑 Champions Power', member.champion_power, 'e.g. 30000000') +
+    metricInput('edit-crew', '👥 Crew Power', member.crew_power, 'e.g. 5000000') +
+    metricInput('edit-glory', '🏆 Glory Score', member.glory_score, 'e.g. 50000000') +
+    '</div>' +
+    '</div>' +
+    historyHtml +
+    '<div class="confirm-actions">' +
+    '<button type="button" id="edit-cancel" class="gm-btn gm-btn-ghost">' +
+    t('confirm_cancel') +
+    '</button>' +
+    '<button type="submit" class="gm-btn gm-btn-primary">' +
+    t('confirm_ok') +
+    '</button>' +
+    '</div>' +
+    '</form>' +
     '</div>';
   document.body.appendChild(overlay);
   requestAnimationFrame(() => overlay.classList.add('visible'));
 
-  const close = (): void => { overlay.classList.remove('visible'); setTimeout(() => { overlay.remove(); }, 300); };
+  const close = (): void => {
+    overlay.classList.remove('visible');
+    setTimeout(() => {
+      overlay.remove();
+    }, 300);
+  };
   const cancelBtn = byId('edit-cancel');
   if (cancelBtn) cancelBtn.addEventListener('click', close);
-  overlay.addEventListener('click', (ev) => { if (ev.target === overlay) close(); });
+  overlay.addEventListener('click', (ev) => {
+    if (ev.target === overlay) close();
+  });
   adoptDialog(overlay, { onEscape: close });
 
   const editUidInput = byId<HTMLInputElement>('edit-uid');
@@ -844,7 +1201,15 @@ export async function showEditMemberDialog(member: any): Promise<void> {
       const helper = byId('edit-uid-helper');
       if (!st.valid) {
         editUidInput.style.borderColor = 'rgba(239,68,68,0.7)';
-        if (helper) { helper.style.display = 'flex'; helper.innerHTML = '<i class="ph ph-warning"></i> ' + esc(st.label || '') + ' (' + esc(st.reason || 'Enter real 6-10 digit game UID') + ')'; }
+        if (helper) {
+          helper.style.display = 'flex';
+          helper.innerHTML =
+            '<i class="ph ph-warning"></i> ' +
+            esc(st.label || '') +
+            ' (' +
+            esc(st.reason || 'Enter real 6-10 digit game UID') +
+            ')';
+        }
       } else {
         editUidInput.style.borderColor = 'rgba(52,211,153,0.7)';
         if (helper) helper.style.display = 'none';
@@ -880,8 +1245,10 @@ export async function showEditMemberDialog(member: any): Promise<void> {
     btn.addEventListener('click', async () => {
       const id = btn.getAttribute('data-id') || '';
       const res = await deleteNameHistoryEntry(client, id);
-      if (!res.error) { (btn as HTMLElement).closest('div')?.remove(); showToast('History entry removed', 'success'); }
-      else showToast('Error removing history entry', 'error');
+      if (!res.error) {
+        (btn as HTMLElement).closest('div')?.remove();
+        showToast('History entry removed', 'success');
+      } else showToast('Error removing history entry', 'error');
     });
   });
 
@@ -889,9 +1256,16 @@ export async function showEditMemberDialog(member: any): Promise<void> {
   if (form) {
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const val = (id: string): string => { const el = byId<HTMLInputElement | HTMLSelectElement>(id); return el ? el.value : ''; };
+      const val = (id: string): string => {
+        const el = byId<HTMLInputElement | HTMLSelectElement>(id);
+        return el ? el.value : '';
+      };
       const tzVal = val('edit-timezone').trim();
-      const tzOffset = tzVal ? getTimezoneOffset(tzVal) : (member.timezone_offset != null ? member.timezone_offset : null);
+      const tzOffset = tzVal
+        ? getTimezoneOffset(tzVal)
+        : member.timezone_offset != null
+          ? member.timezone_offset
+          : null;
       const extraMetrics = {
         fleet_rating: parseInt(val('edit-fleet'), 10) || 0,
         tech_power: parseInt(val('edit-tech'), 10) || 0,
@@ -900,9 +1274,16 @@ export async function showEditMemberDialog(member: any): Promise<void> {
         crew_power: parseInt(val('edit-crew'), 10) || 0,
         glory_score: parseInt(val('edit-glory'), 10) || 0,
         timezone: tzVal || null,
-        timezone_offset: tzOffset
+        timezone_offset: tzOffset,
       };
-      const ok = await renameGuildMember(member.pseudo, val('edit-pseudo'), val('edit-uid'), val('edit-power'), val('edit-role'), extraMetrics);
+      const ok = await renameGuildMember(
+        member.pseudo,
+        val('edit-pseudo'),
+        val('edit-uid'),
+        val('edit-power'),
+        val('edit-role'),
+        extraMetrics
+      );
       if (ok) close();
     });
   }

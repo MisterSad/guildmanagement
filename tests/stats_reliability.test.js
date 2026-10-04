@@ -25,7 +25,7 @@ function payload(members, trendMeta) {
     tenant: { total_events: 0, buckets: {} },
     trend: trendMeta || null,
     members,
-    glory: []
+    glory: [],
   };
 }
 
@@ -41,7 +41,7 @@ const member = (pseudo, buckets, extra) => ({
   excused_count: 0,
   sub_count: 0,
   buckets,
-  ...(extra || {})
+  ...(extra || {}),
 });
 
 const byPseudo = (rows) => Object.fromEntries(rows.map((r) => [r.pseudo, r]));
@@ -51,13 +51,16 @@ describe('the weighting is what makes the number defensible', () => {
     // Both members attend 1 of 2 opportunities. One made the SvS (coefficient
     // 5) and skipped an Arms Race day (coefficient 1); the other did the
     // reverse. Under the old flat denominator they were identical at 50%.
-    const rows = StatsService.computeReliabilityLeaderboard(payload([
-      member('MadeTheWar', { SvS: { att: 1, opp: 1, exc: 0 }, 'Arms Race': { att: 0, opp: 1, exc: 0 } }),
-      member('MadeTheDaily', { SvS: { att: 0, opp: 1, exc: 0 }, 'Arms Race': { att: 1, opp: 1, exc: 0 } })
-    ]), DEFAULT_EVENT_COEFFS);
+    const rows = StatsService.computeReliabilityLeaderboard(
+      payload([
+        member('MadeTheWar', { SvS: { att: 1, opp: 1, exc: 0 }, 'Arms Race': { att: 0, opp: 1, exc: 0 } }),
+        member('MadeTheDaily', { SvS: { att: 0, opp: 1, exc: 0 }, 'Arms Race': { att: 1, opp: 1, exc: 0 } }),
+      ]),
+      DEFAULT_EVENT_COEFFS
+    );
 
     const m = byPseudo(rows);
-    expect(m.MadeTheWar.reliability).toBeCloseTo(83.3, 1);   // 5 / (5+1)
+    expect(m.MadeTheWar.reliability).toBeCloseTo(83.3, 1); // 5 / (5+1)
     expect(m.MadeTheDaily.reliability).toBeCloseTo(16.7, 1); // 1 / (5+1)
     expect(rows[0].pseudo).toBe('MadeTheWar');
   });
@@ -65,48 +68,53 @@ describe('the weighting is what makes the number defensible', () => {
   it('cancels the coefficient when a member has only one kind of event', () => {
     // Not a bug: a coefficient expresses a trade-off BETWEEN event types. With
     // one bucket it appears on both sides of the fraction.
-    const only = (coeffs) => StatsService.computeReliabilityLeaderboard(
-      payload([member('Solo', { DTR: { att: 1, opp: 2, exc: 0 } })]), coeffs
-    )[0].reliability;
+    const only = (coeffs) =>
+      StatsService.computeReliabilityLeaderboard(
+        payload([member('Solo', { DTR: { att: 1, opp: 2, exc: 0 } })]),
+        coeffs
+      )[0].reliability;
 
     expect(only(DEFAULT_EVENT_COEFFS)).toBe(50);
     expect(only({ ...DEFAULT_EVENT_COEFFS, DTR: 50 })).toBe(50);
   });
 
   it('uses the tenant coefficients, not the defaults, when they differ', () => {
-    const rows = StatsService.computeReliabilityLeaderboard(payload([
-      member('A', { SvS: { att: 0, opp: 1, exc: 0 }, DTR: { att: 1, opp: 1, exc: 0 } })
-    ]), { ...DEFAULT_EVENT_COEFFS, DTR: 50 });
+    const rows = StatsService.computeReliabilityLeaderboard(
+      payload([member('A', { SvS: { att: 0, opp: 1, exc: 0 }, DTR: { att: 1, opp: 1, exc: 0 } })]),
+      { ...DEFAULT_EVENT_COEFFS, DTR: 50 }
+    );
     expect(rows[0].reliability).toBeCloseTo(90.9, 1); // 50 / (50+5)
   });
 });
 
 describe('"did not attend" and "was never asked" are different facts', () => {
   it('reports null, not 0%, for a bucket the guild did not run for that member', () => {
-    const rows = StatsService.computeReliabilityLeaderboard(payload([
-      member('Only SvS ran', { SvS: { att: 1, opp: 1, exc: 0 }, Shadowfront: { att: 0, opp: 0, exc: 0 } })
-    ]), DEFAULT_EVENT_COEFFS);
+    const rows = StatsService.computeReliabilityLeaderboard(
+      payload([member('Only SvS ran', { SvS: { att: 1, opp: 1, exc: 0 }, Shadowfront: { att: 0, opp: 0, exc: 0 } })]),
+      DEFAULT_EVENT_COEFFS
+    );
 
     const sf = rows[0].buckets.find((b) => b.bucket === 'Shadowfront');
     expect(sf.opp).toBe(0);
-    expect(sf.rate).toBeNull();          // renders as an em dash
+    expect(sf.rate).toBeNull(); // renders as an em dash
     expect(rows[0].reliability).toBe(100); // and contributes to neither side
   });
 
   it('reports 0%, not null, for a bucket that ran and was missed', () => {
-    const rows = StatsService.computeReliabilityLeaderboard(payload([
-      member('Skipped it', { Shadowfront: { att: 0, opp: 3, exc: 0 } })
-    ]), DEFAULT_EVENT_COEFFS);
+    const rows = StatsService.computeReliabilityLeaderboard(
+      payload([member('Skipped it', { Shadowfront: { att: 0, opp: 3, exc: 0 } })]),
+      DEFAULT_EVENT_COEFFS
+    );
 
     expect(rows[0].buckets[0].rate).toBe(0);
     expect(rows[0].reliability).toBe(0);
   });
 
   it('gives a member with nothing at all a null reliability and sorts them last', () => {
-    const rows = StatsService.computeReliabilityLeaderboard(payload([
-      member('Unmeasured', {}),
-      member('Absent', { SvS: { att: 0, opp: 2, exc: 0 } })
-    ]), DEFAULT_EVENT_COEFFS);
+    const rows = StatsService.computeReliabilityLeaderboard(
+      payload([member('Unmeasured', {}), member('Absent', { SvS: { att: 0, opp: 2, exc: 0 } })]),
+      DEFAULT_EVENT_COEFFS
+    );
 
     // Unmeasured is not worse than Absent -- it is not comparable. Mixing it
     // in at 0% would tell the admin to chase someone who was never asked.
@@ -117,18 +125,19 @@ describe('"did not attend" and "was never asked" are different facts', () => {
 });
 
 describe('the trend only speaks when it has something to compare', () => {
-  const withTrend = (recent, prior) => StatsService.computeReliabilityLeaderboard(
-    payload(
-      [member('T', { SvS: { att: 1, opp: 1, exc: 0 } }, { trend: { recent, prior } })],
-      { weeks_recent: 4, weeks_prior: 4 }
-    ),
-    DEFAULT_EVENT_COEFFS
-  )[0].trend;
+  const withTrend = (recent, prior) =>
+    StatsService.computeReliabilityLeaderboard(
+      payload([member('T', { SvS: { att: 1, opp: 1, exc: 0 } }, { trend: { recent, prior } })], {
+        weeks_recent: 4,
+        weeks_prior: 4,
+      }),
+      DEFAULT_EVENT_COEFFS
+    )[0].trend;
 
   it('reports a decline when both windows are substantial', () => {
     const t = withTrend(
-      { SvS: { att: 1, opp: 4 } },   // 25%
-      { SvS: { att: 3, opp: 4 } }    // 75%
+      { SvS: { att: 1, opp: 4 } }, // 25%
+      { SvS: { att: 3, opp: 4 } } // 75%
     );
     expect(t.eligible).toBe(true);
     expect(t.prior).toBe(75);
@@ -154,9 +163,10 @@ describe('the trend only speaks when it has something to compare', () => {
   });
 
   it('stays silent when the RPC was not asked for a trend at all', () => {
-    const rows = StatsService.computeReliabilityLeaderboard(payload([
-      member('NoTrend', { SvS: { att: 1, opp: 2, exc: 0 } })
-    ]), DEFAULT_EVENT_COEFFS);
+    const rows = StatsService.computeReliabilityLeaderboard(
+      payload([member('NoTrend', { SvS: { att: 1, opp: 2, exc: 0 } })]),
+      DEFAULT_EVENT_COEFFS
+    );
     expect(rows[0].trend.eligible).toBe(false);
     expect(rows[0].trend.delta).toBeNull();
   });
@@ -166,24 +176,28 @@ describe('the row carries its own evidence', () => {
   it('exposes the weighted numerator and denominator behind the percentage', () => {
     // A rate without its n is not checkable: 4/4 and 58/62 both look like
     // "about 95%" and they are not the same claim.
-    const rows = StatsService.computeReliabilityLeaderboard(payload([
-      member('A', { SvS: { att: 1, opp: 2, exc: 0 }, DTR: { att: 2, opp: 2, exc: 0 } })
-    ]), DEFAULT_EVENT_COEFFS);
+    const rows = StatsService.computeReliabilityLeaderboard(
+      payload([member('A', { SvS: { att: 1, opp: 2, exc: 0 }, DTR: { att: 2, opp: 2, exc: 0 } })]),
+      DEFAULT_EVENT_COEFFS
+    );
 
-    expect(rows[0].weighted_att).toBe(5 * 1 + 2 * 2);   // 9
-    expect(rows[0].weighted_opp).toBe(5 * 2 + 2 * 2);   // 14
+    expect(rows[0].weighted_att).toBe(5 * 1 + 2 * 2); // 9
+    expect(rows[0].weighted_opp).toBe(5 * 2 + 2 * 2); // 14
     expect(rows[0].reliability).toBeCloseTo(64.3, 1);
   });
 
   it('orders buckets by weight, so the events that matter are read first', () => {
-    const rows = StatsService.computeReliabilityLeaderboard(payload([
-      member('A', {
-        'Arms Race': { att: 1, opp: 1, exc: 0 },
-        DTR: { att: 1, opp: 1, exc: 0 },
-        SvS: { att: 1, opp: 1, exc: 0 },
-        Shadowfront: { att: 1, opp: 1, exc: 0 }
-      })
-    ]), DEFAULT_EVENT_COEFFS);
+    const rows = StatsService.computeReliabilityLeaderboard(
+      payload([
+        member('A', {
+          'Arms Race': { att: 1, opp: 1, exc: 0 },
+          DTR: { att: 1, opp: 1, exc: 0 },
+          SvS: { att: 1, opp: 1, exc: 0 },
+          Shadowfront: { att: 1, opp: 1, exc: 0 },
+        }),
+      ]),
+      DEFAULT_EVENT_COEFFS
+    );
 
     expect(rows[0].buckets.map((b) => b.bucket)).toEqual(['SvS', 'Shadowfront', 'DTR', 'Arms Race']);
   });
@@ -191,9 +205,10 @@ describe('the row carries its own evidence', () => {
   it('keeps the excused count visible even though it left the denominator', () => {
     // The SQL removes excused sessions from opp; the count still travels so
     // the admin can see why a denominator is smaller than their neighbour's.
-    const rows = StatsService.computeReliabilityLeaderboard(payload([
-      member('A', { SvS: { att: 1, opp: 1, exc: 2 } })
-    ]), DEFAULT_EVENT_COEFFS);
+    const rows = StatsService.computeReliabilityLeaderboard(
+      payload([member('A', { SvS: { att: 1, opp: 1, exc: 2 } })]),
+      DEFAULT_EVENT_COEFFS
+    );
 
     expect(rows[0].buckets[0].exc).toBe(2);
     expect(rows[0].buckets[0].opp).toBe(1);

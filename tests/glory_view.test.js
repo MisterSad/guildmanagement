@@ -13,20 +13,20 @@ import { setDbClient, resetSupabaseClient } from '../src/core/api/supabase';
 // stubs the suite used to put on the (now removed) window bridge.
 vi.mock('../src/core/i18n/i18n', async (importOriginal) => ({
   ...(await importOriginal()),
-  t: (k) => k
+  t: (k) => k,
 }));
 vi.mock('../src/core/utils/date', async (importOriginal) => ({
   ...(await importOriginal()),
   getWeekStart: () => '2026-08-03',
-  getPrevWeekStart: () => '2026-07-27'
+  getPrevWeekStart: () => '2026-07-27',
 }));
 vi.mock('../src/core/utils/text', async (importOriginal) => ({
   ...(await importOriginal()),
-  formatNumber: (n) => String(n ?? '')
+  formatNumber: (n) => String(n ?? ''),
 }));
 vi.mock('../src/core/dom/toast', async (importOriginal) => ({
   ...(await importOriginal()),
-  showToast: vi.fn()
+  showToast: vi.fn(),
 }));
 
 let rpcMock;
@@ -35,20 +35,33 @@ function chained(value) {
   const filters = [];
   const apply = () => {
     let res = (value || []).slice();
-    filters.forEach((f) => { res = res.filter(f); });
+    filters.forEach((f) => {
+      res = res.filter(f);
+    });
     return res;
   };
   const chain = {
     select: () => chain,
     order: () => chain,
     limit: () => chain,
-    eq: (field, val) => { filters.push((r) => r[field] === val); return chain; },
-    is: (field, val) => { filters.push((r) => r[field] === val); return chain; },
-    in: (field, list) => { filters.push((r) => list.indexOf(r[field]) !== -1); return chain; },
+    eq: (field, val) => {
+      filters.push((r) => r[field] === val);
+      return chain;
+    },
+    is: (field, val) => {
+      filters.push((r) => r[field] === val);
+      return chain;
+    },
+    in: (field, list) => {
+      filters.push((r) => list.indexOf(r[field]) !== -1);
+      return chain;
+    },
     update: () => chain,
     delete: () => chain,
-    maybeSingle: () => ({ then: (resolve) => Promise.resolve({ data: apply()[0] || null, error: null }).then(resolve) }),
-    then: (resolve) => Promise.resolve({ data: apply(), error: null }).then(resolve)
+    maybeSingle: () => ({
+      then: (resolve) => Promise.resolve({ data: apply()[0] || null, error: null }).then(resolve),
+    }),
+    then: (resolve) => Promise.resolve({ data: apply(), error: null }).then(resolve),
   };
   return chain;
 }
@@ -71,14 +84,14 @@ function area() {
 const TABLES = {
   guild_members: [
     { pseudo: 'Alpha', guild: 'ALPHA' },
-    { pseudo: 'Bravo', guild: 'ALPHA' }
+    { pseudo: 'Bravo', guild: 'ALPHA' },
   ],
   event_participants: [
     { pseudo: 'Alpha', guild: 'ALPHA', event_name: 'Glory', week_start: '2026-08-03', score: 5000 },
     { pseudo: 'Bravo', guild: 'ALPHA', event_name: 'Glory', week_start: '2026-08-03', score: 0 },
     { pseudo: 'Alpha', guild: 'ALPHA', event_name: 'Glory', week_start: '2026-07-27', score: 4000 },
-    { pseudo: 'Bravo', guild: 'ALPHA', event_name: 'Glory', week_start: '2026-07-27', score: 1000 }
-  ]
+    { pseudo: 'Bravo', guild: 'ALPHA', event_name: 'Glory', week_start: '2026-07-27', score: 1000 },
+  ],
 };
 
 beforeEach(() => {
@@ -127,8 +140,8 @@ describe('GloryView — search & save', () => {
     input.dispatchEvent(new Event('input', { bubbles: true }));
 
     const rows = area().querySelectorAll('.participant-row');
-    expect(rows[0].style.display).toBe('none');   // Alpha hidden
-    expect(rows[1].style.display).toBe('');       // Bravo shown
+    expect(rows[0].style.display).toBe('none'); // Alpha hidden
+    expect(rows[1].style.display).toBe(''); // Bravo shown
   });
 
   // The old title ended "then refreshes members": the view called
@@ -150,7 +163,7 @@ describe('GloryView — search & save', () => {
       p_guild: 'ALPHA',
       p_pseudo: 'Alpha',
       p_week_start: '2026-08-03',
-      p_glory: 6000
+      p_glory: 6000,
     });
   });
 

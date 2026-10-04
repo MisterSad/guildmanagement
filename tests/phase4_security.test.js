@@ -22,7 +22,13 @@ describe('M14 — a suspended account is authorized for nothing', () => {
   const _auth = stripComments(read('supabase/functions/_shared/auth.ts'));
 
   it('every consumer gates on the role, which is what makes this work', () => {
-    for (const f of ['tickets', 'ocr-guild-members', 'migration-summary', 'discord-webhook-proxy', 'guild-data-export']) {
+    for (const f of [
+      'tickets',
+      'ocr-guild-members',
+      'migration-summary',
+      'discord-webhook-proxy',
+      'guild-data-export',
+    ]) {
       const src = read(`supabase/functions/${f}/index.ts`);
       expect(src, `${f} must gate on caller.role`).toMatch(/caller\.role/);
     }
@@ -120,7 +126,7 @@ describe('M16 — a value can no longer change what a query means', () => {
     // pattern an id of "%" would widen to every row in the table.
     const session = stripComments(read('src/core/auth/session.ts'));
     expect(session).not.toContain('.ilike(');
-    expect(session).not.toContain("gm_admin_upsert");
+    expect(session).not.toContain('gm_admin_upsert');
     expect(session).not.toContain("'Sync_Role_Update_'");
     // The Edge Function is the only path left.
     expect(session).toMatch(/action: 'update-role'/);
@@ -254,7 +260,7 @@ describe('C1 — session revocation is now real, not merely documented', () => {
     // the database to itself and pass every time.
     const epoch = stripComments(read('supabase/functions/_shared/session-epoch.ts'));
     expect(epoch).not.toContain('user.app_metadata');
-    expect(epoch).toContain("split(\".\")[1]");
+    expect(epoch).toContain('split(".")[1]');
   });
 
   it('every JWT-validating function goes through the one resolver that checks the epoch', () => {
@@ -262,7 +268,15 @@ describe('C1 — session revocation is now real, not merely documented', () => {
     // only guards that no function grows its own lookup again.
     const auth = read('supabase/functions/_shared/auth.ts');
     expect(auth).toContain('isSessionRevoked(jwt,');
-    for (const f of ['admin-accounts', 'member-portal', 'tickets', 'guild-data-export', 'ocr-guild-members', 'migration-summary', 'discord-webhook-proxy']) {
+    for (const f of [
+      'admin-accounts',
+      'member-portal',
+      'tickets',
+      'guild-data-export',
+      'ocr-guild-members',
+      'migration-summary',
+      'discord-webhook-proxy',
+    ]) {
       const src = read(`supabase/functions/${f}/index.ts`);
       expect(src, f).toContain('resolveCaller(req');
       // A caller lookup of its own would read the account by its auth user id.
@@ -333,9 +347,15 @@ describe('M4 — the deny-all posture is now stated, not merely implied', () => 
     // phases D2-D6 added four, so the real list is 13 -- which is why the
     // migration asserts the INVARIANT rather than enumerating names.
     for (const t of [
-      'account_backup_codes', 'account_passkeys', 'discord_account_links',
-      'discord_link_codes', 'discord_verification_throttle',
-      'guild_creation_requests', 'login_throttle', 'tickets', 'webauthn_challenges',
+      'account_backup_codes',
+      'account_passkeys',
+      'discord_account_links',
+      'discord_link_codes',
+      'discord_verification_throttle',
+      'guild_creation_requests',
+      'login_throttle',
+      'tickets',
+      'webauthn_challenges',
     ]) {
       expect(m, `${t} must get a COMMENT`).toContain(`COMMENT ON TABLE public.${t} IS`);
     }
@@ -409,7 +429,9 @@ describe('M3 — measured database debt, including what is deliberately left alo
 
   it('splits the FOR ALL policies so SELECT runs one policy, not two', () => {
     for (const t of ['player_metrics_history', 'server_migration_group_servers', 'server_migration_groups']) {
-      expect(m, `${t} write policy must be narrowed`).toMatch(new RegExp(`DROP POLICY IF EXISTS \\w+ ON public\\.${t}`));
+      expect(m, `${t} write policy must be narrowed`).toMatch(
+        new RegExp(`DROP POLICY IF EXISTS \\w+ ON public\\.${t}`)
+      );
     }
     expect(m).toContain('FOR ALL policies still overlapping SELECT');
     // And no new FOR ALL is introduced.

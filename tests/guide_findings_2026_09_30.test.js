@@ -21,7 +21,9 @@ describe('5. a Glory typed outside the Glory page reaches the Glory Tracker', ()
   it('Player Portal: a CHANGED Glory is filed for the week through updatePlayerGlory', () => {
     const _src = edgeSource('member-portal');
     const handler = edgeFunctionBody('member-portal', 'updateMetrics');
-    expect(handler).toMatch(/if \(payload\?\.glory_score !== undefined && gloryScore !== \(Number\(member\.glory_score\) \|\| 0\)\)/);
+    expect(handler).toMatch(
+      /if \(payload\?\.glory_score !== undefined && gloryScore !== \(Number\(member\.glory_score\) \|\| 0\)\)/
+    );
     expect(handler).toContain('await updatePlayerGlory(admin, uid, identity.guild, gloryScore)');
     // and it now reads the RPC's own verdict, not only the transport error
     expect(handler).toContain('metricsRow.ok === false');
@@ -30,13 +32,17 @@ describe('5. a Glory typed outside the Glory page reaches the Glory Tracker', ()
     // M4a: the edit is gm_update_member, which files a changed Glory for the
     // week in the same transaction (run by supabase/tests/10_transactional_writes.sql).
     const fn = sqlFunctionBody('gm_update_member');
-    expect(fn).toContain("IF p_update ? 'glory_score' AND v_new.glory_score IS DISTINCT FROM COALESCE(v_old.glory_score, 0) THEN");
+    expect(fn).toContain(
+      "IF p_update ? 'glory_score' AND v_new.glory_score IS DISTINCT FROM COALESCE(v_old.glory_score, 0) THEN"
+    );
     expect(fn).toContain('public.gm_upsert_player_glory(v_guild, v_new.pseudo,');
   });
 });
 
-describe('7. event pages show the guild\'s own weights', () => {
-  beforeEach(() => { getGuildConfig.mockReset(); });
+describe("7. event pages show the guild's own weights", () => {
+  beforeEach(() => {
+    getGuildConfig.mockReset();
+  });
 
   it('falls back to the default for a missing or out-of-range value', () => {
     expect(resolveCoeff('SvS', '8')).toBe(8);
@@ -48,7 +54,8 @@ describe('7. event pages show the guild\'s own weights', () => {
   });
 
   it('paints every marked label from guild_config', async () => {
-    document.body.innerHTML = '<span data-gm-event-coeff="SvS">· coeff. 5×</span><span data-gm-event-coeff="DTR">· coeff. 2×</span>';
+    document.body.innerHTML =
+      '<span data-gm-event-coeff="SvS">· coeff. 5×</span><span data-gm-event-coeff="DTR">· coeff. 2×</span>';
     getGuildConfig.mockImplementation(async (k) => (k === 'coeff_svs' ? '7' : ''));
     await paintEventCoeffLabels();
     const [svs, dtr] = document.querySelectorAll('[data-gm-event-coeff]');
@@ -95,7 +102,15 @@ describe('9. Migration Hub page deletion', () => {
 describe('6. in-app help no longer describes removed features', () => {
   it('drops the stale wording', () => {
     const src = read('src/modules/help/HelpView.ts');
-    for (const stale of ['Start SvS', 'import from Discord', 'One session per calendar day', 'date range', 'pick a sanction type', 'Top 5 share', 'self-register on the Player Portal']) {
+    for (const stale of [
+      'Start SvS',
+      'import from Discord',
+      'One session per calendar day',
+      'date range',
+      'pick a sanction type',
+      'Top 5 share',
+      'self-register on the Player Portal',
+    ]) {
       expect(src, stale).not.toContain(stale);
     }
   });

@@ -52,8 +52,8 @@ describe('AuditService and Player Portal Logging', () => {
         created_at: new Date().toISOString(),
         level: 'INFO',
         service: 'member-portal',
-        metadata: { score_prep: 15000000, score_pvp: 42000000 }
-      }
+        metadata: { score_prep: 15000000, score_pvp: 42000000 },
+      },
     ];
 
     mockRange.mockResolvedValueOnce({ data: mockLogs, count: 1, error: null });
@@ -61,7 +61,7 @@ describe('AuditService and Player Portal Logging', () => {
     const result = await AuditService.getLogs({
       action_type: 'score_submission',
       guild: 'ALPHA',
-      search: 'Ares_Actual'
+      search: 'Ares_Actual',
     });
 
     expect(mockSupabase.from).toHaveBeenCalledWith('system_audit_logs');

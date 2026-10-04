@@ -48,4 +48,7 @@ export const SetJoinCodeSchema = z.object({ guild: guildField, code: z.string().
 export const GetJoinCodeSchema = z.object({ guild: guildField });
 export const ApproveRejectSchema = z.object({ id: idField });
 export const GuildRequestIdSchema = z.object({ id: z.string().trim().uuid() });
-export const RejectGuildRequestSchema = z.object({ id: z.string().trim().uuid(), reason: z.string().trim().max(500).nullish() });
+export const RejectGuildRequestSchema = z.object({
+  id: z.string().trim().uuid(),
+  reason: z.string().trim().max(500).nullish(),
+});

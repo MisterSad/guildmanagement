@@ -4,12 +4,29 @@
  * notify_svs_won_prep). Only in a week that has an SvS (RC6).
  */
 
-import { isToggleEnabled, resolveGuildWebhook, isSvsEventName, isSvsActiveForWeek } from "../_shared/reminder-rules.ts";
-import { claimSlot, settleSlot, abandonSlot, postToDiscord, reminderBody, blockRoleTag, getSlotDateString, dueSlots, pad2, type GuildRun } from "./shared.ts";
-import type { ActiveEvent } from "./standard.ts";
+import { isToggleEnabled, resolveGuildWebhook, isSvsEventName, isSvsActiveForWeek } from '../_shared/reminder-rules.ts';
+import {
+  claimSlot,
+  settleSlot,
+  abandonSlot,
+  postToDiscord,
+  reminderBody,
+  blockRoleTag,
+  getSlotDateString,
+  dueSlots,
+  pad2,
+  type GuildRun,
+} from './shared.ts';
+import type { ActiveEvent } from './standard.ts';
 
 type SvsSlotType = 'garrison' | 'portal_5' | 'portal_open' | 'reminder_30' | 'reminder_5' | 'battle_start';
-interface SvsSlot { day: number; hour: number; minute: number; label: string; type: SvsSlotType }
+interface SvsSlot {
+  day: number;
+  hour: number;
+  minute: number;
+  label: string;
+  type: SvsSlotType;
+}
 
 const SVS_SCHEDULE: SvsSlot[] = [
   { day: 5, hour: 20, minute: 0, label: 'Garrison Reminder', type: 'garrison' },
@@ -21,7 +38,7 @@ const SVS_SCHEDULE: SvsSlot[] = [
 
   { day: 6, hour: 13, minute: 30, label: 'Battle Reminder 30m', type: 'reminder_30' },
   { day: 6, hour: 13, minute: 55, label: 'Battle Reminder 5m', type: 'reminder_5' },
-  { day: 6, hour: 14, minute: 0, label: 'Battle Start', type: 'battle_start' }
+  { day: 6, hour: 14, minute: 0, label: 'Battle Start', type: 'battle_start' },
 ];
 
 /** Whether the guild's toggles let this slot post; logs why not. */
@@ -65,7 +82,7 @@ function buildMessage(run: GuildRun, slot: SvsSlot, svsGuildTag: string) {
     agenda = `Put your ships in garrison.`;
     fields = [
       { name: 'Time (UTC)', value: `${pad2(curHour)}:00 UTC`, inline: true },
-      { name: 'Guild Agenda', value: agenda, inline: false }
+      { name: 'Guild Agenda', value: agenda, inline: false },
     ];
   } else {
     let timeStr = '14:00 UTC';
@@ -129,7 +146,7 @@ function buildMessage(run: GuildRun, slot: SvsSlot, svsGuildTag: string) {
 
     fields = [
       { name: 'Start Time (UTC)', value: timeStr, inline: true },
-      { name: 'Guild Agenda', value: agenda, inline: false }
+      { name: 'Guild Agenda', value: agenda, inline: false },
     ];
   }
 
@@ -150,7 +167,12 @@ function buildMessage(run: GuildRun, slot: SvsSlot, svsGuildTag: string) {
     const customTitle = config[`tpl_svs_${actionSuffix}_title`];
     const customDesc = config[`tpl_svs_${actionSuffix}_desc`];
 
-    const timeVal = slot.type === 'garrison' ? `${pad2(slot.hour)}:00 UTC` : (slot.type === 'portal_5' || slot.type === 'portal_open' ? '00:00 UTC' : '14:00 UTC');
+    const timeVal =
+      slot.type === 'garrison'
+        ? `${pad2(slot.hour)}:00 UTC`
+        : slot.type === 'portal_5' || slot.type === 'portal_open'
+          ? '00:00 UTC'
+          : '14:00 UTC';
 
     const replacePlaceholders = (str: string) => {
       if (!str) return str;
@@ -164,15 +186,17 @@ function buildMessage(run: GuildRun, slot: SvsSlot, svsGuildTag: string) {
     if (customTitle && customTitle.trim() !== '') embedTitle = replacePlaceholders(customTitle);
     if (customDesc && customDesc.trim() !== '') {
       embedDesc = replacePlaceholders(customDesc);
-      fields = [
-        { name: 'Time (UTC)', value: timeVal, inline: true }
-      ];
+      fields = [{ name: 'Time (UTC)', value: timeVal, inline: true }];
     }
   }
   return reminderBody(content, embedTitle, embedDesc, color, fields);
 }
 
-export async function runSvs(run: GuildRun, events: ActiveEvent[], warSessionTimestampsMs: Array<number | null>): Promise<void> {
+export async function runSvs(
+  run: GuildRun,
+  events: ActiveEvent[],
+  warSessionTimestampsMs: Array<number | null>
+): Promise<void> {
   const { config, now } = run;
   // RC6: the session is active when it belongs to the current UTC calendar
   // week — either an active event_status SvS row whose start_at falls in the
@@ -194,7 +218,7 @@ export async function runSvs(run: GuildRun, events: ActiveEvent[], warSessionTim
 
     const slotDate = getSlotDateString(now, slot.day);
     const lockKey = `sent_svs_${slot.label.replace(/\s+/g, '_')}_${slot.type}_${slotDate}_${pad2(slot.hour)}:${pad2(slot.minute)}`;
-    if (!await claimSlot(run, lockKey, `SvS ${slot.label} (${slot.type})`)) continue;
+    if (!(await claimSlot(run, lockKey, `SvS ${slot.label} (${slot.type})`))) continue;
 
     try {
       const body = buildMessage(run, slot, svsGuildTag);

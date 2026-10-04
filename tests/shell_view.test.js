@@ -23,12 +23,12 @@ vi.mock('../src/core/auth/roles', async (importOriginal) => {
     roleFromStorage: () => currentRole,
     isSuperAdmin: () => currentRole === 'super_admin',
     isServerAdmin: () => currentRole === 'server_admin',
-    isGuildAdmin: () => currentRole !== 'member'
+    isGuildAdmin: () => currentRole !== 'member',
   };
 });
 vi.mock('../src/modules/app/router', () => ({
   onTabActivated: vi.fn(async () => undefined),
-  reloadActiveView: vi.fn()
+  reloadActiveView: vi.fn(),
 }));
 
 const FIXTURE = `
@@ -50,16 +50,18 @@ function installGM(role) {
   vi.mocked(onTabActivated).mockClear();
   // The router mock records every activation; tests read the tab ids from it.
   const calls = {
-    get onTabActivated() { return vi.mocked(onTabActivated).mock.calls.map((c) => c[0]); }
+    get onTabActivated() {
+      return vi.mocked(onTabActivated).mock.calls.map((c) => c[0]);
+    },
   };
   // getClient() still reads window.GM.db, so the fake client goes there.
   window.GM = {
-    db: { functions: { invoke: async () => ({ data: { ok: true, ticket_number: 7 } }) } }
+    db: { functions: { invoke: async () => ({ data: { ok: true, ticket_number: 7 } }) } },
   };
   window.guildsList = ['ALPHA', 'BETA'];
   window.guildsData = {
     ALPHA: { type: 'Unlimited', server_number: 1 },
-    BETA: { type: 'Premium', end: '2999-01-01', server_number: 2 }
+    BETA: { type: 'Premium', end: '2999-01-01', server_number: 2 },
   };
   window.currentGuild = 'ALPHA';
   window.currentGuildRestriction = null;
@@ -76,14 +78,21 @@ function boot(role, _opts = {}) {
 }
 
 function sidebarIds() {
-  return Array.from(document.querySelectorAll('[data-gm-sidebar] [data-gm-nav-item]'))
-    .map((b) => b.getAttribute('data-gm-nav-item'));
+  return Array.from(document.querySelectorAll('[data-gm-sidebar] [data-gm-nav-item]')).map((b) =>
+    b.getAttribute('data-gm-nav-item')
+  );
 }
 
 const tick = () => new Promise((r) => setTimeout(r, 10));
 
 afterEach(() => {
-  views.forEach((v) => { try { v.destroy(); } catch (_) { /* ignore */ } });
+  views.forEach((v) => {
+    try {
+      v.destroy();
+    } catch (_) {
+      /* ignore */
+    }
+  });
   views = [];
   vi.useRealTimers();
   vi.restoreAllMocks();
@@ -199,9 +208,7 @@ describe('ShellView — nav visibility matrix', () => {
     const { view } = boot('super_admin');
     view.init();
     const ids = sidebarIds();
-    expect(ids).toEqual(expect.arrayContaining([
-      'superadmin-accounts', 'tickets'
-    ]));
+    expect(ids).toEqual(expect.arrayContaining(['superadmin-accounts', 'tickets']));
   });
 });
 

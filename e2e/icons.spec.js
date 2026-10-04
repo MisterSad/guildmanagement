@@ -26,10 +26,7 @@ function walk(dir, out = []) {
 }
 
 function usedIconNames() {
-  const css = fs.readFileSync(
-    path.join(rootDir, 'node_modules/@phosphor-icons/web/src/regular/style.css'),
-    'utf8'
-  );
+  const css = fs.readFileSync(path.join(rootDir, 'node_modules/@phosphor-icons/web/src/regular/style.css'), 'utf8');
   const known = new Set();
   for (const m of css.matchAll(/\.ph\.(ph-[a-z0-9-]+):before/g)) known.add(m[1]);
 
@@ -93,7 +90,10 @@ test('every icon the app can draw survives the font subset', async ({ page }) =>
 
     for (const n of iconNames) {
       const ch = charFor(n);
-      if (!ch) { noContent.push(n); continue; }
+      if (!ch) {
+        noContent.push(n);
+        continue;
+      }
       if (raster(ch) === notdef) blank.push(n);
     }
     return { blank, noContent, notdefIsDistinct: notdef !== raster('\u0041') };

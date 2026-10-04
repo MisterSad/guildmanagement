@@ -20,7 +20,7 @@ export async function decideRegistrationAction(ctx: AdminContext): Promise<Respo
     logger,
     { role: info.role, guild: info.guild, serverNumber: info.serverNumber, accountId: info.accountId, via: "app" },
     parsed.data.id,
-    action === "approve-registration" ? "approve" : "reject",
+    action === "approve-registration" ? "approve" : "reject"
   );
   if (!res.ok) {
     return json({ ok: false, error: res.error, ...(res.message ? { message: res.message } : {}) }, res.status);

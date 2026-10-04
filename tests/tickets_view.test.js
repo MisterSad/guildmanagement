@@ -14,15 +14,15 @@ const mocks = vi.hoisted(() => ({ superAdmin: true, showToast: vi.fn() }));
 
 vi.mock('../src/core/i18n/i18n', async (importOriginal) => ({
   ...(await importOriginal()),
-  t: (k) => k
+  t: (k) => k,
 }));
 vi.mock('../src/core/auth/roles', async (importOriginal) => ({
   ...(await importOriginal()),
-  isSuperAdmin: () => mocks.superAdmin
+  isSuperAdmin: () => mocks.superAdmin,
 }));
 vi.mock('../src/core/dom/toast', async (importOriginal) => ({
   ...(await importOriginal()),
-  showToast: mocks.showToast
+  showToast: mocks.showToast,
 }));
 
 let invokeMock;
@@ -35,10 +35,23 @@ function installClient({ superAdmin = true } = {}) {
         data: {
           ok: true,
           tickets: [
-            { id: 7, ticket_number: 7, status: 'open', severity: 'high', category: 'bug', title: 'Crash', description: 'It broke', reporter_account_id: 'Alpha', reporter_role: 'R4', guild: 'ALPHA', created_at: '2026-08-01T10:00:00Z', attachments: [] }
-          ]
+            {
+              id: 7,
+              ticket_number: 7,
+              status: 'open',
+              severity: 'high',
+              category: 'bug',
+              title: 'Crash',
+              description: 'It broke',
+              reporter_account_id: 'Alpha',
+              reporter_role: 'R4',
+              guild: 'ALPHA',
+              created_at: '2026-08-01T10:00:00Z',
+              attachments: [],
+            },
+          ],
         },
-        error: null
+        error: null,
       };
     }
     return { data: { ok: true }, error: null };

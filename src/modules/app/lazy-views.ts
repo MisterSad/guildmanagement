@@ -43,10 +43,15 @@ function lazyView<T>(load: () => Promise<T>): LazyView<T> {
     get() {
       if (instance) return Promise.resolve(instance);
       if (!pending) {
-        pending = load().then((view) => { instance = view; return view; });
+        pending = load().then((view) => {
+          instance = view;
+          return view;
+        });
         // A failed download (offline, a deploy replaced the chunk) must not
         // poison the cache: the next call retries.
-        pending.catch(() => { pending = null; });
+        pending.catch(() => {
+          pending = null;
+        });
       }
       return pending;
     },
@@ -56,16 +61,37 @@ function lazyView<T>(load: () => Promise<T>): LazyView<T> {
   };
 }
 
-export const eventsViewLazy = lazyView<EventsView>(() => import('../events/views/EventsView').then((m) => m.eventsView));
-export const shadowfrontViewLazy = lazyView<ShadowfrontView>(() => import('../shadowfront/views/ShadowfrontView').then((m) => m.shadowfrontView));
-export const armsRaceViewLazy = lazyView<ArmsRaceView>(() => import('../armsrace/views/ArmsRaceView').then((m) => m.armsRaceView));
-export const overviewViewLazy = lazyView<OverviewView>(() => import('../overview/views/OverviewView').then((m) => m.overviewView));
-export const portalViewLazy = lazyView<PortalView>(() => import('../portal/views/PortalView').then((m) => m.portalView));
+export const eventsViewLazy = lazyView<EventsView>(() =>
+  import('../events/views/EventsView').then((m) => m.eventsView)
+);
+export const shadowfrontViewLazy = lazyView<ShadowfrontView>(() =>
+  import('../shadowfront/views/ShadowfrontView').then((m) => m.shadowfrontView)
+);
+export const armsRaceViewLazy = lazyView<ArmsRaceView>(() =>
+  import('../armsrace/views/ArmsRaceView').then((m) => m.armsRaceView)
+);
+export const overviewViewLazy = lazyView<OverviewView>(() =>
+  import('../overview/views/OverviewView').then((m) => m.overviewView)
+);
+export const portalViewLazy = lazyView<PortalView>(() =>
+  import('../portal/views/PortalView').then((m) => m.portalView)
+);
 export const statsViewLazy = lazyView<StatsView>(() => import('../stats/views/StatsView').then((m) => m.statsView));
-export const historyViewLazy = lazyView<HistoryView>(() => import('../history/views/HistoryView').then((m) => m.historyView));
+export const historyViewLazy = lazyView<HistoryView>(() =>
+  import('../history/views/HistoryView').then((m) => m.historyView)
+);
 export const gloryViewLazy = lazyView<GloryView>(() => import('../glory/views/GloryView').then((m) => m.gloryView));
-export const ticketsViewLazy = lazyView<TicketsView>(() => import('../tickets/views/TicketsView').then((m) => m.ticketsView));
-export const migrationHubViewLazy = lazyView<MigrationHubView>(() => import('../migration/views/MigrationHubView').then((m) => m.migrationHubView));
+export const ticketsViewLazy = lazyView<TicketsView>(() =>
+  import('../tickets/views/TicketsView').then((m) => m.ticketsView)
+);
+export const migrationHubViewLazy = lazyView<MigrationHubView>(() =>
+  import('../migration/views/MigrationHubView').then((m) => m.migrationHubView)
+);
 // The sanctions form is wired by init(); it used to run at boot, it now runs
 // with the first load -- the form cannot be submitted before its tab is shown.
-export const sanctionsViewLazy = lazyView<SanctionsView>(() => import('../sanctions/views/SanctionsView').then((m) => { m.sanctionsView.init(); return m.sanctionsView; }));
+export const sanctionsViewLazy = lazyView<SanctionsView>(() =>
+  import('../sanctions/views/SanctionsView').then((m) => {
+    m.sanctionsView.init();
+    return m.sanctionsView;
+  })
+);

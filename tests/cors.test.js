@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { isAllowedOrigin, getCorsHeaders, } from '../supabase/functions/_shared/cors.ts';
+import { isAllowedOrigin, getCorsHeaders } from '../supabase/functions/_shared/cors.ts';
 
 describe('Ticket 1.4: CORS Hardening & Vercel Origin Restriction', () => {
   const corsPath = path.resolve(__dirname, '../supabase/functions/_shared/cors.ts');
@@ -93,16 +93,18 @@ describe('Ticket 1.4: CORS Hardening & Vercel Origin Restriction', () => {
   describe('3. getCorsHeaders - Origin Reflection Semantics', () => {
     it('echoes authorized preview deployment origin', () => {
       const req = new Request('https://api.test', {
-        headers: { Origin: 'https://guildmanagement-abc123def-mistersads-projects.vercel.app' }
+        headers: { Origin: 'https://guildmanagement-abc123def-mistersads-projects.vercel.app' },
       });
       const headers = getCorsHeaders(req);
-      expect(headers['Access-Control-Allow-Origin']).toBe('https://guildmanagement-abc123def-mistersads-projects.vercel.app');
+      expect(headers['Access-Control-Allow-Origin']).toBe(
+        'https://guildmanagement-abc123def-mistersads-projects.vercel.app'
+      );
       expect(headers['Vary']).toBe('Origin');
     });
 
     it('falls back to default localhost:5173 when origin is unauthorized (e.g. malicious Vercel project)', () => {
       const req = new Request('https://api.test', {
-        headers: { Origin: 'https://malicious-project.vercel.app' }
+        headers: { Origin: 'https://malicious-project.vercel.app' },
       });
       const headers = getCorsHeaders(req);
       expect(headers['Access-Control-Allow-Origin']).toBe('http://localhost:5173');

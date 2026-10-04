@@ -23,11 +23,11 @@ import { showToast } from '../src/core/dom/toast';
 // the source modules with the stubs the suite used to put on window.GM.
 vi.mock('../src/core/i18n/i18n', async (importOriginal) => ({
   ...(await importOriginal()),
-  t: (k) => k
+  t: (k) => k,
 }));
 vi.mock('../src/core/dom/toast', async (importOriginal) => ({
   ...(await importOriginal()),
-  showToast: vi.fn()
+  showToast: vi.fn(),
 }));
 
 const root = path.resolve(__dirname, '..');
@@ -67,8 +67,8 @@ describe('War Manual Score Entry & History Modal Scroll', () => {
         war: {
           session: { guild: 'ALPHA', event_name: 'SvS', session_id: 'SVS-2026-W38' },
           grid: [],
-          daily: {}
-        }
+          daily: {},
+        },
       };
 
       // Mock DOM row with day 1 filled, day 2..6 blank
@@ -122,8 +122,8 @@ describe('War Manual Score Entry & History Modal Scroll', () => {
         war: {
           session: { guild: 'ALPHA', event_name: 'SvS', session_id: 'SVS-2026-W38' },
           grid: [],
-          daily: {}
-        }
+          daily: {},
+        },
       };
 
       const container = document.createElement('div');
@@ -168,12 +168,10 @@ describe('War Manual Score Entry & History Modal Scroll', () => {
 
       const view = new HistoryView();
       const meta = { label: 'SvS War', icon: 'ph-swords', hasScore: true };
-      const rows = [
-        { pseudo: 'Warrior1', participated: 1, score: 0, score_prep: 100, score_pvp: 200 }
-      ];
+      const rows = [{ pseudo: 'Warrior1', participated: 1, score: 0, score_prep: 100, score_pvp: 200 }];
       const warExtra = {
         grid: [],
-        daily: { Warrior1: [{ day: 1, score: 100, chests_unlocked: 0 }] }
+        daily: { Warrior1: [{ day: 1, score: 100, chests_unlocked: 0 }] },
       };
 
       view.renderSessionModal('SvS', 'SVS-2026-W38', '2026-08-03', rows, meta, false, true, warExtra);

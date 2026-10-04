@@ -41,7 +41,8 @@ export async function handleChoose(req: Request, body: any, admin: any, logger: 
     // Either a forged account id or a link removed mid-flight. The same answer
     // for both: naming an account that is not yours must not confirm it exists.
     logger.warn("Chosen account is not linked to this Discord identity", {
-      discordUserId: consumed.discordUserId, requested: parsed.data.account_id,
+      discordUserId: consumed.discordUserId,
+      requested: parsed.data.account_id,
     });
     return json({ ok: false, error: "account_not_linked" }, 403);
   }
@@ -89,10 +90,7 @@ export async function handleRedeem(req: Request, body: unknown, admin: any, logg
   // selectable, and a suspended account does not reveal that it exists.
   if (links && links.length > 1) {
     const ids = links.map((l: any) => l.account_id as string);
-    const { data: accs, error: accErr } = await admin
-      .from("accounts")
-      .select("id, role, guild, status")
-      .in("id", ids);
+    const { data: accs, error: accErr } = await admin.from("accounts").select("id, role, guild, status").in("id", ids);
     if (accErr) {
       logger.error("Failed to load linked accounts", accErr, { discordUserId });
       return json({ ok: false, error: "server_error" }, 500);

@@ -14,19 +14,19 @@ const mocks = vi.hoisted(() => ({ showToast: vi.fn(), showConfirm: vi.fn() }));
 
 vi.mock('../src/core/i18n/i18n', async (importOriginal) => ({
   ...(await importOriginal()),
-  t: (k) => k
+  t: (k) => k,
 }));
 vi.mock('../src/core/auth/roles', async (importOriginal) => ({
   ...(await importOriginal()),
-  getActiveGuild: () => 'ALPHA'
+  getActiveGuild: () => 'ALPHA',
 }));
 vi.mock('../src/core/dom/toast', async (importOriginal) => ({
   ...(await importOriginal()),
-  showToast: mocks.showToast
+  showToast: mocks.showToast,
 }));
 vi.mock('../src/modules/app/dialogs/dialogs.service', async (importOriginal) => ({
   ...(await importOriginal()),
-  showConfirm: mocks.showConfirm
+  showConfirm: mocks.showConfirm,
 }));
 
 let insertMock;
@@ -38,14 +38,19 @@ function chained(value) {
   const filters = [];
   const apply = () => {
     let res = (value || []).slice();
-    filters.forEach((f) => { res = res.filter(f); });
+    filters.forEach((f) => {
+      res = res.filter(f);
+    });
     return res;
   };
   const chain = {
     select: () => chain,
     order: () => chain,
-    eq: (field, val) => { filters.push((r) => r[field] === val); return chain; },
-    then: (resolve) => Promise.resolve({ data: apply(), error: null }).then(resolve)
+    eq: (field, val) => {
+      filters.push((r) => r[field] === val);
+      return chain;
+    },
+    then: (resolve) => Promise.resolve({ data: apply(), error: null }).then(resolve),
   };
   return chain;
 }
@@ -59,19 +64,29 @@ function installDb(members) {
       if (table === 'sanctions') {
         return {
           select: () => chained(sanctionsRows),
-          insert: (payload) => { insertMock(payload); return chained([{}]); },
-          delete: () => ({ eq: (f, v) => { deleteMock(f, v); return chained([]); } })
+          insert: (payload) => {
+            insertMock(payload);
+            return chained([{}]);
+          },
+          delete: () => ({
+            eq: (f, v) => {
+              deleteMock(f, v);
+              return chained([]);
+            },
+          }),
         };
       }
       return chained([]);
-    }
+    },
   });
 }
 
 function installGM() {
   mocks.showToast.mockReset();
   mocks.showConfirm.mockReset();
-  mocks.showConfirm.mockImplementation((_title, _body, cb) => { cb && cb(); });
+  mocks.showConfirm.mockImplementation((_title, _body, cb) => {
+    cb && cb();
+  });
   showConfirmMock = mocks.showConfirm;
   resetSupabaseClient();
 }
@@ -84,12 +99,22 @@ function mount() {
     '<form id="apply-sanction-form"><input id="sanction-player"><textarea id="sanction-comment"></textarea><button type="submit">Add</button></form>';
 }
 
-const MEMBERS = [{ pseudo: 'Alpha', guild: 'ALPHA' }, { pseudo: 'Bravo', guild: 'ALPHA' }];
+const MEMBERS = [
+  { pseudo: 'Alpha', guild: 'ALPHA' },
+  { pseudo: 'Bravo', guild: 'ALPHA' },
+];
 
 beforeEach(() => {
   mount();
   sanctionsRows = [
-    { id: 1, pseudo: 'Alpha', comment: 'Late again', created_at: '2026-08-01T10:00:00Z', created_by: 'HawkEye', guild: 'ALPHA' }
+    {
+      id: 1,
+      pseudo: 'Alpha',
+      comment: 'Late again',
+      created_at: '2026-08-01T10:00:00Z',
+      created_by: 'HawkEye',
+      guild: 'ALPHA',
+    },
   ];
   installGM();
   installDb(MEMBERS);
@@ -131,7 +156,9 @@ describe('SanctionsView — form & delete', () => {
 
     document.getElementById('sanction-player').value = 'Bravo';
     document.getElementById('sanction-comment').value = 'No-show';
-    document.getElementById('apply-sanction-form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    document
+      .getElementById('apply-sanction-form')
+      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     await new Promise((r) => setTimeout(r, 0));
 
     expect(insertMock).toHaveBeenCalledWith([{ guild: 'ALPHA', pseudo: 'Bravo', comment: 'No-show' }]);
@@ -141,14 +168,20 @@ describe('SanctionsView — form & delete', () => {
   });
 
   it('asks for confirmation then deletes', async () => {
-    sanctionsRows = [{ id: 9, pseudo: 'Alpha', comment: 'x', created_at: '2026-08-01T10:00:00Z', created_by: 'a', guild: 'ALPHA' }];
+    sanctionsRows = [
+      { id: 9, pseudo: 'Alpha', comment: 'x', created_at: '2026-08-01T10:00:00Z', created_by: 'a', guild: 'ALPHA' },
+    ];
     const view = new SanctionsView();
     await view.load();
 
     document.querySelector('#sanctions-list .sanction-delete-btn').click();
     await new Promise((r) => setTimeout(r, 0));
 
-    expect(showConfirmMock).toHaveBeenCalledWith('confirm_delete_sanction_title', 'confirm_delete_sanction_body', expect.any(Function));
+    expect(showConfirmMock).toHaveBeenCalledWith(
+      'confirm_delete_sanction_title',
+      'confirm_delete_sanction_body',
+      expect.any(Function)
+    );
     expect(deleteMock).toHaveBeenCalledWith('id', '9');
   });
 
@@ -157,7 +190,7 @@ describe('SanctionsView — form & delete', () => {
     sanctionsRows = [
       { id: 1, pseudo: 'Alpha', comment: 'a', created_at: '2026-08-01', created_by: 'x', guild: 'ALPHA' },
       { id: 2, pseudo: 'Alpha', comment: 'b', created_at: '2026-08-01', created_by: 'x', guild: 'ALPHA' },
-      { id: 3, pseudo: 'Alpha', comment: 'c', created_at: '2026-08-01', created_by: 'x', guild: 'ALPHA' }
+      { id: 3, pseudo: 'Alpha', comment: 'c', created_at: '2026-08-01', created_by: 'x', guild: 'ALPHA' },
     ];
     const view = new SanctionsView();
     await view.load();
@@ -165,7 +198,9 @@ describe('SanctionsView — form & delete', () => {
 
     document.getElementById('sanction-player').value = 'Alpha';
     document.getElementById('sanction-comment').value = 'd';
-    document.getElementById('apply-sanction-form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    document
+      .getElementById('apply-sanction-form')
+      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
 
     await vi.advanceTimersByTimeAsync(600);
 

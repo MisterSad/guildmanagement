@@ -8,7 +8,14 @@
 import { getSupabaseClient } from '../../core/api/supabase';
 import { guildWrite } from '../../core/api/guild-rpc';
 import { buildEventSessionId, sessionIdBase } from '../../core/config/events';
-import { EventStatus, EventParticipant, ChestTier, WarSession, EventDailyScore, WarOpponentKind } from '../../types/database';
+import {
+  EventStatus,
+  EventParticipant,
+  ChestTier,
+  WarSession,
+  EventDailyScore,
+  WarOpponentKind,
+} from '../../types/database';
 import { logger } from '../../core/logger/logger';
 import type { DbClient } from '../../core/api/db-client';
 
@@ -21,11 +28,31 @@ export interface WarOpponentInput {
   guild_ref?: string;
 }
 
-export interface ChestTiersResult { ok: boolean; tiers: ChestTier[]; error?: string; }
-export interface SaveChestTiersResult { ok: boolean; saved?: number; error?: string; }
-export interface WarSessionResult { ok: boolean; session?: WarSession | null; error?: string; }
-export interface DailyScoresResult { ok: boolean; rows: EventDailyScore[]; error?: string; }
-export interface UpsertDailyScoresResult { ok: boolean; updated?: number; error?: string; }
+export interface ChestTiersResult {
+  ok: boolean;
+  tiers: ChestTier[];
+  error?: string;
+}
+export interface SaveChestTiersResult {
+  ok: boolean;
+  saved?: number;
+  error?: string;
+}
+export interface WarSessionResult {
+  ok: boolean;
+  session?: WarSession | null;
+  error?: string;
+}
+export interface DailyScoresResult {
+  ok: boolean;
+  rows: EventDailyScore[];
+  error?: string;
+}
+export interface UpsertDailyScoresResult {
+  ok: boolean;
+  updated?: number;
+  error?: string;
+}
 
 /**
  * One row of the granular war score grid. `day` spans 0..6:
@@ -48,7 +75,11 @@ export interface OpponentCandidate {
   server_number?: string | null;
   is_existing: boolean;
 }
-export interface OpponentCandidatesResult { ok: boolean; items: OpponentCandidate[]; error?: string; }
+export interface OpponentCandidatesResult {
+  ok: boolean;
+  items: OpponentCandidate[];
+  error?: string;
+}
 
 export interface UpsertWarSessionParams {
   guild: string;
@@ -68,11 +99,7 @@ export class EventsService {
     const supabase = getSupabaseClient();
     if (!supabase) return [];
 
-    const { data, error } = await supabase
-      .from('event_status')
-      .select('*')
-      .eq('guild', guild)
-      .eq('is_active', true);
+    const { data, error } = await supabase.from('event_status').select('*').eq('guild', guild).eq('is_active', true);
 
     if (error) {
       logger.error('Error fetching active event sessions', error, { guild });
@@ -112,12 +139,16 @@ export class EventsService {
       .eq('event_name', participantEvent)
       .like('session_id', base + '-%');
     if (error) {
-      logger.error('Error reading today\'s session ids', error, { guild, participantEvent, base });
+      logger.error("Error reading today's session ids", error, { guild, participantEvent, base });
       return { ok: false, error: error.message };
     }
-    const ids = Array.from(new Set(((data || []) as Array<{ session_id: string | null }>)
-      .map((r) => r.session_id)
-      .filter((id): id is string => !!id)));
+    const ids = Array.from(
+      new Set(
+        ((data || []) as Array<{ session_id: string | null }>)
+          .map((r) => r.session_id)
+          .filter((id): id is string => !!id)
+      )
+    );
     return { ok: true, ids };
   }
 
@@ -130,20 +161,21 @@ export class EventsService {
     if (!supabase) return { ok: false, error: 'no_client' };
 
     const activeSessions = await this.getActiveSessions(guild);
-    const existingIds = activeSessions
-      .map((s) => s.session_id)
-      .filter((id): id is string => id !== null);
+    const existingIds = activeSessions.map((s) => s.session_id).filter((id): id is string => id !== null);
     const sessionId = buildEventSessionId(eventName, startAt, existingIds);
 
     const { data, error } = await supabase
       .from('event_status')
-      .upsert({
-        event_name: eventName,
-        guild,
-        session_id: sessionId,
-        is_active: true,
-        start_at: startAt || new Date().toISOString()
-      }, { onConflict: 'guild,event_name' })
+      .upsert(
+        {
+          event_name: eventName,
+          guild,
+          session_id: sessionId,
+          is_active: true,
+          start_at: startAt || new Date().toISOString(),
+        },
+        { onConflict: 'guild,event_name' }
+      )
       .select()
       .single();
 
@@ -156,9 +188,7 @@ export class EventsService {
     return { ok: true, session_id: data.session_id };
   }
 
-  public static async submitParticipantScore(
-    participant: EventParticipant
-  ): Promise<{ ok: boolean; error?: string }> {
+  public static async submitParticipantScore(participant: EventParticipant): Promise<{ ok: boolean; error?: string }> {
     const supabase = getSupabaseClient();
     if (!supabase) return { ok: false, error: 'no_client' };
 
@@ -167,7 +197,10 @@ export class EventsService {
       .upsert(participant, { onConflict: 'guild,event_name,session_id,pseudo' });
 
     if (error) {
-      logger.error('Error submitting participant score', error, { pseudo: participant.pseudo, eventName: participant.event_name });
+      logger.error('Error submitting participant score', error, {
+        pseudo: participant.pseudo,
+        eventName: participant.event_name,
+      });
       return { ok: false, error: error.message };
     }
 
@@ -181,8 +214,7 @@ export class EventsService {
     const supabase = getSupabaseClient();
     if (!supabase) return { ok: false, tiers: [], error: 'no_client' };
 
-    const { data, error } = await supabase
-      .rpc('gm_get_chest_tiers', { p_guild: guild, p_event_name: eventName });
+    const { data, error } = await supabase.rpc('gm_get_chest_tiers', { p_guild: guild, p_event_name: eventName });
     if (error) {
       logger.error('gm_get_chest_tiers failed', error, { guild, eventName });
       return { ok: false, tiers: [], error: error.message };
@@ -203,8 +235,11 @@ export class EventsService {
     const supabase = getSupabaseClient();
     if (!supabase) return { ok: false, error: 'no_client' };
 
-    const { data, error } = await supabase
-      .rpc('gm_save_chest_tiers', { p_guild: guild, p_event_name: eventName, p_tiers: tiers as unknown as Record<string, unknown> });
+    const { data, error } = await supabase.rpc('gm_save_chest_tiers', {
+      p_guild: guild,
+      p_event_name: eventName,
+      p_tiers: tiers as unknown as Record<string, unknown>,
+    });
     if (error) {
       logger.error('gm_save_chest_tiers failed', error, { guild, eventName, count: tiers.length });
       return { ok: false, error: error.message };
@@ -224,8 +259,11 @@ export class EventsService {
     const supabase = getSupabaseClient();
     if (!supabase) return { ok: false, error: 'no_client' };
 
-    const { data, error } = await supabase
-      .rpc('gm_get_war_session', { p_guild: guild, p_event_name: eventName, p_session_id: sessionId });
+    const { data, error } = await supabase.rpc('gm_get_war_session', {
+      p_guild: guild,
+      p_event_name: eventName,
+      p_session_id: sessionId,
+    });
     if (error) {
       logger.error('gm_get_war_session failed', error, { guild, eventName, sessionId });
       return { ok: false, error: error.message };
@@ -244,8 +282,10 @@ export class EventsService {
     const supabase = getSupabaseClient();
     if (!supabase) return { ok: false, sessions: [], error: 'no_client' };
 
-    const { data, error } = await supabase
-      .rpc('gm_list_war_sessions', { p_guild: guild, p_event_name: eventName || '' });
+    const { data, error } = await supabase.rpc('gm_list_war_sessions', {
+      p_guild: guild,
+      p_event_name: eventName || '',
+    });
     if (error) {
       logger.error('gm_list_war_sessions failed', error, { guild, eventName });
       return { ok: false, sessions: [], error: error.message };
@@ -268,13 +308,13 @@ export class EventsService {
       p_session_id: params.sessionId,
       p_opponent: params.opponent ? (params.opponent as unknown as Record<string, unknown>) : null,
       p_daily_results: params.dailyResults ? (params.dailyResults as unknown as Record<string, unknown>) : null,
-      p_start_at: params.startAt || null
+      p_start_at: params.startAt || null,
     });
     if (error) {
       logger.error('gm_upsert_war_session failed', error, {
         guild: params.guild,
         eventName: params.eventName,
-        sessionId: params.sessionId
+        sessionId: params.sessionId,
       });
       return { ok: false, error: error.message };
     }
@@ -292,8 +332,7 @@ export class EventsService {
     const supabase = getSupabaseClient();
     if (!supabase) return { ok: false, items: [], error: 'no_client' };
 
-    const { data, error } = await supabase
-      .rpc('gm_list_opponent_candidates', { p_guild: guild, p_kind: kind });
+    const { data, error } = await supabase.rpc('gm_list_opponent_candidates', { p_guild: guild, p_kind: kind });
     if (error) {
       logger.error('gm_list_opponent_candidates failed', error, { guild, kind });
       return { ok: false, items: [], error: error.message };
@@ -314,8 +353,11 @@ export class EventsService {
     const supabase = getSupabaseClient();
     if (!supabase) return { ok: false, rows: [], error: 'no_client' };
 
-    const { data, error } = await supabase
-      .rpc('gm_get_daily_scores', { p_guild: guild, p_event_name: eventName, p_session_id: sessionId });
+    const { data, error } = await supabase.rpc('gm_get_daily_scores', {
+      p_guild: guild,
+      p_event_name: eventName,
+      p_session_id: sessionId,
+    });
     if (error) {
       logger.error('gm_get_daily_scores failed', error, { guild, eventName, sessionId });
       return { ok: false, rows: [], error: error.message };
@@ -340,13 +382,12 @@ export class EventsService {
     const supabase = getSupabaseClient();
     if (!supabase) return { ok: false, error: 'no_client' };
 
-    const { data, error } = await supabase
-      .rpc('gm_upsert_daily_scores', {
-        p_guild: guild,
-        p_event_name: eventName,
-        p_session_id: sessionId,
-        p_rows: rows as unknown as Record<string, unknown>[]
-      });
+    const { data, error } = await supabase.rpc('gm_upsert_daily_scores', {
+      p_guild: guild,
+      p_event_name: eventName,
+      p_session_id: sessionId,
+      p_rows: rows as unknown as Record<string, unknown>[],
+    });
     if (error) {
       logger.error('gm_upsert_daily_scores failed', error, { guild, eventName, sessionId, count: rows.length });
       return { ok: false, error: error.message };
@@ -364,15 +405,24 @@ export class EventsService {
    * `newSessionId` is buildEventSessionId's for the new start. Throws on refusal.
    */
   public static async rescheduleSession(
-    eventName: string, oldSessionId: string | null, newSessionId: string, startAt: string
+    eventName: string,
+    oldSessionId: string | null,
+    newSessionId: string,
+    startAt: string
   ): Promise<{ ok: true; session_id: string; week_start: string }> {
     return guildWrite('gm_reschedule_event_session', {
-      p_event_name: eventName, p_old_session_id: oldSessionId, p_new_session_id: newSessionId, p_start_at: startAt
+      p_event_name: eventName,
+      p_old_session_id: oldSessionId,
+      p_new_session_id: newSessionId,
+      p_start_at: startAt,
     });
   }
 
   /** Deletes a session -- participants, Shadowfront squad rows, status -- in one transaction (M4a). */
-  public static async deleteSession(eventName: string, sessionId: string | null): Promise<{ ok: true; participants: number }> {
+  public static async deleteSession(
+    eventName: string,
+    sessionId: string | null
+  ): Promise<{ ok: true; participants: number }> {
     return guildWrite('gm_delete_event_session', { p_event_name: eventName, p_session_id: sessionId });
   }
 }
@@ -381,35 +431,41 @@ export class EventsService {
 // Each builder takes the client the view hands it and returns the
 // builder/promise; the view awaits it and keeps its own error handling.
 
-
 /** Read a tab's `event_status` rows for a guild. */
 export function fetchTabEventStatus(db: DbClient, guild: string | null, dbEvents: string[]) {
-  let query: any = db.from('event_status').select('event_name, is_active, session_id, stage, start_at').in('event_name', dbEvents);
+  let query: any = db
+    .from('event_status')
+    .select('event_name, is_active, session_id, stage, start_at')
+    .in('event_name', dbEvents);
   query = query.eq('guild', guild);
   return query;
 }
 
 /** Upsert an event's `event_status` row (start or end of a session). */
 export function upsertEventStatus(db: DbClient, row: Record<string, unknown>) {
-  return db.from('event_status').upsert(
-    row,
-    { onConflict: 'guild,event_name' }
-  );
+  return db.from('event_status').upsert(row, { onConflict: 'guild,event_name' });
 }
 
 /** Enrol the guild's members into a session through `gm_populate_event_participants`. */
-export function populateEventParticipants(db: DbClient, eventName: string | null, sessionId: string | null, weekStart: string, guild: string | null) {
+export function populateEventParticipants(
+  db: DbClient,
+  eventName: string | null,
+  sessionId: string | null,
+  weekStart: string,
+  guild: string | null
+) {
   return db.rpc('gm_populate_event_participants', {
     p_event_name: eventName,
     p_session_id: sessionId,
     p_week_start: weekStart,
-    p_guild: guild
+    p_guild: guild,
   });
 }
 
 /** Read the guild's active `event_status` rows among the given events. */
 export function fetchActiveEventStatuses(db: DbClient, guild: string | null, eventNames: string[]) {
-  return db.from('event_status')
+  return db
+    .from('event_status')
     .select('event_name, session_id, start_at')
     .eq('guild', guild)
     .eq('is_active', true)
@@ -417,8 +473,15 @@ export function fetchActiveEventStatuses(db: DbClient, guild: string | null, eve
 }
 
 /** Read the participants of one session, by pseudo. */
-export function fetchEventSessionParticipants(db: DbClient, guild: string | null, eventName: string | null, sessionId: string | null) {
-  return db.from('event_participants').select('*')
+export function fetchEventSessionParticipants(
+  db: DbClient,
+  guild: string | null,
+  eventName: string | null,
+  sessionId: string | null
+) {
+  return db
+    .from('event_participants')
+    .select('*')
     .eq('guild', guild)
     .eq('event_name', eventName)
     .eq('session_id', sessionId)
@@ -431,8 +494,17 @@ export function fetchGuildMemberUids(db: DbClient, guild: string | null) {
 }
 
 /** Set one participant's participation flag in a session. */
-export function setParticipantParticipation(db: DbClient, guild: string | null, eventName: string | null, sessionId: string | null, pseudo: string, value: number) {
-  return db.from('event_participants').update({ participated: value })
+export function setParticipantParticipation(
+  db: DbClient,
+  guild: string | null,
+  eventName: string | null,
+  sessionId: string | null,
+  pseudo: string,
+  value: number
+) {
+  return db
+    .from('event_participants')
+    .update({ participated: value })
     .eq('guild', guild)
     .eq('event_name', eventName)
     .eq('session_id', sessionId)
@@ -440,8 +512,17 @@ export function setParticipantParticipation(db: DbClient, guild: string | null, 
 }
 
 /** Set one participant's appointed flag in a session. */
-export function setParticipantAppointed(db: DbClient, guild: string | null, eventName: string | null, sessionId: string | null, pseudo: string, value: boolean) {
-  return db.from('event_participants').update({ appointed: value })
+export function setParticipantAppointed(
+  db: DbClient,
+  guild: string | null,
+  eventName: string | null,
+  sessionId: string | null,
+  pseudo: string,
+  value: boolean
+) {
+  return db
+    .from('event_participants')
+    .update({ appointed: value })
     .eq('guild', guild)
     .eq('event_name', eventName)
     .eq('session_id', sessionId)
@@ -449,8 +530,17 @@ export function setParticipantAppointed(db: DbClient, guild: string | null, even
 }
 
 /** Apply a score update to one participant in a session. */
-export function updateParticipantScore(db: DbClient, guild: string | null, eventName: string | null, sessionId: string | null, pseudo: string, update: Record<string, unknown>) {
-  return db.from('event_participants').update(update)
+export function updateParticipantScore(
+  db: DbClient,
+  guild: string | null,
+  eventName: string | null,
+  sessionId: string | null,
+  pseudo: string,
+  update: Record<string, unknown>
+) {
+  return db
+    .from('event_participants')
+    .update(update)
     .eq('guild', guild)
     .eq('event_name', eventName)
     .eq('session_id', sessionId)
@@ -459,18 +549,22 @@ export function updateParticipantScore(db: DbClient, guild: string | null, event
 
 /** Read an event's scheduled start. */
 export function fetchEventStartAt(db: DbClient, guild: string | null, eventName: string | null) {
-  return db.from('event_status').select('start_at')
-    .eq('guild', guild)
-    .eq('event_name', eventName).maybeSingle();
+  return db.from('event_status').select('start_at').eq('guild', guild).eq('event_name', eventName).maybeSingle();
 }
 
 /** Approve one player's pending submission through `gm_approve_participant_submission`. */
-export function approveParticipantSubmission(db: DbClient, guild: string | null, eventName: string | null, sessionId: string | null, pseudo: string) {
+export function approveParticipantSubmission(
+  db: DbClient,
+  guild: string | null,
+  eventName: string | null,
+  sessionId: string | null,
+  pseudo: string
+) {
   return db.rpc('gm_approve_participant_submission', {
     p_guild: guild,
     p_event_name: eventName,
     p_session_id: sessionId,
-    p_pseudo: pseudo
+    p_pseudo: pseudo,
   });
 }
 
@@ -482,13 +576,13 @@ export const STANDARD_EVENTS = ['SvS', 'GvG', 'Defend Trade Route'];
 export const TAB_TO_DB_EVENTS: Record<string, string[]> = {
   'SvS': ['SvS'],
   'GvG': ['GvG'],
-  'Defend Trade Route': ['Defend Trade Route']
+  'Defend Trade Route': ['Defend Trade Route'],
 };
 
 export const PANEL_MAP: Record<string, string> = {
   'SvS': 'event-svs',
   'GvG': 'event-gvg',
-  'Defend Trade Route': 'event-dtr'
+  'Defend Trade Route': 'event-dtr',
 };
 
 export const EVENTS_WITHOUT_SCORE = ['Defend Trade Route'];

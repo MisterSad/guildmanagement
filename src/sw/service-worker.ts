@@ -52,10 +52,7 @@ interface SWGlobal {
   clients: ClientsLike;
   registration: RegistrationLike;
   caches?: CacheStorageLike;
-  addEventListener(
-    type: 'install' | 'activate',
-    listener: (event: ExtendableEventLike) => void
-  ): void;
+  addEventListener(type: 'install' | 'activate', listener: (event: ExtendableEventLike) => void): void;
 }
 
 const sw = self as unknown as SWGlobal;

@@ -10,21 +10,28 @@ const root = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.resolve(root, p), 'utf-8');
 
 function walk(dir) {
-  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
-    e.isDirectory() ? walk(path.join(dir, e.name)) : (/\.ts$/.test(e.name) ? [path.join(dir, e.name)] : []));
+  return fs
+    .readdirSync(dir, { withFileTypes: true })
+    .flatMap((e) =>
+      e.isDirectory() ? walk(path.join(dir, e.name)) : /\.ts$/.test(e.name) ? [path.join(dir, e.name)] : []
+    );
 }
 
 describe('the Discord verification limiter fails closed (SEC-12, AGENTS.md rule 7)', () => {
   const src = read('supabase/functions/_shared/rate-limit.ts');
-  const fn = src.slice(src.indexOf('export async function checkAndRecordDiscordAttempt('),
-                       src.indexOf('export async function checkAndRecordIpAttempt('));
+  const fn = src.slice(
+    src.indexOf('export async function checkAndRecordDiscordAttempt('),
+    src.indexOf('export async function checkAndRecordIpAttempt(')
+  );
 
   it('delegates to one atomic RPC on its own table', () => {
     expect(fn).toContain('admin.rpc("gm_check_verification_throttle"');
     expect(fn).not.toContain('.from("discord_verification_throttle")');
     const sql = read('supabase/migrations/20261003114333_atomic_verification_throttle.sql');
     expect(sql).toContain('ON CONFLICT (discord_user_id, window_start) DO UPDATE');
-    expect(sql).toMatch(/REVOKE ALL ON FUNCTION public\.gm_check_verification_throttle\(text, integer, bigint, timestamptz\) FROM PUBLIC, anon, authenticated;/);
+    expect(sql).toMatch(
+      /REVOKE ALL ON FUNCTION public\.gm_check_verification_throttle\(text, integer, bigint, timestamptz\) FROM PUBLIC, anon, authenticated;/
+    );
   });
 
   it('never answers "allowed" on an error', () => {
@@ -34,7 +41,6 @@ describe('the Discord verification limiter fails closed (SEC-12, AGENTS.md rule 
 });
 
 describe('bounded inputs (BE-A-15, SEC-13)', () => {
-
   it('player-register bounds the password and the code, and leaks no DB message', () => {
     const src = read('supabase/functions/player-register/index.ts');
     expect(src).toContain('if (password.length > 128)');
@@ -44,8 +50,10 @@ describe('bounded inputs (BE-A-15, SEC-13)', () => {
 
   it('guild-data-export is rate-limited and checks the guild shape', () => {
     const src = read('supabase/functions/guild-data-export/index.ts');
-    expect(squash(src)).toContain(squash('checkAndRecordIpAttempt(admin, extractClientIp(req.headers), { limit: 5, windowMs: 10 * 60_000 })'));
-    expect(squash(src)).toContain(squash("/^[A-Za-z0-9_]{2,12}$/.test(body.guild.trim())"));
+    expect(squash(src)).toContain(
+      squash('checkAndRecordIpAttempt(admin, extractClientIp(req.headers), { limit: 5, windowMs: 10 * 60_000 })')
+    );
+    expect(squash(src)).toContain(squash('/^[A-Za-z0-9_]{2,12}$/.test(body.guild.trim())'));
   });
 
   it('discord-webhook-proxy bounds what it relays to Discord limits', () => {

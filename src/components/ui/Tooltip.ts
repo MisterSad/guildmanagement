@@ -14,7 +14,6 @@
  * the visuals defined in styles.css.
  */
 
-
 export interface TooltipOptions {
   text: string;
   position?: 'top' | 'bottom';
@@ -57,9 +56,7 @@ export function showTooltip(host: HTMLElement, opts: TooltipOptions): void {
   const tipRect = tip.getBoundingClientRect();
   const gap = 8;
   const left = Math.max(4, Math.round(rect.left + rect.width / 2 - tipRect.width / 2));
-  const top = isTop
-    ? Math.max(4, Math.round(rect.top - tipRect.height - gap))
-    : Math.round(rect.bottom + gap);
+  const top = isTop ? Math.max(4, Math.round(rect.top - tipRect.height - gap)) : Math.round(rect.bottom + gap);
   tip.style.left = left + 'px';
   tip.style.top = top + 'px';
   tip.style.zIndex = '3000';

@@ -33,8 +33,13 @@ Deno.test("no token, or a token GoTrue rejects: nobody", async () => {
   try {
     assertEquals((await resolveCaller(req())).role, null);
     assertEquals((await resolveCaller(req("forged"))).role, null);
-    assertEquals(fake.calls.some((c) => c.kind === "from" && c.name === "accounts"), false);
-  } finally { uninstallFake(); }
+    assertEquals(
+      fake.calls.some((c) => c.kind === "from" && c.name === "accounts"),
+      false
+    );
+  } finally {
+    uninstallFake();
+  }
 });
 
 Deno.test("an authentic token without an account is authenticated, authorised for nothing", async () => {
@@ -44,7 +49,9 @@ Deno.test("an authentic token without an account is authenticated, authorised fo
   try {
     const c = await resolveCaller(req("t"));
     assertEquals([c.authenticated, c.role], [true, null]);
-  } finally { uninstallFake(); }
+  } finally {
+    uninstallFake();
+  }
 });
 
 Deno.test("M14: a suspended or pending account gets no role, and the status says why", async () => {
@@ -53,11 +60,15 @@ Deno.test("M14: a suspended or pending account gets no role, and the status says
   try {
     const c = await resolveCaller(req(t));
     assertEquals([c.role, c.active, c.status], [null, false, "suspended"]);
-  } finally { uninstallFake(); }
+  } finally {
+    uninstallFake();
+  }
 });
 
 Deno.test("C1: a token older than session_version is refused; the current one and a legacy one pass", async () => {
-  const stale = token(1), current = token(2), legacy = token(null);
+  const stale = token(1),
+    current = token(2),
+    legacy = token(null);
   const fake = setup({ role: "guild_admin", guild: "TA" }, stale);
   fake.users[current] = { id: "auth-1" };
   fake.users[legacy] = { id: "auth-1" };
@@ -66,7 +77,9 @@ Deno.test("C1: a token older than session_version is refused; the current one an
     assertEquals([s.role, s.sessionRevoked], [null, true]);
     assertEquals((await resolveCaller(req(current))).role, "guild_admin");
     assertEquals((await resolveCaller(req(legacy))).role, "guild_admin");
-  } finally { uninstallFake(); }
+  } finally {
+    uninstallFake();
+  }
 });
 
 Deno.test("the role is normalised: a legacy rank grants nothing", async () => {
@@ -74,7 +87,9 @@ Deno.test("the role is normalised: a legacy rank grants nothing", async () => {
   setup({ role: "R5", guild: "TA" }, t);
   try {
     assertEquals((await resolveCaller(req(t))).role, "member");
-  } finally { uninstallFake(); }
+  } finally {
+    uninstallFake();
+  }
 });
 
 Deno.test("the server is derived from the guild, and the UID is reported", async () => {
@@ -83,26 +98,37 @@ Deno.test("the server is derived from the guild, and the UID is reported", async
   try {
     const c = await resolveCaller(req(t));
     assertEquals([c.serverNumber, c.uid, c.guild], ["9001", "7000001", "TA"]);
-  } finally { uninstallFake(); }
+  } finally {
+    uninstallFake();
+  }
 });
 
 Deno.test("officers for a Discord identity: active, above member, nothing else", async () => {
   const fake = new FakeSupabase();
   fake.install();
   fake.table("guilds").push({ id: "TA", server_number: "9001" });
-  fake.table("discord_account_links").push(
-    { discord_user_id: "d1", account_id: "officer" },
-    { discord_user_id: "d1", account_id: "player" },
-    { discord_user_id: "d1", account_id: "gone" },
-  );
-  fake.table("accounts").push(
-    { id: "officer", role: "guild_admin", guild: "TA", status: "active" },
-    { id: "player", role: "member", guild: "TA", status: "active" },
-    { id: "gone", role: "guild_admin", guild: "TA", status: "suspended" },
-  );
+  fake
+    .table("discord_account_links")
+    .push(
+      { discord_user_id: "d1", account_id: "officer" },
+      { discord_user_id: "d1", account_id: "player" },
+      { discord_user_id: "d1", account_id: "gone" }
+    );
+  fake
+    .table("accounts")
+    .push(
+      { id: "officer", role: "guild_admin", guild: "TA", status: "active" },
+      { id: "player", role: "member", guild: "TA", status: "active" },
+      { id: "gone", role: "guild_admin", guild: "TA", status: "suspended" }
+    );
   try {
     const out = await officerAccountsForDiscord(fake.client(), "d1");
-    assertEquals(out.map((o) => [o.id, o.role, o.serverNumber]), [["officer", "guild_admin", "9001"]]);
+    assertEquals(
+      out.map((o) => [o.id, o.role, o.serverNumber]),
+      [["officer", "guild_admin", "9001"]]
+    );
     assertEquals(await officerAccountsForDiscord(fake.client(), "nobody"), []);
-  } finally { uninstallFake(); }
+  } finally {
+    uninstallFake();
+  }
 });

@@ -10,7 +10,7 @@ import path from 'node:path';
 import {
   DEFAULT_EVENT_COEFFS,
   EVENT_COEFF_CONFIG_KEYS,
-  defaultCoeffConfigEntries
+  defaultCoeffConfigEntries,
 } from '../src/core/config/event-coeffs.ts';
 import { LOCAL_CONFIG_FALLBACK } from '../src/core/config/guild-config.ts';
 import { categoriseHistory, SHADOWFRONT_COMMANDERS_MAX } from '../src/modules/shadowfront/shadowfront.service.ts';
@@ -23,9 +23,10 @@ const read = (p) => fs.readFileSync(path.join(rootDir, p), 'utf8');
 // Both the HTML comment and the CSS comment added by this phase name the very
 // things being asserted absent -- `<script>` and the removed model slugs.
 const stripComments = (s) =>
-  s.replace(/<!--[\s\S]*?-->/g, '')
-   .replace(/\/\*[\s\S]*?\*\//g, '')
-   .replace(/^\s*\/\/.*$/gm, '');
+  s
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '');
 
 describe('H3 — terms.html is a self-contained legal page again', () => {
   const terms = read('terms.html');
@@ -36,9 +37,7 @@ describe('H3 — terms.html is a self-contained legal page again', () => {
     // site these resolved to a non-CSS response and the browser refused them
     // for a text/plain MIME type -- four console errors per load.
     for (const css of ['styles.css', 'tokens.css', 'components.css', 'shell.css']) {
-      expect(terms, `${css} must not be linked`).not.toMatch(
-        new RegExp(`<link[^>]+href="${css.replace('.', '\\.')}`)
-      );
+      expect(terms, `${css} must not be linked`).not.toMatch(new RegExp(`<link[^>]+href="${css.replace('.', '\\.')}`));
     }
   });
 
@@ -88,8 +87,14 @@ describe('H3 — terms.html is a self-contained legal page again', () => {
     // creeping back in.
     const links = terms.match(/<link[^>]+rel="stylesheet"[^>]*>/g) || [];
     expect(links.length).toBe(2);
-    expect(links.some((l) => l.includes('href="fonts.css"')), 'the font stylesheet').toBe(true);
-    expect(links.some((l) => l.includes('legal.css')), 'the legal stylesheet').toBe(true);
+    expect(
+      links.some((l) => l.includes('href="fonts.css"')),
+      'the font stylesheet'
+    ).toBe(true);
+    expect(
+      links.some((l) => l.includes('legal.css')),
+      'the legal stylesheet'
+    ).toBe(true);
     expect(read('vercel.json')).not.toContain('fonts.googleapis.com');
   });
 });
@@ -124,7 +129,10 @@ describe('B1 — one Gemini model list, without invented identifiers', () => {
   });
 
   it('leaves neither function with its own opinion', () => {
-    for (const [name, src] of [['ocr-guild-members', ocr], ['migration-summary', summary]]) {
+    for (const [name, src] of [
+      ['ocr-guild-members', ocr],
+      ['migration-summary', summary],
+    ]) {
       expect(src, `${name} must use the shared list`).toContain('GEMINI_MODEL_FALLBACKS');
       expect(stripComments(src), `${name} must not hardcode a model`).not.toMatch(/"gemini-[a-z0-9.-]+"/);
       expect(src, `${name} must use the shared URL builder`).toContain('geminiGenerateContentUrl(modelName)');
@@ -139,8 +147,9 @@ describe('B1 — the event coefficients are declared once', () => {
     const entries = defaultCoeffConfigEntries();
     for (const [bucket, key] of Object.entries(EVENT_COEFF_CONFIG_KEYS)) {
       expect(entries[key], key).toBe(String(DEFAULT_EVENT_COEFFS[bucket]));
-      expect(LOCAL_CONFIG_FALLBACK[key], `${key} must come from the shared source`)
-        .toBe(String(DEFAULT_EVENT_COEFFS[bucket]));
+      expect(LOCAL_CONFIG_FALLBACK[key], `${key} must come from the shared source`).toBe(
+        String(DEFAULT_EVENT_COEFFS[bucket])
+      );
     }
   });
 
@@ -151,7 +160,11 @@ describe('B1 — the event coefficients are declared once', () => {
     // the DEMO seed (GvG 3, SF 2, DTR 1) as a competing specification; DEMO is
     // simply a tenant with its own settings, like BABE (GvG 3) or CLAW (GvG 4).
     expect(DEFAULT_EVENT_COEFFS).toEqual({
-      SvS: 5, GvG: 5, Shadowfront: 3, DTR: 2, 'Arms Race': 1
+      SvS: 5,
+      GvG: 5,
+      Shadowfront: 3,
+      DTR: 2,
+      'Arms Race': 1,
     });
   });
 
@@ -196,7 +209,8 @@ describe('B1 — the squad limits read the same way', () => {
 describe('B1 — NOT A DEFECT: the participation bands match their labels', () => {
   // The audit called this an off-by-one, reading "exactly 80% falls in Good" as
   // a bug. The label promises exactly that: Good is "50% - 80%".
-  const band = (participated, assigned) => categoriseHistory({ assigned, participated, excused_count: 0, late_count: 0, sub_present_count: 0 });
+  const band = (participated, assigned) =>
+    categoriseHistory({ assigned, participated, excused_count: 0, late_count: 0, sub_present_count: 0 });
 
   it('puts 80% in Good and anything above it in Excellent', () => {
     expect(band(80, 100)).toBe('good');

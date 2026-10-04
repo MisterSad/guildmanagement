@@ -13,7 +13,13 @@ import { getClient, setDbClient, resetSupabaseClient } from '../src/core/api/sup
 
 function fakeDb(answer) {
   const calls = [];
-  return { calls, rpc: vi.fn(async (name, args) => { calls.push({ name, args }); return answer; }) };
+  return {
+    calls,
+    rpc: vi.fn(async (name, args) => {
+      calls.push({ name, args });
+      return answer;
+    }),
+  };
 }
 
 /** Installs a fake as the app's client, the way main.ts installs the real one. */
@@ -73,22 +79,40 @@ describe('the converted flows stay single calls', () => {
   const read = (p) => fs.readFileSync(path.resolve(__dirname, '..', p), 'utf8');
 
   it.each([
-    ['src/modules/shadowfront/views/ShadowfrontView.ts', 'private async editSquadSchedule', 'EventsService.rescheduleSession('],
+    [
+      'src/modules/shadowfront/views/ShadowfrontView.ts',
+      'private async editSquadSchedule',
+      'EventsService.rescheduleSession(',
+    ],
     ['src/modules/events/views/EventsView.ts', 'private async editEventSchedule', 'EventsService.rescheduleSession('],
-    ['src/modules/armsrace/views/ArmsRaceView.ts', 'private async editStageSchedule', 'EventsService.rescheduleSession('],
+    [
+      'src/modules/armsrace/views/ArmsRaceView.ts',
+      'private async editStageSchedule',
+      'EventsService.rescheduleSession(',
+    ],
   ])('%s reschedules through the transactional RPC', (file, marker, call) => {
     const src = read(file);
     const start = src.indexOf(marker);
     const block = src.slice(start, src.indexOf('\n  private ', start + marker.length));
     expect(block).toContain(call);
-    expect(block).not.toMatch(/\.from\('event_status'\)\.update|\.from\('event_participants'\)\.update|\.from\('shadowfront_squads'\)\.update/);
+    expect(block).not.toMatch(
+      /\.from\('event_status'\)\.update|\.from\('event_participants'\)\.update|\.from\('shadowfront_squads'\)\.update/
+    );
   });
 
   it('no browser code writes the tables these functions now own, in their flows', () => {
     expect(read('src/modules/app/members/banned.controller.ts')).not.toContain("from('banned_players').insert");
-    expect(read('src/modules/app/members/members.controller.ts')).not.toMatch(/from\('player_name_history'\)\.insert|from\('guild_members'\)\.insert/);
-    expect(read('src/modules/app/admin/migration-groups.controller.ts')).not.toContain("from('server_migration_groups').insert");
-    expect(read('src/modules/app/ocr/ocr.controller.ts')).not.toMatch(/from\('guild_members'\)\.(insert|update|delete)|from\('event_participants'\)\.(insert|update)/);
-    expect(read('src/modules/history/views/HistoryView.ts')).not.toMatch(/from\('(event_participants|event_status|shadowfront_squads)'\)\.delete/);
+    expect(read('src/modules/app/members/members.controller.ts')).not.toMatch(
+      /from\('player_name_history'\)\.insert|from\('guild_members'\)\.insert/
+    );
+    expect(read('src/modules/app/admin/migration-groups.controller.ts')).not.toContain(
+      "from('server_migration_groups').insert"
+    );
+    expect(read('src/modules/app/ocr/ocr.controller.ts')).not.toMatch(
+      /from\('guild_members'\)\.(insert|update|delete)|from\('event_participants'\)\.(insert|update)/
+    );
+    expect(read('src/modules/history/views/HistoryView.ts')).not.toMatch(
+      /from\('(event_participants|event_status|shadowfront_squads)'\)\.delete/
+    );
   });
 });

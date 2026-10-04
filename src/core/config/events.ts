@@ -132,7 +132,7 @@ export function computeShadowfrontAttendanceRate(eventsDone?: number | null, ass
   const done = eventsDone || 0;
   const assigned = assignedCount || 0;
   const opportunities = Math.max(assigned, done);
-  return opportunities > 0 ? (done / opportunities) : 0;
+  return opportunities > 0 ? done / opportunities : 0;
 }
 
 /** Builds the Discord webhook payload for a given GvG day's task list. */
@@ -149,11 +149,16 @@ export function buildGvgDailyTaskEmbed(dayNumber: number, roleMention?: string):
 
   const embed = {
     title: '⚔️ GvG Day ' + day.dayNumber + ' Tasks: ' + day.theme,
-    description: 'Daily point breakdown & scoring priorities for **Guild vs Guild — Day ' + day.dayNumber + ' (' + day.dayName + ')**.\nCoordinate with your guild members and maximize points!',
+    description:
+      'Daily point breakdown & scoring priorities for **Guild vs Guild — Day ' +
+      day.dayNumber +
+      ' (' +
+      day.dayName +
+      ')**.\nCoordinate with your guild members and maximize points!',
     color: day.color,
     fields: fields,
     timestamp: new Date().toISOString(),
-    footer: { text: 'FGF Guild Management Tool • GvG Daily Reminders (00:01 UTC)' }
+    footer: { text: 'FGF Guild Management Tool • GvG Daily Reminders (00:01 UTC)' },
   };
 
   return { content: content, embeds: [embed] };

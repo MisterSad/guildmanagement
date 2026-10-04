@@ -67,15 +67,23 @@ export class FakeSupabase {
         signInWithPassword: async (creds: { email: string }) => {
           this.calls.push({ kind: "auth", name: "signInWithPassword", args: { email: creds.email } });
           if (this.signInError) return { data: { session: null }, error: { message: this.signInError } };
-          return { data: { session: { access_token: "access-test", refresh_token: "refresh-test", expires_at: 1790000000 } }, error: null };
+          return {
+            data: { session: { access_token: "access-test", refresh_token: "refresh-test", expires_at: 1790000000 } },
+            error: null,
+          };
         },
-        admin: new Proxy({}, {
-          get: (_t, method: string) => async (...args: unknown[]) => {
-            this.calls.push({ kind: "auth", name: `admin.${method}`, args });
-            if (method === "createUser") return { data: { user: { id: crypto.randomUUID() } }, error: null };
-            return { data: {}, error: null };
-          },
-        }),
+        admin: new Proxy(
+          {},
+          {
+            get:
+              (_t, method: string) =>
+              async (...args: unknown[]) => {
+                this.calls.push({ kind: "auth", name: `admin.${method}`, args });
+                if (method === "createUser") return { data: { user: { id: crypto.randomUUID() } }, error: null };
+                return { data: {}, error: null };
+              },
+          }
+        ),
       },
       storage: { from: () => new Proxy({}, { get: () => async () => ({ data: null, error: null }) }) },
       functions: { invoke: async () => ({ data: null, error: null }) },
@@ -98,8 +106,17 @@ function thenable(run: () => Promise<Result>) {
   const get = () => (p ??= run());
   const t = {
     then: (ok: (r: Result) => unknown, ko?: (e: unknown) => unknown) => get().then(ok, ko),
-    single: () => thenable(async () => { const r = await get(); const d = Array.isArray(r.data) ? r.data[0] ?? null : r.data; return { data: d, error: d == null ? { message: "no rows" } : r.error }; }),
-    maybeSingle: () => thenable(async () => { const r = await get(); return { data: Array.isArray(r.data) ? r.data[0] ?? null : r.data, error: r.error }; }),
+    single: () =>
+      thenable(async () => {
+        const r = await get();
+        const d = Array.isArray(r.data) ? (r.data[0] ?? null) : r.data;
+        return { data: d, error: d == null ? { message: "no rows" } : r.error };
+      }),
+    maybeSingle: () =>
+      thenable(async () => {
+        const r = await get();
+        return { data: Array.isArray(r.data) ? (r.data[0] ?? null) : r.data, error: r.error };
+      }),
     select: () => t,
   };
   return t;
@@ -126,51 +143,128 @@ class Query {
   private limitN: number | null = null;
   private wantCount = false;
 
-  constructor(private fake: FakeSupabase, private name: string) {}
+  constructor(
+    private fake: FakeSupabase,
+    private name: string
+  ) {}
 
   select(_cols?: string, opts?: { count?: string; head?: boolean }) {
     if (opts?.count) this.wantCount = true;
     return this;
   }
-  insert(v: unknown) { this.op = "insert"; this.payload = v; return this; }
-  upsert(v: unknown) { this.op = "upsert"; this.payload = v; return this; }
-  update(v: unknown) { this.op = "update"; this.payload = v; return this; }
-  delete() { this.op = "delete"; return this; }
+  insert(v: unknown) {
+    this.op = "insert";
+    this.payload = v;
+    return this;
+  }
+  upsert(v: unknown) {
+    this.op = "upsert";
+    this.payload = v;
+    return this;
+  }
+  update(v: unknown) {
+    this.op = "update";
+    this.payload = v;
+    return this;
+  }
+  delete() {
+    this.op = "delete";
+    return this;
+  }
 
-  eq(c: string, v: unknown) { this.filters.push([c, "eq", v]); return this; }
-  neq(c: string, v: unknown) { this.filters.push([c, "neq", v]); return this; }
-  in(c: string, v: unknown[]) { this.filters.push([c, "in", v]); return this; }
-  is(c: string, v: unknown) { this.filters.push([c, "is", v]); return this; }
-  ilike(c: string, v: string) { this.filters.push([c, "ilike", v]); return this; }
-  gt(c: string, v: unknown) { this.filters.push([c, "gt", v]); return this; }
-  gte(c: string, v: unknown) { this.filters.push([c, "gte", v]); return this; }
-  lt(c: string, v: unknown) { this.filters.push([c, "lt", v]); return this; }
-  lte(c: string, v: unknown) { this.filters.push([c, "lte", v]); return this; }
+  eq(c: string, v: unknown) {
+    this.filters.push([c, "eq", v]);
+    return this;
+  }
+  neq(c: string, v: unknown) {
+    this.filters.push([c, "neq", v]);
+    return this;
+  }
+  in(c: string, v: unknown[]) {
+    this.filters.push([c, "in", v]);
+    return this;
+  }
+  is(c: string, v: unknown) {
+    this.filters.push([c, "is", v]);
+    return this;
+  }
+  ilike(c: string, v: string) {
+    this.filters.push([c, "ilike", v]);
+    return this;
+  }
+  gt(c: string, v: unknown) {
+    this.filters.push([c, "gt", v]);
+    return this;
+  }
+  gte(c: string, v: unknown) {
+    this.filters.push([c, "gte", v]);
+    return this;
+  }
+  lt(c: string, v: unknown) {
+    this.filters.push([c, "lt", v]);
+    return this;
+  }
+  lte(c: string, v: unknown) {
+    this.filters.push([c, "lte", v]);
+    return this;
+  }
   // Accepted and recorded, not interpreted: the tests do not depend on them.
-  like() { return this; }
-  or() { return this; }
-  not() { return this; }
-  match(m: Row) { for (const [c, v] of Object.entries(m)) this.eq(c, v); return this; }
-  order() { return this; }
-  range() { return this; }
-  limit(n: number) { this.limitN = n; return this; }
-  single() { this.one = "single"; return this; }
-  maybeSingle() { this.one = "maybe"; return this; }
+  like() {
+    return this;
+  }
+  or() {
+    return this;
+  }
+  not() {
+    return this;
+  }
+  match(m: Row) {
+    for (const [c, v] of Object.entries(m)) this.eq(c, v);
+    return this;
+  }
+  order() {
+    return this;
+  }
+  range() {
+    return this;
+  }
+  limit(n: number) {
+    this.limitN = n;
+    return this;
+  }
+  single() {
+    this.one = "single";
+    return this;
+  }
+  maybeSingle() {
+    this.one = "maybe";
+    return this;
+  }
 
   private matches(row: Row): boolean {
     return this.filters.every(([c, op, v]) => {
       const x = row[c];
       switch (op) {
-        case "eq": return x === v;
-        case "neq": return x !== v;
-        case "in": return (v as unknown[]).includes(x);
-        case "is": return x === v || (v === null && x === undefined);
-        case "ilike": return likeToRegExp(String(v)).test(String(x ?? ""));
-        case "gt": return (x as number) > (v as number);
-        case "gte": return (x as number) >= (v as number);
-        case "lt": return (x as number) < (v as number);
-        case "lte": return (x as number) <= (v as number);
-        default: return true;
+        case "eq":
+          return x === v;
+        case "neq":
+          return x !== v;
+        case "in":
+          return (v as unknown[]).includes(x);
+        case "is":
+          return x === v || (v === null && x === undefined);
+        case "ilike":
+          return likeToRegExp(String(v)).test(String(x ?? ""));
+        case "gt":
+          return (x as number) > (v as number);
+        case "gte":
+          return (x as number) >= (v as number);
+        case "lt":
+          return (x as number) < (v as number);
+        case "lte":
+          return (x as number) <= (v as number);
+        default:
+          return true;
       }
     });
   }
@@ -194,13 +288,16 @@ class Query {
     }
     if (this.limitN != null) data = data.slice(0, this.limitN);
     const count = this.wantCount ? data.length : null;
-    if (this.one === "single") return { data: data[0] ?? null, error: data.length ? null : { message: "no rows", code: "PGRST116" }, count };
+    if (this.one === "single")
+      return { data: data[0] ?? null, error: data.length ? null : { message: "no rows", code: "PGRST116" }, count };
     if (this.one === "maybe") return { data: data[0] ?? null, error: null, count };
     return { data, error: null, count };
   }
 
   then(ok: (r: Result) => unknown, ko?: (e: unknown) => unknown) {
-    return Promise.resolve().then(() => this.run()).then(ok, ko);
+    return Promise.resolve()
+      .then(() => this.run())
+      .then(ok, ko);
   }
 }
 
@@ -231,13 +328,21 @@ export function testEnv(extra: Record<string, string> = {}): void {
 }
 
 /** Seeds one account with its GoTrue identity; returns the JWT to use. */
-export function seedAccount(fake: FakeSupabase, a: { id: string; role: string; guild?: string | null; server_number?: string | null; status?: string }): string {
+export function seedAccount(
+  fake: FakeSupabase,
+  a: { id: string; role: string; guild?: string | null; server_number?: string | null; status?: string }
+): string {
   const authId = crypto.randomUUID();
   const jwt = `jwt-${a.id}`;
   fake.users[jwt] = { id: authId, app_metadata: { account_id: a.id, session_version: 0 } };
   fake.table("accounts").push({
-    id: a.id, role: a.role, guild: a.guild ?? null, server_number: a.server_number ?? null,
-    status: a.status ?? "active", session_version: 0, auth_user_id: authId,
+    id: a.id,
+    role: a.role,
+    guild: a.guild ?? null,
+    server_number: a.server_number ?? null,
+    status: a.status ?? "active",
+    session_version: 0,
+    auth_user_id: authId,
   });
   return jwt;
 }

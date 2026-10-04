@@ -63,10 +63,7 @@ export function bracketed(raw: string | null | undefined): string {
   return `[${t}]`;
 }
 
-export async function resolveExpectedTag(
-  admin: AdminClient,
-  fgfGuild: string
-): Promise<string> {
+export async function resolveExpectedTag(admin: AdminClient, fgfGuild: string): Promise<string> {
   const { data: tagConfigRow } = await admin
     .from("guild_config")
     .select("value")
@@ -78,15 +75,8 @@ export async function resolveExpectedTag(
 }
 
 /** The game-server number of the guild this verification channel belongs to. */
-export async function resolveHomeServerNumber(
-  admin: AdminClient,
-  fgfGuild: string
-): Promise<string | null> {
-  const { data: guildRow } = await admin
-    .from("guilds")
-    .select("server_number")
-    .eq("id", fgfGuild)
-    .maybeSingle();
+export async function resolveHomeServerNumber(admin: AdminClient, fgfGuild: string): Promise<string | null> {
+  const { data: guildRow } = await admin.from("guilds").select("server_number").eq("id", fgfGuild).maybeSingle();
   const raw = (guildRow as { server_number?: string | null } | null)?.server_number;
   const trimmed = (raw || "").trim();
   return trimmed ? trimmed : null;
@@ -118,10 +108,7 @@ export async function resolveTagToGuildOnServer(
   if (!tagNormalized) return { kind: "none" };
   if (!homeServerNumber) return { kind: "home_server_unknown", homeGuild };
 
-  const { data: guildRows } = await admin
-    .from("guilds")
-    .select("id")
-    .eq("server_number", homeServerNumber);
+  const { data: guildRows } = await admin.from("guilds").select("id").eq("server_number", homeServerNumber);
 
   const ids = ((guildRows as { id: string }[]) || []).map((r) => r.id).filter(Boolean);
   if (ids.length === 0) return { kind: "none" };
@@ -133,7 +120,7 @@ export async function resolveTagToGuildOnServer(
     .in("guild", ids);
 
   const stored = new Map<string, string>();
-  for (const row of ((tagRows as { guild: string; value?: string }[]) || [])) {
+  for (const row of (tagRows as { guild: string; value?: string }[]) || []) {
     const value = (row.value || "").trim();
     if (value) stored.set(row.guild, value);
   }
@@ -260,10 +247,7 @@ export async function findRosterMember(
 }
 
 /** Opt-in per guild (owner decision): absent means the historical behaviour. */
-export async function requiresRosterMembership(
-  admin: AdminClient,
-  fgfGuild: string
-): Promise<boolean> {
+export async function requiresRosterMembership(admin: AdminClient, fgfGuild: string): Promise<boolean> {
   const { data: row } = await admin
     .from("guild_config")
     .select("value")
@@ -282,25 +266,14 @@ export async function requiresRosterMembership(
  * legitimate member of whichever guild happened to be older -- four real
  * members are in that position in production today.
  */
-export async function findOtherGuildMemberships(
-  admin: AdminClient,
-  fgfGuild: string,
-  uid: string
-): Promise<string[]> {
+export async function findOtherGuildMemberships(admin: AdminClient, fgfGuild: string, uid: string): Promise<string[]> {
   const clean = (uid || "").trim();
   if (!clean) return [];
-  const { data } = await admin
-    .from("guild_members")
-    .select("guild")
-    .eq("uid", clean)
-    .neq("guild", fgfGuild);
+  const { data } = await admin.from("guild_members").select("guild").eq("uid", clean).neq("guild", fgfGuild);
   return [...new Set(((data as { guild: string }[]) || []).map((r) => r.guild).filter(Boolean))].sort();
 }
 
-export async function resolveAuditChannelId(
-  admin: AdminClient,
-  fgfGuild: string
-): Promise<string | null> {
+export async function resolveAuditChannelId(admin: AdminClient, fgfGuild: string): Promise<string | null> {
   const { data: rows } = await admin
     .from("guild_config")
     .select("key, value")
@@ -343,7 +316,7 @@ export async function postAuditMessage(channelId: string, content: string): Prom
  */
 export async function postChannelMessage(
   channelId: string,
-  message: { content?: string; embeds?: unknown[]; components?: unknown[] },
+  message: { content?: string; embeds?: unknown[]; components?: unknown[] }
 ): Promise<boolean> {
   const token = Deno.env.get("DISCORD_BOT_TOKEN");
   if (!token || !/^\d{17,20}$/.test(channelId || "")) return false;
@@ -366,7 +339,7 @@ export async function postChannelMessage(
 export async function editChannelMessage(
   channelId: string,
   messageId: string,
-  message: { content?: string; components?: unknown[] },
+  message: { content?: string; components?: unknown[] }
 ): Promise<boolean> {
   const token = Deno.env.get("DISCORD_BOT_TOKEN");
   if (!token || !/^\d{17,20}$/.test(channelId || "") || !/^\d{17,20}$/.test(messageId || "")) return false;
@@ -427,11 +400,7 @@ export interface ExtractedProfile {
   serverNumber?: string | null;
 }
 
-export type RefusalReason =
-  | "absent"
-  | "pseudo_conflict"
-  | "ambiguous_pseudo"
-  | "scan_truncated";
+export type RefusalReason = "absent" | "pseudo_conflict" | "ambiguous_pseudo" | "scan_truncated";
 
 export type VerificationResult =
   | { ok: false; error: "banned" }

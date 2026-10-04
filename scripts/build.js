@@ -1,6 +1,6 @@
 import { execSync } from 'child_process';
 import crypto from 'crypto';
-import { build as esbuildBuild, } from 'esbuild';
+import { build as esbuildBuild } from 'esbuild';
 import fs from 'fs';
 import path from 'path';
 
@@ -73,7 +73,6 @@ const EXCLUDED_FILES = [
 // bundling/resolving imports, which is exactly what a non-module script
 // needs.
 
-
 /*
  * PHASE 3. This loop used to minify root `.js` and `.css` files on their way to
  * dist/, and log how many bytes it saved. Measured: BOTH branches are dead. The
@@ -103,7 +102,6 @@ for (const file of files) {
   }
 }
 
-
 // Self-hosted typefaces (fonts.css, audit FE-21). index.html gets them bundled
 // by Vite; the legal pages are not Vite entries and link the root fonts.css,
 // copied above, which points at fonts/. Copy that directory alongside it.
@@ -119,7 +117,6 @@ for (const file of files) {
   console.log(`Copied ${copied.length} font file(s) to dist/fonts.`);
 }
 
-
 // version.json: a tiny, unminified marker the client polls (see app.js
 // checkForNewVersion()) to detect a stale long-lived tab -- a full reload
 // re-fetches this deploy's actual app.js, so a stale tab never silently keeps
@@ -130,7 +127,9 @@ for (const file of files) {
   const versionSrc = fs.readFileSync(path.join(rootDir, 'src/core/config/constants.ts'), 'utf8');
   const m = versionSrc.match(/APP_VERSION = '([^']+)'/);
   if (!m) {
-    throw new Error('build.js: could not find APP_VERSION in src/core/config/constants.ts -- version.json would be stale.');
+    throw new Error(
+      'build.js: could not find APP_VERSION in src/core/config/constants.ts -- version.json would be stale.'
+    );
   }
   fs.writeFileSync(
     path.join(distDir, 'version.json'),
@@ -138,7 +137,6 @@ for (const file of files) {
   );
   console.log(`Wrote version.json (${m[1]}).`);
 }
-
 
 // ── Phosphor icon font: ship only the glyphs this app actually draws ────────
 //
@@ -170,7 +168,16 @@ for (const file of files) {
     codepointByName[m[1]] = parseInt(m[2], 16);
   }
 
-  const scanRoots = ['src', 'index.html', 'terms.html', 'components.css', 'styles.css', 'shell.css', 'tokens.css', 'theme.css'];
+  const scanRoots = [
+    'src',
+    'index.html',
+    'terms.html',
+    'components.css',
+    'styles.css',
+    'shell.css',
+    'tokens.css',
+    'theme.css',
+  ];
   const walk = (p, out = []) => {
     const st = fs.statSync(p);
     if (st.isDirectory()) {
@@ -236,8 +243,8 @@ for (const file of files) {
   const after = subset.length;
   console.log(
     `Subset Phosphor: ${used.size}/${Object.keys(codepointByName).length} glyphs, ` +
-    `${before} -> ${after} bytes (-${Math.round((1 - after / before) * 100)}%), ` +
-    `as ${subsetName} (${rewritten} stylesheet${rewritten === 1 ? '' : 's'} rewritten).`
+      `${before} -> ${after} bytes (-${Math.round((1 - after / before) * 100)}%), ` +
+      `as ${subsetName} (${rewritten} stylesheet${rewritten === 1 ? '' : 's'} rewritten).`
   );
 
   // The stylesheet keeps one `.ph.ph-NAME:before { content }` rule per icon of
@@ -255,7 +262,10 @@ for (const file of files) {
     const body = fs.readFileSync(cssPath, 'utf8');
     const pruned = body.replace(iconRule, (rule, selectors) => {
       const live = selectors.split(',').filter((s) => used.has(s.slice(4, -':before'.length)));
-      if (live.length === 0) { dropped++; return ''; }
+      if (live.length === 0) {
+        dropped++;
+        return '';
+      }
       kept++;
       return rule.replace(selectors, live.join(','));
     });
@@ -271,8 +281,14 @@ for (const file of files) {
       fs.unlinkSync(cssPath);
       let refs = 0;
       const referrers = [
-        ...fs.readdirSync(distDir).filter((n) => n.endsWith('.html')).map((n) => path.join(distDir, n)),
-        ...fs.readdirSync(assetsDir).filter((n) => n.endsWith('.js')).map((n) => path.join(assetsDir, n)),
+        ...fs
+          .readdirSync(distDir)
+          .filter((n) => n.endsWith('.html'))
+          .map((n) => path.join(distDir, n)),
+        ...fs
+          .readdirSync(assetsDir)
+          .filter((n) => n.endsWith('.js'))
+          .map((n) => path.join(assetsDir, n)),
       ];
       for (const file of referrers) {
         const text = fs.readFileSync(file, 'utf8');
@@ -333,7 +349,9 @@ for (const file of files) {
   const total = initial.reduce((sum, f) => sum + fs.statSync(path.join(distDir, f)).size, 0);
   const kb = (n) => `${Math.round(n / 1024)} KB`;
   if (total > INITIAL_JS_BUDGET) {
-    throw new Error(`build.js: initial JS is ${kb(total)} (${initial.join(', ')}), over the ${kb(INITIAL_JS_BUDGET)} budget.`);
+    throw new Error(
+      `build.js: initial JS is ${kb(total)} (${initial.join(', ')}), over the ${kb(INITIAL_JS_BUDGET)} budget.`
+    );
   }
   console.log(`Initial JS: ${kb(total)} of ${kb(INITIAL_JS_BUDGET)} (${initial.length} files).`);
 }

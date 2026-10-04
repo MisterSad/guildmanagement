@@ -25,9 +25,7 @@ export function setClientFactoryForTests(factory: Factory | null): void {
 function make(kind: ClientKind, options?: Record<string, unknown>): AdminClient {
   if (testFactory) return testFactory(kind, options);
   const url = Deno.env.get("SUPABASE_URL")!;
-  const key = kind === "service"
-    ? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    : Deno.env.get("SUPABASE_ANON_KEY")!;
+  const key = kind === "service" ? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")! : Deno.env.get("SUPABASE_ANON_KEY")!;
   return createClient(url, key, { auth: { persistSession: false }, ...(options ?? {}) });
 }
 

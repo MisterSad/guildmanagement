@@ -47,9 +47,7 @@ describe('TICKET-16 [PERF-04]: Database Performance & FK Index Optimization', ()
     );
 
     // DROP INDEX IF EXISTS public.event_status_guild_event_name_key
-    expect(content).toMatch(
-      /DROP\s+INDEX\s+IF\s+EXISTS\s+public\.event_status_guild_event_name_key/i
-    );
+    expect(content).toMatch(/DROP\s+INDEX\s+IF\s+EXISTS\s+public\.event_status_guild_event_name_key/i);
   });
 
   it('notifies PostgREST to reload schema cache at the end of the migration', () => {

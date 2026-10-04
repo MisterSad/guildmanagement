@@ -43,10 +43,7 @@ describe('TICKET-04 [OBS-01]: Client Error Reporting RPC & Logger', () => {
   });
 
   it('validates migration SQL file structure and security parameters', () => {
-    const migrationPath = path.resolve(
-      __dirname,
-      '../supabase/migrations/20260920110000_client_error_logging_rpc.sql'
-    );
+    const migrationPath = path.resolve(__dirname, '../supabase/migrations/20260920110000_client_error_logging_rpc.sql');
     expect(fs.existsSync(migrationPath)).toBe(true);
 
     const sql = fs.readFileSync(migrationPath, 'utf8');

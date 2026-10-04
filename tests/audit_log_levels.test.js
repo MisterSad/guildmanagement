@@ -22,7 +22,10 @@ const ALLOWED = new Set(['DEBUG', 'INFO', 'WARN', 'ERROR', 'FATAL']);
 
 /** name -> body of its last CREATE [OR REPLACE] FUNCTION, in migration order. */
 function latestFunctionBodies() {
-  const files = fs.readdirSync(migrationsDir).filter((f) => f.endsWith('.sql')).sort();
+  const files = fs
+    .readdirSync(migrationsDir)
+    .filter((f) => f.endsWith('.sql'))
+    .sort();
   const latest = new Map();
   const re = /CREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\s+public\.([a-z0-9_]+)\s*\(([\s\S]*?)\$(\w*)\$([\s\S]*?)\$\3\$/gi;
   for (const f of files) {
@@ -44,7 +47,9 @@ function literalLevels(body) {
 
 describe('audit log levels', () => {
   it('the parser sees the functions that write audit lines', () => {
-    const writers = [...latestFunctionBodies()].filter(([, v]) => /INSERT\s+INTO\s+public\.system_audit_logs/i.test(v.body));
+    const writers = [...latestFunctionBodies()].filter(([, v]) =>
+      /INSERT\s+INTO\s+public\.system_audit_logs/i.test(v.body)
+    );
     // gm_save_chest_tiers, gm_rename_guild, gm_erase_player ... : a vacuous scan proves nothing.
     expect(writers.length).toBeGreaterThanOrEqual(4);
     expect(writers.map(([n]) => n)).toContain('gm_save_chest_tiers');

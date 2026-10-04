@@ -55,12 +55,14 @@ describe('login() against the auth-login Edge Function', () => {
   });
 
   it('accepts a legacy payload that mints a session without the ok flag', async () => {
-    const client = setClient(invokeData({
-      role: 'guild_admin',
-      id: 'LEGACY',
-      access_token: 'at-legacy',
-      refresh_token: 'rt-legacy',
-    }));
+    const client = setClient(
+      invokeData({
+        role: 'guild_admin',
+        id: 'LEGACY',
+        access_token: 'at-legacy',
+        refresh_token: 'rt-legacy',
+      })
+    );
 
     const result = await login('LEGACY', 'secret');
 
@@ -73,9 +75,11 @@ describe('login() against the auth-login Edge Function', () => {
   });
 
   it('surfaces the real gateway message instead of the bare "invalid"', async () => {
-    setClient(invokeData({
-      msg: 'Edge Function not found. Could not find a matching function for "/auth-login" in this project.',
-    }));
+    setClient(
+      invokeData({
+        msg: 'Edge Function not found. Could not find a matching function for "/auth-login" in this project.',
+      })
+    );
 
     const result = await login('ADMIN', 'secret');
 

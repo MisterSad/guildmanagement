@@ -13,7 +13,10 @@ const rootDir = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(rootDir, p), 'utf8');
 const worker = read('discord-verification-worker/index.js');
 const edge = read('supabase/functions/discord-bot-interactions/index.ts');
-const handler = edge.slice(edge.indexOf('if (commandName === "invite")'), edge.indexOf('// /update-stats replaces /power and /glory'));
+const handler = edge.slice(
+  edge.indexOf('if (commandName === "invite")'),
+  edge.indexOf('// /update-stats replaces /power and /glory')
+);
 
 describe('/invite is declared by the worker and handled by the Edge Function', () => {
   it('is registered and forwarded', () => {
@@ -22,7 +25,10 @@ describe('/invite is declared by the worker and handled by the Edge Function', (
   });
 
   it('carries no Discord permission gate: the app account decides', () => {
-    const def = worker.slice(worker.indexOf('const INVITE_COMMAND = {'), worker.indexOf('};', worker.indexOf('const INVITE_COMMAND = {')));
+    const def = worker.slice(
+      worker.indexOf('const INVITE_COMMAND = {'),
+      worker.indexOf('};', worker.indexOf('const INVITE_COMMAND = {'))
+    );
     expect(def).not.toContain('default_member_permissions');
   });
 });
@@ -35,10 +41,12 @@ describe('authorization', () => {
     expect(edge).toContain('const officerAccounts = officerAccountsForDiscord;');
   });
 
-  it('checks scope with the shared isGuildInScope against the guild\'s real server', () => {
+  it("checks scope with the shared isGuildInScope against the guild's real server", () => {
     expect(edge).toMatch(/import \{[^}]*\bisGuildInScope\b[^}]*\} from "\.\.\/_shared\/admin-authz\.ts";/);
     expect(handler).toContain('.from("guilds").select("id, server_number").eq("id", target)');
-    expect(handler).toContain('officers.some((o) => isGuildInScope(o, target, (guildRow as any).server_number ?? null))');
+    expect(handler).toContain(
+      'officers.some((o) => isGuildInScope(o, target, (guildRow as any).server_number ?? null))'
+    );
     // The scope check comes before the join code is ever read.
     expect(handler.indexOf('isGuildInScope(')).toBeLessThan(handler.indexOf('gm_get_join_code'));
   });
@@ -63,7 +71,10 @@ describe('the post', () => {
 
   it('is posted with mentions disabled', () => {
     const post = read('supabase/functions/_shared/discord-verification.ts');
-    const fn = post.slice(post.indexOf('export async function postChannelMessage'), post.indexOf('export async function sendDirectMessage'));
+    const fn = post.slice(
+      post.indexOf('export async function postChannelMessage'),
+      post.indexOf('export async function sendDirectMessage')
+    );
     expect(fn).toContain('allowed_mentions: { parse: [] }');
   });
 

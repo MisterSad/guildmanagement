@@ -68,7 +68,10 @@ function staticClosure(entry) {
     if (!/\.(ts|js)$/.test(file)) continue;
     for (const spec of staticImports(file)) {
       const target = resolve(file, spec);
-      if (target && !seen.has(target)) { seen.set(target, file); queue.push(target); }
+      if (target && !seen.has(target)) {
+        seen.set(target, file);
+        queue.push(target);
+      }
     }
   }
   return seen;

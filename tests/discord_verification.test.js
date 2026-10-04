@@ -55,15 +55,48 @@ function makeFakeAdmin({ tableResponses = {}, rpcResponses = {} } = {}) {
   function builder(table) {
     const state = { table, op: null, single: false, filters: [] };
     const chain = {
-      select() { if (!state.op) state.op = 'select'; return chain; },
-      insert(payload) { if (!state.op) { state.op = 'insert'; calls.push({ table, op: 'insert', payload }); } return chain; },
-      update(payload) { if (!state.op) { state.op = 'update'; calls.push({ table, op: 'update', payload, filters: state.filters }); } return chain; },
-      delete() { if (!state.op) state.op = 'delete'; return chain; },
-      eq(col, val) { state.filters.push(['eq', col, val]); return chain; },
-      neq(col, val) { state.filters.push(['neq', col, val]); return chain; },
-      in(col, val) { state.filters.push(['in', col, val]); return chain; },
-      limit(n) { state.filters.push(['limit', n]); return chain; },
-      maybeSingle() { state.single = true; return chain; },
+      select() {
+        if (!state.op) state.op = 'select';
+        return chain;
+      },
+      insert(payload) {
+        if (!state.op) {
+          state.op = 'insert';
+          calls.push({ table, op: 'insert', payload });
+        }
+        return chain;
+      },
+      update(payload) {
+        if (!state.op) {
+          state.op = 'update';
+          calls.push({ table, op: 'update', payload, filters: state.filters });
+        }
+        return chain;
+      },
+      delete() {
+        if (!state.op) state.op = 'delete';
+        return chain;
+      },
+      eq(col, val) {
+        state.filters.push(['eq', col, val]);
+        return chain;
+      },
+      neq(col, val) {
+        state.filters.push(['neq', col, val]);
+        return chain;
+      },
+      in(col, val) {
+        state.filters.push(['in', col, val]);
+        return chain;
+      },
+      limit(n) {
+        state.filters.push(['limit', n]);
+        return chain;
+      },
+      maybeSingle() {
+        state.single = true;
+        return chain;
+      },
       then(resolve) {
         const key = `${state.table}:${state.op}`;
         const res = nextResponse(key);
@@ -81,7 +114,9 @@ function makeFakeAdmin({ tableResponses = {}, rpcResponses = {} } = {}) {
 
   return {
     calls,
-    from(table) { return builder(table); },
+    from(table) {
+      return builder(table);
+    },
     async rpc(name, params) {
       calls.push({ rpc: name, params });
       const entry = rpcResponses[name];
@@ -122,12 +157,16 @@ describe('normalizeTag / bracketed', () => {
 
 describe('resolveExpectedTag', () => {
   it('uses the guild_config override when set', async () => {
-    const admin = makeFakeAdmin({ tableResponses: { 'guild_config:select': { data: { value: '[CUSTOM]' }, error: null } } });
+    const admin = makeFakeAdmin({
+      tableResponses: { 'guild_config:select': { data: { value: '[CUSTOM]' }, error: null } },
+    });
     expect(await resolveExpectedTag(admin, 'ALPHA')).toBe('[CUSTOM]');
   });
 
   it('brackets a stored tag that was saved without brackets', async () => {
-    const admin = makeFakeAdmin({ tableResponses: { 'guild_config:select': { data: { value: 'DEMO' }, error: null } } });
+    const admin = makeFakeAdmin({
+      tableResponses: { 'guild_config:select': { data: { value: 'DEMO' }, error: null } },
+    });
     expect(await resolveExpectedTag(admin, 'DEMO')).toBe('[DEMO]');
   });
 
@@ -140,10 +179,14 @@ describe('resolveExpectedTag', () => {
 
 describe('resolveHomeServerNumber', () => {
   it('returns the trimmed server number, or null when the guild has none', async () => {
-    const withNumber = makeFakeAdmin({ tableResponses: { 'guilds:select': { data: { server_number: ' 1058 ' }, error: null } } });
+    const withNumber = makeFakeAdmin({
+      tableResponses: { 'guilds:select': { data: { server_number: ' 1058 ' }, error: null } },
+    });
     expect(await resolveHomeServerNumber(withNumber, 'ALPHA')).toBe('1058');
 
-    const without = makeFakeAdmin({ tableResponses: { 'guilds:select': { data: { server_number: null }, error: null } } });
+    const without = makeFakeAdmin({
+      tableResponses: { 'guilds:select': { data: { server_number: null }, error: null } },
+    });
     expect(await resolveHomeServerNumber(without, 'GRIM')).toBeNull();
   });
 });
@@ -170,7 +213,10 @@ describe('resolveTagToGuildOnServer', () => {
       },
     });
     expect(await resolveTagToGuildOnServer(admin, 'OMG', '1058', 'ALPHA')).toEqual({
-      kind: 'match', fgfGuild: 'OMEGA', tagDisplay: '[OMG]', serverNumber: '1058',
+      kind: 'match',
+      fgfGuild: 'OMEGA',
+      tagDisplay: '[OMG]',
+      serverNumber: '1058',
     });
   });
 
@@ -182,7 +228,10 @@ describe('resolveTagToGuildOnServer', () => {
       },
     });
     expect(await resolveTagToGuildOnServer(admin, 'CLS', '1083', 'CLS')).toEqual({
-      kind: 'match', fgfGuild: 'CLS', tagDisplay: '[CLS]', serverNumber: '1083',
+      kind: 'match',
+      fgfGuild: 'CLS',
+      tagDisplay: '[CLS]',
+      serverNumber: '1083',
     });
   });
 
@@ -197,7 +246,10 @@ describe('resolveTagToGuildOnServer', () => {
     const guildsRead = admin.calls.find((c) => c.table === 'guilds' && c.op === 'select');
     expect(guildsRead.filters).toEqual([['eq', 'server_number', '1058']]);
     const configRead = admin.calls.find((c) => c.table === 'guild_config' && c.op === 'select');
-    expect(configRead.filters).toEqual([['eq', 'key', 'guild_tag'], ['in', 'guild', ['ALPHA']]]);
+    expect(configRead.filters).toEqual([
+      ['eq', 'key', 'guild_tag'],
+      ['in', 'guild', ['ALPHA']],
+    ]);
   });
 
   it('REGRESSION: the same tag on another game server resolves to nothing', async () => {
@@ -217,20 +269,26 @@ describe('resolveTagToGuildOnServer', () => {
       tableResponses: {
         'guilds:select': { data: [{ id: 'ONE' }, { id: 'TWO' }], error: null },
         'guild_config:select': {
-          data: [{ guild: 'ONE', value: '[DUP]' }, { guild: 'TWO', value: 'DUP' }],
+          data: [
+            { guild: 'ONE', value: '[DUP]' },
+            { guild: 'TWO', value: 'DUP' },
+          ],
           error: null,
         },
       },
     });
     expect(await resolveTagToGuildOnServer(admin, 'DUP', '1200', 'ONE')).toEqual({
-      kind: 'ambiguous', serverNumber: '1200', candidates: ['ONE', 'TWO'],
+      kind: 'ambiguous',
+      serverNumber: '1200',
+      candidates: ['ONE', 'TWO'],
     });
   });
 
   it('fails visibly when the channel guild has no server number, instead of widening the scan', async () => {
     const admin = makeFakeAdmin();
     expect(await resolveTagToGuildOnServer(admin, 'PR1M', null, 'GRIM')).toEqual({
-      kind: 'home_server_unknown', homeGuild: 'GRIM',
+      kind: 'home_server_unknown',
+      homeGuild: 'GRIM',
     });
     expect(admin.calls.length).toBe(0);
   });
@@ -274,11 +332,17 @@ describe('findRosterMember', () => {
   it('matches on the in-game UID and returns the on-file pseudo', async () => {
     const admin = makeFakeAdmin({
       tableResponses: {
-        'guild_members:select': { data: [{ pseudo: 'OnFileName', uid: '1917131', overall_power: 900000 }], error: null },
+        'guild_members:select': {
+          data: [{ pseudo: 'OnFileName', uid: '1917131', overall_power: 900000 }],
+          error: null,
+        },
       },
     });
     expect(await findRosterMember(admin, 'ALPHA', '1917131', 'FreshOCRRead')).toEqual({
-      kind: 'uid_match', pseudo: 'OnFileName', uid: '1917131', overallPower: 900000,
+      kind: 'uid_match',
+      pseudo: 'OnFileName',
+      uid: '1917131',
+      overallPower: 900000,
     });
   });
 
@@ -288,17 +352,26 @@ describe('findRosterMember', () => {
     });
     await findRosterMember(admin, 'ALPHA', '1917131', '100%Real');
     const read = admin.calls.find((c) => c.table === 'guild_members' && c.op === 'select');
-    expect(read.filters).toEqual([['eq', 'guild', 'ALPHA'], ['limit', ROSTER_SCAN_CAP]]);
+    expect(read.filters).toEqual([
+      ['eq', 'guild', 'ALPHA'],
+      ['limit', ROSTER_SCAN_CAP],
+    ]);
   });
 
   it('claims a roster row whose UID is a TEMP- placeholder, case-insensitively', async () => {
     const admin = makeFakeAdmin({
       tableResponses: {
-        'guild_members:select': { data: [{ pseudo: 'Trader23634', uid: 'TEMP-yu1or6r5', overall_power: 50 }], error: null },
+        'guild_members:select': {
+          data: [{ pseudo: 'Trader23634', uid: 'TEMP-yu1or6r5', overall_power: 50 }],
+          error: null,
+        },
       },
     });
     expect(await findRosterMember(admin, 'OMEGA', '1917131', 'trader23634')).toEqual({
-      kind: 'pseudo_claim', pseudo: 'Trader23634', overallPower: 50, staleUid: 'TEMP-yu1or6r5',
+      kind: 'pseudo_claim',
+      pseudo: 'Trader23634',
+      overallPower: 50,
+      staleUid: 'TEMP-yu1or6r5',
     });
   });
 
@@ -309,7 +382,10 @@ describe('findRosterMember', () => {
       },
     });
     expect(await findRosterMember(admin, 'ALPHA', '1917131', 'NoUid')).toEqual({
-      kind: 'pseudo_claim', pseudo: 'NoUid', overallPower: 0, staleUid: null,
+      kind: 'pseudo_claim',
+      pseudo: 'NoUid',
+      overallPower: 0,
+      staleUid: null,
     });
   });
 
@@ -320,7 +396,9 @@ describe('findRosterMember', () => {
       },
     });
     expect(await findRosterMember(admin, 'ALPHA', '1917131', 'HawkEye')).toEqual({
-      kind: 'pseudo_conflict', pseudo: 'HawkEye', onFileUid: '7654321',
+      kind: 'pseudo_conflict',
+      pseudo: 'HawkEye',
+      onFileUid: '7654321',
     });
   });
 
@@ -337,19 +415,27 @@ describe('findRosterMember', () => {
       },
     });
     expect(await findRosterMember(admin, 'ALPHA', '1917131', 'HAWKEYE')).toEqual({
-      kind: 'ambiguous_pseudo', pseudo: 'HawkEye', count: 2,
+      kind: 'ambiguous_pseudo',
+      pseudo: 'HawkEye',
+      count: 2,
     });
   });
 
   it('reports absent when neither the UID nor the pseudo is on the roster', async () => {
     const admin = makeFakeAdmin({
-      tableResponses: { 'guild_members:select': { data: [{ pseudo: 'Someone', uid: '111111', overall_power: 1 }], error: null } },
+      tableResponses: {
+        'guild_members:select': { data: [{ pseudo: 'Someone', uid: '111111', overall_power: 1 }], error: null },
+      },
     });
     expect(await findRosterMember(admin, 'ALPHA', '1917131', 'Stranger')).toEqual({ kind: 'absent' });
   });
 
   it('reports a truncated read as an error, never as absent', async () => {
-    const rows = Array.from({ length: ROSTER_SCAN_CAP }, (_, i) => ({ pseudo: `P${i}`, uid: `${1000000 + i}`, overall_power: 0 }));
+    const rows = Array.from({ length: ROSTER_SCAN_CAP }, (_, i) => ({
+      pseudo: `P${i}`,
+      uid: `${1000000 + i}`,
+      overall_power: 0,
+    }));
     const admin = makeFakeAdmin({ tableResponses: { 'guild_members:select': { data: rows, error: null } } });
     expect(await findRosterMember(admin, 'ALPHA', '9999999', 'Stranger')).toEqual({ kind: 'scan_truncated' });
   });
@@ -381,11 +467,16 @@ describe('requiresRosterMembership', () => {
 describe('findOtherGuildMemberships', () => {
   it('lists the other guilds holding that UID, de-duplicated and sorted', async () => {
     const admin = makeFakeAdmin({
-      tableResponses: { 'guild_members:select': { data: [{ guild: 'YARR' }, { guild: 'PAIN' }, { guild: 'PAIN' }], error: null } },
+      tableResponses: {
+        'guild_members:select': { data: [{ guild: 'YARR' }, { guild: 'PAIN' }, { guild: 'PAIN' }], error: null },
+      },
     });
     expect(await findOtherGuildMemberships(admin, 'ALPHA', '1905776')).toEqual(['PAIN', 'YARR']);
     const read = admin.calls.find((c) => c.table === 'guild_members' && c.op === 'select');
-    expect(read.filters).toEqual([['eq', 'uid', '1905776'], ['neq', 'guild', 'ALPHA']]);
+    expect(read.filters).toEqual([
+      ['eq', 'uid', '1905776'],
+      ['neq', 'guild', 'ALPHA'],
+    ]);
   });
 
   it('does not query at all for an empty UID', async () => {
@@ -432,11 +523,21 @@ describe('evaluateVerification', () => {
     const admin = makeFakeAdmin({ tableResponses: { ...rosterThenOthers([]), ...gateOff } });
     const res = await evaluateVerification(admin, 'PSA', 'discord-1', baseExtracted);
     expect(res).toEqual({
-      ok: true, finalPseudo: 'HawkEye', isNewPlayer: true, power: 1_500_000, glory: 200_000, otherGuilds: [],
+      ok: true,
+      finalPseudo: 'HawkEye',
+      isNewPlayer: true,
+      power: 1_500_000,
+      glory: 200_000,
+      otherGuilds: [],
     });
     const insertCall = admin.calls.find((c) => c.table === 'guild_members' && c.op === 'insert');
     expect(insertCall.payload).toEqual({
-      pseudo: 'HawkEye', uid: '1917131', guild: 'PSA', overall_power: 1_500_000, glory_score: 200_000, role: 'R1',
+      pseudo: 'HawkEye',
+      uid: '1917131',
+      guild: 'PSA',
+      overall_power: 1_500_000,
+      glory_score: 200_000,
+      role: 'R1',
     });
   });
 
@@ -446,10 +547,7 @@ describe('evaluateVerification', () => {
     // real members are in exactly that position in production.
     const admin = makeFakeAdmin({
       tableResponses: {
-        ...rosterThenOthers(
-          [{ pseudo: 'MorganKane', uid: '1922059', overall_power: 900_000 }],
-          [{ guild: 'PAIN' }]
-        ),
+        ...rosterThenOthers([{ pseudo: 'MorganKane', uid: '1922059', overall_power: 900_000 }], [{ guild: 'PAIN' }]),
         ...gateOn,
       },
     });
@@ -474,7 +572,10 @@ describe('evaluateVerification', () => {
     expect(res.previousPower).toBe(900_000);
     const updateCall = admin.calls.find((c) => c.table === 'guild_members' && c.op === 'update');
     expect(updateCall.payload).toEqual({ overall_power: 1_500_000, glory_score: 200_000 });
-    expect(updateCall.filters).toEqual([['eq', 'guild', 'ALPHA'], ['eq', 'uid', '1917131']]);
+    expect(updateCall.filters).toEqual([
+      ['eq', 'guild', 'ALPHA'],
+      ['eq', 'uid', '1917131'],
+    ]);
     expect(admin.calls.some((c) => c.table === 'guild_members' && c.op === 'insert')).toBe(false);
   });
 
@@ -490,7 +591,10 @@ describe('evaluateVerification', () => {
     expect(res.uidBackfilled).toBe(true);
     const updateCall = admin.calls.find((c) => c.table === 'guild_members' && c.op === 'update');
     expect(updateCall.payload).toEqual({ overall_power: 1_500_000, glory_score: 200_000, uid: '1917131' });
-    expect(updateCall.filters).toEqual([['eq', 'guild', 'OMEGA'], ['eq', 'pseudo', 'Trader23634']]);
+    expect(updateCall.filters).toEqual([
+      ['eq', 'guild', 'OMEGA'],
+      ['eq', 'pseudo', 'Trader23634'],
+    ]);
     const audit = admin.calls.find((c) => c.rpc === 'gm_log_player_audit');
     expect(audit.params.p_metadata.uid_backfilled).toBe(true);
     expect(audit.params.p_metadata.previous_uid).toBe('TEMP-yu1or6r5');
@@ -505,7 +609,11 @@ describe('evaluateVerification', () => {
     });
     const res = await evaluateVerification(admin, 'PSA', 'discord-1', baseExtracted);
     expect(res).toEqual({
-      ok: false, error: 'not_on_roster', reason: 'pseudo_conflict', onFileUid: '7654321', otherGuilds: [],
+      ok: false,
+      error: 'not_on_roster',
+      reason: 'pseudo_conflict',
+      onFileUid: '7654321',
+      otherGuilds: [],
     });
     expect(admin.calls.some((c) => c.table === 'guild_members' && c.op === 'insert')).toBe(false);
   });
@@ -529,7 +637,10 @@ describe('evaluateVerification', () => {
   it('refuses a truncated roster read even with the gate OFF', async () => {
     const admin = makeFakeAdmin({
       tableResponses: {
-        'guild_members:select': [{ data: null, error: { message: 'timeout' } }, { data: [], error: null }],
+        'guild_members:select': [
+          { data: null, error: { message: 'timeout' } },
+          { data: [], error: null },
+        ],
         ...gateOff,
       },
     });
@@ -609,7 +720,7 @@ describe('Regression: discord-profile-verification role decision', () => {
     expect(visitorBranchIdx).toBeLessThan(evalIdx);
   });
 
-  it('resolves the tag only within the channel guild\'s own game server', () => {
+  it("resolves the tag only within the channel guild's own game server", () => {
     expect(fnSrc).toContain('resolveHomeServerNumber(admin, fgfGuild)');
     expect(fnSrc).toContain('resolveTagToGuildOnServer(admin, extractedTagNormalized, homeServerNumber, fgfGuild)');
     // The globally-scanning resolver must not come back.
@@ -627,7 +738,9 @@ describe('Regression: discord-profile-verification role decision', () => {
   });
 
   it('treats a screenshot from another game server as a visitor, even when the tag matched', () => {
-    expect(fnSrc).toContain('const serverMismatch = !!(matched && extractedServerNumber && extractedServerNumber !== matched.serverNumber)');
+    expect(fnSrc).toContain(
+      'const serverMismatch = !!(matched && extractedServerNumber && extractedServerNumber !== matched.serverNumber)'
+    );
     const mismatchIdx = fnSrc.indexOf('const serverMismatch');
     const roleIdx = fnSrc.indexOf('const matchedGuildRole');
     expect(mismatchIdx).toBeLessThan(roleIdx);
@@ -646,11 +759,13 @@ describe('Regression: discord-profile-verification role decision', () => {
     const visitorBlock = fnSrc.slice(visitorIdx, guildMemberIdx);
     expect(visitorBlock).toContain('visitorTagDisplay = `[${VISITOR_ROLE_NAME}]`');
     expect(visitorBlock).toContain('buildNickname(visitorTagDisplay, pseudo, serverNum)');
-    expect(squash(visitorBlock)).toContain(squash('assignRoleAndNickname(discordServerId, discordUserId, visitorRole.id, visitorNickname, logger'));
+    expect(squash(visitorBlock)).toContain(
+      squash('assignRoleAndNickname(discordServerId, discordUserId, visitorRole.id, visitorNickname, logger')
+    );
   });
 
   it('never grants the guild role on the pending path, and never stamps the refused tag into the nickname', () => {
-    const pendingIdx = fnSrc.indexOf("result.error === \"not_on_roster\"");
+    const pendingIdx = fnSrc.indexOf('result.error === "not_on_roster"');
     expect(pendingIdx).toBeGreaterThan(-1);
     const pendingBlock = fnSrc.slice(pendingIdx, fnSrc.indexOf('if (!result.ok) {', pendingIdx));
     expect(pendingBlock).toContain('buildNickname("", pseudo,');
@@ -706,10 +821,7 @@ describe('Regression: discord-profile-verification stays a thin caller', () => {
 });
 
 describe('Regression: discord-verification-worker keeps business writes out', () => {
-  const workerSrc = fs.readFileSync(
-    path.resolve(__dirname, '../discord-verification-worker/index.js'),
-    'utf-8'
-  );
+  const workerSrc = fs.readFileSync(path.resolve(__dirname, '../discord-verification-worker/index.js'), 'utf-8');
 
   it('never writes to guild_members, accounts, or banned_players directly', () => {
     expect(workerSrc).not.toContain('banned_players');
@@ -724,7 +836,7 @@ describe('Regression: discord-verification-worker keeps business writes out', ()
   });
 
   it('still reads the channel -> guild config map, and forwards verification screenshots to the Edge Function', () => {
-    expect(workerSrc).toContain("eq(\"key\", \"discord_verification_channel_id\")");
+    expect(workerSrc).toContain('eq("key", "discord_verification_channel_id")');
     expect(workerSrc).toContain('VERIFICATION_FUNCTION_URL');
     expect(workerSrc).toContain('DISCORD_WORKER_SECRET');
   });

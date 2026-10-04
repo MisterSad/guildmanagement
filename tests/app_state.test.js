@@ -66,8 +66,15 @@ describe('defaults', () => {
 // through patchAppState/getAppState, and nothing leaks onto (or is read back
 // from) `window`.
 const MIRRORED_GLOBALS = [
-  'currentGuildRestriction', 'currentServerRestriction', 'currentGuild', 'guildsList',
-  'guildsData', 'guildAbsences', 'adminMembersViewMode', 'adminSelectedMembers', 'GM_COLLAPSED_ROLES'
+  'currentGuildRestriction',
+  'currentServerRestriction',
+  'currentGuild',
+  'guildsList',
+  'guildsData',
+  'guildAbsences',
+  'adminMembersViewMode',
+  'adminSelectedMembers',
+  'GM_COLLAPSED_ROLES',
 ];
 
 describe('patchAppState — the store is the only home (no window mirror)', () => {
@@ -81,7 +88,7 @@ describe('patchAppState — the store is the only home (no window mirror)', () =
       guildAbsences: [{ id: 1 }],
       adminMembersViewMode: 'matrix',
       collapsedRoles: { R5: true, R4: false, R3: false, R2: false, R1: false },
-      adminSelectedMembers: new Set(['p1'])
+      adminSelectedMembers: new Set(['p1']),
     });
 
     const s = getAppState();
@@ -147,7 +154,7 @@ describe('resetAppState', () => {
       currentGuildRestriction: 'OMEGA',
       guildsList: ['OMEGA'],
       adminMembersViewMode: 'matrix',
-      adminSelectedMembers: new Set(['z'])
+      adminSelectedMembers: new Set(['z']),
     });
 
     resetAppState();

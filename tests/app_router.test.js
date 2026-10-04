@@ -21,17 +21,21 @@ vi.mock('../src/modules/app/admin/accounts.controller', () => ({
   wireJoinCode: vi.fn(),
   wireAdminInvite: vi.fn(),
   wireRecoveryCodesCard: vi.fn(),
-  loadRecoveryCodesCard: vi.fn()
+  loadRecoveryCodesCard: vi.fn(),
 }));
 vi.mock('../src/modules/app/admin/guild-requests.controller', () => ({
   loadGuildSettings: vi.fn(),
-  fetchGuildRequests: vi.fn()
+  fetchGuildRequests: vi.fn(),
 }));
 vi.mock('../src/modules/app/admin/guilds.controller', () => ({ renderGuildsList: vi.fn() }));
 vi.mock('../src/modules/app/admin/migration-groups.controller', () => ({ renderMigrationGroupsList: vi.fn() }));
-vi.mock('../src/modules/migration/views/MigrationHubView', () => ({ migrationHubView: { load: vi.fn(), destroy: vi.fn() } }));
+vi.mock('../src/modules/migration/views/MigrationHubView', () => ({
+  migrationHubView: { load: vi.fn(), destroy: vi.fn() },
+}));
 vi.mock('../src/modules/tickets/views/TicketsView', () => ({ ticketsView: { load: vi.fn() } }));
-vi.mock('../src/modules/sanctions/views/SanctionsView', () => ({ sanctionsView: { init: vi.fn(), load: vi.fn(), destroy: vi.fn() } }));
+vi.mock('../src/modules/sanctions/views/SanctionsView', () => ({
+  sanctionsView: { init: vi.fn(), load: vi.fn(), destroy: vi.fn() },
+}));
 vi.mock('../src/modules/overview/views/OverviewView', () => ({ overviewView: { load: vi.fn(), destroy: vi.fn() } }));
 vi.mock('../src/modules/events/views/EventsView', () => ({ eventsView: { loadEvent: vi.fn() } }));
 vi.mock('../src/modules/shadowfront/views/ShadowfrontView', () => ({ shadowfrontView: { load: vi.fn() } }));
@@ -40,7 +44,9 @@ vi.mock('../src/modules/glory/views/GloryView', () => ({ gloryView: { load: vi.f
 vi.mock('../src/modules/history/views/HistoryView', () => ({ historyView: { load: vi.fn() } }));
 vi.mock('../src/modules/stats/views/StatsView', () => ({ statsView: { load: vi.fn() } }));
 vi.mock('../src/modules/portal/views/PortalView', () => ({ portalView: { loadDashboard: vi.fn() } }));
-vi.mock('../src/modules/shell/views/ShellView', () => ({ shellView: { gotoItem: vi.fn(), renderShell: vi.fn(), renderSidebar: vi.fn(), renderTopbar: vi.fn() } }));
+vi.mock('../src/modules/shell/views/ShellView', () => ({
+  shellView: { gotoItem: vi.fn(), renderShell: vi.fn(), renderSidebar: vi.fn(), renderTopbar: vi.fn() },
+}));
 
 import { fetchGuildMembers } from '../src/modules/app/members/members.controller';
 import { fetchBannedPlayers } from '../src/modules/app/members/banned.controller';
@@ -48,7 +54,7 @@ import {
   fetchAccounts,
   fetchGuilds,
   populateAccountGuildSelect,
-  wireJoinCode
+  wireJoinCode,
 } from '../src/modules/app/admin/accounts.controller';
 import { loadGuildSettings, fetchGuildRequests } from '../src/modules/app/admin/guild-requests.controller';
 import { renderGuildsList } from '../src/modules/app/admin/guilds.controller';
@@ -72,7 +78,7 @@ import {
   restoreSavedTab,
   initTabNavigation,
   showAdminDashboard,
-  showLogin
+  showLogin,
 } from '../src/modules/app/router';
 import { getDomRefs, getDomRef } from '../src/modules/app/dom-refs';
 

@@ -63,10 +63,22 @@ describe('the write guard invalidates on every tenant write', () => {
     const calls = [];
     const builder = () => {
       const b = {
-        delete: (...a) => { calls.push(['delete', a]); return b; },
-        update: (v) => { calls.push(['update', v]); return b; },
-        insert: (v) => { calls.push(['insert', v]); return b; },
-        upsert: (v) => { calls.push(['upsert', v]); return b; },
+        delete: (...a) => {
+          calls.push(['delete', a]);
+          return b;
+        },
+        update: (v) => {
+          calls.push(['update', v]);
+          return b;
+        },
+        insert: (v) => {
+          calls.push(['insert', v]);
+          return b;
+        },
+        upsert: (v) => {
+          calls.push(['upsert', v]);
+          return b;
+        },
         eq: () => b,
       };
       return b;
@@ -79,7 +91,11 @@ describe('the write guard invalidates on every tenant write', () => {
     // A super_admin can write any guild, so canWriteGuild() short-circuits to
     // true and the test isolates the invalidation rather than the ACL.
     setVerifiedRole('super_admin', 'tester');
-    try { localStorage.setItem('gm_current_guild', 'ALPHA'); } catch { /* jsdom */ }
+    try {
+      localStorage.setItem('gm_current_guild', 'ALPHA');
+    } catch {
+      /* jsdom */
+    }
   });
 
   afterEach(() => setVerifiedRole(null, null));
@@ -163,7 +179,7 @@ describe('the views the router tears down actually define destroy', () => {
   const views = {
     migrationHubView: 'src/modules/migration/views/MigrationHubView.ts',
     overviewView: 'src/modules/overview/views/OverviewView.ts',
-    sanctionsView: 'src/modules/sanctions/views/SanctionsView.ts'
+    sanctionsView: 'src/modules/sanctions/views/SanctionsView.ts',
   };
 
   for (const [name, file] of Object.entries(views)) {

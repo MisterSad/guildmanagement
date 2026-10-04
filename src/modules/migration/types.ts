@@ -6,13 +6,7 @@
 
 export type MigrationWikiScope = 'guild' | 'server';
 
-export type MigrationWikiCategory =
-  | 'general'
-  | 'recruitment'
-  | 'diplomacy'
-  | 'blacklist'
-  | 'strategy'
-  | 'agreements';
+export type MigrationWikiCategory = 'general' | 'recruitment' | 'diplomacy' | 'blacklist' | 'strategy' | 'agreements';
 
 export interface MigrationWikiAttachment {
   id: string;

@@ -11,9 +11,37 @@ import path from 'node:path';
 const fnDir = path.resolve(__dirname, '../supabase/functions');
 const SPLIT = {
   'event-reminders': ['shared.ts', 'standard.ts', 'gvg.ts', 'svs.ts', 'calamity.ts'],
-  'member-portal': ['schemas.ts', 'context.ts', 'actions/sessions.ts', 'actions/profile.ts', 'actions/transfer.ts', 'actions/history.ts', 'actions/absences.ts'],
-  'admin-accounts': ['schemas.ts', 'context.ts', 'provision.ts', 'actions/accounts.ts', 'actions/discord.ts', 'actions/join-code.ts', 'actions/registrations.ts', 'actions/guild-requests.ts', 'actions/recovery-codes.ts'],
-  'auth-discord': ['config.ts', 'http.ts', 'tickets.ts', 'oauth.ts', 'actions/redeem.ts', 'actions/redeem-code.ts', 'actions/backup-login.ts', 'actions/claim.ts', 'actions/onboard.ts'],
+  'member-portal': [
+    'schemas.ts',
+    'context.ts',
+    'actions/sessions.ts',
+    'actions/profile.ts',
+    'actions/transfer.ts',
+    'actions/history.ts',
+    'actions/absences.ts',
+  ],
+  'admin-accounts': [
+    'schemas.ts',
+    'context.ts',
+    'provision.ts',
+    'actions/accounts.ts',
+    'actions/discord.ts',
+    'actions/join-code.ts',
+    'actions/registrations.ts',
+    'actions/guild-requests.ts',
+    'actions/recovery-codes.ts',
+  ],
+  'auth-discord': [
+    'config.ts',
+    'http.ts',
+    'tickets.ts',
+    'oauth.ts',
+    'actions/redeem.ts',
+    'actions/redeem-code.ts',
+    'actions/backup-login.ts',
+    'actions/claim.ts',
+    'actions/onboard.ts',
+  ],
 };
 
 describe('the large handlers stay split', () => {

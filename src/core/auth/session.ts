@@ -7,11 +7,9 @@
  * password kept during the transition; passkeys were removed (2026-10-03).
  */
 
-
 import { getClient, parseFunctionsInvokeResult } from '../api/supabase';
 import { SUPABASE_URL } from '../config/constants';
 import { getAppState } from '../state/app-state';
-
 
 const AUTH_REQUEST_TIMEOUT_MS = 20_000;
 
@@ -20,8 +18,14 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('auth_request_timeout')), ms);
     promise.then(
-      (value) => { clearTimeout(timer); resolve(value); },
-      (err) => { clearTimeout(timer); reject(err); }
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      }
     );
   });
 }
@@ -45,7 +49,7 @@ export async function login(id: string, password: string): Promise<AuthResult> {
   } catch (e: any) {
     return {
       ok: false,
-      error: (e && e.message === 'auth_request_timeout') ? 'request_timeout' : 'request_failed'
+      error: e && e.message === 'auth_request_timeout' ? 'request_timeout' : 'request_failed',
     };
   }
   const data = await parseFunctionsInvokeResult(r);
@@ -161,7 +165,7 @@ export async function redeemDiscordTicket(ticket: string): Promise<AuthResult> {
   } catch (e: any) {
     return {
       ok: false,
-      error: (e && e.message === 'auth_request_timeout') ? 'request_timeout' : 'request_failed'
+      error: e && e.message === 'auth_request_timeout' ? 'request_timeout' : 'request_failed',
     };
   }
   const data = await parseFunctionsInvokeResult(r);
@@ -176,7 +180,7 @@ export async function redeemDiscordTicket(ticket: string): Promise<AuthResult> {
       ticket: data.ticket || null,
       discordUsername: data.discord_username || null,
       displayName: data.display_name || null,
-      accounts: Array.isArray(data.accounts) ? data.accounts : []
+      accounts: Array.isArray(data.accounts) ? data.accounts : [],
     };
   }
   if (data.state === 'unlinked') {
@@ -188,7 +192,7 @@ export async function redeemDiscordTicket(ticket: string): Promise<AuthResult> {
       state: 'unlinked',
       ticket: data.ticket || null,
       discordUsername: data.discord_username || null,
-      displayName: data.display_name || null
+      displayName: data.display_name || null,
     };
   }
   return applySessionResponse(data, { state: 'session' });
@@ -210,14 +214,14 @@ export async function chooseDiscordAccount(ticket: string, accountId: string): P
   try {
     r = await withTimeout(
       c.functions.invoke('auth-discord', {
-        body: { action: 'choose', ticket: ticket, account_id: accountId }
+        body: { action: 'choose', ticket: ticket, account_id: accountId },
       }),
       AUTH_REQUEST_TIMEOUT_MS
     );
   } catch (e: any) {
     return {
       ok: false,
-      error: (e && e.message === 'auth_request_timeout') ? 'request_timeout' : 'request_failed'
+      error: e && e.message === 'auth_request_timeout' ? 'request_timeout' : 'request_failed',
     };
   }
   const data = await parseFunctionsInvokeResult(r);
@@ -248,7 +252,7 @@ export async function redeemLinkCode(ticket: string, code: string): Promise<Auth
   } catch (e: any) {
     return {
       ok: false,
-      error: (e && e.message === 'auth_request_timeout') ? 'request_timeout' : 'request_failed'
+      error: e && e.message === 'auth_request_timeout' ? 'request_timeout' : 'request_failed',
     };
   }
   const data = await parseFunctionsInvokeResult(r);
@@ -281,7 +285,7 @@ export async function claimWithDiscord(ticket: string, id: string, password: str
   } catch (e: any) {
     return {
       ok: false,
-      error: (e && e.message === 'auth_request_timeout') ? 'request_timeout' : 'request_failed'
+      error: e && e.message === 'auth_request_timeout' ? 'request_timeout' : 'request_failed',
     };
   }
   const data = await parseFunctionsInvokeResult(r);
@@ -312,14 +316,14 @@ export async function onboardWithDiscord(
   try {
     r = await withTimeout(
       c.functions.invoke('auth-discord', {
-        body: { action: 'onboard', mode: mode, ticket: ticket, ...fields }
+        body: { action: 'onboard', mode: mode, ticket: ticket, ...fields },
       }),
       AUTH_REQUEST_TIMEOUT_MS
     );
   } catch (e: any) {
     return {
       ok: false,
-      error: (e && e.message === 'auth_request_timeout') ? 'request_timeout' : 'request_failed'
+      error: e && e.message === 'auth_request_timeout' ? 'request_timeout' : 'request_failed',
     };
   }
   const data = await parseFunctionsInvokeResult(r);
@@ -350,7 +354,7 @@ export async function loginWithBackupCodeDiscord(id: string, code: string): Prom
   } catch (e: any) {
     return {
       ok: false,
-      error: (e && e.message === 'auth_request_timeout') ? 'request_timeout' : 'request_failed'
+      error: e && e.message === 'auth_request_timeout' ? 'request_timeout' : 'request_failed',
     };
   }
   const data = await parseFunctionsInvokeResult(r);
@@ -362,7 +366,11 @@ export async function loginWithBackupCodeDiscord(id: string, code: string): Prom
 export async function logout(): Promise<void> {
   const c = getClient();
   if (c) {
-    try { await c.auth.signOut(); } catch (_) { /* ignore */ }
+    try {
+      await c.auth.signOut();
+    } catch (_) {
+      /* ignore */
+    }
   }
   try {
     if (typeof sessionStorage !== 'undefined') sessionStorage.clear();
@@ -376,7 +384,9 @@ export async function logout(): Promise<void> {
       }
       keysToRemove.forEach((k) => localStorage.removeItem(k));
     }
-  } catch (_) { /* ignore */ }
+  } catch (_) {
+    /* ignore */
+  }
 }
 
 /** Anonymous player self-registration (gated by the tenant join code). */
@@ -390,8 +400,8 @@ export async function registerPlayer(id: string, password: string, uid: string, 
         id: (id || '').trim(),
         password: password || '',
         uid: (uid || '').trim(),
-        code: (code || '').trim().toUpperCase()
-      }
+        code: (code || '').trim().toUpperCase(),
+      },
     });
   } catch {
     return { ok: false, error: 'request_failed' };
@@ -419,8 +429,8 @@ export async function submitGuildRequest(
         serverNumber: (serverNumber || '').trim(),
         adminId: (adminId || '').trim(),
         discordHandle: (discordHandle || '').trim(),
-        note: (note || '').trim()
-      }
+        note: (note || '').trim(),
+      },
     });
   } catch {
     return { ok: false, error: 'request_failed' };
@@ -467,14 +477,15 @@ export async function adminAccounts(action: string, payload?: Record<string, any
   // The Edge Function is now the only path. If it refuses, that refusal is the
   // answer -- masking it behind three unauthorized retries is the problem.
   if (action === 'update-role' && payload && payload.id && payload.role) {
-    const targetGuild = payload.guild === 'ALL' ? null : (payload.guild || null);
+    const targetGuild = payload.guild === 'ALL' ? null : payload.guild || null;
     let targetServer = payload.serverNumber || null;
     if (payload.role === 'server_admin' && !targetServer) {
       const gId = targetGuild;
       // (A `window.accountsList` lookup stood here; nothing ever set it.)
       if (gId) {
         const guildsData = getAppState().guildsData;
-        const sNum = (guildsData[gId] && guildsData[gId]!.server_number) ||
+        const sNum =
+          (guildsData[gId] && guildsData[gId]!.server_number) ||
           (typeof localStorage !== 'undefined' ? localStorage.getItem('gm_server_number_' + gId) : null);
         if (sNum) targetServer = String(sNum);
       }
@@ -483,7 +494,13 @@ export async function adminAccounts(action: string, payload?: Record<string, any
     let edgeRes: any;
     try {
       edgeRes = await c.functions.invoke('admin-accounts', {
-        body: { action: 'update-role', id: payload.id, role: payload.role, guild: targetGuild, serverNumber: targetServer }
+        body: {
+          action: 'update-role',
+          id: payload.id,
+          role: payload.role,
+          guild: targetGuild,
+          serverNumber: targetServer,
+        },
       });
     } catch (e: any) {
       return { ok: false, error: (e && e.message) || 'request_failed' };
@@ -494,7 +511,9 @@ export async function adminAccounts(action: string, payload?: Record<string, any
     }
     return {
       ok: false,
-      error: String((roleData && roleData.error) || (edgeRes && edgeRes.error && edgeRes.error.message) || 'request_failed')
+      error: String(
+        (roleData && roleData.error) || (edgeRes && edgeRes.error && edgeRes.error.message) || 'request_failed'
+      ),
     };
   }
 
@@ -511,7 +530,9 @@ export async function adminAccounts(action: string, payload?: Record<string, any
       try {
         const errJson = await r.error.context.json();
         if (errJson && errJson.error) errMsg = errJson.error + (errJson.message ? ': ' + errJson.message : '');
-      } catch (_) { /* ignore */ }
+      } catch (_) {
+        /* ignore */
+      }
     }
     return { ok: false, error: errMsg };
   }

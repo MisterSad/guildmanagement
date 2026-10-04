@@ -142,7 +142,10 @@ describe('every RPC the client calls is a function that exists', () => {
   });
 
   it('does not call anything a migration dropped without recreating it', () => {
-    const called = referencedRpcNames(['src', 'supabase/functions', 'discord-verification-worker'], [/\.rpc\(\s*['"]([a-z0-9_]+)['"]/gi]);
+    const called = referencedRpcNames(
+      ['src', 'supabase/functions', 'discord-verification-worker'],
+      [/\.rpc\(\s*['"]([a-z0-9_]+)['"]/gi]
+    );
     const zombies = [];
     for (const [name, sites] of called) {
       if (!dropped.has(name)) continue;

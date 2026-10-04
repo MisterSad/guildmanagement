@@ -26,7 +26,7 @@ export class ShadowfrontService {
     if (existing.squad !== targetSquad) {
       return {
         valid: false,
-        reason: `Member ${candidatePseudo} is already assigned to ${existing.squad.toUpperCase()} and cannot be in ${targetSquad.toUpperCase()}.`
+        reason: `Member ${candidatePseudo} is already assigned to ${existing.squad.toUpperCase()} and cannot be in ${targetSquad.toUpperCase()}.`,
       };
     }
 
@@ -49,7 +49,7 @@ export class ShadowfrontService {
 export const SHADOWFRONT_EVENT_NAME = 'Shadowfront';
 export const SHADOWFRONT_SQUAD_EVENT = {
   squad1: 'Shadowfront Squad 1',
-  squad2: 'Shadowfront Squad 2'
+  squad2: 'Shadowfront Squad 2',
 } as const;
 export const SHADOWFRONT_PARTICIPANTS_MAX = 20;
 export const SHADOWFRONT_RESERVES_MAX = 10;
@@ -146,7 +146,9 @@ export function countRate(
   historyOf: (pseudo: string) => ShadowfrontHistory | undefined
 ): number {
   let n = 0;
-  pseudos.forEach((p) => { if (categoriseHistory(historyOf(p)) === category) n++; });
+  pseudos.forEach((p) => {
+    if (categoriseHistory(historyOf(p)) === category) n++;
+  });
   return n;
 }
 
@@ -183,7 +185,7 @@ export function aggregateShadowfrontHistory(params: {
       participated: Number(r.participated) || 0,
       excused: !!r.excused,
       sub_present: !!r.sub_present,
-      late: !!r.late
+      late: !!r.late,
     };
   });
 
@@ -231,9 +233,7 @@ export function discordEscape(value: unknown): string {
 }
 
 /** Port of the participant/reserve list formatting inside shadowfront.js#shareCompositionOnDiscord. */
-export function formatSquadCompositionField(
-  members: ShadowfrontAssignmentRow[]
-): ShadowfrontDiscordSquadField {
+export function formatSquadCompositionField(members: ShadowfrontAssignmentRow[]): ShadowfrontDiscordSquadField {
   const fmtList = (list: ShadowfrontAssignmentRow[]): { count: number; text: string } => {
     if (list.length === 0) return { count: 0, text: 'None yet' };
     const seen: Record<string, boolean> = {};
@@ -256,7 +256,7 @@ export function formatSquadCompositionField(
     participantsCount: participantsRes.count,
     reservesCount: reservesRes.count,
     participantsText: participantsRes.text,
-    reservesText: reservesRes.text
+    reservesText: reservesRes.text,
   };
 }
 
@@ -277,7 +277,7 @@ export function buildShadowfrontDiscordPayload(params: {
     participantsLabel,
     reservesLabel,
     participantsMax = SHADOWFRONT_PARTICIPANTS_MAX,
-    reservesMax = SHADOWFRONT_RESERVES_MAX
+    reservesMax = SHADOWFRONT_RESERVES_MAX,
   } = params;
 
   const content = '📋 **Shadowfront - ' + squadLabel + ' Composition**' + (roleMention ? ' ' + roleMention : '');
@@ -293,18 +293,18 @@ export function buildShadowfrontDiscordPayload(params: {
           {
             name: participantsLabel + ' (' + squad.participantsCount + '/' + participantsMax + ')',
             value: squad.participantsText || 'None yet',
-            inline: true
+            inline: true,
           },
           {
             name: reservesLabel + ' (' + squad.reservesCount + '/' + reservesMax + ')',
             value: squad.reservesText || 'None yet',
-            inline: true
-          }
+            inline: true,
+          },
         ],
         timestamp: new Date().toISOString(),
-        footer: { text: 'FGF Guild Management Tool' }
-      }
-    ]
+        footer: { text: 'FGF Guild Management Tool' },
+      },
+    ],
   };
 }
 
@@ -315,7 +315,10 @@ export function buildShadowfrontDiscordPayload(params: {
 
 /** Squad status rows for both Shadowfront squads (the caller adds the guild filter). */
 export function fetchSquadStatuses(db: DbClient) {
-  return db.from('event_status').select('event_name, is_active, session_id, start_at').in('event_name', [SHADOWFRONT_SQUAD_EVENT.squad1, SHADOWFRONT_SQUAD_EVENT.squad2]);
+  return db
+    .from('event_status')
+    .select('event_name, is_active, session_id, start_at')
+    .in('event_name', [SHADOWFRONT_SQUAD_EVENT.squad1, SHADOWFRONT_SQUAD_EVENT.squad2]);
 }
 
 /** Guild roster with power, by pseudo (the caller adds the guild filter). */
@@ -325,16 +328,23 @@ export function fetchRosterMembers(db: DbClient) {
 
 /** One page of the guild's whole squad-assignment history. */
 export function fetchSquadHistoryPage(db: DbClient, guild: string | null, from: number, to: number) {
-  return db.from('shadowfront_squads').select('pseudo, session_id')
-    .eq('guild', guild).order('id', { ascending: true }).range(from, to);
+  return db
+    .from('shadowfront_squads')
+    .select('pseudo, session_id')
+    .eq('guild', guild)
+    .order('id', { ascending: true })
+    .range(from, to);
 }
 
 /** One page of the guild's whole Shadowfront participation history. */
 export function fetchParticipationHistoryPage(db: DbClient, guild: string | null, from: number, to: number) {
-  return db.from('event_participants')
+  return db
+    .from('event_participants')
     .select('pseudo, participated, session_id, excused, late, sub_present')
-    .eq('guild', guild).eq('event_name', SHADOWFRONT_EVENT_NAME)
-    .order('id', { ascending: true }).range(from, to);
+    .eq('guild', guild)
+    .eq('event_name', SHADOWFRONT_EVENT_NAME)
+    .order('id', { ascending: true })
+    .range(from, to);
 }
 
 /** Signups for a week (the caller adds the guild filter). */
@@ -344,25 +354,47 @@ export function fetchWeekSignups(db: DbClient, weekStart: string) {
 
 /** Squad assignments of the given sessions, by pseudo. */
 export function fetchSquadAssignments(db: DbClient, guild: string | null, sessionIds: string[]) {
-  return db.from('shadowfront_squads').select('*')
-    .eq('guild', guild).in('session_id', sessionIds).order('pseudo', { ascending: true });
+  return db
+    .from('shadowfront_squads')
+    .select('*')
+    .eq('guild', guild)
+    .in('session_id', sessionIds)
+    .order('pseudo', { ascending: true });
 }
 
 /** Participant rows of the given Shadowfront sessions, by pseudo. */
 export function fetchSessionParticipants(db: DbClient, guild: string | null, sessionIds: string[]) {
-  return db.from('event_participants').select('*')
-    .eq('guild', guild).eq('event_name', SHADOWFRONT_EVENT_NAME).in('session_id', sessionIds)
+  return db
+    .from('event_participants')
+    .select('*')
+    .eq('guild', guild)
+    .eq('event_name', SHADOWFRONT_EVENT_NAME)
+    .in('session_id', sessionIds)
     .order('pseudo', { ascending: true });
 }
 
 /** Moves a squad's assignment rows from one session id to another. */
-export function moveSquadAssignmentsSession(db: DbClient, guild: string | null, oldSessionId: string, sessionId: string) {
-  return db.from('shadowfront_squads').update({ session_id: sessionId })
-    .eq('guild', guild).eq('session_id', oldSessionId);
+export function moveSquadAssignmentsSession(
+  db: DbClient,
+  guild: string | null,
+  oldSessionId: string,
+  sessionId: string
+) {
+  return db
+    .from('shadowfront_squads')
+    .update({ session_id: sessionId })
+    .eq('guild', guild)
+    .eq('session_id', oldSessionId);
 }
 
 /** Marks a squad active on a session, with its start time. */
-export function upsertActiveSquadStatus(db: DbClient, guild: string | null, squad: ShadowfrontSquadKey, sessionId: string, startAt: string | null) {
+export function upsertActiveSquadStatus(
+  db: DbClient,
+  guild: string | null,
+  squad: ShadowfrontSquadKey,
+  sessionId: string,
+  startAt: string | null
+) {
   return db.from('event_status').upsert(
     {
       guild: guild,
@@ -370,14 +402,19 @@ export function upsertActiveSquadStatus(db: DbClient, guild: string | null, squa
       is_active: true,
       session_id: sessionId,
       start_at: startAt || null,
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
     },
     { onConflict: 'guild,event_name' }
   );
 }
 
 /** Marks a squad inactive, keeping the given session id and clearing its start. */
-export function upsertInactiveSquadStatus(db: DbClient, guild: string | null, squad: ShadowfrontSquadKey, sessionId: string | null) {
+export function upsertInactiveSquadStatus(
+  db: DbClient,
+  guild: string | null,
+  squad: ShadowfrontSquadKey,
+  sessionId: string | null
+) {
   return db.from('event_status').upsert(
     {
       guild: guild,
@@ -385,7 +422,7 @@ export function upsertInactiveSquadStatus(db: DbClient, guild: string | null, sq
       is_active: false,
       session_id: sessionId,
       start_at: null,
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
     },
     { onConflict: 'guild,event_name' }
   );
@@ -393,27 +430,40 @@ export function upsertInactiveSquadStatus(db: DbClient, guild: string | null, sq
 
 /** A squad's scheduled start time. */
 export function fetchSquadStartAt(db: DbClient, guild: string | null, squad: ShadowfrontSquadKey) {
-  return db.from('event_status').select('start_at')
+  return db
+    .from('event_status')
+    .select('start_at')
     .eq('guild', guild)
-    .eq('event_name', SHADOWFRONT_SQUAD_EVENT[squad]).maybeSingle();
+    .eq('event_name', SHADOWFRONT_SQUAD_EVENT[squad])
+    .maybeSingle();
 }
 
 /** Removes a member's squad assignment for a week. */
 export function deleteWeekAssignment(db: DbClient, guild: string | null, weekStart: string, pseudo: string) {
-  return db.from('shadowfront_squads').delete()
-    .eq('guild', guild).eq('week_start', weekStart).eq('pseudo', pseudo);
+  return db.from('shadowfront_squads').delete().eq('guild', guild).eq('week_start', weekStart).eq('pseudo', pseudo);
 }
 
 /** Assigns a member to a squad and role on a session. */
-export function upsertSquadAssignment(db: DbClient, guild: string | null, weekStart: string, sessionId: string | null, pseudo: string, squad: ShadowfrontSquadKey, role: ShadowfrontRole) {
-  return db.from('shadowfront_squads').upsert({
-    guild: guild,
-    week_start: weekStart,
-    session_id: sessionId,
-    pseudo: pseudo,
-    squad: squad,
-    role: role
-  }, { onConflict: 'guild,session_id,pseudo' });
+export function upsertSquadAssignment(
+  db: DbClient,
+  guild: string | null,
+  weekStart: string,
+  sessionId: string | null,
+  pseudo: string,
+  squad: ShadowfrontSquadKey,
+  role: ShadowfrontRole
+) {
+  return db.from('shadowfront_squads').upsert(
+    {
+      guild: guild,
+      week_start: weekStart,
+      session_id: sessionId,
+      pseudo: pseudo,
+      squad: squad,
+      role: role,
+    },
+    { onConflict: 'guild,session_id,pseudo' }
+  );
 }
 
 /** Removes a member's signup for a week. */
@@ -422,73 +472,151 @@ export function deleteSignup(db: DbClient, guild: string | null, weekStart: stri
 }
 
 /** Removes a member from a session (squad row and participant row) server-side. */
-export function unsyncParticipant(db: DbClient, guild: string | null, sessionId: string | null | undefined, pseudo: string) {
+export function unsyncParticipant(
+  db: DbClient,
+  guild: string | null,
+  sessionId: string | null | undefined,
+  pseudo: string
+) {
   return db.rpc('gm_unsync_shadowfront_participant', {
     p_guild: guild,
     p_session_id: sessionId,
-    p_pseudo: pseudo
+    p_pseudo: pseudo,
   });
 }
 
 /** Removes a member's squad assignment on a session. */
-export function deleteSessionAssignment(db: DbClient, guild: string | null, sessionId: string | null | undefined, pseudo: string) {
-  return db.from('shadowfront_squads').delete()
-    .eq('guild', guild).eq('session_id', sessionId).eq('pseudo', pseudo);
+export function deleteSessionAssignment(
+  db: DbClient,
+  guild: string | null,
+  sessionId: string | null | undefined,
+  pseudo: string
+) {
+  return db.from('shadowfront_squads').delete().eq('guild', guild).eq('session_id', sessionId).eq('pseudo', pseudo);
 }
 
 /** Removes a member's participant row on a session, whatever its event name. */
-export function deleteSessionParticipantRow(db: DbClient, guild: string | null, sessionId: string | null | undefined, pseudo: string) {
-  return db.from('event_participants').delete()
-    .eq('guild', guild).eq('session_id', sessionId).eq('pseudo', pseudo);
+export function deleteSessionParticipantRow(
+  db: DbClient,
+  guild: string | null,
+  sessionId: string | null | undefined,
+  pseudo: string
+) {
+  return db.from('event_participants').delete().eq('guild', guild).eq('session_id', sessionId).eq('pseudo', pseudo);
 }
 
 /** Sets or clears a member's commander flag on a session. */
-export function updateCommander(db: DbClient, guild: string | null, sessionId: string, pseudo: string, isCommander: boolean) {
-  return db.from('shadowfront_squads').update({ is_commander: isCommander })
-    .eq('guild', guild).eq('session_id', sessionId).eq('pseudo', pseudo);
+export function updateCommander(
+  db: DbClient,
+  guild: string | null,
+  sessionId: string,
+  pseudo: string,
+  isCommander: boolean
+) {
+  return db
+    .from('shadowfront_squads')
+    .update({ is_commander: isCommander })
+    .eq('guild', guild)
+    .eq('session_id', sessionId)
+    .eq('pseudo', pseudo);
 }
 
 /** Creates the participant rows of a session from its squad assignments, server-side. */
 export function syncParticipants(db: DbClient, guild: string | null, sessionId: string) {
   return db.rpc('gm_sync_shadowfront_participants', {
     p_guild: guild,
-    p_session_id: sessionId
+    p_session_id: sessionId,
   });
 }
 
 /** Sets a member's participation score on a Shadowfront session. */
-export function updateParticipated(db: DbClient, guild: string | null, sessionId: string | null | undefined, pseudo: string, value: number) {
-  return db.from('event_participants').update({ participated: value })
-    .eq('guild', guild).eq('event_name', SHADOWFRONT_EVENT_NAME).eq('session_id', sessionId).eq('pseudo', pseudo);
+export function updateParticipated(
+  db: DbClient,
+  guild: string | null,
+  sessionId: string | null | undefined,
+  pseudo: string,
+  value: number
+) {
+  return db
+    .from('event_participants')
+    .update({ participated: value })
+    .eq('guild', guild)
+    .eq('event_name', SHADOWFRONT_EVENT_NAME)
+    .eq('session_id', sessionId)
+    .eq('pseudo', pseudo);
 }
 
 /** Sets a member's late flag on a Shadowfront session. */
-export function updateLate(db: DbClient, guild: string | null, sessionId: string | null | undefined, pseudo: string, value: boolean) {
-  return db.from('event_participants').update({ late: value })
-    .eq('guild', guild).eq('event_name', SHADOWFRONT_EVENT_NAME).eq('session_id', sessionId).eq('pseudo', pseudo);
+export function updateLate(
+  db: DbClient,
+  guild: string | null,
+  sessionId: string | null | undefined,
+  pseudo: string,
+  value: boolean
+) {
+  return db
+    .from('event_participants')
+    .update({ late: value })
+    .eq('guild', guild)
+    .eq('event_name', SHADOWFRONT_EVENT_NAME)
+    .eq('session_id', sessionId)
+    .eq('pseudo', pseudo);
 }
 
 /** Sets a member's excused flag on a Shadowfront session. */
-export function updateExcused(db: DbClient, guild: string | null, sessionId: string | null | undefined, pseudo: string, value: boolean) {
-  return db.from('event_participants').update({ excused: value })
-    .eq('guild', guild).eq('event_name', SHADOWFRONT_EVENT_NAME).eq('session_id', sessionId).eq('pseudo', pseudo);
+export function updateExcused(
+  db: DbClient,
+  guild: string | null,
+  sessionId: string | null | undefined,
+  pseudo: string,
+  value: boolean
+) {
+  return db
+    .from('event_participants')
+    .update({ excused: value })
+    .eq('guild', guild)
+    .eq('event_name', SHADOWFRONT_EVENT_NAME)
+    .eq('session_id', sessionId)
+    .eq('pseudo', pseudo);
 }
 
 /** Sets a member's sub-present flag on a Shadowfront session. */
-export function updateSubPresent(db: DbClient, guild: string | null, sessionId: string | null | undefined, pseudo: string, value: boolean) {
-  return db.from('event_participants').update({ sub_present: value })
-    .eq('guild', guild).eq('event_name', SHADOWFRONT_EVENT_NAME).eq('session_id', sessionId).eq('pseudo', pseudo);
+export function updateSubPresent(
+  db: DbClient,
+  guild: string | null,
+  sessionId: string | null | undefined,
+  pseudo: string,
+  value: boolean
+) {
+  return db
+    .from('event_participants')
+    .update({ sub_present: value })
+    .eq('guild', guild)
+    .eq('event_name', SHADOWFRONT_EVENT_NAME)
+    .eq('session_id', sessionId)
+    .eq('pseudo', pseudo);
 }
 
 /** Sets every participant's score on a Shadowfront session. */
 export function updateSessionParticipated(db: DbClient, guild: string | null, sessionId: string, value: number) {
-  return db.from('event_participants').update({ participated: value })
-    .eq('guild', guild).eq('event_name', SHADOWFRONT_EVENT_NAME).eq('session_id', sessionId);
+  return db
+    .from('event_participants')
+    .update({ participated: value })
+    .eq('guild', guild)
+    .eq('event_name', SHADOWFRONT_EVENT_NAME)
+    .eq('session_id', sessionId);
 }
 
 /** Removes a member's participant row on a Shadowfront session. */
-export function deleteParticipant(db: DbClient, guild: string | null, sessionId: string | null | undefined, pseudo: string) {
-  return db.from('event_participants').delete()
+export function deleteParticipant(
+  db: DbClient,
+  guild: string | null,
+  sessionId: string | null | undefined,
+  pseudo: string
+) {
+  return db
+    .from('event_participants')
+    .delete()
     .eq('guild', guild)
     .eq('event_name', SHADOWFRONT_EVENT_NAME)
     .eq('session_id', sessionId)

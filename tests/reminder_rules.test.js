@@ -52,8 +52,12 @@ describe('resolveGuildWebhook (robust fallback to general webhook & other catego
   const ARMS = 'https://discord.com/api/webhooks/333/ccc';
 
   it('uses a configured category webhook trimmed', () => {
-    expect(resolveGuildWebhook({ 'webhook_gvg': '  https://discord.com/api/webhooks/222/bbb  ', discord_webhook_url: GENERAL }, 'gvg'))
-      .toBe('https://discord.com/api/webhooks/222/bbb');
+    expect(
+      resolveGuildWebhook(
+        { 'webhook_gvg': '  https://discord.com/api/webhooks/222/bbb  ', discord_webhook_url: GENERAL },
+        'gvg'
+      )
+    ).toBe('https://discord.com/api/webhooks/222/bbb');
   });
 
   it('falls back to the general webhook when specific webhook is empty or whitespace', () => {

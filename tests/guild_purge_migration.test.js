@@ -17,7 +17,14 @@ import path from 'node:path';
 const root = path.resolve(__dirname, '..');
 const types = fs.readFileSync(path.join(root, 'src', 'types', 'database.generated.ts'), 'utf8');
 const migration = fs.readFileSync(
-  path.join(root, 'supabase', 'migrations', fs.readdirSync(path.join(root, 'supabase', 'migrations')).find((f) => f.endsWith('_guild_delete_removes_everything.sql'))),
+  path.join(
+    root,
+    'supabase',
+    'migrations',
+    fs
+      .readdirSync(path.join(root, 'supabase', 'migrations'))
+      .find((f) => f.endsWith('_guild_delete_removes_everything.sql'))
+  ),
   'utf8'
 );
 
@@ -66,7 +73,9 @@ describe('guild deletion removes everything', () => {
   });
 
   it('detaches wiki comments, whose foreign key to guilds would otherwise block the delete', () => {
-    expect(body('gm_purge_guild_data')).toMatch(/UPDATE public\.migration_wiki_comments SET author_guild_id = NULL WHERE author_guild_id = v_guild/);
+    expect(body('gm_purge_guild_data')).toMatch(
+      /UPDATE public\.migration_wiki_comments SET author_guild_id = NULL WHERE author_guild_id = v_guild/
+    );
   });
 
   it('deletes the roster before the guild, and the guild last', () => {
@@ -87,15 +96,21 @@ describe('guild deletion removes everything', () => {
       expect(b, fn).not.toMatch(/DELETE FROM public\.guilds/);
       expect(b, fn).toMatch(/'deleted_guild'/);
     }
-    expect(body('gm_delete_guild')).toMatch(/INSERT INTO public\.system_audit_logs \(level, service, action_type, user_identifier, message, metadata\)/);
+    expect(body('gm_delete_guild')).toMatch(
+      /INSERT INTO public\.system_audit_logs \(level, service, action_type, user_identifier, message, metadata\)/
+    );
     expect(body('gm_expire_empty_guilds')).toMatch(/'guild_expired', NULL,/);
   });
 
   it('keeps the purge off the API and the deleters gated', () => {
-    expect(migration).toMatch(/REVOKE ALL ON FUNCTION public\.gm_purge_guild_data\(text\) FROM PUBLIC, anon, authenticated;/);
+    expect(migration).toMatch(
+      /REVOKE ALL ON FUNCTION public\.gm_purge_guild_data\(text\) FROM PUBLIC, anon, authenticated;/
+    );
     expect(migration).not.toMatch(/GRANT EXECUTE ON FUNCTION public\.gm_purge_guild_data/);
     expect(body('gm_delete_guild')).toMatch(/IF NOT public\.is_super_admin\(\) THEN/);
-    expect(migration).toMatch(/REVOKE ALL ON FUNCTION public\.gm_expire_empty_guilds\(\) FROM PUBLIC, anon, authenticated;/);
+    expect(migration).toMatch(
+      /REVOKE ALL ON FUNCTION public\.gm_expire_empty_guilds\(\) FROM PUBLIC, anon, authenticated;/
+    );
   });
 
   it('the one-off cleanup aborts unless production matches what was reviewed', () => {

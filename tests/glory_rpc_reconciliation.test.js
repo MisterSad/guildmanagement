@@ -20,7 +20,9 @@ describe('event_participants live reconciliation (v128.2)', () => {
     // Postgres has no ADD CONSTRAINT IF NOT EXISTS: the guard must be a DO block
     expect(migration).toMatch(/DO \$\$/);
     expect(migration).toContain("conname = 'event_participants_guild_event_session_pseudo_key'");
-    expect(migration).toMatch(/ADD CONSTRAINT event_participants_guild_event_session_pseudo_key\s+UNIQUE \(guild, event_name, session_id, pseudo\)/);
+    expect(migration).toMatch(
+      /ADD CONSTRAINT event_participants_guild_event_session_pseudo_key\s+UNIQUE \(guild, event_name, session_id, pseudo\)/
+    );
     expect(migration).toContain("NOTIFY pgrst, 'reload schema'");
     expect(migration).toMatch(/ROLLBACK SQL/);
   });
@@ -30,7 +32,9 @@ describe('event_participants live reconciliation (v128.2)', () => {
     const tableStart = ddl.indexOf('CREATE TABLE IF NOT EXISTS public.event_participants');
     const tableDef = ddl.slice(tableStart, tableStart + 1200);
     expect(tableDef).toContain('created_at TIMESTAMPTZ DEFAULT now()');
-    expect(tableDef).toContain('event_participants_guild_event_session_pseudo_key UNIQUE (guild, event_name, session_id, pseudo)');
+    expect(tableDef).toContain(
+      'event_participants_guild_event_session_pseudo_key UNIQUE (guild, event_name, session_id, pseudo)'
+    );
   });
 
   it('saveGlory surfaces logical RPC failures, not only transport errors', () => {

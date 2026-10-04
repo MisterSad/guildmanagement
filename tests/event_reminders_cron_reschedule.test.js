@@ -18,7 +18,7 @@ describe('TICKET-06 [PERF-01]: Event Reminders Cron Reschedule to 5 Minutes', ()
     expect(sql).toContain("cron.unschedule('fgf-event-reminders')");
 
     // Reschedule at 5 minutes
-    expect(sql).toContain("cron.schedule(");
+    expect(sql).toContain('cron.schedule(');
     expect(sql).toContain("'fgf-event-reminders'");
     expect(sql).toContain("'*/5 * * * *'");
     expect(sql).toContain("'SELECT public.gm_invoke_event_reminders();'");
@@ -38,7 +38,9 @@ describe('TICKET-06 [PERF-01]: Event Reminders Cron Reschedule to 5 Minutes', ()
     expect(sql).toContain('(6, 0, 1, 6)');
 
     // Grants
-    expect(sql).toContain('REVOKE ALL ON FUNCTION public.gm_invoke_event_reminders() FROM public, anon, authenticated;');
+    expect(sql).toContain(
+      'REVOKE ALL ON FUNCTION public.gm_invoke_event_reminders() FROM public, anon, authenticated;'
+    );
     expect(sql).toContain('GRANT EXECUTE ON FUNCTION public.gm_invoke_event_reminders() TO service_role;');
   });
 

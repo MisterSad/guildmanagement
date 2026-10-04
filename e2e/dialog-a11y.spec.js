@@ -38,7 +38,7 @@ test('opens standard dialog with role="dialog" and sets aria-hidden on #app', as
 
   // Verify background #app is inert / aria-hidden
   const appContainer = page.locator('#app');
-  if (await appContainer.count() > 0) {
+  if ((await appContainer.count()) > 0) {
     await expect(appContainer).toHaveAttribute('aria-hidden', 'true');
   }
 
@@ -47,7 +47,7 @@ test('opens standard dialog with role="dialog" and sets aria-hidden on #app', as
   await expect(modal).toBeHidden({ timeout: 5000 });
 
   // Verify #app aria-hidden is restored
-  if (await appContainer.count() > 0) {
+  if ((await appContainer.count()) > 0) {
     await expect(appContainer).not.toHaveAttribute('aria-hidden', 'true');
   }
 });

@@ -19,7 +19,7 @@ export function renderToast(message: unknown, type?: string, duration?: number):
     success: 'ph-check-circle',
     error: 'ph-warning-circle',
     warning: 'ph-warning',
-    info: 'ph-info'
+    info: 'ph-info',
   };
 
   const toast = document.createElement('div');
@@ -37,7 +37,9 @@ export function renderToast(message: unknown, type?: string, duration?: number):
   const ttl = typeof duration === 'number' ? duration : 3500;
   setTimeout(() => {
     toast.classList.add('fade-out');
-    setTimeout(() => { toast.remove(); }, 300);
+    setTimeout(() => {
+      toast.remove();
+    }, 300);
   }, ttl);
 }
 

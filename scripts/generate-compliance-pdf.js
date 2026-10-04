@@ -1,42 +1,46 @@
-import { chromium } from "@playwright/test";
-import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { chromium } from '@playwright/test';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const rootDir = path.resolve(__dirname, "..");
+const rootDir = path.resolve(__dirname, '..');
 
 async function generatePDF() {
-  console.log("🚀 Starting PDF generation for Technical, Security & IP Compliance Whitepaper...");
+  console.log('🚀 Starting PDF generation for Technical, Security & IP Compliance Whitepaper...');
 
-  const templatePath = path.join(rootDir, "docs", "compliance-whitepaper-template.html");
+  const templatePath = path.join(rootDir, 'docs', 'compliance-whitepaper-template.html');
   if (!fs.existsSync(templatePath)) {
     throw new Error(`Template not found at ${templatePath}`);
   }
 
-  const htmlContent = fs.readFileSync(templatePath, "utf-8");
+  const htmlContent = fs.readFileSync(templatePath, 'utf-8');
 
   const browser = await chromium.launch({
     headless: true,
   });
 
   const page = await browser.newPage();
-  await page.setContent(htmlContent, { waitUntil: "networkidle" });
+  await page.setContent(htmlContent, { waitUntil: 'networkidle' });
 
-  const rootPdfPath = path.join(rootDir, "FGF_Guild_Management_Technical_Security_IP_Compliance_Whitepaper.pdf");
-  const docsPdfPath = path.join(rootDir, "docs", "FGF_Guild_Management_Technical_Security_IP_Compliance_Whitepaper.pdf");
+  const rootPdfPath = path.join(rootDir, 'FGF_Guild_Management_Technical_Security_IP_Compliance_Whitepaper.pdf');
+  const docsPdfPath = path.join(
+    rootDir,
+    'docs',
+    'FGF_Guild_Management_Technical_Security_IP_Compliance_Whitepaper.pdf'
+  );
 
-  console.log("📄 Generating PDF via Playwright Chromium...");
+  console.log('📄 Generating PDF via Playwright Chromium...');
 
   const pdfBuffer = await page.pdf({
-    format: "A4",
+    format: 'A4',
     printBackground: true,
     margin: {
-      top: "16mm",
-      bottom: "16mm",
-      left: "14mm",
-      right: "14mm",
+      top: '16mm',
+      bottom: '16mm',
+      left: '14mm',
+      right: '14mm',
     },
     displayHeaderFooter: true,
     headerTemplate: `
@@ -66,6 +70,6 @@ async function generatePDF() {
 }
 
 generatePDF().catch((err) => {
-  console.error("❌ Error generating PDF:", err);
+  console.error('❌ Error generating PDF:', err);
   process.exit(1);
 });

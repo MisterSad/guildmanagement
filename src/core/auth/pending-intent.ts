@@ -93,7 +93,11 @@ export function savePendingIntent(intent: Omit<PendingIntent, 'ts'> & { ts?: num
   const safe = sanitizeIntent({ ...intent, ts: intent.ts ?? Date.now() });
   const s = storage();
   if (!safe || !s) return;
-  try { s.setItem(KEY, JSON.stringify(safe)); } catch { /* quota or blocked storage */ }
+  try {
+    s.setItem(KEY, JSON.stringify(safe));
+  } catch {
+    /* quota or blocked storage */
+  }
 }
 
 /** Reads the current intent without consuming it. Expired or malformed ones are dropped. */
@@ -101,10 +105,18 @@ export function peekPendingIntent(now: number = Date.now()): PendingIntent | nul
   const s = storage();
   if (!s) return null;
   let raw: string | null = null;
-  try { raw = s.getItem(KEY); } catch { return null; }
+  try {
+    raw = s.getItem(KEY);
+  } catch {
+    return null;
+  }
   if (!raw) return null;
   let parsed: unknown = null;
-  try { parsed = JSON.parse(raw); } catch { /* fall through */ }
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    /* fall through */
+  }
   const intent = sanitizeIntent(parsed, now);
   if (!intent || now - intent.ts > PENDING_INTENT_TTL_MS || intent.ts > now + 60_000) {
     clearPendingIntent();
@@ -116,7 +128,11 @@ export function peekPendingIntent(now: number = Date.now()): PendingIntent | nul
 export function clearPendingIntent(): void {
   const s = storage();
   if (!s) return;
-  try { s.removeItem(KEY); } catch { /* blocked storage */ }
+  try {
+    s.removeItem(KEY);
+  } catch {
+    /* blocked storage */
+  }
 }
 
 // ── Shared invite links ─────────────────────────────────────────────────────
@@ -149,10 +165,16 @@ export function captureIntentFromHash(): PendingIntent | null {
   // bar, the history entry or a bookmark.
   try {
     window.history.replaceState({}, '', window.location.pathname + window.location.search);
-  } catch { /* replaceState unavailable in some embedded webviews */ }
+  } catch {
+    /* replaceState unavailable in some embedded webviews */
+  }
 
   let code = '';
-  try { code = decodeURIComponent(m[2]); } catch { return null; }
+  try {
+    code = decodeURIComponent(m[2]);
+  } catch {
+    return null;
+  }
   const intent = sanitizeIntent({ kind: LINK_KEYS[m[1]], code, fromLink: true });
   if (!intent || !intent.code) return null;
   savePendingIntent(intent);

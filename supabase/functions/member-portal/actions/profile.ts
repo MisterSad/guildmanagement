@@ -4,7 +4,13 @@
  */
 
 import { getPlayer } from "../../_shared/member-lookup.ts";
-import { MAX_ALLOWED_POWER, logPlayerAction, updatePlayerPower, updatePlayerGlory, updatePlayerTimezone } from "../../_shared/player-actions.ts";
+import {
+  MAX_ALLOWED_POWER,
+  logPlayerAction,
+  updatePlayerPower,
+  updatePlayerGlory,
+  updatePlayerTimezone,
+} from "../../_shared/player-actions.ts";
 import { type PortalContext } from "../context.ts";
 
 /** `update-power` */
@@ -33,13 +39,20 @@ export async function updateMetrics(ctx: PortalContext): Promise<Response> {
     return Math.min(Math.round(num), MAX_ALLOWED_POWER);
   }
 
-  const totalPower    = payload?.total_power !== undefined ? safeVal(payload.total_power) : (payload?.power !== undefined ? safeVal(payload.power) : member.overall_power);
-  const techPower     = payload?.tech_power !== undefined ? safeVal(payload.tech_power) : (member.tech_power || 0);
-  const championPower = payload?.champion_power !== undefined ? safeVal(payload.champion_power) : (member.champion_power || 0);
-  const crewPower     = payload?.crew_power !== undefined ? safeVal(payload.crew_power) : (member.crew_power || 0);
-  const flagshipPower = payload?.flagship_power !== undefined ? safeVal(payload.flagship_power) : (member.flagship_power || 0);
-  const fleetRating   = payload?.fleet_rating !== undefined ? safeVal(payload.fleet_rating) : (member.fleet_rating || 0);
-  const gloryScore    = payload?.glory_score !== undefined ? safeVal(payload.glory_score) : (member.glory_score || 0);
+  const totalPower =
+    payload?.total_power !== undefined
+      ? safeVal(payload.total_power)
+      : payload?.power !== undefined
+        ? safeVal(payload.power)
+        : member.overall_power;
+  const techPower = payload?.tech_power !== undefined ? safeVal(payload.tech_power) : member.tech_power || 0;
+  const championPower =
+    payload?.champion_power !== undefined ? safeVal(payload.champion_power) : member.champion_power || 0;
+  const crewPower = payload?.crew_power !== undefined ? safeVal(payload.crew_power) : member.crew_power || 0;
+  const flagshipPower =
+    payload?.flagship_power !== undefined ? safeVal(payload.flagship_power) : member.flagship_power || 0;
+  const fleetRating = payload?.fleet_rating !== undefined ? safeVal(payload.fleet_rating) : member.fleet_rating || 0;
+  const gloryScore = payload?.glory_score !== undefined ? safeVal(payload.glory_score) : member.glory_score || 0;
 
   const { data: rpcRes, error: rpcErr } = await admin.rpc("gm_upsert_player_metrics", {
     p_guild: member.guild,
@@ -86,7 +99,7 @@ export async function updateMetrics(ctx: PortalContext): Promise<Response> {
         crew_power: member.crew_power,
         flagship_power: member.flagship_power,
         fleet_rating: member.fleet_rating,
-        glory_score: member.glory_score
+        glory_score: member.glory_score,
       },
       updated: {
         overall_power: totalPower,
@@ -95,9 +108,9 @@ export async function updateMetrics(ctx: PortalContext): Promise<Response> {
         crew_power: crewPower,
         flagship_power: flagshipPower,
         fleet_rating: fleetRating,
-        glory_score: gloryScore
-      }
-    }
+        glory_score: gloryScore,
+      },
+    },
   });
 
   logger.info("Player updated military metrics", { uid, pseudo: member.pseudo, totalPower, fleetRating });
@@ -135,7 +148,7 @@ export async function updateGlory(ctx: PortalContext): Promise<Response> {
   const { admin, logger, json, uid, identity, payload } = ctx;
   const res = await updatePlayerGlory(admin, uid, identity.guild, payload?.glory);
   if (!res.ok) {
-    const status = res.error === "invalid_glory" ? 400 : (res.error === "player_not_found" ? 400 : 200);
+    const status = res.error === "invalid_glory" ? 400 : res.error === "player_not_found" ? 400 : 200;
     logger.error("Failed to update player glory", res.error, { uid });
     return json(res, status);
   }

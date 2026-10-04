@@ -11,18 +11,8 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
-import {
-  openDialog,
-  closeDialog,
-  dialogCard,
-  dialogRecipe
-} from '../src/components/ui/Dialog';
-import {
-  showTooltip,
-  hideTooltip,
-  bindTooltip,
-  initTooltips
-} from '../src/components/ui/Tooltip';
+import { openDialog, closeDialog, dialogCard, dialogRecipe } from '../src/components/ui/Dialog';
+import { showTooltip, hideTooltip, bindTooltip, initTooltips } from '../src/components/ui/Tooltip';
 import { HistoryView } from '../src/modules/history/views/HistoryView';
 import { t } from '../src/core/i18n/i18n';
 import { clear as clearCache } from '../src/core/cache/cache';
@@ -80,7 +70,13 @@ describe('Dialog — lifecycle, ARIA & close paths', () => {
   });
 
   it('renders header icon + subtitle and danger tone on the card', () => {
-    dialog = openDialog({ id: 'dlg3', title: 'Delete session', iconClass: 'ph-trash', subtitle: 'SvS · W32', tone: 'danger' });
+    dialog = openDialog({
+      id: 'dlg3',
+      title: 'Delete session',
+      iconClass: 'ph-trash',
+      subtitle: 'SvS · W32',
+      tone: 'danger',
+    });
     const card = dialogCard(dialog);
     expect(card.className).toContain('gm-ui-dialog-danger');
     expect(card.querySelector('.gm-ui-dialog-subtitle')?.textContent).toContain('SvS');
@@ -95,8 +91,12 @@ describe('Dialog — lifecycle, ARIA & close paths', () => {
   it('confirm button fires onConfirm (awaited) then closes the dialog', async () => {
     let called = 0;
     dialog = openDialog({
-      id: 'dlg4', title: 'T', confirmLabel: 'Save',
-      onConfirm: () => { called++; }
+      id: 'dlg4',
+      title: 'T',
+      confirmLabel: 'Save',
+      onConfirm: () => {
+        called++;
+      },
     });
     const stale = document.getElementById('dlg4');
     const confirmBtn = dialogCard(dialog).querySelector('.gm-ui-dialog-confirm');
@@ -111,7 +111,14 @@ describe('Dialog — lifecycle, ARIA & close paths', () => {
 
   it('cancel button fires onCancel and closes', () => {
     let cancelled = 0;
-    dialog = openDialog({ id: 'dlg5', title: 'T', cancelLabel: 'Cancel', onCancel: () => { cancelled++; } });
+    dialog = openDialog({
+      id: 'dlg5',
+      title: 'T',
+      cancelLabel: 'Cancel',
+      onCancel: () => {
+        cancelled++;
+      },
+    });
     dialogCard(dialog).querySelector('.gm-ui-dialog-cancel').click();
     expect(cancelled).toBe(1);
     expect(document.getElementById('dlg5')).toBeNull();
@@ -120,7 +127,13 @@ describe('Dialog — lifecycle, ARIA & close paths', () => {
 
   it('closes on Escape and invokes onCancel', () => {
     let cancelled = 0;
-    dialog = openDialog({ id: 'dlg6', title: 'T', onCancel: () => { cancelled++; } });
+    dialog = openDialog({
+      id: 'dlg6',
+      title: 'T',
+      onCancel: () => {
+        cancelled++;
+      },
+    });
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     expect(cancelled).toBe(1);
     expect(document.getElementById('dlg6')).toBeNull();
@@ -129,7 +142,13 @@ describe('Dialog — lifecycle, ARIA & close paths', () => {
 
   it('closes on backdrop click (target is the root overlay)', () => {
     let cancelled = 0;
-    dialog = openDialog({ id: 'dlg7', title: 'T', onCancel: () => { cancelled++; } });
+    dialog = openDialog({
+      id: 'dlg7',
+      title: 'T',
+      onCancel: () => {
+        cancelled++;
+      },
+    });
     dialog.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     expect(cancelled).toBe(1);
     expect(document.getElementById('dlg7')).toBeNull();
@@ -138,9 +157,10 @@ describe('Dialog — lifecycle, ARIA & close paths', () => {
 
   it('traps Tab focus inside the card (wrap both directions)', () => {
     dialog = openDialog({
-      id: 'dlg8', title: 'T',
+      id: 'dlg8',
+      title: 'T',
       body: '<button type="button" id="a">A</button><button type="button" id="b">B</button>',
-      noFooter: true
+      noFooter: true,
     });
     const card = dialogCard(dialog);
     const a = card.querySelector('#a');
@@ -149,7 +169,9 @@ describe('Dialog — lifecycle, ARIA & close paths', () => {
     // Initial focus is the header close (first focusable).
     expect(document.activeElement).toBe(headerClose);
     // Shift+Tab from the first item wraps to the last focusable.
-    document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true }));
+    document.activeElement.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true })
+    );
     expect(document.activeElement).toBe(b);
     // Tab from the last item wraps to the first.
     b.focus();
@@ -247,30 +269,79 @@ describe('Tooltip — node, triggers & declarative init', () => {
 
 /* ─── HistoryView — session modal rides the Dialog component ───────────── */
 const SESSIONS = [
-  { event_name: 'SvS', session_id: 'SVS-2026-W32', week_start: '2026-08-03', participants: 10, participated_count: 8, total_score: 1000 }
+  {
+    event_name: 'SvS',
+    session_id: 'SVS-2026-W32',
+    week_start: '2026-08-03',
+    participants: 10,
+    participated_count: 8,
+    total_score: 1000,
+  },
 ];
 const PARTICIPANT_ROWS = [
-  { pseudo: 'Alpha', guild: 'ALPHA', event_name: 'SvS', session_id: 'SVS-2026-W32', week_start: '2026-08-03', participated: 1, score: 100, score_prep: 10, score_pvp: 5, late: false, excused: false, sub_present: false, appointed: false },
-  { pseudo: 'Bravo', guild: 'ALPHA', event_name: 'SvS', session_id: 'SVS-2026-W32', week_start: '2026-08-03', participated: 0, score: 0, score_prep: 0, score_pvp: 0, late: false, excused: false, sub_present: false, appointed: false }
+  {
+    pseudo: 'Alpha',
+    guild: 'ALPHA',
+    event_name: 'SvS',
+    session_id: 'SVS-2026-W32',
+    week_start: '2026-08-03',
+    participated: 1,
+    score: 100,
+    score_prep: 10,
+    score_pvp: 5,
+    late: false,
+    excused: false,
+    sub_present: false,
+    appointed: false,
+  },
+  {
+    pseudo: 'Bravo',
+    guild: 'ALPHA',
+    event_name: 'SvS',
+    session_id: 'SVS-2026-W32',
+    week_start: '2026-08-03',
+    participated: 0,
+    score: 0,
+    score_prep: 0,
+    score_pvp: 0,
+    late: false,
+    excused: false,
+    sub_present: false,
+    appointed: false,
+  },
 ];
 
 function chained(value, updateMock) {
   const filters = [];
   const apply = () => {
     let res = (value || []).slice();
-    filters.forEach((f) => { res = res.filter(f); });
+    filters.forEach((f) => {
+      res = res.filter(f);
+    });
     return res;
   };
   const chain = {
     select: () => chain,
     order: () => chain,
     limit: () => chain,
-    eq: (field, val) => { filters.push((r) => r[field] === val); return chain; },
-    is: (field, val) => { filters.push((r) => r[field] === val); return chain; },
-    in: (field, list) => { filters.push((r) => list.indexOf(r[field]) !== -1); return chain; },
-    update: (payload) => { updateMock(payload); return chain; },
+    eq: (field, val) => {
+      filters.push((r) => r[field] === val);
+      return chain;
+    },
+    is: (field, val) => {
+      filters.push((r) => r[field] === val);
+      return chain;
+    },
+    in: (field, list) => {
+      filters.push((r) => list.indexOf(r[field]) !== -1);
+      return chain;
+    },
+    update: (payload) => {
+      updateMock(payload);
+      return chain;
+    },
     delete: () => chain,
-    then: (resolve) => Promise.resolve({ data: apply(), error: null }).then(resolve)
+    then: (resolve) => Promise.resolve({ data: apply(), error: null }).then(resolve),
   };
   return chain;
 }
@@ -285,7 +356,7 @@ describe('HistoryView — Dialog retrofit contract', () => {
     updateMock = vi.fn(() => chained([]));
     setDbClient({
       rpc: vi.fn(async () => ({ data: JSON.parse(JSON.stringify(SESSIONS)), error: null })),
-      from: (table) => chained(table === 'event_participants' ? PARTICIPANT_ROWS : [], updateMock)
+      from: (table) => chained(table === 'event_participants' ? PARTICIPANT_ROWS : [], updateMock),
     });
     // The view reads the real i18n, utils, cache, guild and role modules.
     clearCache();
@@ -332,6 +403,10 @@ describe('HistoryView — Dialog retrofit contract', () => {
     document.querySelector('.gm-history-card[data-event="SvS"]').click();
     await tick();
     document.getElementById('history-modal-delete').click();
-    expect(showConfirm).toHaveBeenCalledWith(t('confirm_delete_session_title'), expect.any(String), expect.any(Function));
+    expect(showConfirm).toHaveBeenCalledWith(
+      t('confirm_delete_session_title'),
+      expect.any(String),
+      expect.any(Function)
+    );
   });
 });

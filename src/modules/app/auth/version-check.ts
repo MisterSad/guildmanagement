@@ -9,7 +9,6 @@
  * read back from the bridge that main.ts publishes it on.
  */
 
-
 import { APP_VERSION } from '../../../core/config/constants';
 import { escapeHTML } from '../../../core/utils/text';
 
@@ -37,7 +36,9 @@ export function checkForNewVersion(): Promise<void> {
         showNewVersionBanner(data.version);
       }
     })
-    .catch(() => { /* offline or transient network error: next check retries */ });
+    .catch(() => {
+      /* offline or transient network error: next check retries */
+    });
 }
 
 /** Bottom-right reload prompt. Idempotent (single banner at a time). */
@@ -48,20 +49,23 @@ export function showNewVersionBanner(newVersion: string): void {
 
   const banner = document.createElement('div');
   banner.id = 'new-version-banner';
-  banner.style.cssText = 'position:fixed; bottom:1rem; right:1rem; z-index:9500; max-width:360px; ' +
+  banner.style.cssText =
+    'position:fixed; bottom:1rem; right:1rem; z-index:9500; max-width:360px; ' +
     'background:var(--bg-soft, #1a1a24); border:1px solid rgba(99,102,241,0.4); border-radius:12px; ' +
     'padding:1rem 1.1rem; box-shadow:0 8px 24px rgba(0,0,0,0.4); display:flex; flex-direction:column; gap:.6rem;';
   banner.innerHTML =
     '<div style="display:flex; align-items:flex-start; gap:.6rem;">' +
-      '<i class="ph ph-arrows-clockwise" style="font-size: var(--fs-2xl); color:var(--accent); flex-shrink:0; margin-top:.1rem;"></i>' +
-      '<div>' +
-        '<div style="font-weight:600; margin-bottom:.15rem;">Update available (' + esc(newVersion) + ')</div>' +
-        '<div style="font-size: var(--fs-sm); color:var(--fg-dim);">This tab is running an older version. Refresh to get the latest fixes.</div>' +
-      '</div>' +
+    '<i class="ph ph-arrows-clockwise" style="font-size: var(--fs-2xl); color:var(--accent); flex-shrink:0; margin-top:.1rem;"></i>' +
+    '<div>' +
+    '<div style="font-weight:600; margin-bottom:.15rem;">Update available (' +
+    esc(newVersion) +
+    ')</div>' +
+    '<div style="font-size: var(--fs-sm); color:var(--fg-dim);">This tab is running an older version. Refresh to get the latest fixes.</div>' +
+    '</div>' +
     '</div>' +
     '<div style="display:flex; gap:.5rem; justify-content:flex-end;">' +
-      '<button type="button" id="new-version-later" class="gm-btn gm-btn-ghost gm-btn-sm">Later</button>' +
-      '<button type="button" id="new-version-refresh" class="gm-btn gm-btn-primary gm-btn-sm">Refresh</button>' +
+    '<button type="button" id="new-version-later" class="gm-btn gm-btn-ghost gm-btn-sm">Later</button>' +
+    '<button type="button" id="new-version-refresh" class="gm-btn gm-btn-primary gm-btn-sm">Refresh</button>' +
     '</div>';
 
   document.body.appendChild(banner);
@@ -80,7 +84,10 @@ export function showNewVersionBanner(newVersion: string): void {
     });
   }
   const refresh = document.getElementById('new-version-refresh');
-  if (refresh) refresh.addEventListener('click', () => { window.location.reload(); });
+  if (refresh)
+    refresh.addEventListener('click', () => {
+      window.location.reload();
+    });
 }
 
 /**
@@ -92,7 +99,12 @@ export function initVersionCheck(): void {
   if (typeof document === 'undefined') return;
   versionCheckInitialized = true;
 
-  setInterval(() => { void checkForNewVersion(); }, 15 * 60 * 1000);
+  setInterval(
+    () => {
+      void checkForNewVersion();
+    },
+    15 * 60 * 1000
+  );
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') void checkForNewVersion();
   });

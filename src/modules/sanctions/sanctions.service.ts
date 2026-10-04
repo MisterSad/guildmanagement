@@ -19,7 +19,10 @@ export function querySanctions(db: DbClient, currentG: string | null) {
 
 /** Records a sanction and returns the inserted row. */
 export function insertSanction(db: DbClient, currentG: string | null, pseudo: string, comment: string) {
-  return db.from('sanctions').insert([{ guild: currentG, pseudo, comment }]).select();
+  return db
+    .from('sanctions')
+    .insert([{ guild: currentG, pseudo, comment }])
+    .select();
 }
 
 /** Deletes a sanction. */

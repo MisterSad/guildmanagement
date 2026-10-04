@@ -8,7 +8,13 @@ import { escapeLike } from "../../_shared/like.ts";
 import { resolveAuditChannelId, postAuditMessage } from "../../_shared/discord-verification.ts";
 import { getTargetCtx } from "../../_shared/registration-decision.ts";
 import { randomBackupCode, sha256Hex } from "../../_shared/backup-codes.ts";
-import { DiscordUnlinkSchema, RELINK_CODE_TTL_MS, AdminInviteSchema, INVITE_CODE_TTL_MS, MAX_OPEN_INVITES_PER_GUILD } from "../schemas.ts";
+import {
+  DiscordUnlinkSchema,
+  RELINK_CODE_TTL_MS,
+  AdminInviteSchema,
+  INVITE_CODE_TTL_MS,
+  MAX_OPEN_INVITES_PER_GUILD,
+} from "../schemas.ts";
 import type { AdminContext } from "../context.ts";
 
 // ── Phase D6: detach a Discord identity and hand back a way in ──────────
@@ -41,7 +47,11 @@ export async function discordUnlink(ctx: AdminContext): Promise<Response> {
 
   const targetCtx = await getTargetCtx(admin, targetAcc);
   if (!canManageAccount(info, targetCtx)) {
-    logger.warn("Forbidden attempt to unlink Discord", { callerRole: info.role, targetId: id, targetRole: targetAcc.role });
+    logger.warn("Forbidden attempt to unlink Discord", {
+      callerRole: info.role,
+      targetId: id,
+      targetRole: targetAcc.role,
+    });
     return json({ ok: false, error: "forbidden" }, 403);
   }
 
@@ -74,7 +84,8 @@ export async function discordUnlink(ctx: AdminContext): Promise<Response> {
     action_type: "discord_unlink",
     guild: targetGuild,
     user_identifier: info.accountId ?? null,
-    message: `Discord link removed from ${targetAcc.id}` + (previous ? ` (was ${previous})` : " (no link was attached)"),
+    message:
+      `Discord link removed from ${targetAcc.id}` + (previous ? ` (was ${previous})` : " (no link was attached)"),
     metadata: {
       target_account: targetAcc.id,
       target_role: targetAcc.role,
@@ -92,8 +103,8 @@ export async function discordUnlink(ctx: AdminContext): Promise<Response> {
       await postAuditMessage(
         channelId,
         `🔓 **Discord link removed** — \`${targetAcc.id}\` (${targetAcc.role || "member"})` +
-        (previous ? ` was linked to Discord id \`${previous}\`.` : ` had no Discord link attached.`) +
-        `\nPerformed by \`${info.accountId ?? "unknown"}\`. A single-use relink code was issued and expires in 7 days.`
+          (previous ? ` was linked to Discord id \`${previous}\`.` : ` had no Discord link attached.`) +
+          `\nPerformed by \`${info.accountId ?? "unknown"}\`. A single-use relink code was issued and expires in 7 days.`
       );
     } else {
       logger.info("No Discord audit channel configured for guild", { guild: targetGuild });
@@ -143,8 +154,7 @@ export async function issueAdminInvite(ctx: AdminContext): Promise<Response> {
     return json({ ok: false, error: "forbidden" }, 403);
   }
 
-  const { data: guildRow } = await admin
-    .from("guilds").select("id, server_number").eq("id", targetGuild).maybeSingle();
+  const { data: guildRow } = await admin.from("guilds").select("id, server_number").eq("id", targetGuild).maybeSingle();
   if (!guildRow) return json({ ok: false, error: "guild_not_found" }, 404);
 
   if (!isGuildInScope(info, targetGuild, guildRow.server_number)) {
@@ -196,7 +206,7 @@ export async function issueAdminInvite(ctx: AdminContext): Promise<Response> {
     await postAuditMessage(
       channelId,
       `🎟️ **Admin invitation issued** — a single-use code for a new \`${targetRole}\` in \`${targetGuild}\`, ` +
-      `created by \`${info.accountId ?? "unknown"}\` and valid for 7 days.`
+        `created by \`${info.accountId ?? "unknown"}\` and valid for 7 days.`
     );
   }
 

@@ -9,7 +9,6 @@
  * renderer. Every collaborator is a typed import (phase M4c).
  */
 
-
 import { adoptDialog, closeDialog } from '../../../components/ui/Dialog';
 import { eventsViewLazy, armsRaceViewLazy, shadowfrontViewLazy } from '../lazy-views';
 import { esc, byId } from '../admin/utils';
@@ -40,7 +39,7 @@ import {
   uploadOcrVideo,
   removeOcrVideo,
   checkUidExistsGlobally,
-  findPlayerByUid
+  findPlayerByUid,
 } from '../../ocr/ocr.service';
 import { getActiveGuild } from '../../../core/auth/roles';
 import { fetchGuildMembers } from '../members/members.controller';
@@ -56,7 +55,7 @@ import {
   setOcrScanDay,
   setOcrVideoCoverage,
   getOcrVideoCoverage,
-  type OcrVideoCoverage
+  type OcrVideoCoverage,
 } from './ocr.meta';
 import { renderOcrResults, renderOcrCoverage, toggleAllCheckboxes } from './ocr.render';
 import { EventsService } from '../../events/events.service';
@@ -64,7 +63,10 @@ import { EventsService } from '../../events/events.service';
 export { getOcrModel };
 
 /** War prep metric commit target: event name + day container (0 = aggregate). */
-interface WarOcrDayTarget { eventName: 'SvS' | 'GvG'; day: number }
+interface WarOcrDayTarget {
+  eventName: 'SvS' | 'GvG';
+  day: number;
+}
 
 /**
  * Maps an SvS/GvG OCR metric to its daily-score container. All SvS/GvG score
@@ -99,7 +101,11 @@ export async function setOcrMetric(metric: string): Promise<void> {
     const m = btn.getAttribute('data-metric') || '';
     const isActive = m === active;
     btn.classList.toggle('active', isActive);
-    (btn as HTMLElement).style.background = isActive ? (OCR_METRICS_META[m] ? OCR_METRICS_META[m].color : 'var(--accent)') : 'transparent';
+    (btn as HTMLElement).style.background = isActive
+      ? OCR_METRICS_META[m]
+        ? OCR_METRICS_META[m].color
+        : 'var(--accent)'
+      : 'transparent';
     // Dark text: every metric colour is light enough that white fails AA (M5).
     (btn as HTMLElement).style.color = isActive ? '#0b0f19' : 'var(--text-muted)';
   });
@@ -115,7 +121,7 @@ export async function setOcrMetric(metric: string): Promise<void> {
   if (dropTitle) dropTitle.textContent = meta.dropTitle;
   if (dropDesc) dropDesc.textContent = meta.dropDesc;
   if (metricHeader) metricHeader.textContent = meta.header;
-  if (rankHeader) rankHeader.style.display = (active === 'members') ? '' : 'none';
+  if (rankHeader) rankHeader.style.display = active === 'members' ? '' : 'none';
 
   const scopeBadge = byId('ocr-scope-badge');
   const scopeDesc = byId('ocr-scope-desc');
@@ -130,15 +136,32 @@ export async function setOcrMetric(metric: string): Promise<void> {
   }
 
   if (meta.isMultiGuild) {
-    if (scopeBadge) { scopeBadge.innerHTML = '<i class="ph ph-globe"></i> Leaderboard (Tag Filtered)'; scopeBadge.style.background = 'rgba(234,179,8,0.18)'; scopeBadge.style.color = '#facc15'; }
-    if (scopeDesc) scopeDesc.textContent = 'Screenshots contain multi-guild players. Targeting members with tag ' + ((tagInput && tagInput.value) ? tagInput.value : configuredTag) + '.';
+    if (scopeBadge) {
+      scopeBadge.innerHTML = '<i class="ph ph-globe"></i> Leaderboard (Tag Filtered)';
+      scopeBadge.style.background = 'rgba(234,179,8,0.18)';
+      scopeBadge.style.color = '#facc15';
+    }
+    if (scopeDesc)
+      scopeDesc.textContent =
+        'Screenshots contain multi-guild players. Targeting members with tag ' +
+        (tagInput && tagInput.value ? tagInput.value : configuredTag) +
+        '.';
     if (tagInputGroup) tagInputGroup.style.display = 'flex';
   } else if (meta.isEvent) {
-    if (scopeBadge) { scopeBadge.innerHTML = '<i class="' + (meta.icon || 'ph-sword') + '"></i> Event Session Scan'; scopeBadge.style.background = 'rgba(99,102,241,0.18)'; scopeBadge.style.color = meta.color || 'var(--accent-text)'; }
-    if (scopeDesc) scopeDesc.textContent = meta.subtitle || 'Screenshots will update event participants for active session.';
+    if (scopeBadge) {
+      scopeBadge.innerHTML = '<i class="' + (meta.icon || 'ph-sword') + '"></i> Event Session Scan';
+      scopeBadge.style.background = 'rgba(99,102,241,0.18)';
+      scopeBadge.style.color = meta.color || 'var(--accent-text)';
+    }
+    if (scopeDesc)
+      scopeDesc.textContent = meta.subtitle || 'Screenshots will update event participants for active session.';
     if (tagInputGroup) tagInputGroup.style.display = 'none';
   } else {
-    if (scopeBadge) { scopeBadge.innerHTML = '<i class="ph ph-shield-check"></i> Intra-Guild Scan'; scopeBadge.style.background = 'rgba(99,102,241,0.18)'; scopeBadge.style.color = 'var(--accent-text)'; }
+    if (scopeBadge) {
+      scopeBadge.innerHTML = '<i class="ph ph-shield-check"></i> Intra-Guild Scan';
+      scopeBadge.style.background = 'rgba(99,102,241,0.18)';
+      scopeBadge.style.color = 'var(--accent-text)';
+    }
     if (scopeDesc) scopeDesc.textContent = 'Screenshots contain exclusively your guild members (full roster scan).';
     if (tagInputGroup) tagInputGroup.style.display = 'none';
   }
@@ -187,7 +210,8 @@ export async function openOcrModal(metric?: string): Promise<void> {
     resetOcrModalState();
     // The modal lives in index.html and is shown, not created: adopt it on
     // every open, release it on close (M5).
-    if (!releaseOcrDialog) releaseOcrDialog = adoptDialog(modal, { labelledBy: 'ocr-modal-title', onEscape: closeOcrModal });
+    if (!releaseOcrDialog)
+      releaseOcrDialog = adoptDialog(modal, { labelledBy: 'ocr-modal-title', onEscape: closeOcrModal });
   }
 }
 
@@ -219,12 +243,27 @@ export function initOcrDropdown(): any {
   if (trigger.dataset.dropdownInitialized === 'true') return null;
   trigger.dataset.dropdownInitialized = 'true';
 
-  const closeMenu = (): void => { menu.style.display = 'none'; menu.classList.remove('show'); trigger.setAttribute('aria-expanded', 'false'); };
-  const openMenu = (): void => { menu.style.display = 'flex'; menu.classList.add('show'); trigger.setAttribute('aria-expanded', 'true'); };
+  const closeMenu = (): void => {
+    menu.style.display = 'none';
+    menu.classList.remove('show');
+    trigger.setAttribute('aria-expanded', 'false');
+  };
+  const openMenu = (): void => {
+    menu.style.display = 'flex';
+    menu.classList.add('show');
+    trigger.setAttribute('aria-expanded', 'true');
+  };
   const isOpen = (): boolean => menu.classList.contains('show') || menu.style.display === 'flex';
-  const toggleMenu = (): void => { if (isOpen()) closeMenu(); else openMenu(); };
+  const toggleMenu = (): void => {
+    if (isOpen()) closeMenu();
+    else openMenu();
+  };
 
-  trigger.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); toggleMenu(); });
+  trigger.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleMenu();
+  });
   menu.addEventListener('click', (e) => {
     const target = e.target as HTMLElement | null;
     if (target && target.closest('.btn-ocr-trigger')) closeMenu();
@@ -273,7 +312,11 @@ export function initTimezoneCollapsible(): any {
     }
   });
 
-  return { expand: () => update(true), collapse: () => update(false), isExpanded: () => toggle.getAttribute('aria-expanded') === 'true' };
+  return {
+    expand: () => update(true),
+    collapse: () => update(false),
+    isExpanded: () => toggle.getAttribute('aria-expanded') === 'true',
+  };
 }
 
 let ocrModuleInitialized = false;
@@ -293,7 +336,12 @@ export function initOcrGeminiModule(): void {
   const btnCommit = byId('ocr-commit-btn');
 
   const metricTabs = byId('ocr-metric-tabs');
-  if (metricTabs) metricTabs.querySelectorAll('.gm-seg-btn').forEach((btn) => btn.addEventListener('click', () => { void setOcrMetric(btn.getAttribute('data-metric') || 'members'); }));
+  if (metricTabs)
+    metricTabs.querySelectorAll('.gm-seg-btn').forEach((btn) =>
+      btn.addEventListener('click', () => {
+        void setOcrMetric(btn.getAttribute('data-metric') || 'members');
+      })
+    );
 
   const dayButtons = document.querySelectorAll('#ocr-day-buttons .gm-seg-btn');
   if (dayButtons.length > 0) {
@@ -308,7 +356,8 @@ export function initOcrGeminiModule(): void {
         const meta = getOcrMeta();
         const scopeDesc = byId('ocr-scope-desc');
         if (meta && meta.isEvent && scopeDesc) {
-          scopeDesc.textContent = 'Day ' + d + ' screenshots — scores are imported into the Day ' + d + ' column of the preparation grid.';
+          scopeDesc.textContent =
+            'Day ' + d + ' screenshots — scores are imported into the Day ' + d + ' column of the preparation grid.';
         }
       });
     });
@@ -320,19 +369,31 @@ export function initOcrGeminiModule(): void {
       tagInput.dataset.autoFilled = 'false';
       const meta = OCR_METRICS_META[getCurrentOcrMetric()];
       const scopeDesc = byId('ocr-scope-desc');
-      if (meta && meta.isMultiGuild && scopeDesc) scopeDesc.textContent = 'Screenshots contain multi-guild players. Targeting members with tag ' + (tagInput.value || '[TAG]') + '.';
+      if (meta && meta.isMultiGuild && scopeDesc)
+        scopeDesc.textContent =
+          'Screenshots contain multi-guild players. Targeting members with tag ' + (tagInput.value || '[TAG]') + '.';
     });
   }
 
   if (closeBtn) closeBtn.addEventListener('click', closeOcrModal);
   if (cancelBtn) cancelBtn.addEventListener('click', closeOcrModal);
   const overlay = byId('ocr-modal-overlay');
-  if (overlay) overlay.addEventListener('click', (e) => { if (e.target === overlay) closeOcrModal(); });
+  if (overlay)
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) closeOcrModal();
+    });
 
   if (dropzone && fileInput) {
     dropzone.addEventListener('click', () => fileInput.click());
-    dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.style.borderColor = '#818cf8'; dropzone.style.background = 'rgba(99, 102, 241, 0.08)'; });
-    dropzone.addEventListener('dragleave', () => { dropzone.style.borderColor = 'rgba(99, 102, 241, 0.4)'; dropzone.style.background = 'rgba(99, 102, 241, 0.03)'; });
+    dropzone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropzone.style.borderColor = '#818cf8';
+      dropzone.style.background = 'rgba(99, 102, 241, 0.08)';
+    });
+    dropzone.addEventListener('dragleave', () => {
+      dropzone.style.borderColor = 'rgba(99, 102, 241, 0.4)';
+      dropzone.style.background = 'rgba(99, 102, 241, 0.03)';
+    });
     dropzone.addEventListener('drop', (e) => {
       e.preventDefault();
       dropzone.style.borderColor = 'rgba(99, 102, 241, 0.4)';
@@ -347,9 +408,16 @@ export function initOcrGeminiModule(): void {
   }
 
   if (btnReset) btnReset.addEventListener('click', resetOcrModalState);
-  if (btnSelectAll && cbToggleAll) btnSelectAll.addEventListener('click', () => { cbToggleAll.checked = !cbToggleAll.checked; toggleAllCheckboxes(cbToggleAll.checked); });
+  if (btnSelectAll && cbToggleAll)
+    btnSelectAll.addEventListener('click', () => {
+      cbToggleAll.checked = !cbToggleAll.checked;
+      toggleAllCheckboxes(cbToggleAll.checked);
+    });
   if (cbToggleAll) cbToggleAll.addEventListener('change', () => toggleAllCheckboxes(cbToggleAll.checked));
-  if (btnCommit) btnCommit.addEventListener('click', () => { void commitOcrUpdates(); });
+  if (btnCommit)
+    btnCommit.addEventListener('click', () => {
+      void commitOcrUpdates();
+    });
 }
 
 // ── Video → Gemini (ADR-021) ─────────────────────────────────────────────────
@@ -399,10 +467,15 @@ function readVideoDuration(file: Blob): Promise<number | null> {
 }
 
 export async function callGeminiOcrVideoApi(
-  file: Blob, metricType: string, guildTag: string, rankHint: string | null, updateStatusCallback?: (s: string) => void
+  file: Blob,
+  metricType: string,
+  guildTag: string,
+  rankHint: string | null,
+  updateStatusCallback?: (s: string) => void
 ): Promise<{ players: any[]; endingRank: string | null; coverage: OcrVideoCoverage | null }> {
   const client = db();
-  if (!client || !client.functions || !client.storage) throw new Error('OCR service unavailable. Please sign in and try again.');
+  if (!client || !client.functions || !client.storage)
+    throw new Error('OCR service unavailable. Please sign in and try again.');
 
   const mimeType = String((file as File).type || '').toLowerCase();
   const ext = OCR_VIDEO_EXTENSIONS[mimeType];
@@ -443,7 +516,8 @@ export async function callGeminiOcrVideoApi(
     }));
     return { players, endingRank: res.data.endingRank || null, coverage: res.data.coverage || null };
   }
-  const errMsg = (res && res.data && res.data.error) || (res && res.error && res.error.message) || 'ocr_processing_failed';
+  const errMsg =
+    (res && res.data && res.data.error) || (res && res.error && res.error.message) || 'ocr_processing_failed';
   throw new Error(errMsg);
 }
 
@@ -483,8 +557,11 @@ export async function handleOcrFiles(files: File[] | Blob[]): Promise<void> {
   const MAX_OCR_IMAGES = 500;
   if (imageFiles.length > MAX_OCR_IMAGES) {
     showToast(
-      'That is ' + imageFiles.length + ' images — scanning the first ' + MAX_OCR_IMAGES +
-      ' evenly spread across the set. Split them in two to scan all of them.',
+      'That is ' +
+        imageFiles.length +
+        ' images — scanning the first ' +
+        MAX_OCR_IMAGES +
+        ' evenly spread across the set. Split them in two to scan all of them.',
       'warning'
     );
     imageFiles = ocrDownsampleEvenly(imageFiles, MAX_OCR_IMAGES);
@@ -506,7 +583,9 @@ export async function handleOcrFiles(files: File[] | Blob[]): Promise<void> {
     try {
       if (loadingP) loadingP.textContent = 'Loading guild roster for member matching…';
       await fetchGuildMembers();
-    } catch (_) { /* best-effort — OCR proceeds even without roster */ }
+    } catch (_) {
+      /* best-effort — OCR proceeds even without roster */
+    }
   }
 
   let allPlayers: any[] = [];
@@ -516,7 +595,13 @@ export async function handleOcrFiles(files: File[] | Blob[]): Promise<void> {
     const videoErrors: string[] = [];
     let videoCoverage: OcrVideoCoverage | null = null;
     for (let v = 0; v < videoFiles.length; v++) {
-      if (loadingH4) loadingH4.textContent = 'Reading video' + (videoFiles.length > 1 ? ' ' + (v + 1) + ' of ' + videoFiles.length : '') + ' with AI OCR (' + meta.header + ')...';
+      if (loadingH4)
+        loadingH4.textContent =
+          'Reading video' +
+          (videoFiles.length > 1 ? ' ' + (v + 1) + ' of ' + videoFiles.length : '') +
+          ' with AI OCR (' +
+          meta.header +
+          ')...';
       try {
         const res = await callGeminiOcrVideoApi(videoFiles[v], metric, activeGuildTag, null, (statusMsg: string) => {
           if (loadingP) loadingP.textContent = statusMsg;
@@ -536,11 +621,16 @@ export async function handleOcrFiles(files: File[] | Blob[]): Promise<void> {
     }
     if (videoErrors.length > 0) {
       showToast(
-        videoErrors.length + ' of ' + videoFiles.length + ' videos could not be read: ' + ocrBatchErrorMessage(videoErrors[0]),
+        videoErrors.length +
+          ' of ' +
+          videoFiles.length +
+          ' videos could not be read: ' +
+          ocrBatchErrorMessage(videoErrors[0]),
         'warning'
       );
     }
-    if (imageFiles.length > 0 && loadingH4) loadingH4.textContent = 'Analyzing screenshots with AI OCR (' + meta.header + ')...';
+    if (imageFiles.length > 0 && loadingH4)
+      loadingH4.textContent = 'Analyzing screenshots with AI OCR (' + meta.header + ')...';
 
     // The ~900-token system instruction is re-sent with every call, and at two
     // images per call it cost MORE than the images themselves: measured on a
@@ -558,17 +648,18 @@ export async function handleOcrFiles(files: File[] | Blob[]): Promise<void> {
     // URL per image alive at the same time; at the frame counts a video now
     // produces that is tens of megabytes of strings on a phone, and lifting the
     // image cap without this would only trade missing players for an OOM.
-    const prepareChunk = async (blobs: Blob[]): Promise<any[]> => Promise.all(
-      blobs.map(async (file) => {
-        try {
-          const b64 = await compressImageForUpload(file, 1600, 0.82);
-          return { mimeType: 'image/jpeg', base64Data: b64 };
-        } catch (_) {
-          const b64 = await fileToBase64(file);
-          return { mimeType: (file as File).type || 'image/png', base64Data: b64 };
-        }
-      })
-    );
+    const prepareChunk = async (blobs: Blob[]): Promise<any[]> =>
+      Promise.all(
+        blobs.map(async (file) => {
+          try {
+            const b64 = await compressImageForUpload(file, 1600, 0.82);
+            return { mimeType: 'image/jpeg', base64Data: b64 };
+          } catch (_) {
+            const b64 = await fileToBase64(file);
+            return { mimeType: (file as File).type || 'image/png', base64Data: b64 };
+          }
+        })
+      );
 
     // A batch that fails takes its two screens of players with it, and the
     // failures that matter here are transient: a Gemini rate limit, a cold
@@ -580,7 +671,9 @@ export async function handleOcrFiles(files: File[] | Blob[]): Promise<void> {
     // reach the same answer.
     const RETRYABLE = ['ocr_processing_failed', 'too_many_attempts'];
     const callChunkWithRetry = async (
-      blobs: Blob[], rank: string | null, onStatus?: (s: string) => void
+      blobs: Blob[],
+      rank: string | null,
+      onStatus?: (s: string) => void
     ): Promise<{ players: any[]; endingRank: string | null }> => {
       const items = await prepareChunk(blobs);
       try {
@@ -615,7 +708,14 @@ export async function handleOcrFiles(files: File[] | Blob[]): Promise<void> {
       let carryRank: string | null = null;
       for (let b = 0; b < chunks.length; b++) {
         if (loadingP) {
-          loadingP.textContent = 'Processing screenshots batch ' + (b + 1) + ' of ' + chunks.length + ' (' + imageFiles.length + ' total images)...';
+          loadingP.textContent =
+            'Processing screenshots batch ' +
+            (b + 1) +
+            ' of ' +
+            chunks.length +
+            ' (' +
+            imageFiles.length +
+            ' total images)...';
         }
         try {
           const batchResult = await callChunkWithRetry(chunks[b], carryRank, (statusMsg: string) => {
@@ -650,7 +750,14 @@ export async function handleOcrFiles(files: File[] | Blob[]): Promise<void> {
           }
           completedChunks++;
           if (loadingP) {
-            loadingP.textContent = 'Processed batch ' + completedChunks + ' of ' + chunks.length + ' (' + imageFiles.length + ' total images)...';
+            loadingP.textContent =
+              'Processed batch ' +
+              completedChunks +
+              ' of ' +
+              chunks.length +
+              ' (' +
+              imageFiles.length +
+              ' total images)...';
           }
         }
       };
@@ -674,7 +781,10 @@ export async function handleOcrFiles(files: File[] | Blob[]): Promise<void> {
       // Partial is worth keeping -- the results table already flags a partial
       // scan and leaves missing members unchecked -- but it must not be silent.
       showToast(
-        batchErrors.length + ' of ' + chunks.length + ' batches failed. The table below is incomplete: review it before committing, or re-run the scan.',
+        batchErrors.length +
+          ' of ' +
+          chunks.length +
+          ' batches failed. The table below is incomplete: review it before committing, or re-run the scan.',
         'warning'
       );
     }
@@ -725,16 +835,29 @@ function ocrBatchErrorMessage(code: string): string {
 }
 
 export async function callGeminiOcrBatchApi(
-  batchImageItems: any[], metricType: string, guildTag: string, rankHint: string | null | ((s: string) => void), updateStatusCallback?: (s: string) => void
+  batchImageItems: any[],
+  metricType: string,
+  guildTag: string,
+  rankHint: string | null | ((s: string) => void),
+  updateStatusCallback?: (s: string) => void
 ): Promise<{ players: any[]; endingRank: string | null }> {
-  if (typeof guildTag === 'function') { updateStatusCallback = guildTag as any; rankHint = null; guildTag = ''; }
-  else if (typeof rankHint === 'function') { updateStatusCallback = rankHint as any; rankHint = null; }
+  if (typeof guildTag === 'function') {
+    updateStatusCallback = guildTag as any;
+    rankHint = null;
+    guildTag = '';
+  } else if (typeof rankHint === 'function') {
+    updateStatusCallback = rankHint as any;
+    rankHint = null;
+  }
   metricType = metricType || 'power';
   guildTag = guildTag || '';
   const client = db();
   if (!client || !client.functions) throw new Error('OCR service unavailable. Please sign in and try again.');
 
-  if (updateStatusCallback) updateStatusCallback('Analyzing with AI OCR (' + metricType.toUpperCase() + (guildTag ? ' ' + guildTag : '') + ')...');
+  if (updateStatusCallback)
+    updateStatusCallback(
+      'Analyzing with AI OCR (' + metricType.toUpperCase() + (guildTag ? ' ' + guildTag : '') + ')...'
+    );
   // Per-day war metrics attach the validated scan-day target to the metadata
   // object (the Edge Function re-validates it through the Zod scanDay enum).
   let metadata: { scanDay: number } | undefined;
@@ -751,7 +874,8 @@ export async function callGeminiOcrBatchApi(
     });
     return { players: sanitized, endingRank: res.data.endingRank || null };
   }
-  const errMsg = (res.data && res.data.error) || (res.error && res.error.message) || 'OCR analysis failed. Please try again.';
+  const errMsg =
+    (res.data && res.data.error) || (res.error && res.error.message) || 'OCR analysis failed. Please try again.';
   throw new Error(errMsg);
 }
 
@@ -772,8 +896,13 @@ export async function commitOcrUpdates(): Promise<void> {
   if (meta.isEvent) {
     if (!tbody) return;
     const selectedIndices: number[] = [];
-    tbody.querySelectorAll('.ocr-row-cb:checked').forEach((cb) => selectedIndices.push(parseInt(cb.getAttribute('data-index') || '0', 10)));
-    if (selectedIndices.length === 0) { showToast('No players selected.', 'error'); return; }
+    tbody
+      .querySelectorAll('.ocr-row-cb:checked')
+      .forEach((cb) => selectedIndices.push(parseInt(cb.getAttribute('data-index') || '0', 10)));
+    if (selectedIndices.length === 0) {
+      showToast('No players selected.', 'error');
+      return;
+    }
     const selectedPlayers = selectedIndices.map((idx) => extracted[idx]).filter(Boolean);
     btnCommit.disabled = true;
     const span = btnCommit.querySelector('span');
@@ -787,21 +916,32 @@ export async function commitOcrUpdates(): Promise<void> {
         const sqName = meta.squad === 'squad1' ? 'Shadowfront Squad 1' : 'Shadowfront Squad 2';
         const sqRes = await fetchEventSessionStatus(client, currentG, sqName);
         if (!sqRes.data || !sqRes.data.is_active || !sqRes.data.session_id) {
-          showToast('Please start the ' + (meta.squad === 'squad1' ? 'Squad 1' : 'Squad 2') + ' session in Events before applying OCR updates.', 'error');
+          showToast(
+            'Please start the ' +
+              (meta.squad === 'squad1' ? 'Squad 1' : 'Squad 2') +
+              ' session in Events before applying OCR updates.',
+            'error'
+          );
           return;
         }
         const activeSid = sqRes.data.session_id;
         const assignRes = await listShadowfrontAssignments(client, currentG, activeSid);
         const assignMap: Record<string, string> = {};
-        (assignRes.data || []).forEach((a: any) => { assignMap[String(a.pseudo).toLowerCase()] = a.role; });
+        (assignRes.data || []).forEach((a: any) => {
+          assignMap[String(a.pseudo).toLowerCase()] = a.role;
+        });
         // One transaction for the whole read (M4a): each player's row is
         // updated or created, a reserve marked as such. Per-row failures used
         // to be swallowed.
-        await recordEventAttendance('Shadowfront', activeSid, getWeekStart(sqRes.data.start_at || new Date()),
+        await recordEventAttendance(
+          'Shadowfront',
+          activeSid,
+          getWeekStart(sqRes.data.start_at || new Date()),
           selectedPlayers.map((sp: any) => ({
             pseudo: sp.pseudo,
-            sub_present: assignMap[String(sp.pseudo).toLowerCase()] === 'reserve'
-          })));
+            sub_present: assignMap[String(sp.pseudo).toLowerCase()] === 'reserve',
+          }))
+        );
         // Phase 7: a direct call. The `window` probe silently skipped the
         // refresh whenever the namespace or method name drifted, leaving the
         // Shadowfront tab showing pre-OCR data with no error.
@@ -810,12 +950,21 @@ export async function commitOcrUpdates(): Promise<void> {
         const arEvName = meta.stage === 'stageA' ? 'ARMS RACE STAGE A' : 'ARMS RACE STAGE B';
         const arRes = await fetchEventSessionStatus(client, currentG, arEvName);
         if (!arRes.data || !arRes.data.is_active || !arRes.data.session_id) {
-          showToast('Please start Arms Race ' + (meta.stage === 'stageA' ? 'Stage A' : 'Stage B') + ' session in Events before applying OCR updates.', 'error');
+          showToast(
+            'Please start Arms Race ' +
+              (meta.stage === 'stageA' ? 'Stage A' : 'Stage B') +
+              ' session in Events before applying OCR updates.',
+            'error'
+          );
           return;
         }
         const arSid = arRes.data.session_id;
-        await recordEventAttendance(arEvName, arSid, getWeekStart(arRes.data.start_at || new Date()),
-          selectedPlayers.map((sp: any) => ({ pseudo: sp.pseudo })));
+        await recordEventAttendance(
+          arEvName,
+          arSid,
+          getWeekStart(arRes.data.start_at || new Date()),
+          selectedPlayers.map((sp: any) => ({ pseudo: sp.pseudo }))
+        );
         await armsRaceViewLazy.peek()?.load();
       } else {
         const evName = meta.eventKey;
@@ -843,7 +992,7 @@ export async function commitOcrUpdates(): Promise<void> {
           const rows = selectedPlayers.map((sp: any) => ({
             pseudo: sp.pseudo,
             day: warDay.day,
-            score: sp.score != null ? sp.score : 0
+            score: sp.score != null ? sp.score : 0,
           }));
           // gm_upsert_daily_scores caps a batch at 200 rows — flush in chunks.
           for (let offset = 0; offset < rows.length; offset += 100) {
@@ -853,11 +1002,15 @@ export async function commitOcrUpdates(): Promise<void> {
           }
         } else if (metric === 'dtr') {
           // A Trade Route read with no score is an appointee.
-          await recordEventAttendance(evName, evSid, getWeekStart(evRes.data.start_at || new Date()),
+          await recordEventAttendance(
+            evName,
+            evSid,
+            getWeekStart(evRes.data.start_at || new Date()),
             selectedPlayers.map((sp: any) => ({
               pseudo: sp.pseudo,
-              appointed: !((sp.score != null ? sp.score : 0) > 0)
-            })));
+              appointed: !((sp.score != null ? sp.score : 0) > 0),
+            }))
+          );
         }
         await eventsViewLazy.peek()?.loadEvent(evName);
       }
@@ -877,16 +1030,33 @@ export async function commitOcrUpdates(): Promise<void> {
   }
 
   const selectedExistingIndices: number[] = [];
-  if (tbody) tbody.querySelectorAll('.ocr-row-cb:checked').forEach((cb) => selectedExistingIndices.push(parseInt(cb.getAttribute('data-index') || '0', 10)));
+  if (tbody)
+    tbody
+      .querySelectorAll('.ocr-row-cb:checked')
+      .forEach((cb) => selectedExistingIndices.push(parseInt(cb.getAttribute('data-index') || '0', 10)));
   const selectedNewIndices: number[] = [];
-  if (tbodyNew) tbodyNew.querySelectorAll('.ocr-row-cb:checked').forEach((cb) => selectedNewIndices.push(parseInt(cb.getAttribute('data-index') || '0', 10)));
+  if (tbodyNew)
+    tbodyNew
+      .querySelectorAll('.ocr-row-cb:checked')
+      .forEach((cb) => selectedNewIndices.push(parseInt(cb.getAttribute('data-index') || '0', 10)));
   // Never send an R5 for removal, whatever the table held (the database
   // refuses it too, migration 20260930182821).
-  const r5Pseudos = new Set(getGuildMembers().filter((m: any) => m && m.role === 'R5').map((m: any) => String(m.pseudo).toLowerCase()));
+  const r5Pseudos = new Set(
+    getGuildMembers()
+      .filter((m: any) => m && m.role === 'R5')
+      .map((m: any) => String(m.pseudo).toLowerCase())
+  );
   const checkedRemovalPseudos: string[] = [];
-  if (tbodyRemoved) tbodyRemoved.querySelectorAll('.ocr-removal-cb:checked').forEach((cb) => { const p = cb.getAttribute('data-removal-pseudo'); if (p && !r5Pseudos.has(p.toLowerCase())) checkedRemovalPseudos.push(p); });
+  if (tbodyRemoved)
+    tbodyRemoved.querySelectorAll('.ocr-removal-cb:checked').forEach((cb) => {
+      const p = cb.getAttribute('data-removal-pseudo');
+      if (p && !r5Pseudos.has(p.toLowerCase())) checkedRemovalPseudos.push(p);
+    });
 
-  if (selectedExistingIndices.length === 0 && selectedNewIndices.length === 0 && checkedRemovalPseudos.length === 0) { showToast('No players selected.', 'error'); return; }
+  if (selectedExistingIndices.length === 0 && selectedNewIndices.length === 0 && checkedRemovalPseudos.length === 0) {
+    showToast('No players selected.', 'error');
+    return;
+  }
 
   const selectedExisting = selectedExistingIndices.map((idx) => extracted[idx]).filter(Boolean);
   let selectedNew = selectedNewIndices.map((idx) => extracted[idx]).filter(Boolean);
@@ -903,8 +1073,14 @@ export async function commitOcrUpdates(): Promise<void> {
       else newUidSeen.add(uidVal);
     }
   }
-  if (invalidUidPseudos.length > 0) { showToast('Invalid UID for: ' + invalidUidPseudos.join(', '), 'error'); return; }
-  if (duplicateNewUids.length > 0) { showToast('Duplicate UID in batch: ' + duplicateNewUids.join(', '), 'error'); return; }
+  if (invalidUidPseudos.length > 0) {
+    showToast('Invalid UID for: ' + invalidUidPseudos.join(', '), 'error');
+    return;
+  }
+  if (duplicateNewUids.length > 0) {
+    showToast('Duplicate UID in batch: ' + duplicateNewUids.join(', '), 'error');
+    return;
+  }
 
   if (newUidSeen.size > 0) {
     btnCommit.disabled = true;
@@ -930,16 +1106,24 @@ export async function commitOcrUpdates(): Promise<void> {
         const u = String(row && row.uid ? row.uid : '').trim();
         if (u) bannedUidSet.add(u);
       });
-    } catch (_) { /* warned */ }
+    } catch (_) {
+      /* warned */
+    }
 
     await runInChunks(targetUids, 10, async (targetUid: string) => {
       try {
         const chkRes = await checkUidExistsGlobally(client, targetUid);
         if (chkRes && chkRes.data === true) {
-          try { const l = await findPlayerByUid(client, targetUid); collidingUidInfo[targetUid] = (l && l.data && l.data.ok) ? l.data : null; }
-          catch (_) { collidingUidInfo[targetUid] = null; }
+          try {
+            const l = await findPlayerByUid(client, targetUid);
+            collidingUidInfo[targetUid] = l && l.data && l.data.ok ? l.data : null;
+          } catch (_) {
+            collidingUidInfo[targetUid] = null;
+          }
         }
-      } catch (_) { /* warned in legacy */ }
+      } catch (_) {
+        /* warned in legacy */
+      }
     });
     const collidingLabels: string[] = [];
     const bannedLabels: string[] = [];
@@ -947,7 +1131,10 @@ export async function commitOcrUpdates(): Promise<void> {
       selectedNew = selectedNew.filter((np: any) => {
         const uidVal = String(np.uid || '').trim();
         if (!uidVal) return true;
-        if (bannedUidSet.has(uidVal)) { bannedLabels.push(np.pseudo + ' (' + uidVal + ')'); return false; }
+        if (bannedUidSet.has(uidVal)) {
+          bannedLabels.push(np.pseudo + ' (' + uidVal + ')');
+          return false;
+        }
         if (Object.hasOwn(collidingUidInfo, uidVal)) {
           const info = collidingUidInfo[uidVal];
           const ownerGuild = info && info.player && info.player.guild ? info.player.guild : '?';
@@ -959,7 +1146,8 @@ export async function commitOcrUpdates(): Promise<void> {
     }
     if (collidingLabels.length > 0 || bannedLabels.length > 0) {
       const parts: string[] = [];
-      if (collidingLabels.length > 0) parts.push('UID already registered — ' + collidingLabels.join(', ') + '. Resolve via Add Member.');
+      if (collidingLabels.length > 0)
+        parts.push('UID already registered — ' + collidingLabels.join(', ') + '. Resolve via Add Member.');
       if (bannedLabels.length > 0) parts.push('Banned — ' + bannedLabels.join(', ') + '.');
       showToast('Skipped: ' + parts.join(' '), 'error');
       if (selectedExisting.length === 0 && selectedNew.length === 0 && checkedRemovalPseudos.length === 0) {
@@ -970,16 +1158,28 @@ export async function commitOcrUpdates(): Promise<void> {
     }
   }
 
-  const run = (): Promise<void> => executeRosterCommit(selectedExisting, selectedNew, checkedRemovalPseudos, targetField);
+  const run = (): Promise<void> =>
+    executeRosterCommit(selectedExisting, selectedNew, checkedRemovalPseudos, targetField);
 
   if (checkedRemovalPseudos.length > 0) {
-    const listPreview = checkedRemovalPseudos.slice(0, 8).map((p) => esc(p)).join(', ') + (checkedRemovalPseudos.length > 8 ? ' and ' + (checkedRemovalPseudos.length - 8) + ' more' : '');
-    const confirmMsg = 'Are you sure you want to permanently remove <strong>' + checkedRemovalPseudos.length + ' member(s)</strong> (' + listPreview + ')?<br><br><span style="color:#f87171; font-size: var(--fs-base);">This permanently deletes the member and their event participations, shadowfront squads, weekly scores and sanctions.</span>';
+    const listPreview =
+      checkedRemovalPseudos
+        .slice(0, 8)
+        .map((p) => esc(p))
+        .join(', ') + (checkedRemovalPseudos.length > 8 ? ' and ' + (checkedRemovalPseudos.length - 8) + ' more' : '');
+    const confirmMsg =
+      'Are you sure you want to permanently remove <strong>' +
+      checkedRemovalPseudos.length +
+      ' member(s)</strong> (' +
+      listPreview +
+      ')?<br><br><span style="color:#f87171; font-size: var(--fs-base);">This permanently deletes the member and their event participations, shadowfront squads, weekly scores and sanctions.</span>';
     if (btnCommit) btnCommit.disabled = true;
     showConfirm(
       'Confirm Roster Removals',
       confirmMsg,
-      () => { void run(); },
+      () => {
+        void run();
+      },
       () => {
         if (btnCommit) {
           btnCommit.disabled = false;
@@ -994,7 +1194,10 @@ export async function commitOcrUpdates(): Promise<void> {
 }
 
 export async function executeRosterCommit(
-  selectedExisting: any[], selectedNew: any[], checkedRemovalPseudos: string[], targetField: string
+  selectedExisting: any[],
+  selectedNew: any[],
+  checkedRemovalPseudos: string[],
+  targetField: string
 ): Promise<void> {
   const btnCommit = byId<HTMLButtonElement>('ocr-commit-btn');
   if (btnCommit) {
@@ -1008,31 +1211,33 @@ export async function executeRosterCommit(
 
   try {
     const bulkRank = (rank: unknown): string | undefined =>
-      (typeof rank === 'string' && isRoleAllowedForBulk(rank)) ? rank : undefined;
+      typeof rank === 'string' && isRoleAllowedForBulk(rank) ? rank : undefined;
     const roster = members();
 
     // All of it or none of it (M4a, owner decision 2026-10-03): the import is
     // one database transaction. A refused row -- a UID already taken, a
     // banned one, an R5 removal -- now refuses the whole import and names the
     // row, where it used to be skipped, counted, and the rest applied.
-    const existingRows = selectedExisting.map((sp: any) => {
-      const existing = roster.find((m: any) => String(m.pseudo).toLowerCase() === String(sp.pseudo).toLowerCase());
-      if (!existing) return null;
-      const row: { pseudo: string; score: number; role?: string } = {
-        pseudo: existing.pseudo,
-        score: sp.score != null ? sp.score : (sp.overall_power || 0)
-      };
-      // A rank is only read by the Members OCR, and never overrides an R5.
-      const rank = metric === 'members' && targetField !== 'glory_score' ? bulkRank(sp.rank) : undefined;
-      if (rank && existing.role !== 'R5') row.role = rank;
-      return row;
-    }).filter(Boolean) as Array<{ pseudo: string; score: number; role?: string }>;
+    const existingRows = selectedExisting
+      .map((sp: any) => {
+        const existing = roster.find((m: any) => String(m.pseudo).toLowerCase() === String(sp.pseudo).toLowerCase());
+        if (!existing) return null;
+        const row: { pseudo: string; score: number; role?: string } = {
+          pseudo: existing.pseudo,
+          score: sp.score != null ? sp.score : sp.overall_power || 0,
+        };
+        // A rank is only read by the Members OCR, and never overrides an R5.
+        const rank = metric === 'members' && targetField !== 'glory_score' ? bulkRank(sp.rank) : undefined;
+        if (rank && existing.role !== 'R5') row.role = rank;
+        return row;
+      })
+      .filter(Boolean) as Array<{ pseudo: string; score: number; role?: string }>;
 
     const newRows = selectedNew.map((np: any) => ({
       pseudo: np.pseudo,
-      uid: (np.uid && String(np.uid).trim()) ? String(np.uid).trim() : null,
-      score: np.score != null ? np.score : (np.overall_power || 0),
-      role: bulkRank(np.rank) || 'R1'
+      uid: np.uid && String(np.uid).trim() ? String(np.uid).trim() : null,
+      score: np.score != null ? np.score : np.overall_power || 0,
+      role: bulkRank(np.rank) || 'R1',
     }));
 
     const result = await commitOcrRoster(targetField, existingRows, newRows, checkedRemovalPseudos);
@@ -1053,9 +1258,19 @@ export async function executeRosterCommit(
     } else {
       const tagInput = byId<HTMLInputElement>('ocr-guild-tag-input');
       const activeTag = tagInput && tagInput.value.trim() ? tagInput.value.trim() : '';
-      const curDiff = categorizeOcrDiff(getOcrExtractedPlayers(), members(), activeTag, targetField, meta.isMultiGuild, 'metric');
-      const skippedCount = (curDiff.unknown && curDiff.unknown.length) ? curDiff.unknown.length : 0;
-      summaryMsg = 'Updated ' + updatedCount + (skippedCount > 0 ? ' · Skipped ' + skippedCount + ' not in roster (use Members OCR)' : '');
+      const curDiff = categorizeOcrDiff(
+        getOcrExtractedPlayers(),
+        members(),
+        activeTag,
+        targetField,
+        meta.isMultiGuild,
+        'metric'
+      );
+      const skippedCount = curDiff.unknown && curDiff.unknown.length ? curDiff.unknown.length : 0;
+      summaryMsg =
+        'Updated ' +
+        updatedCount +
+        (skippedCount > 0 ? ' · Skipped ' + skippedCount + ' not in roster (use Members OCR)' : '');
     }
     if (failedCount > 0) summaryMsg += ' · Failed ' + failedCount;
     showToast(summaryMsg, failedCount > 0 ? 'warning' : 'success');

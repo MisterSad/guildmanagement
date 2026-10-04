@@ -12,20 +12,24 @@ const client = {
   from: vi.fn(),
   rpc: vi.fn(),
   functions: { invoke: vi.fn() },
-  auth: { getSession: vi.fn(async () => ({ data: { session: null } })) }
+  auth: { getSession: vi.fn(async () => ({ data: { session: null } })) },
 };
 
 vi.mock('../src/core/api/supabase', () => ({
   getClient: () => client,
-  ensureAuthSession: async () => {}
+  ensureAuthSession: async () => {},
 }));
 vi.mock('../src/core/auth/roles', () => ({ getActiveGuild: () => 'TA' }));
 
 // tests/setup.js has already loaded these modules for the GM bridge, with the
 // real client: load them again, against the mocks.
 vi.resetModules();
-const { getGuildConfig, setGuildConfig, isWebhookKey, purgeLocalWebhookCopies } = await import('../src/core/config/guild-config');
-const { configuredWebhooks, webhookChainIsSet, setDiscordWebhook, sendDiscordWebhookDetailed } = await import('../src/core/integrations/discord');
+const { getGuildConfig, setGuildConfig, isWebhookKey, purgeLocalWebhookCopies } = await import(
+  '../src/core/config/guild-config'
+);
+const { configuredWebhooks, webhookChainIsSet, setDiscordWebhook, sendDiscordWebhookDetailed } = await import(
+  '../src/core/integrations/discord'
+);
 
 beforeEach(() => {
   client.from.mockReset();
@@ -94,14 +98,20 @@ describe('the Discord integration asks which webhooks are set, never what they a
     const res = await setDiscordWebhook('webhook_gvg', '  https://discord.com/api/webhooks/1/x  ');
     expect(res.ok).toBe(true);
     expect(client.functions.invoke).toHaveBeenCalledWith('discord-webhook-proxy', {
-      body: { action: 'set-webhook', guild: 'TA', key: 'webhook_gvg', url: 'https://discord.com/api/webhooks/1/x' }
+      body: { action: 'set-webhook', guild: 'TA', key: 'webhook_gvg', url: 'https://discord.com/api/webhooks/1/x' },
     });
     expect(client.from).not.toHaveBeenCalled();
   });
 
   it('setDiscordWebhook surfaces the proxy refusal', async () => {
-    client.functions.invoke.mockResolvedValue({ data: { ok: false, error: 'invalid_discord_webhook_url' }, error: null });
-    expect(await setDiscordWebhook('webhook_gvg', 'https://evil.example/x')).toEqual({ ok: false, error: 'invalid_discord_webhook_url' });
+    client.functions.invoke.mockResolvedValue({
+      data: { ok: false, error: 'invalid_discord_webhook_url' },
+      error: null,
+    });
+    expect(await setDiscordWebhook('webhook_gvg', 'https://evil.example/x')).toEqual({
+      ok: false,
+      error: 'invalid_discord_webhook_url',
+    });
   });
 
   it('sending names the event, never a URL, and refuses a URL given in its place', async () => {
@@ -111,8 +121,10 @@ describe('the Discord integration asks which webhooks are set, never what they a
     expect(body.eventPrefix).toBe('gvg');
     expect(body.webhookUrl).toBeUndefined();
     expect(body.url).toBeUndefined();
-    expect(await sendDiscordWebhookDetailed('https://discord.com/api/webhooks/1/x', { content: 'hi' }))
-      .toEqual({ ok: false, error: 'client_webhook_url_not_allowed' });
+    expect(await sendDiscordWebhookDetailed('https://discord.com/api/webhooks/1/x', { content: 'hi' })).toEqual({
+      ok: false,
+      error: 'client_webhook_url_not_allowed',
+    });
     expect(client.from).not.toHaveBeenCalled();
   });
 });
@@ -130,7 +142,12 @@ describe('no front-end query reads a webhook row', () => {
     const offenders = [];
     for (const f of walk(path.resolve(__dirname, '../src'))) {
       const src = fs.readFileSync(f, 'utf-8');
-      if (/from\(['"]guild_config['"]\)[^;]*(webhook_|discord_webhook_url|DISCORD_WEBHOOK_KEYS)/s.test(src.replace(/;[\s\S]*?(?=from\()/g, ';'))) offenders.push(f);
+      if (
+        /from\(['"]guild_config['"]\)[^;]*(webhook_|discord_webhook_url|DISCORD_WEBHOOK_KEYS)/s.test(
+          src.replace(/;[\s\S]*?(?=from\()/g, ';')
+        )
+      )
+        offenders.push(f);
       if (/(getGuildConfig|configGet|config\.get)\(\s*['"`](webhook_|discord_webhook_url)/.test(src)) offenders.push(f);
       if (/(getGuildConfig|configGet|config\.get)\(\s*['"`]webhook_['"`]\s*\+/.test(src)) offenders.push(f);
     }

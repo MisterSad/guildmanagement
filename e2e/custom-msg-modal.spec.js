@@ -35,7 +35,7 @@ test('opens Discord message customizer and closes via Cancel button', async ({ p
   });
 
   const modal = page.locator('#custom-msg-modal');
-  if (await modal.count() > 0) {
+  if ((await modal.count()) > 0) {
     await expect(modal).toBeVisible();
 
     // Verify modal header title

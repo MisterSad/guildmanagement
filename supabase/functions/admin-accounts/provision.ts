@@ -43,10 +43,13 @@ export type ProvisionResult = { ok: true } | { ok: false; error: string; status:
 export async function provisionNewAccount(
   admin: AdminClient,
   logger: EdgeLogger,
-  account: { id: string; password: string; role: string; guild: string | null },
+  account: { id: string; password: string; role: string; guild: string | null }
 ): Promise<ProvisionResult> {
   const { error: uErr } = await admin.rpc("gm_admin_upsert", {
-    p_id: account.id, p_password: account.password, p_role: account.role, p_guild: account.guild,
+    p_id: account.id,
+    p_password: account.password,
+    p_role: account.role,
+    p_guild: account.guild,
   });
   if (uErr) {
     if (uErr.code === "23505") return { ok: false, error: "account_exists", status: 200 };
@@ -58,7 +61,10 @@ export async function provisionNewAccount(
   const secret = randomSecret();
   const meta = { app_role: account.role, account_id: account.id };
   const { data: created, error: cuErr } = await admin.auth.admin.createUser({
-    email, password: secret, email_confirm: true, app_metadata: meta,
+    email,
+    password: secret,
+    email_confirm: true,
+    app_metadata: meta,
   });
   let uid = created?.user?.id;
   if (cuErr || !uid) {
@@ -76,7 +82,11 @@ export async function provisionNewAccount(
     await admin.auth.admin.updateUserById(uid, { password: secret, app_metadata: meta });
   }
 
-  const { error: aErr } = await admin.rpc("gm_attach_shadow", { p_id: account.id, p_auth_user_id: uid, p_secret: secret });
+  const { error: aErr } = await admin.rpc("gm_attach_shadow", {
+    p_id: account.id,
+    p_auth_user_id: uid,
+    p_secret: secret,
+  });
   if (aErr) {
     logger.error("Failed gm_attach_shadow", aErr, { id: account.id, uid });
     return { ok: false, error: "server_error", status: 500 };

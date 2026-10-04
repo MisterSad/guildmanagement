@@ -4,56 +4,64 @@ import path from 'path';
 import { edgeSource, edgeFunctionBody } from './helpers/edge-source.js';
 
 describe('Guild Requests admin panel: discord_handle/note must always be HTML-escaped', () => {
-    // guild_creation_requests.discord_handle and .note are the first fully
-    // anonymous, unauthenticated free-text fields ever rendered into a
-    // privileged admin view in this app (submitted via the public
-    // guild-request Edge Function, no login required). A future edit that
-    // interpolates them without esc() would be a stored-XSS hole reachable
-    // by anyone, no account needed.
-    // Ported to /src in the Strangler cutover (was app.js).
-    const src = fs.readFileSync(path.resolve(__dirname, '../src/modules/app/admin/guild-requests.controller.ts'), 'utf-8');
+  // guild_creation_requests.discord_handle and .note are the first fully
+  // anonymous, unauthenticated free-text fields ever rendered into a
+  // privileged admin view in this app (submitted via the public
+  // guild-request Edge Function, no login required). A future edit that
+  // interpolates them without esc() would be a stored-XSS hole reachable
+  // by anyone, no account needed.
+  // Ported to /src in the Strangler cutover (was app.js).
+  const src = fs.readFileSync(
+    path.resolve(__dirname, '../src/modules/app/admin/guild-requests.controller.ts'),
+    'utf-8'
+  );
 
-    it('wraps r.note in esc() before interpolating into markup', () => {
-        expect(src).toMatch(/esc\(r\.note\)/);
-        expect(src).not.toMatch(/\+\s*r\.note\s*\+/);
-    });
+  it('wraps r.note in esc() before interpolating into markup', () => {
+    expect(src).toMatch(/esc\(r\.note\)/);
+    expect(src).not.toMatch(/\+\s*r\.note\s*\+/);
+  });
 
-    it('wraps r.discord_handle in esc() before interpolating into markup', () => {
-        expect(src).toMatch(/esc\(r\.discord_handle\)/);
-        expect(src).not.toMatch(/\+\s*r\.discord_handle\s*\+/);
-    });
+  it('wraps r.discord_handle in esc() before interpolating into markup', () => {
+    expect(src).toMatch(/esc\(r\.discord_handle\)/);
+    expect(src).not.toMatch(/\+\s*r\.discord_handle\s*\+/);
+  });
 
-    it('wraps r.guild_tag and r.admin_id in esc() too', () => {
-        expect(src).toMatch(/esc\(r\.guild_tag\)/);
-        expect(src).toMatch(/esc\(r\.admin_id\)/);
-    });
+  it('wraps r.guild_tag and r.admin_id in esc() too', () => {
+    expect(src).toMatch(/esc\(r\.guild_tag\)/);
+    expect(src).toMatch(/esc\(r\.admin_id\)/);
+  });
 });
 
 describe('Guild Requests: eligible-leaders-style RPC usage for approve/reject', () => {
-    const src = fs.readFileSync(path.resolve(__dirname, '../src/modules/app/admin/guild-requests.controller.ts'), 'utf-8');
+  const src = fs.readFileSync(
+    path.resolve(__dirname, '../src/modules/app/admin/guild-requests.controller.ts'),
+    'utf-8'
+  );
 
-    it('approve/reject guild requests go through the admin-accounts edge function, not a raw table write', () => {
-        expect(src).toMatch(/adminAccounts\(['"]approve-guild-request['"]/);
-        expect(src).toMatch(/adminAccounts\(['"]reject-guild-request['"]/);
-        expect(src).not.toMatch(/from\(['"]guild_creation_requests['"]\)\.update/);
-    });
+  it('approve/reject guild requests go through the admin-accounts edge function, not a raw table write', () => {
+    expect(src).toMatch(/adminAccounts\(['"]approve-guild-request['"]/);
+    expect(src).toMatch(/adminAccounts\(['"]reject-guild-request['"]/);
+    expect(src).not.toMatch(/from\(['"]guild_creation_requests['"]\)\.update/);
+  });
 
-    it('clear-history button goes through admin-accounts too, and asks for confirmation first', () => {
-        expect(src).toMatch(/adminAccounts\(['"]clear-resolved-guild-requests['"]/);
-        expect(src).toMatch(/showConfirm\(\s*['"]Clear Guild Request History['"][\s\S]{0,400}clear-resolved-guild-requests/);
-    });
+  it('clear-history button goes through admin-accounts too, and asks for confirmation first', () => {
+    expect(src).toMatch(/adminAccounts\(['"]clear-resolved-guild-requests['"]/);
+    expect(src).toMatch(
+      /showConfirm\(\s*['"]Clear Guild Request History['"][\s\S]{0,400}clear-resolved-guild-requests/
+    );
+  });
 });
 
 describe('Guild Requests: clearing history never touches pending requests', () => {
-    // The whole point of "Clear History" is to sweep away resolved rows an
-    // admin no longer needs to see -- it must never be able to silently
-    // delete a request someone hasn't reviewed yet.
-    const src = edgeSource('admin-accounts');
+  // The whole point of "Clear History" is to sweep away resolved rows an
+  // admin no longer needs to see -- it must never be able to silently
+  // delete a request someone hasn't reviewed yet.
+  const src = edgeSource('admin-accounts');
 
-    it('clear-resolved-guild-requests is gated to super_admin and filters out pending rows', () => {
-        expect(src).toContain('"clear-resolved-guild-requests": clearResolvedGuildRequests,');
-        const block = edgeFunctionBody('admin-accounts', 'clearResolvedGuildRequests');
-        expect(block).toContain('!isSuperAdmin(info.role)');
-        expect(block).toMatch(/\.neq\(\s*["']status["'],\s*["']pending["']\s*\)/);
-    });
+  it('clear-resolved-guild-requests is gated to super_admin and filters out pending rows', () => {
+    expect(src).toContain('"clear-resolved-guild-requests": clearResolvedGuildRequests,');
+    const block = edgeFunctionBody('admin-accounts', 'clearResolvedGuildRequests');
+    expect(block).toContain('!isSuperAdmin(info.role)');
+    expect(block).toMatch(/\.neq\(\s*["']status["'],\s*["']pending["']\s*\)/);
+  });
 });

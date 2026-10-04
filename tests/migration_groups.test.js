@@ -8,7 +8,10 @@ import fs from 'fs';
 import path from 'path';
 import { edgeSource } from './helpers/edge-source.js';
 
-const migrationPath = path.resolve(__dirname, '../supabase/migrations/20260830072000_cross_server_migration_groups.sql');
+const migrationPath = path.resolve(
+  __dirname,
+  '../supabase/migrations/20260830072000_cross_server_migration_groups.sql'
+);
 const content = fs.readFileSync(migrationPath, 'utf-8');
 
 describe('Cross-server migration groups migration', () => {
@@ -23,21 +26,36 @@ describe('Cross-server migration groups migration', () => {
   it('enables RLS gated on gm_can_read_guilds (read) and is_super_admin (write) — only a super admin can manage groups', () => {
     expect(content).toContain('ALTER TABLE public.server_migration_groups ENABLE ROW LEVEL SECURITY');
     expect(content).toContain('ALTER TABLE public.server_migration_group_servers ENABLE ROW LEVEL SECURITY');
-    expect(content).toMatch(/CREATE POLICY gm_smg_select ON public\.server_migration_groups[\s\S]*?USING \(public\.gm_can_read_guilds\(\)\)/);
-    expect(content).toMatch(/CREATE POLICY gm_smg_write ON public\.server_migration_groups[\s\S]*?USING \(public\.is_super_admin\(\)\)/);
-    expect(content).toMatch(/CREATE POLICY gm_smgs_select ON public\.server_migration_group_servers[\s\S]*?USING \(public\.gm_can_read_guilds\(\)\)/);
-    expect(content).toMatch(/CREATE POLICY gm_smgs_write ON public\.server_migration_group_servers[\s\S]*?USING \(public\.is_super_admin\(\)\)/);
+    expect(content).toMatch(
+      /CREATE POLICY gm_smg_select ON public\.server_migration_groups[\s\S]*?USING \(public\.gm_can_read_guilds\(\)\)/
+    );
+    expect(content).toMatch(
+      /CREATE POLICY gm_smg_write ON public\.server_migration_groups[\s\S]*?USING \(public\.is_super_admin\(\)\)/
+    );
+    expect(content).toMatch(
+      /CREATE POLICY gm_smgs_select ON public\.server_migration_group_servers[\s\S]*?USING \(public\.gm_can_read_guilds\(\)\)/
+    );
+    expect(content).toMatch(
+      /CREATE POLICY gm_smgs_write ON public\.server_migration_group_servers[\s\S]*?USING \(public\.is_super_admin\(\)\)/
+    );
   });
 
   it('defines servers_in_open_migration_group scoped to status = open', () => {
-    expect(content).toContain('CREATE OR REPLACE FUNCTION public.servers_in_open_migration_group(p_server_a text, p_server_b text)');
+    expect(content).toContain(
+      'CREATE OR REPLACE FUNCTION public.servers_in_open_migration_group(p_server_a text, p_server_b text)'
+    );
     expect(content).toContain("WHERE g.status = 'open'");
   });
 
   it('extends all 4 transfer-eligibility functions with the migration-group check, not just same-server', () => {
     // Each of the 4 functions must call the helper as an OR-alternative to
     // strict server equality, not replace the same-server check outright.
-    const transferFns = ['request_guild_transfer', 'gm_transfer_guild_member', 'resolve_guild_transfer', 'gm_admin_request_transfer'];
+    const transferFns = [
+      'request_guild_transfer',
+      'gm_transfer_guild_member',
+      'resolve_guild_transfer',
+      'gm_admin_request_transfer',
+    ];
     for (const fn of transferFns) {
       expect(content, `${fn} must be redefined in this migration`).toContain(`CREATE OR REPLACE FUNCTION public.${fn}`);
     }
@@ -56,7 +74,9 @@ describe('Cross-server migration groups migration', () => {
   it('adds gm_list_transfer_eligible_guilds returning same-server + open-group guilds, flagged is_same_server', () => {
     expect(content).toContain('CREATE OR REPLACE FUNCTION public.gm_list_transfer_eligible_guilds(p_guild text)');
     expect(content).toContain('is_same_server');
-    expect(content).toContain('GRANT EXECUTE ON FUNCTION public.gm_list_transfer_eligible_guilds(text) TO authenticated');
+    expect(content).toContain(
+      'GRANT EXECUTE ON FUNCTION public.gm_list_transfer_eligible_guilds(text) TO authenticated'
+    );
   });
 
   it('ends with a PostgREST schema reload notification, matching every other canonical migration', () => {
@@ -65,9 +85,18 @@ describe('Cross-server migration groups migration', () => {
 });
 
 describe('Cross-server migration groups UI wiring', () => {
-  const appJs = fs.readFileSync(path.resolve(__dirname, '../src/modules/app/admin/migration-groups.controller.ts'), 'utf-8');
-  const migrationService = fs.readFileSync(path.resolve(__dirname, '../src/modules/migration/migration.service.ts'), 'utf-8');
-  const membersCtrl = fs.readFileSync(path.resolve(__dirname, '../src/modules/app/members/members.controller.ts'), 'utf-8');
+  const appJs = fs.readFileSync(
+    path.resolve(__dirname, '../src/modules/app/admin/migration-groups.controller.ts'),
+    'utf-8'
+  );
+  const migrationService = fs.readFileSync(
+    path.resolve(__dirname, '../src/modules/migration/migration.service.ts'),
+    'utf-8'
+  );
+  const membersCtrl = fs.readFileSync(
+    path.resolve(__dirname, '../src/modules/app/members/members.controller.ts'),
+    'utf-8'
+  );
   const indexHtml = fs.readFileSync(path.resolve(__dirname, '../index.html'), 'utf-8');
   const portalJs = fs.readFileSync(path.resolve(__dirname, '../src/modules/portal/views/PortalView.ts'), 'utf-8');
   const memberPortalFn = edgeSource('member-portal');
@@ -81,8 +110,8 @@ describe('Cross-server migration groups UI wiring', () => {
   it('defines renderMigrationGroupsList and wires it into the Super Admin tab load path', () => {
     expect(appJs).toContain('function renderMigrationGroupsList');
     // The queries live in the migration service since M4b; the controller calls them.
-    expect(migrationService).toContain("server_migration_groups");
-    expect(migrationService).toContain("server_migration_group_servers");
+    expect(migrationService).toContain('server_migration_groups');
+    expect(migrationService).toContain('server_migration_group_servers');
     expect(appJs).toContain('queryMigrationGroups(db)');
     expect(appJs).toContain('queryMigrationGroupServers(db)');
     const callSites = (appJs.match(/renderMigrationGroupsList\(\);/g) || []).length;
@@ -91,7 +120,9 @@ describe('Cross-server migration groups UI wiring', () => {
 
   it('showTransferMemberDialog uses the backend-authoritative eligibility RPC and labels cross-server options', () => {
     expect(membersCtrl).toContain('listTransferEligibleGuilds(client, currentG)');
-    expect(fs.readFileSync(path.resolve(__dirname, '../src/modules/members/members.service.ts'), 'utf-8')).toContain("db.rpc('gm_list_transfer_eligible_guilds'");
+    expect(fs.readFileSync(path.resolve(__dirname, '../src/modules/members/members.service.ts'), 'utf-8')).toContain(
+      "db.rpc('gm_list_transfer_eligible_guilds'"
+    );
     expect(membersCtrl).toContain('Migration Window');
   });
 

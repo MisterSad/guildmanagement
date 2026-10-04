@@ -16,7 +16,9 @@ const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
 const html = read('index.html').replace(/<!--[\s\S]*?-->/g, '');
 const css = read('utilities.css');
 
-const used = new Set([...html.matchAll(/\sclass="([^"]*)"/g)].flatMap((m) => m[1].split(/\s+/)).filter((c) => c.startsWith('u-')));
+const used = new Set(
+  [...html.matchAll(/\sclass="([^"]*)"/g)].flatMap((m) => m[1].split(/\s+/)).filter((c) => c.startsWith('u-'))
+);
 const defined = new Set([...css.matchAll(/^(?::where\()?\.(u-[A-Za-z0-9_-]+)\)?\s*\{/gm)].map((m) => m[1]));
 
 describe('index.html styles', () => {
@@ -38,7 +40,18 @@ describe('index.html styles', () => {
   it('marks important only the properties the code never writes through element.style', () => {
     // An inline write (el.style.display = 'flex') must keep beating the class,
     // as it beat the attribute the class replaced.
-    for (const prop of ['display', 'color', 'background', 'border-color', 'position', 'z-index', 'top', 'left', 'height', 'transition']) {
+    for (const prop of [
+      'display',
+      'color',
+      'background',
+      'border-color',
+      'position',
+      'z-index',
+      'top',
+      'left',
+      'height',
+      'transition',
+    ]) {
       expect(css, prop).not.toMatch(new RegExp(`\\{ ${prop}: [^;]*!important`));
     }
   });

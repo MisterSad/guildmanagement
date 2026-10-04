@@ -10,11 +10,14 @@ import path from 'node:path';
 const FUNCTIONS = path.resolve(__dirname, '../../supabase/functions');
 
 function modules(dir) {
-  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
-    const p = path.join(dir, e.name);
-    if (e.isDirectory()) return e.name.startsWith('__') ? [] : modules(p);
-    return e.name.endsWith('.ts') && !e.name.endsWith('.test.ts') ? [p] : [];
-  }).sort();
+  return fs
+    .readdirSync(dir, { withFileTypes: true })
+    .flatMap((e) => {
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) return e.name.startsWith('__') ? [] : modules(p);
+      return e.name.endsWith('.ts') && !e.name.endsWith('.test.ts') ? [p] : [];
+    })
+    .sort();
 }
 
 export function edgeSource(name) {

@@ -40,9 +40,9 @@ describe('cva — class-variance-authority recipes', () => {
   const recipe = cva('gm-ui-switch', {
     variants: {
       size: { sm: 'gm-ui-switch-sm', md: 'gm-ui-switch-md' },
-      accent: { svs: 'gm-ui-accent-svs', gvg: 'gm-ui-accent-gvg' }
+      accent: { svs: 'gm-ui-accent-svs', gvg: 'gm-ui-accent-gvg' },
     },
-    defaultVariants: { size: 'md' }
+    defaultVariants: { size: 'md' },
   });
 
   it('returns the base when no variant prop is provided', () => {
@@ -68,16 +68,28 @@ describe('theme.css — semantic shadcn token layer over tokens.css', () => {
   const tokens = read('tokens.css');
 
   const SHADCN_TOKENS = [
-    '--background', '--foreground',
-    '--card', '--card-foreground',
-    '--popover', '--popover-foreground',
-    '--primary', '--primary-foreground',
-    '--secondary', '--secondary-foreground',
-    '--muted', '--muted-foreground',
-    '--accent', '--accent-foreground',
-    '--destructive', '--destructive-foreground',
-    '--border', '--input', '--ring',
-    '--radius', '--radius-sm', '--radius-lg'
+    '--background',
+    '--foreground',
+    '--card',
+    '--card-foreground',
+    '--popover',
+    '--popover-foreground',
+    '--primary',
+    '--primary-foreground',
+    '--secondary',
+    '--secondary-foreground',
+    '--muted',
+    '--muted-foreground',
+    '--accent',
+    '--accent-foreground',
+    '--destructive',
+    '--destructive-foreground',
+    '--border',
+    '--input',
+    '--ring',
+    '--radius',
+    '--radius-sm',
+    '--radius-lg',
   ];
 
   it('declares every canonical shadcn token', () => {

@@ -15,8 +15,11 @@ const read = (p) => fs.readFileSync(path.resolve(root, p), 'utf-8');
 const exists = (p) => fs.existsSync(path.resolve(root, p));
 
 function walk(dir) {
-  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
-    e.isDirectory() ? walk(path.join(dir, e.name)) : (/\.(ts|js)$/.test(e.name) ? [path.join(dir, e.name)] : []));
+  return fs
+    .readdirSync(dir, { withFileTypes: true })
+    .flatMap((e) =>
+      e.isDirectory() ? walk(path.join(dir, e.name)) : /\.(ts|js)$/.test(e.name) ? [path.join(dir, e.name)] : []
+    );
 }
 
 describe('no passkey code in the app', () => {
@@ -30,7 +33,11 @@ describe('no passkey code in the app', () => {
     for (const f of walk(path.join(root, 'src'))) {
       if (f.endsWith('database.generated.ts')) continue;
       const src = fs.readFileSync(f, 'utf-8');
-      if (/navigator\.credentials|PublicKeyCredential|GM\.webauthn|\.webauthn\b|auth-passkey|loginWithPasskey|ConditionalPasskey|wirePasskeyLoginButton|adminResetPasskeys|maybeShowSecureAccountPrompt/.test(src)) {
+      if (
+        /navigator\.credentials|PublicKeyCredential|GM\.webauthn|\.webauthn\b|auth-passkey|loginWithPasskey|ConditionalPasskey|wirePasskeyLoginButton|adminResetPasskeys|maybeShowSecureAccountPrompt/.test(
+          src
+        )
+      ) {
         offenders.push(path.relative(root, f));
       }
     }
@@ -62,8 +69,9 @@ describe('no passkey path on the server', () => {
     const sql = read('supabase/migrations/20261003165501_remove_passkeys.sql');
     expect(sql).toContain('DROP TABLE IF EXISTS public.webauthn_challenges;');
     expect(sql).toContain('DROP TABLE IF EXISTS public.account_passkeys;');
-    expect(sql.indexOf('CREATE OR REPLACE FUNCTION public.gm_purge_discord_ephemera()'))
-      .toBeLessThan(sql.indexOf('DROP TABLE IF EXISTS public.account_passkeys;'));
+    expect(sql.indexOf('CREATE OR REPLACE FUNCTION public.gm_purge_discord_ephemera()')).toBeLessThan(
+      sql.indexOf('DROP TABLE IF EXISTS public.account_passkeys;')
+    );
     expect(sql).toContain("RAISE EXCEPTION 'a function still names a dropped passkey table'");
     expect(sql).toContain("RAISE EXCEPTION 'the super_admin recovery codes must survive'");
   });

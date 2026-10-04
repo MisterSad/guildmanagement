@@ -30,10 +30,18 @@ export function normalizeRole(r: string | null | undefined): Role {
  * already normalised (resolveCaller does) and one reading a raw row get the
  * same answer they had with an inline `role === "..."`.
  */
-export function isSuperAdmin(r: string | null | undefined): boolean { return r === "super_admin"; }
-export function isServerAdmin(r: string | null | undefined): boolean { return r === "server_admin"; }
-export function isGuildAdmin(r: string | null | undefined): boolean { return r === "guild_admin"; }
-export function isMember(r: string | null | undefined): boolean { return r === "member"; }
+export function isSuperAdmin(r: string | null | undefined): boolean {
+  return r === "super_admin";
+}
+export function isServerAdmin(r: string | null | undefined): boolean {
+  return r === "server_admin";
+}
+export function isGuildAdmin(r: string | null | undefined): boolean {
+  return r === "guild_admin";
+}
+export function isMember(r: string | null | undefined): boolean {
+  return r === "member";
+}
 /** Any of the three administrative roles. */
 export function isAdminRole(r: string | null | undefined): boolean {
   return isSuperAdmin(r) || isServerAdmin(r) || isGuildAdmin(r);

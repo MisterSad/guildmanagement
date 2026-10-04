@@ -1,12 +1,7 @@
 // 2026-09-13 -- Phase 3 P3-01/P3-02: unified fetch-error classification and
 // inline-retry / session-invalidation behavior.
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import {
-  mapFetchError,
-  isAbortError,
-  toastFetchError,
-  configureFetchErrorRuntime
-} from '../src/core/api/fetch-errors';
+import { mapFetchError, isAbortError, toastFetchError, configureFetchErrorRuntime } from '../src/core/api/fetch-errors';
 
 describe('mapFetchError', () => {
   it('classifies network failures (offline)', () => {

@@ -31,7 +31,7 @@ describe('the docs do not describe features that were removed', () => {
   const removed = [
     [/plans from one month to lifetime/i, 'paid subscription plans (ADR-015)'],
     [/opt in to push notifications/i, 'Web Push opt-in (ADR-016)'],
-    [/Add to Home Screen/i, 'the PWA install prompt (ADR-016)']
+    [/Add to Home Screen/i, 'the PWA install prompt (ADR-016)'],
   ];
   for (const [re, what] of removed) {
     it(`README no longer advertises ${what}`, () => {
@@ -60,7 +60,13 @@ describe('the docs do not describe features that were removed', () => {
       .join('\n');
     expect(bullets.length, 'no inventory bullets parsed: the check would be vacuous').toBeGreaterThan(200);
 
-    for (const gone of ['player_push_prefs', 'push_subscriptions', 'gm_payments', 'diplomatic_treaties', 'e2ee_messages']) {
+    for (const gone of [
+      'player_push_prefs',
+      'push_subscriptions',
+      'gm_payments',
+      'diplomatic_treaties',
+      'e2ee_messages',
+    ]) {
       // Naming one is fine if the line says it is gone; listing it as present is not.
       const listed = bullets
         .split('\n')
@@ -88,9 +94,7 @@ describe('the counts in ARCHITECTURE match the repository', () => {
     // diagram still lists it by name.
     const listed = [...arch.matchAll(/├─ `([a-z0-9-]+)`:/g)].map((m) => m[1]);
     expect(listed.length).toBeGreaterThan(8);
-    const missing = listed.filter(
-      (name) => !fs.existsSync(path.join(rootDir, 'supabase/functions', name))
-    );
+    const missing = listed.filter((name) => !fs.existsSync(path.join(rootDir, 'supabase/functions', name)));
     expect(missing, `documented but absent: ${missing.join(', ')}`).toEqual([]);
   });
 
@@ -148,7 +152,7 @@ describe('the ADRs record the decisions the phases made', () => {
     ['ADR-015', /permanently[- ]free/i, 'the app is free'],
     ['ADR-016', /pwa-and-web-push-retirement/, 'the PWA and push are gone'],
     ['ADR-017', /deployed-edge-functions-must-be-versioned/, 'every deployed function has source here'],
-    ['ADR-018', /gdpr-data-inventory-retention-and-erasure/, 'GDPR']
+    ['ADR-018', /gdpr-data-inventory-retention-and-erasure/, 'GDPR'],
   ];
   for (const [id, file, what] of required) {
     it(`${id} exists, is indexed, and covers ${what}`, () => {

@@ -4,7 +4,14 @@
  */
 
 import { findUserByEmail } from "../../_shared/pagination.ts";
-import { canManageAccount, isGuildAdmin, isGuildInScope, isMember, isServerAdmin, isSuperAdmin } from "../../_shared/admin-authz.ts";
+import {
+  canManageAccount,
+  isGuildAdmin,
+  isGuildInScope,
+  isMember,
+  isServerAdmin,
+  isSuperAdmin,
+} from "../../_shared/admin-authz.ts";
 import { escapeLike } from "../../_shared/like.ts";
 import { bumpSessionVersion, getTargetCtx } from "../../_shared/registration-decision.ts";
 import { emailFor, randomSecret } from "../../_shared/shadow-session.ts";
@@ -24,8 +31,8 @@ export async function list(ctx: AdminContext): Promise<Response> {
   let accountsList = data ?? [];
   if (isGuildAdmin(info.role)) {
     const callerGuildNorm = callerGuild ? String(callerGuild).trim().toUpperCase() : "";
-    accountsList = accountsList.filter((acc: any) =>
-      acc.guild && callerGuildNorm && String(acc.guild).trim().toUpperCase() === callerGuildNorm
+    accountsList = accountsList.filter(
+      (acc: any) => acc.guild && callerGuildNorm && String(acc.guild).trim().toUpperCase() === callerGuildNorm
     );
   } else if (isServerAdmin(info.role)) {
     const { data: guildsOnServer } = await admin
@@ -33,9 +40,10 @@ export async function list(ctx: AdminContext): Promise<Response> {
       .select("id")
       .eq("server_number", info.serverNumber || "");
     const allowedGuildIds = new Set((guildsOnServer || []).map((g: any) => String(g.id).trim().toUpperCase()));
-    accountsList = accountsList.filter((acc: any) =>
-      (acc.guild && allowedGuildIds.has(String(acc.guild).trim().toUpperCase())) ||
-      (acc.server_number && String(acc.server_number) === String(info.serverNumber))
+    accountsList = accountsList.filter(
+      (acc: any) =>
+        (acc.guild && allowedGuildIds.has(String(acc.guild).trim().toUpperCase())) ||
+        (acc.server_number && String(acc.server_number) === String(info.serverNumber))
     );
   }
   return json({ ok: true, accounts: accountsList });
@@ -67,7 +75,10 @@ export async function create(ctx: AdminContext): Promise<Response> {
     const requestedRole = createParsed.data.role ?? "guild_admin";
     accRole = isMember(requestedRole) ? "member" : "guild_admin";
     if (requestedRole !== accRole) {
-      logger.warn("Server admin attempted role elevation in account create; clamped to guild_admin", { requestedRole, clampedTo: accRole });
+      logger.warn("Server admin attempted role elevation in account create; clamped to guild_admin", {
+        requestedRole,
+        clampedTo: accRole,
+      });
     }
     if (!accGuild || accGuild === "ALL") {
       return json({ ok: false, error: "guild_admin_must_have_guild" }, 200);
@@ -75,7 +86,11 @@ export async function create(ctx: AdminContext): Promise<Response> {
     const { data: g } = await admin.from("guilds").select("server_number").eq("id", accGuild).maybeSingle();
     const targetServer = g?.server_number ?? null;
     if (!isGuildInScope(info, accGuild, targetServer)) {
-      logger.warn("Server admin attempted to create account for out-of-scope guild", { callerServer: info.serverNumber, targetGuild: accGuild, targetServer });
+      logger.warn("Server admin attempted to create account for out-of-scope guild", {
+        callerServer: info.serverNumber,
+        targetGuild: accGuild,
+        targetServer,
+      });
       return json({ ok: false, error: "forbidden" }, 403);
     }
     accServerNum = info.serverNumber;
@@ -133,7 +148,7 @@ export async function updateRole(ctx: AdminContext): Promise<Response> {
 
   let targetServerNumber = serverNumber;
   if (isServerAdmin(newRole) && !targetServerNumber) {
-    const gId = (guild !== undefined ? guild : targetAcc.guild);
+    const gId = guild !== undefined ? guild : targetAcc.guild;
     if (gId && gId !== "ALL") {
       const { data: g } = await admin.from("guilds").select("server_number").eq("id", gId).maybeSingle();
       if (g && g.server_number) targetServerNumber = g.server_number;
@@ -144,7 +159,7 @@ export async function updateRole(ctx: AdminContext): Promise<Response> {
     role: newRole,
   };
   if (guild !== undefined) {
-    updateFields.guild = (guild === "ALL" ? null : guild);
+    updateFields.guild = guild === "ALL" ? null : guild;
   }
   if (targetServerNumber !== undefined) {
     updateFields.server_number = targetServerNumber;
@@ -152,18 +167,11 @@ export async function updateRole(ctx: AdminContext): Promise<Response> {
 
   // M4: a role change bumps session_version so all previously issued JWT
   // claims for this account stop matching gm_session_is_valid().
-  const { data: curVer } = await admin
-    .from("accounts")
-    .select("session_version")
-    .eq("id", targetAcc.id)
-    .maybeSingle();
+  const { data: curVer } = await admin.from("accounts").select("session_version").eq("id", targetAcc.id).maybeSingle();
   const nextSessionVersion = ((curVer?.session_version ?? 0) | 0) + 1;
   updateFields.session_version = nextSessionVersion;
 
-  const { error: updErr } = await admin
-    .from("accounts")
-    .update(updateFields)
-    .eq("id", targetAcc.id);
+  const { error: updErr } = await admin.from("accounts").update(updateFields).eq("id", targetAcc.id);
 
   if (updErr) {
     logger.error("Failed to update account role", updErr, { id, newRole });
@@ -173,7 +181,7 @@ export async function updateRole(ctx: AdminContext): Promise<Response> {
   if (targetAcc.auth_user_id) {
     try {
       await admin.auth.admin.updateUserById(targetAcc.auth_user_id, {
-        app_metadata: { app_role: newRole, account_id: targetAcc.id, session_version: nextSessionVersion }
+        app_metadata: { app_role: newRole, account_id: targetAcc.id, session_version: nextSessionVersion },
       });
     } catch (err) {
       logger.warn("Failed to sync GoTrue app_role on update-role", { id: targetAcc.id, error: err });
@@ -200,7 +208,11 @@ export async function deleteAccount(ctx: AdminContext): Promise<Response> {
 
   const targetCtx = await getTargetCtx(admin, targetAcc);
   if (!canManageAccount(info, targetCtx)) {
-    logger.warn("Forbidden attempt to delete account", { callerRole: info.role, targetId: id, targetRole: targetAcc.role });
+    logger.warn("Forbidden attempt to delete account", {
+      callerRole: info.role,
+      targetId: id,
+      targetRole: targetAcc.role,
+    });
     return json({ ok: false, error: "forbidden" }, 403);
   }
 
@@ -212,7 +224,9 @@ export async function deleteAccount(ctx: AdminContext): Promise<Response> {
   if (uid) {
     try {
       await admin.auth.admin.deleteUser(uid as string);
-    } catch (_) { /* GoTrue delete best-effort */ }
+    } catch (_) {
+      /* GoTrue delete best-effort */
+    }
   }
 
   logger.info("Admin deleted account", { deletedId: id });
@@ -256,10 +270,7 @@ export async function updateGuild(ctx: AdminContext): Promise<Response> {
     return json({ ok: false, error: "guild_admin_must_have_guild" }, 200);
   }
 
-  const { error } = await admin
-    .from("accounts")
-    .update({ guild: targetGuild })
-    .eq("id", id);
+  const { error } = await admin.from("accounts").update({ guild: targetGuild }).eq("id", id);
   if (error) {
     logger.error("Failed to update account guild", error, { id, targetGuild });
     return json({ ok: false, error: "server_error" }, 500);
@@ -285,14 +296,21 @@ export async function resetPassword(ctx: AdminContext): Promise<Response> {
 
   const targetCtx = await getTargetCtx(admin, targetAcc);
   if (!canManageAccount(info, targetCtx)) {
-    logger.warn("Forbidden attempt to reset target account password", { callerRole: info.role, targetId: id, targetRole: targetAcc.role });
+    logger.warn("Forbidden attempt to reset target account password", {
+      callerRole: info.role,
+      targetId: id,
+      targetRole: targetAcc.role,
+    });
     return json({ ok: false, error: "forbidden" }, 403);
   }
 
   const canonicalId = targetAcc.id;
   // Always generate password server-side; ignore any client-supplied body.password
   const newPassword = randomSecret().slice(0, 16);
-  const { data: rpcData, error: rpcErr } = await admin.rpc("gm_reset_account_password", { p_id: canonicalId, p_password: newPassword });
+  const { data: rpcData, error: rpcErr } = await admin.rpc("gm_reset_account_password", {
+    p_id: canonicalId,
+    p_password: newPassword,
+  });
   if (rpcErr) {
     logger.error("Error executing gm_reset_account_password", rpcErr, { canonicalId });
     return json({ ok: false, error: "server_error", message: rpcErr.message }, 500);
@@ -307,13 +325,18 @@ export async function resetPassword(ctx: AdminContext): Promise<Response> {
   if (row?.auth_user_id && row?.gotrue_secret) {
     try {
       await admin.auth.admin.updateUserById(row.auth_user_id, { password: row.gotrue_secret });
-    } catch (_) { /* best-effort */ }
+    } catch (_) {
+      /* best-effort */
+    }
   } else if (!row?.auth_user_id) {
     const email = await emailFor(canonicalId);
     const secret = randomSecret();
     const meta = { app_role: targetAcc.role || "guild_admin", account_id: canonicalId };
     const { data: created, error: cuErr } = await admin.auth.admin.createUser({
-      email, password: secret, email_confirm: true, app_metadata: meta,
+      email,
+      password: secret,
+      email_confirm: true,
+      app_metadata: meta,
     });
     let uid = created?.user?.id;
     if (cuErr || !uid) {

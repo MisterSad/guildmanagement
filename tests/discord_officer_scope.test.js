@@ -21,10 +21,20 @@ function fakeSupabase(tables, { failOn } = {}) {
     from(table) {
       let rows = tables[table] || [];
       const q = {
-        select() { return q; },
-        eq(col, val) { rows = rows.filter((r) => r[col] === val); return q; },
-        in(col, vals) { rows = rows.filter((r) => vals.includes(r[col])); return q; },
-        maybeSingle() { return Promise.resolve({ data: rows[0] ?? null, error: null }); },
+        select() {
+          return q;
+        },
+        eq(col, val) {
+          rows = rows.filter((r) => r[col] === val);
+          return q;
+        },
+        in(col, vals) {
+          rows = rows.filter((r) => vals.includes(r[col]));
+          return q;
+        },
+        maybeSingle() {
+          return Promise.resolve({ data: rows[0] ?? null, error: null });
+        },
         then(resolve) {
           if (failOn === table) return resolve({ data: null, error: new Error('boom') });
           return resolve({ data: rows, error: null });
@@ -46,12 +56,15 @@ describe('the worker mirrors the Edge Functions authorization rules', () => {
 
   it('isGuildInScope agrees on the full matrix', () => {
     let cases = 0;
-    for (const role of roles) for (const cg of guilds) for (const cs of servers)
-      for (const tg of guilds) for (const ts of servers) {
-        const caller = { role: role ? edge.normalizeRole(role) : null, guild: cg, serverNumber: cs };
-        expect(worker.isGuildInScope(caller, tg, ts)).toBe(edge.isGuildInScope(caller, tg, ts));
-        cases++;
-      }
+    for (const role of roles)
+      for (const cg of guilds)
+        for (const cs of servers)
+          for (const tg of guilds)
+            for (const ts of servers) {
+              const caller = { role: role ? edge.normalizeRole(role) : null, guild: cg, serverNumber: cs };
+              expect(worker.isGuildInScope(caller, tg, ts)).toBe(edge.isGuildInScope(caller, tg, ts));
+              cases++;
+            }
     expect(cases).toBeGreaterThan(1000);
   });
 

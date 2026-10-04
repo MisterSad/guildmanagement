@@ -50,7 +50,7 @@ export function buildOfficerClocks(
       offset,
       color,
       timezone: m.timezone || null,
-      role: m.role || null
+      role: m.role || null,
     };
   });
 }
@@ -85,9 +85,7 @@ export function formatCountdown(iso: string | null | undefined, nowLabel: string
   if (isNaN(ms)) return '';
   if (ms <= 0) return nowLabel;
   const total = Math.floor(ms / 1000);
-  return pad2(Math.floor(total / 3600)) + ':' +
-    pad2(Math.floor((total % 3600) / 60)) + ':' +
-    pad2(total % 60);
+  return pad2(Math.floor(total / 3600)) + ':' + pad2(Math.floor((total % 3600) / 60)) + ':' + pad2(total % 60);
 }
 
 export function relativeTime(iso: string | null | undefined, nowLabel: string): string {
@@ -158,7 +156,11 @@ export function queryGloryScores(db: DbClient, weekStart: string) {
 
 /** The five most recent sanctions (the caller adds the guild filter). */
 export function queryRecentSanctions(db: DbClient) {
-  return db.from('sanctions').select('id, pseudo, comment, created_by, created_at').order('created_at', { ascending: false }).limit(5);
+  return db
+    .from('sanctions')
+    .select('id, pseudo, comment, created_by, created_at')
+    .order('created_at', { ascending: false })
+    .limit(5);
 }
 
 /** The five most recently added members (the caller adds the guild filter). */
@@ -168,7 +170,13 @@ export function queryRecentMembers(db: DbClient) {
 
 /** The five latest approved transfers into or out of the guild. */
 export function queryRecentTransfers(db: DbClient, currentG: string | null) {
-  return db.from('guild_transfers').select('pseudo, source_guild, target_guild, resolved_at').eq('status', 'approved').or('source_guild.eq.' + currentG + ',target_guild.eq.' + currentG).order('resolved_at', { ascending: false }).limit(5);
+  return db
+    .from('guild_transfers')
+    .select('pseudo, source_guild, target_guild, resolved_at')
+    .eq('status', 'approved')
+    .or('source_guild.eq.' + currentG + ',target_guild.eq.' + currentG)
+    .order('resolved_at', { ascending: false })
+    .limit(5);
 }
 
 /** Every member's overall power (the caller adds the guild filter). */

@@ -18,14 +18,14 @@ import { patchAppState } from '../src/core/state/app-state';
 // The view imports showToast directly (no more bridge read since M4c).
 vi.mock('../src/core/dom/toast', async (importOriginal) => ({
   ...(await importOriginal()),
-  showToast: vi.fn()
+  showToast: vi.fn(),
 }));
 
 const MEMBERS = [
   { pseudo: 'Alpha', guild: 'ALPHA', uid: 'uid1', overall_power: 100000000 },
   { pseudo: 'Bravo', guild: 'ALPHA', uid: 'uid2', overall_power: 50000000 },
   { pseudo: 'Charlie', guild: 'ALPHA', uid: 'uid3', overall_power: 10000000 },
-  { pseudo: 'Delta', guild: 'ALPHA', uid: 'uid4', overall_power: 75000000 }
+  { pseudo: 'Delta', guild: 'ALPHA', uid: 'uid4', overall_power: 75000000 },
 ];
 
 let tables = {};
@@ -36,25 +36,38 @@ function chained(value) {
   const chain = {
     select: () => chain,
     order: () => chain,
-    eq: (field, val) => { filters.push((r) => r[field] === val); return chain; },
-    in: (field, list) => { filters.push((r) => list.indexOf(r[field]) !== -1); return chain; },
+    eq: (field, val) => {
+      filters.push((r) => r[field] === val);
+      return chain;
+    },
+    in: (field, list) => {
+      filters.push((r) => list.indexOf(r[field]) !== -1);
+      return chain;
+    },
     limit: () => chain,
-    range: (from, to) => { range = [from, to]; return chain; },
+    range: (from, to) => {
+      range = [from, to];
+      return chain;
+    },
     single: () => chain,
     delete: () => chain,
     maybeSingle: () => ({
       then: (resolve) => {
         let res = (value || []).slice();
-        filters.forEach((f) => { res = res.filter(f); });
+        filters.forEach((f) => {
+          res = res.filter(f);
+        });
         return Promise.resolve({ data: res[0] || null, error: null }).then(resolve);
-      }
+      },
     }),
     then: (resolve) => {
       let res = (value || []).slice();
-      filters.forEach((f) => { res = res.filter(f); });
+      filters.forEach((f) => {
+        res = res.filter(f);
+      });
       if (range) res = res.slice(range[0], range[1] + 1);
       return Promise.resolve({ data: res, error: null }).then(resolve);
-    }
+    },
   };
   return chain;
 }
@@ -62,7 +75,7 @@ function chained(value) {
 function installDb() {
   setDbClient({
     from: (table) => chained(tables[table] || []),
-    functions: { invoke: vi.fn().mockResolvedValue({ data: { ok: false, error: 'n/a' } }) }
+    functions: { invoke: vi.fn().mockResolvedValue({ data: { ok: false, error: 'n/a' } }) },
   });
 }
 
@@ -83,21 +96,45 @@ function click(selector) {
 function baseTables() {
   return {
     event_status: [
-      { event_name: 'Shadowfront Squad 1', guild: 'ALPHA', is_active: true, session_id: 'S1', start_at: '2026-08-02T12:00:00Z' },
-      { event_name: 'Shadowfront Squad 2', guild: 'ALPHA', is_active: false, session_id: null, start_at: null }
+      {
+        event_name: 'Shadowfront Squad 1',
+        guild: 'ALPHA',
+        is_active: true,
+        session_id: 'S1',
+        start_at: '2026-08-02T12:00:00Z',
+      },
+      { event_name: 'Shadowfront Squad 2', guild: 'ALPHA', is_active: false, session_id: null, start_at: null },
     ],
     guild_members: MEMBERS,
     shadowfront_squads: [
-      { pseudo: 'Alpha', guild: 'ALPHA', session_id: 'S1', squad: 'squad1', role: 'participant', is_commander: true, week_start: '2026-08-02' }
+      {
+        pseudo: 'Alpha',
+        guild: 'ALPHA',
+        session_id: 'S1',
+        squad: 'squad1',
+        role: 'participant',
+        is_commander: true,
+        week_start: '2026-08-02',
+      },
     ],
     event_participants: [
-      { pseudo: 'Alpha', guild: 'ALPHA', event_name: 'Shadowfront', session_id: 'S1', participated: 0, late: false, excused: false, sub_present: false, week_start: '2026-08-02' }
+      {
+        pseudo: 'Alpha',
+        guild: 'ALPHA',
+        event_name: 'Shadowfront',
+        session_id: 'S1',
+        participated: 0,
+        late: false,
+        excused: false,
+        sub_present: false,
+        week_start: '2026-08-02',
+      },
     ],
     shadowfront_signups: [
       { pseudo: 'Alpha', guild: 'ALPHA', availability: 'squad1', week_start: '2026-08-02' },
       { pseudo: 'Bravo', guild: 'ALPHA', availability: 'squad2', week_start: '2026-08-02' },
-      { pseudo: 'Delta', guild: 'ALPHA', availability: 'squad1', week_start: '2026-08-02' }
-    ]
+      { pseudo: 'Delta', guild: 'ALPHA', availability: 'squad1', week_start: '2026-08-02' },
+    ],
   };
 }
 
@@ -165,19 +202,67 @@ describe('ShadowfrontView golden results (post shadowfront.js cutover)', () => {
     const fixture = () => {
       const t = baseTables();
       t.event_participants = [
-        { pseudo: 'Alpha', guild: 'ALPHA', event_name: 'Shadowfront', session_id: 'S1', participated: 1, late: false, excused: false, sub_present: false, week_start: '2026-08-02' },
-        { pseudo: 'Alpha', guild: 'ALPHA', event_name: 'Shadowfront', session_id: 'S2', participated: 1, late: false, excused: false, sub_present: false, week_start: '2026-08-09' },
-        { pseudo: 'Bravo', guild: 'ALPHA', event_name: 'Shadowfront', session_id: 'S1', participated: 0, late: false, excused: false, sub_present: false, week_start: '2026-08-02' }
+        {
+          pseudo: 'Alpha',
+          guild: 'ALPHA',
+          event_name: 'Shadowfront',
+          session_id: 'S1',
+          participated: 1,
+          late: false,
+          excused: false,
+          sub_present: false,
+          week_start: '2026-08-02',
+        },
+        {
+          pseudo: 'Alpha',
+          guild: 'ALPHA',
+          event_name: 'Shadowfront',
+          session_id: 'S2',
+          participated: 1,
+          late: false,
+          excused: false,
+          sub_present: false,
+          week_start: '2026-08-09',
+        },
+        {
+          pseudo: 'Bravo',
+          guild: 'ALPHA',
+          event_name: 'Shadowfront',
+          session_id: 'S1',
+          participated: 0,
+          late: false,
+          excused: false,
+          sub_present: false,
+          week_start: '2026-08-02',
+        },
       ];
       t.shadowfront_squads = [
-        { pseudo: 'Alpha', guild: 'ALPHA', session_id: 'S1', squad: 'squad1', role: 'participant', is_commander: true, week_start: '2026-08-02' },
-        { pseudo: 'Bravo', guild: 'ALPHA', session_id: 'S1', squad: 'squad1', role: 'reserve', is_commander: false, week_start: '2026-08-02' }
+        {
+          pseudo: 'Alpha',
+          guild: 'ALPHA',
+          session_id: 'S1',
+          squad: 'squad1',
+          role: 'participant',
+          is_commander: true,
+          week_start: '2026-08-02',
+        },
+        {
+          pseudo: 'Bravo',
+          guild: 'ALPHA',
+          session_id: 'S1',
+          squad: 'squad1',
+          role: 'reserve',
+          is_commander: false,
+          week_start: '2026-08-02',
+        },
       ];
       return t;
     };
 
     await runView([], fixture);
-    const stats = Array.from(document.querySelectorAll('#event-shadowfront .sf-assigned-row .sf-hist-stat')).map((el) => el.textContent);
+    const stats = Array.from(document.querySelectorAll('#event-shadowfront .sf-assigned-row .sf-hist-stat')).map(
+      (el) => el.textContent
+    );
     expect(stats).toEqual(['1/1', '-']);
   });
 
@@ -186,14 +271,48 @@ describe('ShadowfrontView golden results (post shadowfront.js cutover)', () => {
       const t = baseTables();
       t.event_status = [
         { event_name: 'Shadowfront Squad 1', guild: 'ALPHA', is_active: false, session_id: 'S1', start_at: null },
-        { event_name: 'Shadowfront Squad 2', guild: 'ALPHA', is_active: true, session_id: 'S2', start_at: '2026-08-05T12:00:00Z' }
+        {
+          event_name: 'Shadowfront Squad 2',
+          guild: 'ALPHA',
+          is_active: true,
+          session_id: 'S2',
+          start_at: '2026-08-05T12:00:00Z',
+        },
       ];
       t.event_participants = [
-        { pseudo: 'Alpha', guild: 'ALPHA', event_name: 'Shadowfront', session_id: 'S1', participated: 0, late: false, excused: false, sub_present: false, week_start: '2026-08-02' },
-        { pseudo: 'Bravo', guild: 'ALPHA', event_name: 'Shadowfront', session_id: 'S2', participated: 0, late: false, excused: false, sub_present: false, week_start: '2026-08-02' }
+        {
+          pseudo: 'Alpha',
+          guild: 'ALPHA',
+          event_name: 'Shadowfront',
+          session_id: 'S1',
+          participated: 0,
+          late: false,
+          excused: false,
+          sub_present: false,
+          week_start: '2026-08-02',
+        },
+        {
+          pseudo: 'Bravo',
+          guild: 'ALPHA',
+          event_name: 'Shadowfront',
+          session_id: 'S2',
+          participated: 0,
+          late: false,
+          excused: false,
+          sub_present: false,
+          week_start: '2026-08-02',
+        },
       ];
       t.shadowfront_squads = [
-        { pseudo: 'Alpha', guild: 'ALPHA', session_id: 'S1', squad: 'squad1', role: 'participant', is_commander: true, week_start: '2026-08-02' }
+        {
+          pseudo: 'Alpha',
+          guild: 'ALPHA',
+          session_id: 'S1',
+          squad: 'squad1',
+          role: 'participant',
+          is_commander: true,
+          week_start: '2026-08-02',
+        },
       ];
       return t;
     };
@@ -210,7 +329,7 @@ describe('ShadowfrontView golden results (post shadowfront.js cutover)', () => {
     view.setStateForTest({
       squads: {
         squad1: { active: false, sessionId: null, startAt: null, ended: false },
-        squad2: { active: false, sessionId: null, startAt: null, ended: false }
+        squad2: { active: false, sessionId: null, startAt: null, ended: false },
       },
       allMembers: ['Alpha', 'Bravo'],
       membersData: MEMBERS,
@@ -219,7 +338,7 @@ describe('ShadowfrontView golden results (post shadowfront.js cutover)', () => {
       history: {},
       uidMap: { Alpha: 'uid1', Bravo: 'uid2' },
       signups: [],
-      maxPower: 100000000
+      maxPower: 100000000,
     });
 
     const html = area().innerHTML;
@@ -249,26 +368,33 @@ describe('ShadowfrontView golden results (post shadowfront.js cutover)', () => {
     await new Promise((r) => setTimeout(r, 0));
 
     expect(invokeMock).toHaveBeenCalledTimes(1);
-    expect(invokeMock).toHaveBeenCalledWith('discord-webhook-proxy', expect.objectContaining({
-      body: expect.objectContaining({
-        eventPrefix: 'shadowfront',
-        guild: 'ALPHA',
-        payload: expect.objectContaining({
-          content: expect.stringContaining('Shadowfront'),
-          allowed_mentions: { parse: ['roles', 'users', 'everyone'] }
-        })
+    expect(invokeMock).toHaveBeenCalledWith(
+      'discord-webhook-proxy',
+      expect.objectContaining({
+        body: expect.objectContaining({
+          eventPrefix: 'shadowfront',
+          guild: 'ALPHA',
+          payload: expect.objectContaining({
+            content: expect.stringContaining('Shadowfront'),
+            allowed_mentions: { parse: ['roles', 'users', 'everyone'] },
+          }),
+        }),
       })
-    }));
+    );
     expect(showToast).toHaveBeenCalledWith('Composition sent to Discord.', 'success');
   });
 
   it('does not expose any GM_* global on window (cutover guard)', async () => {
-    const baseline = Object.getOwnPropertyNames(window).filter((k) => k.startsWith('GM_')).sort();
+    const baseline = Object.getOwnPropertyNames(window)
+      .filter((k) => k.startsWith('GM_'))
+      .sort();
 
     const view = new ShadowfrontView();
     await view.load();
 
-    const after = Object.getOwnPropertyNames(window).filter((k) => k.startsWith('GM_')).sort();
+    const after = Object.getOwnPropertyNames(window)
+      .filter((k) => k.startsWith('GM_'))
+      .sort();
     expect(after).toEqual(baseline);
     expect(Object.hasOwn(window, 'GM_SHADOWFRONT')).toBe(false);
   });

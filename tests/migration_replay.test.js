@@ -21,7 +21,7 @@ describe('the replay', () => {
     expect(sh).toContain('supabase/replay/prelude.sql');
   });
 
-  it('starts from Supabase\'s default privileges, which the least-privilege migrations revoke from', () => {
+  it("starts from Supabase's default privileges, which the least-privilege migrations revoke from", () => {
     const prelude = read('supabase/replay/prelude.sql');
     for (const kind of ['TABLES', 'SEQUENCES', 'FUNCTIONS']) {
       expect(prelude).toContain(`IN SCHEMA public GRANT ALL ON ${kind}`);
@@ -31,7 +31,10 @@ describe('the replay', () => {
   it('has a production fingerprint to compare against', () => {
     const fp = read('tests/fixtures/schema_fingerprint.txt').trim().split('\n');
     expect(fp.length).toBeGreaterThan(1000);
-    for (const line of fp) expect(line).toMatch(/^(column|column_grant|constraint|function|index|policy|table|trigger|view)\|[^|]+\|[0-9a-f]{32}$/);
+    for (const line of fp)
+      expect(line).toMatch(
+        /^(column|column_grant|constraint|function|index|policy|table|trigger|view)\|[^|]+\|[0-9a-f]{32}$/
+      );
     // Never a credential column readable by the browser.
     expect(read('supabase/replay/schema-fingerprint.sql')).toContain("g.grantee IN ('anon', 'authenticated')");
   });
@@ -40,7 +43,9 @@ describe('the replay', () => {
 describe('guards that pin production only step aside on a replay', () => {
   // A guard keyed on gm.replay must never weaken production: it may only
   // relax a check of production's own bodies or data volumes.
-  const users = migrations.filter((f) => read(`supabase/migrations/${f}`).includes("current_setting('gm.replay', true)"));
+  const users = migrations.filter((f) =>
+    read(`supabase/migrations/${f}`).includes("current_setting('gm.replay', true)")
+  );
 
   it('is confined to the migrations reviewed for it', () => {
     expect(users.sort()).toEqual([
@@ -55,9 +60,11 @@ describe('guards that pin production only step aside on a replay', () => {
   it('never skips a grant or policy check', () => {
     const sql = read('supabase/migrations/20261003113839_tenant_isolation_and_sessions.sql');
     const check = sql.slice(sql.indexOf('DO $check$'));
-    for (const c of ["'a policy still resolves its caller without a session check'",
-                     "'unexpected UPDATE grants on migration_wiki_pages'",
-                     "'gm_revoke_auth_sessions is callable by browsers'"]) {
+    for (const c of [
+      "'a policy still resolves its caller without a session check'",
+      "'unexpected UPDATE grants on migration_wiki_pages'",
+      "'gm_revoke_auth_sessions is callable by browsers'",
+    ]) {
       const at = check.indexOf(c);
       expect(at, c).toBeGreaterThan(-1);
       const cond = check.slice(check.lastIndexOf('  IF ', at), at);
@@ -65,9 +72,11 @@ describe('guards that pin production only step aside on a replay', () => {
     }
   });
 
-  it('lands on production\'s bodies anyway: every snapshot asserts them by md5', () => {
+  it("lands on production's bodies anyway: every snapshot asserts them by md5", () => {
     for (const f of migrations.filter((m) => /_snapshot_drifted_functions_\d\.sql$/.test(m))) {
-      expect(read(`supabase/migrations/${f}`)).toContain("RAISE EXCEPTION 'snapshot: % does not have production''s body', r.sig;");
+      expect(read(`supabase/migrations/${f}`)).toContain(
+        "RAISE EXCEPTION 'snapshot: % does not have production''s body', r.sig;"
+      );
     }
   });
 });
@@ -75,9 +84,11 @@ describe('guards that pin production only step aside on a replay', () => {
 describe('reconcile_replay_to_production', () => {
   const sql = read('supabase/migrations/20261003174320_reconcile_replay_to_production.sql');
 
-  it('gives accounts production\'s grants: 8 readable columns, no write (C0)', () => {
+  it("gives accounts production's grants: 8 readable columns, no write (C0)", () => {
     expect(sql).toContain('REVOKE ALL ON TABLE public.accounts FROM PUBLIC, anon, authenticated;');
-    expect(sql).toContain('GRANT SELECT (id, role, guild, uid, status, server_number, auth_user_id, created_at)\n  ON public.accounts TO authenticated;');
+    expect(sql).toContain(
+      'GRANT SELECT (id, role, guild, uid, status, server_number, auth_user_id, created_at)\n  ON public.accounts TO authenticated;'
+    );
     expect(sql).toContain("RAISE EXCEPTION 'reconcile: public.accounts is wider than production (C0)'");
   });
 

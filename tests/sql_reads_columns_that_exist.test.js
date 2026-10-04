@@ -77,7 +77,10 @@ describe('the generated types were parsed', () => {
 describe('no SQL in the repository reads guilds.name', () => {
   function sqlFiles() {
     const dir = path.join(rootDir, 'supabase', 'migrations');
-    return fs.readdirSync(dir).filter((f) => f.endsWith('.sql')).map((f) => path.join(dir, f));
+    return fs
+      .readdirSync(dir)
+      .filter((f) => f.endsWith('.sql'))
+      .map((f) => path.join(dir, f));
   }
 
   // An alias-qualified read: `g.name`, `gu.name`, `guilds.name`. Deliberately
@@ -102,7 +105,7 @@ describe('no SQL in the repository reads guilds.name', () => {
       const lines = fs.readFileSync(file, 'utf8').split('\n');
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
-        if (/^\s*--/.test(line)) continue;          // prose
+        if (/^\s*--/.test(line)) continue; // prose
         if (/RAISE\s+(EXCEPTION|NOTICE)/i.test(line)) continue; // an error message naming the bug
         if (readRe.test(line)) offenders.push(`${base}:${i + 1}: ${line.trim()}`);
       }
@@ -111,7 +114,9 @@ describe('no SQL in the repository reads guilds.name', () => {
   });
 
   it('is fixed by a migration that comes after the two that broke it', () => {
-    const names = sqlFiles().map((f) => path.basename(f)).sort();
+    const names = sqlFiles()
+      .map((f) => path.basename(f))
+      .sort();
     expect(names, 'the fix migration is missing').toContain(FIX);
     for (const superseded of SUPERSEDED) {
       expect(names).toContain(superseded);
@@ -179,7 +184,7 @@ describe('the canonical DDL still declares the column, and that is recorded', ()
     const guildsIdx = canonical.indexOf('CREATE TABLE IF NOT EXISTS public.guilds');
     expect(guildsIdx).toBeGreaterThan(-1);
     const decl = canonical.slice(guildsIdx, canonical.indexOf(');', guildsIdx));
-    const declaresName = /^\s*name\s+TEXT/mi.test(decl);
+    const declaresName = /^\s*name\s+TEXT/im.test(decl);
     const liveHasName = live.get('guilds').has('name');
 
     // Exactly one of two states is acceptable: the divergence as it stands today

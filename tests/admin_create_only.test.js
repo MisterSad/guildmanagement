@@ -44,7 +44,9 @@ describe('gm_admin_upsert is create-only', () => {
   });
 
   it('is executable by the service role only, and asserts it', () => {
-    expect(sql).toMatch(/REVOKE ALL ON FUNCTION public\.gm_admin_upsert\(text, text, text, text\) FROM PUBLIC, anon, authenticated;/);
+    expect(sql).toMatch(
+      /REVOKE ALL ON FUNCTION public\.gm_admin_upsert\(text, text, text, text\) FROM PUBLIC, anon, authenticated;/
+    );
     expect(sql).toMatch(/GRANT EXECUTE ON FUNCTION public\.gm_admin_upsert\(text, text, text, text\) TO service_role;/);
     expect(sql).toMatch(/has_function_privilege\('authenticated', 'public\.gm_admin_upsert/);
     expect(sql).toContain("NOTIFY pgrst, 'reload schema'");

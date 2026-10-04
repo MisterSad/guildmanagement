@@ -25,7 +25,12 @@ import { throttled } from "../tickets.ts";
 //
 // A non-super_admin gets `invalid_code`, identical to a wrong code: the reply
 // must not double as a role oracle.
-export async function handleBackupLogin(req: Request, body: unknown, admin: any, logger: EdgeLogger): Promise<Response> {
+export async function handleBackupLogin(
+  req: Request,
+  body: unknown,
+  admin: any,
+  logger: EdgeLogger
+): Promise<Response> {
   const json = makeJson(req);
 
   const parsed = BackupLoginSchema.safeParse(body);
@@ -46,7 +51,10 @@ export async function handleBackupLogin(req: Request, body: unknown, admin: any,
     return json({ ok: false, error: "server_error" }, 500);
   }
   if (!acc || acc.status !== "active" || !isSuperAdmin(acc.role)) {
-    logger.warn("Backup sign-in refused", { id: parsed.data.id, reason: !acc ? "unknown" : !isSuperAdmin(acc.role) ? "not_super_admin" : "not_active" });
+    logger.warn("Backup sign-in refused", {
+      id: parsed.data.id,
+      reason: !acc ? "unknown" : !isSuperAdmin(acc.role) ? "not_super_admin" : "not_active",
+    });
     return json({ ok: false, error: "invalid_code" }, 200);
   }
   if (acc.locked_until && new Date(acc.locked_until).getTime() > Date.now()) {

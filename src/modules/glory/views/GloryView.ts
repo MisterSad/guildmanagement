@@ -9,7 +9,6 @@
  * This module never assigns `window.GM_GLORY` (bridge added at cutover).
  */
 
-
 import { fetchGloryMembers, fetchGloryWeekScores, upsertPlayerGlory } from '../glory.service';
 import { getClient } from '../../../core/api/supabase';
 import { getActiveGuild } from '../../../core/auth/roles';
@@ -31,7 +30,7 @@ export class GloryView {
       const [membersRes, currRes, prevRes] = await Promise.all([
         fetchGloryMembers(db, currentG),
         fetchGloryWeekScores(db, currentG, week),
-        fetchGloryWeekScores(db, currentG, prevWeek)
+        fetchGloryWeekScores(db, currentG, prevWeek),
       ]);
 
       const members: string[] = ((membersRes.data || []) as any[]).map((m) => m.pseudo);
@@ -65,7 +64,10 @@ export class GloryView {
     if (!area) return;
 
     if (!members.length) {
-      area.innerHTML = '<div class="gm-empty"><i class="ph ph-ghost gm-icon"></i><div class="gm-empty-title">' + t('empty_members') + '</div></div>';
+      area.innerHTML =
+        '<div class="gm-empty"><i class="ph ph-ghost gm-icon"></i><div class="gm-empty-title">' +
+        t('empty_members') +
+        '</div></div>';
       return;
     }
 
@@ -73,34 +75,54 @@ export class GloryView {
 
     let html =
       '<div class="gm-stat-grid" style="margin-bottom: 1.5rem;">' +
-        '<div class="gm-stat-tile stat-theme-lime">' +
-          '<div class="gm-task-icon-squircle"><i class="ph ph-users"></i></div>' +
-          '<div class="gm-stat-label">' + t('event_total') + '</div>' +
-          '<div class="gm-stat-val">' + formatNumber(members.length) + '</div>' +
-          '<div class="gm-stat-meta">Active Members Tracked</div>' +
-        '</div>' +
-        '<div class="gm-stat-tile stat-theme-mint">' +
-          '<div class="gm-task-icon-squircle"><i class="ph ph-trophy"></i></div>' +
-          '<div class="gm-stat-label">' + t('glory_total') + '</div>' +
-          '<div class="gm-stat-val total-glory-val">' + formatNumber(totalGlory) + '</div>' +
-          '<div class="gm-stat-meta">Guild Total This Week</div>' +
-        '</div>' +
+      '<div class="gm-stat-tile stat-theme-lime">' +
+      '<div class="gm-task-icon-squircle"><i class="ph ph-users"></i></div>' +
+      '<div class="gm-stat-label">' +
+      t('event_total') +
+      '</div>' +
+      '<div class="gm-stat-val">' +
+      formatNumber(members.length) +
+      '</div>' +
+      '<div class="gm-stat-meta">Active Members Tracked</div>' +
+      '</div>' +
+      '<div class="gm-stat-tile stat-theme-mint">' +
+      '<div class="gm-task-icon-squircle"><i class="ph ph-trophy"></i></div>' +
+      '<div class="gm-stat-label">' +
+      t('glory_total') +
+      '</div>' +
+      '<div class="gm-stat-val total-glory-val">' +
+      formatNumber(totalGlory) +
+      '</div>' +
+      '<div class="gm-stat-meta">Guild Total This Week</div>' +
+      '</div>' +
       '</div>' +
       '<div class="gm-section-head" style="margin-bottom: 1rem; flex-wrap: wrap;">' +
-        '<div class="gm-section-title"><i class="ph ph-list-numbers"></i> Members Glory Log</div>' +
-        '<div class="gm-input-with-icon" style="min-width: 220px; max-width: 320px;">' +
-          '<i class="ph ph-magnifying-glass gm-icon"></i>' +
-          '<input type="text" class="gm-input glory-search-input" aria-label="' + escapeHTML(t('search_placeholder')) + '" placeholder="' + t('search_placeholder') + '">' +
-          '<button type="button" class="gm-search-clear-btn" data-gm-search-clear aria-label="Clear search" tabindex="-1"><i class="ph ph-x-circle"></i></button>' +
-        '</div>' +
+      '<div class="gm-section-title"><i class="ph ph-list-numbers"></i> Members Glory Log</div>' +
+      '<div class="gm-input-with-icon" style="min-width: 220px; max-width: 320px;">' +
+      '<i class="ph ph-magnifying-glass gm-icon"></i>' +
+      '<input type="text" class="gm-input glory-search-input" aria-label="' +
+      escapeHTML(t('search_placeholder')) +
+      '" placeholder="' +
+      t('search_placeholder') +
+      '">' +
+      '<button type="button" class="gm-search-clear-btn" data-gm-search-clear aria-label="Clear search" tabindex="-1"><i class="ph ph-x-circle"></i></button>' +
+      '</div>' +
       '</div>' +
       '<div class="gm-table-wrap">' +
       '<div class="gm-table-scroll">' +
       '<table class="gm-table gm-resp-table"><thead><tr>' +
-        '<th>' + t('col_member') + '</th>' +
-        '<th class="gm-right">' + t('glory_prev_week') + '</th>' +
-        '<th class="gm-right">' + t('glory_input') + '</th>' +
-        '<th class="gm-right">' + t('glory_evolution_pct') + '</th>' +
+      '<th>' +
+      t('col_member') +
+      '</th>' +
+      '<th class="gm-right">' +
+      t('glory_prev_week') +
+      '</th>' +
+      '<th class="gm-right">' +
+      t('glory_input') +
+      '</th>' +
+      '<th class="gm-right">' +
+      t('glory_evolution_pct') +
+      '</th>' +
       '</tr></thead><tbody>';
 
     members.forEach((pseudo) => {
@@ -109,29 +131,51 @@ export class GloryView {
       const initial = avatarInit(pseudo);
 
       html +=
-        '<tr class="participant-row" data-pseudo="' + escapeHTML(pseudo) + '">' +
-          '<td data-label="' + t('col_member') + '">' +
-            '<div class="gm-member-id">' +
-              '<div class="gm-avatar gm-avatar-squircle">' + escapeHTML(initial) + '</div>' +
-              '<strong>' + escapeHTML(pseudo) + '</strong>' +
-            '</div>' +
-          '</td>' +
-          '<td class="gm-right gm-num gm-dim glory-prev-val" data-label="' + t('glory_prev_week') + '">' +
-            (prev !== null ? formatNumber(prev) : '-') +
-          '</td>' +
-          '<td class="gm-right" data-label="' + t('glory_input') + '">' +
-            '<div class="glory-input-wrapper" style="position:relative; display:inline-flex; align-items:center;">' +
-              '<input type="text" inputmode="numeric" class="gm-glory-input glory-input"' +
-                ' value="' + (curr !== '' ? formatNumber(curr) : '') + '" placeholder="0"' +
-                ' data-pseudo="' + escapeHTML(pseudo) + '"' +
-                ' aria-label="' + escapeHTML(t('glory_input') + ', ' + pseudo) + '"' +
-                ' data-prev="' + (prev !== null ? prev : '') + '">' +
-              '<i class="ph ph-circle-notch ph-spin saving-icon hidden" style="position:absolute; right:.6rem;"></i>' +
-            '</div>' +
-          '</td>' +
-          '<td class="gm-right glory-pct-cell" data-label="' + t('glory_evolution_pct') + '">' +
-            this.buildEvolutionPctBadge(curr, prev) +
-          '</td>' +
+        '<tr class="participant-row" data-pseudo="' +
+        escapeHTML(pseudo) +
+        '">' +
+        '<td data-label="' +
+        t('col_member') +
+        '">' +
+        '<div class="gm-member-id">' +
+        '<div class="gm-avatar gm-avatar-squircle">' +
+        escapeHTML(initial) +
+        '</div>' +
+        '<strong>' +
+        escapeHTML(pseudo) +
+        '</strong>' +
+        '</div>' +
+        '</td>' +
+        '<td class="gm-right gm-num gm-dim glory-prev-val" data-label="' +
+        t('glory_prev_week') +
+        '">' +
+        (prev !== null ? formatNumber(prev) : '-') +
+        '</td>' +
+        '<td class="gm-right" data-label="' +
+        t('glory_input') +
+        '">' +
+        '<div class="glory-input-wrapper" style="position:relative; display:inline-flex; align-items:center;">' +
+        '<input type="text" inputmode="numeric" class="gm-glory-input glory-input"' +
+        ' value="' +
+        (curr !== '' ? formatNumber(curr) : '') +
+        '" placeholder="0"' +
+        ' data-pseudo="' +
+        escapeHTML(pseudo) +
+        '"' +
+        ' aria-label="' +
+        escapeHTML(t('glory_input') + ', ' + pseudo) +
+        '"' +
+        ' data-prev="' +
+        (prev !== null ? prev : '') +
+        '">' +
+        '<i class="ph ph-circle-notch ph-spin saving-icon hidden" style="position:absolute; right:.6rem;"></i>' +
+        '</div>' +
+        '</td>' +
+        '<td class="gm-right glory-pct-cell" data-label="' +
+        t('glory_evolution_pct') +
+        '">' +
+        this.buildEvolutionPctBadge(curr, prev) +
+        '</td>' +
         '</tr>';
     });
 
@@ -160,7 +204,8 @@ export class GloryView {
 
         const currCell = row ? row.querySelector('.glory-curr-val') : null;
         if (currCell) {
-          currCell.innerHTML = curr !== null ? '<span>' + formatNumber(curr) + '</span>' : '<span class="glory-na">-</span>';
+          currCell.innerHTML =
+            curr !== null ? '<span>' + formatNumber(curr) + '</span>' : '<span class="glory-na">-</span>';
         }
 
         const pctCell = row ? row.querySelector('.glory-pct-cell') : null;
@@ -191,14 +236,21 @@ export class GloryView {
 
     const cls = pct > 0 ? 'gm-chip-success' : pct < 0 ? 'gm-chip-danger' : '';
     const sign = pct > 0 ? '+' : '';
-    return '<span class="gm-chip ' + cls + '" style="font-family: var(--font-display); font-weight: 700; font-size: var(--fs-sm); padding: 2px 10px; border-radius: var(--radius-pill);">' + sign + pct.toFixed(1) + '%</span>';
+    return (
+      '<span class="gm-chip ' +
+      cls +
+      '" style="font-family: var(--font-display); font-weight: 700; font-size: var(--fs-sm); padding: 2px 10px; border-radius: var(--radius-pill);">' +
+      sign +
+      pct.toFixed(1) +
+      '%</span>'
+    );
   }
 
   private updateTotal(area: Element): void {
     let total = 0;
     area.querySelectorAll('.glory-input').forEach((el) => {
       const n = parseNumber((el as HTMLInputElement).value);
-      total += (n || 0);
+      total += n || 0;
     });
     const valSpan = area.querySelector('.total-glory-val');
     if (valSpan) valSpan.textContent = formatNumber(total);
@@ -209,7 +261,7 @@ export class GloryView {
     if (!db) return;
     try {
       const currentG = getActiveGuild();
-      const scoreVal = (value === null || value === '') ? 0 : (typeof value === 'number' ? value : (parseNumber(value) || 0));
+      const scoreVal = value === null || value === '' ? 0 : typeof value === 'number' ? value : parseNumber(value) || 0;
       const rpcRes = await upsertPlayerGlory(db, currentG, pseudo, week, scoreVal);
       if (rpcRes && rpcRes.error) throw rpcRes.error;
       // The RPC reports logical failures (permission_denied, ...) in its result

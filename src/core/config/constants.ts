@@ -23,4 +23,3 @@ export const SENTRY_DSN: string =
   (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_SENTRY_DSN) ||
   (typeof window !== 'undefined' && (window as any).__SENTRY_DSN__) ||
   '';
-

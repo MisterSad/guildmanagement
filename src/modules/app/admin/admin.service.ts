@@ -16,7 +16,11 @@ export function queryGuildList(db: DbClient) {
 
 /** Sets (or clears) a guild's server number and returns the updated row. */
 export function updateGuildServerNumber(db: DbClient, guildId: string, serverNum: string) {
-  return db.from('guilds').update({ server_number: serverNum || null }).eq('id', guildId).select();
+  return db
+    .from('guilds')
+    .update({ server_number: serverNum || null })
+    .eq('id', guildId)
+    .select();
 }
 
 /** Deletes a guild and its data (gm_delete_guild). */
@@ -31,7 +35,8 @@ export function insertGuild(db: DbClient, guildName: string, serverNum: any) {
 
 /** Pending member accounts that asked to join a guild (case-insensitive match). */
 export function queryPendingMemberAccounts(db: DbClient, guild: string | null | undefined) {
-  return db.from('accounts')
+  return db
+    .from('accounts')
     .select('id, uid, status, role, guild, created_at')
     .eq('status', 'pending')
     .eq('role', 'member')

@@ -74,7 +74,7 @@ export interface VideoCoverage {
 export const OCR_VIDEO_MAX_MISSING = 200;
 
 function validPosition(p: unknown): number | null {
-  const n = typeof p === "number" ? p : (typeof p === "string" ? parseInt(p, 10) : NaN);
+  const n = typeof p === "number" ? p : typeof p === "string" ? parseInt(p, 10) : NaN;
   return Number.isInteger(n) && n >= 1 && n <= 100000 ? n : null;
 }
 
@@ -119,7 +119,7 @@ export function ocrVideoCoverage(
   for (let pos = lo; pos <= hi && missing.length < OCR_VIDEO_MAX_MISSING; pos++) {
     if (!positions.has(pos)) missing.push(pos);
   }
-  return { expected: expectedFromScreen ?? (hi - lo + 1), found, missingPositions: missing };
+  return { expected: expectedFromScreen ?? hi - lo + 1, found, missingPositions: missing };
 }
 
 export function ocrNeedsSecondPass(c: VideoCoverage): boolean {
@@ -127,7 +127,9 @@ export function ocrNeedsSecondPass(c: VideoCoverage): boolean {
 }
 
 function pseudoKey(p: VideoPlayer): string {
-  return String(p.pseudo || "").toLowerCase().replace(/\s+/g, "");
+  return String(p.pseudo || "")
+    .toLowerCase()
+    .replace(/\s+/g, "");
 }
 
 /**

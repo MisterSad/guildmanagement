@@ -44,7 +44,7 @@ export const COMBAT_WEIGHTS = {
   CREW: 8.0,
   TECH: 6.0,
   CHAMPION: 0.8,
-  GLORY: 0.05
+  GLORY: 0.05,
 } as const;
 
 export function parseSafeMetric(val: unknown): number {
@@ -180,7 +180,11 @@ export async function getRoleInfo(): Promise<RoleInfo> {
   const restriction = getAppState().currentGuildRestriction;
 
   let info: any = null;
-  try { info = await sessionInfo(); } catch (_) { info = null; }
+  try {
+    info = await sessionInfo();
+  } catch (_) {
+    info = null;
+  }
 
   let role = normalizeRole(ls ? ls.getItem('gm_role') : null);
   // A stored 'member' with a restriction denotes a former admin account.
@@ -197,6 +201,6 @@ export async function getRoleInfo(): Promise<RoleInfo> {
     isGuildAdmin: role === 'guild_admin' || role === 'server_admin' || role === 'super_admin',
     isAdmin: role === 'super_admin' || role === 'server_admin' || role === 'guild_admin',
     guild: restriction || null,
-    serverNumber: (ls ? ls.getItem('gm_server_restriction') : null) || null
+    serverNumber: (ls ? ls.getItem('gm_server_restriction') : null) || null,
   };
 }

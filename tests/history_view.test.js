@@ -9,7 +9,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { HistoryView } from '../src/modules/history/views/HistoryView';
 import { setDbClient, resetSupabaseClient } from '../src/core/api/supabase';
-import { ALLOWED_HISTORY_FIELDS, isAllowedHistoryField, EVENT_META, FILTERS } from '../src/modules/history/history.service';
+import {
+  ALLOWED_HISTORY_FIELDS,
+  isAllowedHistoryField,
+  EVENT_META,
+  FILTERS,
+} from '../src/modules/history/history.service';
 import { isFresh, markFresh } from '../src/core/cache/cache';
 import { showToast } from '../src/core/dom/toast';
 import { showConfirm } from '../src/modules/app/dialogs/dialogs.service';
@@ -18,31 +23,80 @@ import { showConfirm } from '../src/modules/app/dialogs/dialogs.service';
 // source modules with the stubs the suite used to put on window.
 vi.mock('../src/core/i18n/i18n', async (importOriginal) => ({
   ...(await importOriginal()),
-  t: (k) => k
+  t: (k) => k,
 }));
 vi.mock('../src/core/cache/cache', async (importOriginal) => ({
   ...(await importOriginal()),
   isFresh: vi.fn(),
-  markFresh: vi.fn()
+  markFresh: vi.fn(),
 }));
 vi.mock('../src/core/dom/toast', async (importOriginal) => ({
   ...(await importOriginal()),
-  showToast: vi.fn()
+  showToast: vi.fn(),
 }));
 vi.mock('../src/modules/app/dialogs/dialogs.service', async (importOriginal) => ({
   ...(await importOriginal()),
-  showConfirm: vi.fn()
+  showConfirm: vi.fn(),
 }));
 
 const SESSIONS = [
-  { event_name: 'SvS', session_id: 'SVS-2026-W32', week_start: '2026-08-03', participants: 10, participated_count: 8, total_score: 1000 },
-  { event_name: 'GvG', session_id: 'GVG-2026-W31', week_start: '2026-07-27', participants: 10, participated_count: 5, total_score: 500 },
-  { event_name: 'Glory', session_id: 'GLORY-2026-08-03', week_start: '2026-08-03', participants: 10, participated_count: 9, total_score: 9000 }
+  {
+    event_name: 'SvS',
+    session_id: 'SVS-2026-W32',
+    week_start: '2026-08-03',
+    participants: 10,
+    participated_count: 8,
+    total_score: 1000,
+  },
+  {
+    event_name: 'GvG',
+    session_id: 'GVG-2026-W31',
+    week_start: '2026-07-27',
+    participants: 10,
+    participated_count: 5,
+    total_score: 500,
+  },
+  {
+    event_name: 'Glory',
+    session_id: 'GLORY-2026-08-03',
+    week_start: '2026-08-03',
+    participants: 10,
+    participated_count: 9,
+    total_score: 9000,
+  },
 ];
 
 const PARTICIPANT_ROWS = [
-  { pseudo: 'Alpha', guild: 'ALPHA', event_name: 'SvS', session_id: 'SVS-2026-W32', week_start: '2026-08-03', participated: 1, score: 100, score_prep: 10, score_pvp: 5, late: false, excused: false, sub_present: false, appointed: false },
-  { pseudo: 'Bravo', guild: 'ALPHA', event_name: 'SvS', session_id: 'SVS-2026-W32', week_start: '2026-08-03', participated: 0, score: 0, score_prep: 0, score_pvp: 0, late: false, excused: false, sub_present: false, appointed: false }
+  {
+    pseudo: 'Alpha',
+    guild: 'ALPHA',
+    event_name: 'SvS',
+    session_id: 'SVS-2026-W32',
+    week_start: '2026-08-03',
+    participated: 1,
+    score: 100,
+    score_prep: 10,
+    score_pvp: 5,
+    late: false,
+    excused: false,
+    sub_present: false,
+    appointed: false,
+  },
+  {
+    pseudo: 'Bravo',
+    guild: 'ALPHA',
+    event_name: 'SvS',
+    session_id: 'SVS-2026-W32',
+    week_start: '2026-08-03',
+    participated: 0,
+    score: 0,
+    score_prep: 0,
+    score_pvp: 0,
+    late: false,
+    excused: false,
+    sub_present: false,
+    appointed: false,
+  },
 ];
 
 let rpcMock;
@@ -53,19 +107,33 @@ function chained(value) {
   const filters = [];
   const apply = () => {
     let res = (value || []).slice();
-    filters.forEach((f) => { res = res.filter(f); });
+    filters.forEach((f) => {
+      res = res.filter(f);
+    });
     return res;
   };
   const chain = {
     select: () => chain,
     order: () => chain,
     limit: () => chain,
-    eq: (field, val) => { filters.push((r) => r[field] === val); return chain; },
-    is: (field, val) => { filters.push((r) => r[field] === val); return chain; },
-    in: (field, list) => { filters.push((r) => list.indexOf(r[field]) !== -1); return chain; },
-    update: (payload) => { updateMock(payload); return chain; },
+    eq: (field, val) => {
+      filters.push((r) => r[field] === val);
+      return chain;
+    },
+    is: (field, val) => {
+      filters.push((r) => r[field] === val);
+      return chain;
+    },
+    in: (field, list) => {
+      filters.push((r) => list.indexOf(r[field]) !== -1);
+      return chain;
+    },
+    update: (payload) => {
+      updateMock(payload);
+      return chain;
+    },
     delete: () => chain,
-    then: (resolve) => Promise.resolve({ data: apply(), error: null }).then(resolve)
+    then: (resolve) => Promise.resolve({ data: apply(), error: null }).then(resolve),
   };
   return chain;
 }
@@ -84,9 +152,12 @@ function installGM() {
   // The Supabase client is installed with setDbClient() (read via getClient()).
   setDbClient({
     rpc: rpcMock,
-    from: (table) => chained(table === 'event_participants' ? PARTICIPANT_ROWS : [])
+    from: (table) => chained(table === 'event_participants' ? PARTICIPANT_ROWS : []),
   });
-  window.requestAnimationFrame = (cb) => { cb(0); return 0; };
+  window.requestAnimationFrame = (cb) => {
+    cb(0);
+    return 0;
+  };
 }
 
 function mount() {
@@ -136,7 +207,9 @@ describe('HistoryView — filter pills', () => {
     const view = new HistoryView();
     await view.load();
 
-    const gvgPill = Array.from(area().querySelectorAll('.history-filter')).find((b) => b.getAttribute('data-filter') === 'GvG');
+    const gvgPill = Array.from(area().querySelectorAll('.history-filter')).find(
+      (b) => b.getAttribute('data-filter') === 'GvG'
+    );
     gvgPill.click();
 
     const cards = area().querySelectorAll('.gm-history-card');
@@ -168,8 +241,15 @@ describe('HistoryView — modal & security whitelist', () => {
 
   it('exposes exactly the ALLOWED_HISTORY_FIELDS whitelist', () => {
     expect(ALLOWED_HISTORY_FIELDS).toEqual([
-      'participated', 'score', 'score_prep', 'score_pvp',
-      'late', 'excused', 'sub_present', 'appointed', 'is_pending'
+      'participated',
+      'score',
+      'score_prep',
+      'score_pvp',
+      'late',
+      'excused',
+      'sub_present',
+      'appointed',
+      'is_pending',
     ]);
     expect(isAllowedHistoryField('participated')).toBe(true);
     expect(isAllowedHistoryField('hacked')).toBe(false);

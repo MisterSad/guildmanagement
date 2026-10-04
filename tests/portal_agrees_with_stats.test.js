@@ -31,8 +31,9 @@ const migration = read('supabase/migrations/20260927123150_gm_player_stats.sql')
 
 describe('there is one weighting, in core, and both screens import it', () => {
   it('the Stats page and the Portal reach the same module', () => {
-    expect(stripComments(read('src/modules/stats/stats.service.ts')))
-      .toContain("from '../../core/scoring/reliability'");
+    expect(stripComments(read('src/modules/stats/stats.service.ts'))).toContain(
+      "from '../../core/scoring/reliability'"
+    );
     expect(portal).toContain("from '../../../core/scoring/reliability'");
   });
 
@@ -42,19 +43,29 @@ describe('there is one weighting, in core, and both screens import it', () => {
     const buckets = {
       SvS: { att: 1, opp: 2, exc: 0 },
       'Arms Race': { att: 4, opp: 8, exc: 0 },
-      DTR: { att: 3, opp: 3, exc: 0 }
+      DTR: { att: 3, opp: 3, exc: 0 },
     };
 
     const viaPortal = weightedRate(buckets, DEFAULT_EVENT_COEFFS);
-    const viaStats = StatsService.computeReliabilityLeaderboard({
-      ok: true,
-      members: [{
-        pseudo: 'X', attended: 8, weeks_active: 1, late_count: 0,
-        excused_count: 0, sub_count: 0, buckets
-      }],
-      tenant: { total_events: 13, buckets: {} },
-      glory: []
-    }, DEFAULT_EVENT_COEFFS)[0];
+    const viaStats = StatsService.computeReliabilityLeaderboard(
+      {
+        ok: true,
+        members: [
+          {
+            pseudo: 'X',
+            attended: 8,
+            weeks_active: 1,
+            late_count: 0,
+            excused_count: 0,
+            sub_count: 0,
+            buckets,
+          },
+        ],
+        tenant: { total_events: 13, buckets: {} },
+        glory: [],
+      },
+      DEFAULT_EVENT_COEFFS
+    )[0];
 
     expect(Math.round(viaPortal.rate * 10) / 10).toBe(viaStats.reliability);
   });
@@ -73,11 +84,14 @@ describe('there is one weighting, in core, and both screens import it', () => {
 
 describe('the portal no longer computes a rate of its own', () => {
   it('has dropped the row-pooled guild attendance rate and its unbounded scan', () => {
-    const block = edge.slice(edge.indexOf('async function getGuildAverages'),
-                             edge.indexOf('export async function handler('));
+    const block = edge.slice(
+      edge.indexOf('async function getGuildAverages'),
+      edge.indexOf('export async function handler(')
+    );
     expect(block).not.toContain('attendance_rate');
-    expect(block, 'it fetched every participation row of the tenant to count two things')
-      .not.toContain('.from("event_participants")');
+    expect(block, 'it fetched every participation row of the tenant to count two things').not.toContain(
+      '.from("event_participants")'
+    );
   });
 
   it('shows one attendance figure on the dashboard, not two', () => {
@@ -116,12 +130,16 @@ describe('the KPI grid is reachable at all', () => {
 
 describe('the player RPC cannot leak a peer', () => {
   it('is service_role only', () => {
-    expect(migration).toContain('REVOKE ALL ON FUNCTION public.gm_player_stats(text, text, integer) FROM PUBLIC, anon, authenticated');
-    expect(migration).toContain('GRANT EXECUTE ON FUNCTION public.gm_player_stats(text, text, integer) TO service_role');
+    expect(migration).toContain(
+      'REVOKE ALL ON FUNCTION public.gm_player_stats(text, text, integer) FROM PUBLIC, anon, authenticated'
+    );
+    expect(migration).toContain(
+      'GRANT EXECUTE ON FUNCTION public.gm_player_stats(text, text, integer) TO service_role'
+    );
     expect(migration).toContain('must not be reachable from a browser');
   });
 
-  it('returns the caller\'s own buckets and the guild pooled total, and no rank', () => {
+  it("returns the caller's own buckets and the guild pooled total, and no rank", () => {
     expect(migration).toContain('WHERE mo.pseudo = v_pseudo');
     expect(migration).toContain('member_opportunities');
     expect(migration.toLowerCase()).not.toContain('row_number() over');

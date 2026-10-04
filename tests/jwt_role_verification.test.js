@@ -7,14 +7,13 @@ import {
   isSuperAdmin,
   isServerAdmin,
   isGuildAdmin,
-  currentAccountId
+  currentAccountId,
 } from '../src/core/auth/roles';
 import { notifySessionVerified, sessionInfo, setDbClient, resetSupabaseClient } from '../src/core/api/supabase';
 import { patchAppState } from '../src/core/state/app-state';
 
 function makeJwt(appRole, accountId) {
-  const enc = (obj) =>
-    btoa(JSON.stringify(obj)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const enc = (obj) => btoa(JSON.stringify(obj)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   return `${enc({ alg: 'none' })}.${enc({ app_metadata: { app_role: appRole, account_id: accountId } })}.sig`;
 }
 
@@ -100,9 +99,9 @@ describe('JWT & Session Role Verification (TICKET-09 / SEC-05)', () => {
         auth: {
           getSession: async () => ({
             data: { session: { access_token: token } },
-            error: null
-          })
-        }
+            error: null,
+          }),
+        },
       });
 
       const info = await sessionInfo();

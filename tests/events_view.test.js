@@ -15,31 +15,31 @@ const SESSION = 'SVS-2026-W32';
 const { runInChunksMock } = vi.hoisted(() => ({ runInChunksMock: vi.fn() }));
 vi.mock('../src/core/i18n/i18n', async (importOriginal) => ({
   ...(await importOriginal()),
-  t: (k) => k
+  t: (k) => k,
 }));
 vi.mock('../src/core/utils/async', async (importOriginal) => ({
   ...(await importOriginal()),
-  runInChunks: runInChunksMock
+  runInChunks: runInChunksMock,
 }));
 vi.mock('../src/core/config/events', async (importOriginal) => ({
   ...(await importOriginal()),
-  buildEventSessionId: () => SESSION
+  buildEventSessionId: () => SESSION,
 }));
 vi.mock('../src/core/utils/date', async (importOriginal) => ({
   ...(await importOriginal()),
-  getWeekStart: () => '2026-08-03'
+  getWeekStart: () => '2026-08-03',
 }));
 vi.mock('../src/core/dom/toast', async (importOriginal) => ({
   ...(await importOriginal()),
-  showToast: vi.fn()
+  showToast: vi.fn(),
 }));
 vi.mock('../src/core/integrations/discord', async (importOriginal) => ({
   ...(await importOriginal()),
-  notifyDiscordEvent: vi.fn()
+  notifyDiscordEvent: vi.fn(),
 }));
 vi.mock('../src/modules/app/dialogs/dialogs.service', async (importOriginal) => ({
   ...(await importOriginal()),
-  showConfirm: vi.fn()
+  showConfirm: vi.fn(),
 }));
 
 let rpcMock;
@@ -48,20 +48,30 @@ function chained(value) {
   const filters = [];
   const apply = () => {
     let res = (value || []).slice();
-    filters.forEach((f) => { res = res.filter(f); });
+    filters.forEach((f) => {
+      res = res.filter(f);
+    });
     return res;
   };
   const chain = {
     select: () => chain,
     order: () => chain,
     limit: () => chain,
-    eq: (field, val) => { filters.push((r) => r[field] === val); return chain; },
-    in: (field, list) => { filters.push((r) => list.indexOf(r[field]) !== -1); return chain; },
+    eq: (field, val) => {
+      filters.push((r) => r[field] === val);
+      return chain;
+    },
+    in: (field, list) => {
+      filters.push((r) => list.indexOf(r[field]) !== -1);
+      return chain;
+    },
     update: () => chain,
     delete: () => chain,
     upsert: () => chain,
-    maybeSingle: () => ({ then: (resolve) => Promise.resolve({ data: apply()[0] || null, error: null }).then(resolve) }),
-    then: (resolve) => Promise.resolve({ data: apply(), error: null }).then(resolve)
+    maybeSingle: () => ({
+      then: (resolve) => Promise.resolve({ data: apply()[0] || null, error: null }).then(resolve),
+    }),
+    then: (resolve) => Promise.resolve({ data: apply(), error: null }).then(resolve),
   };
   return chain;
 }
@@ -69,16 +79,45 @@ function chained(value) {
 function tables(active) {
   return {
     event_status: active
-      ? [{ event_name: 'SvS', guild: 'ALPHA', is_active: true, session_id: SESSION, stage: null, start_at: '2026-08-02' }]
+      ? [
+          {
+            event_name: 'SvS',
+            guild: 'ALPHA',
+            is_active: true,
+            session_id: SESSION,
+            stage: null,
+            start_at: '2026-08-02',
+          },
+        ]
       : [{ event_name: 'GvG', guild: 'ALPHA', is_active: false, session_id: null, stage: null, start_at: null }],
     event_participants: [
-      { pseudo: 'Alpha', guild: 'ALPHA', event_name: 'SvS', session_id: SESSION, participated: 1, score_prep: 10, score_pvp: 5, is_pending: true, appointed: false },
-      { pseudo: 'Bravo', guild: 'ALPHA', event_name: 'SvS', session_id: SESSION, participated: 0, score_prep: 0, score_pvp: 0, is_pending: true, appointed: false }
+      {
+        pseudo: 'Alpha',
+        guild: 'ALPHA',
+        event_name: 'SvS',
+        session_id: SESSION,
+        participated: 1,
+        score_prep: 10,
+        score_pvp: 5,
+        is_pending: true,
+        appointed: false,
+      },
+      {
+        pseudo: 'Bravo',
+        guild: 'ALPHA',
+        event_name: 'SvS',
+        session_id: SESSION,
+        participated: 0,
+        score_prep: 0,
+        score_pvp: 0,
+        is_pending: true,
+        appointed: false,
+      },
     ],
     guild_members: [
       { pseudo: 'Alpha', guild: 'ALPHA', uid: 'u1' },
-      { pseudo: 'Bravo', guild: 'ALPHA', uid: 'u2' }
-    ]
+      { pseudo: 'Bravo', guild: 'ALPHA', uid: 'u2' },
+    ],
   };
 }
 
@@ -104,18 +143,28 @@ function panel(id) {
   const metric = id === 'event-svs' ? 'svs' : id === 'event-gvg' ? 'gvg' : '';
   const ocrBtns = metric
     ? '<div class="gm-event-ocr-toolbar">' +
-        '<button type="button" class="btn-ocr-trigger" data-metric="' + metric + '_prep">' + metric + '_prep OCR</button>' +
-        '<button type="button" class="btn-ocr-trigger" data-metric="' + metric + '_pvp">' + metric + '_pvp OCR</button>' +
+      '<button type="button" class="btn-ocr-trigger" data-metric="' +
+      metric +
+      '_prep">' +
+      metric +
+      '_prep OCR</button>' +
+      '<button type="button" class="btn-ocr-trigger" data-metric="' +
+      metric +
+      '_pvp">' +
+      metric +
+      '_pvp OCR</button>' +
       '</div>'
     : '';
   return (
-    '<main id="' + id + '">' +
-      '<div class="event-status-badge"></div>' +
-      '<div class="gm-event-actions"></div>' +
-      '<div class="gm-event-status-line"></div>' +
-      ocrBtns +
-      '<div class="war-banner"></div>' +
-      '<div class="event-participants-area"></div>' +
+    '<main id="' +
+    id +
+    '">' +
+    '<div class="event-status-badge"></div>' +
+    '<div class="gm-event-actions"></div>' +
+    '<div class="gm-event-status-line"></div>' +
+    ocrBtns +
+    '<div class="war-banner"></div>' +
+    '<div class="event-participants-area"></div>' +
     '</main>'
   );
 }
@@ -155,7 +204,10 @@ describe('EventsView.loadEvent()', () => {
     expect(rows.length).toBe(2);
     expect(area('event-svs').textContent).toContain('event_total');
     // populate RPC issued to self-heal the session.
-    expect(rpcMock).toHaveBeenCalledWith('gm_populate_event_participants', expect.objectContaining({ p_session_id: SESSION }));
+    expect(rpcMock).toHaveBeenCalledWith(
+      'gm_populate_event_participants',
+      expect.objectContaining({ p_session_id: SESSION })
+    );
   });
 
   it('renders the inactive placeholder when no session is active', async () => {
@@ -205,7 +257,10 @@ describe('EventsView — member sync & approval', () => {
     area('event-svs').querySelector('.approve-single-btn').click();
     await tick();
 
-    expect(rpcMock).toHaveBeenCalledWith('gm_approve_participant_submission', expect.objectContaining({ p_pseudo: 'Alpha' }));
+    expect(rpcMock).toHaveBeenCalledWith(
+      'gm_approve_participant_submission',
+      expect.objectContaining({ p_pseudo: 'Alpha' })
+    );
   });
 });
 
@@ -233,7 +288,9 @@ describe('EventsView — granular war mode', () => {
   });
 
   it('falls back to the legacy dual-score table when not granular', async () => {
-    currentTables.event_status = [{ event_name: 'SvS', guild: 'ALPHA', is_active: false, session_id: null, stage: null, start_at: null }];
+    currentTables.event_status = [
+      { event_name: 'SvS', guild: 'ALPHA', is_active: false, session_id: null, stage: null, start_at: null },
+    ];
     const view = new EventsView();
     await view.loadEvent('SvS');
     expect(area('event-svs').textContent).toContain('event_not_active');
@@ -251,14 +308,14 @@ describe('EventsView — granular war mode', () => {
 
     const calls = rpcMock.mock.calls.filter((c) => c[0] === 'gm_upsert_daily_scores');
     expect(calls.length).toBe(1);
-    expect(calls[0][1]).toEqual(expect.objectContaining({
-      p_guild: 'ALPHA',
-      p_event_name: 'SvS',
-      p_session_id: SESSION,
-      p_rows: expect.arrayContaining([
-        expect.objectContaining({ pseudo: 'Alpha', day: 1, score: 2500 })
-      ])
-    }));
+    expect(calls[0][1]).toEqual(
+      expect.objectContaining({
+        p_guild: 'ALPHA',
+        p_event_name: 'SvS',
+        p_session_id: SESSION,
+        p_rows: expect.arrayContaining([expect.objectContaining({ pseudo: 'Alpha', day: 1, score: 2500 })]),
+      })
+    );
   });
 
   it('forwards day scores above 500M unchanged up to 9,999,999,999', async () => {
@@ -272,9 +329,9 @@ describe('EventsView — granular war mode', () => {
 
     const calls = rpcMock.mock.calls.filter((c) => c[0] === 'gm_upsert_daily_scores');
     expect(calls.length).toBe(1);
-    expect(calls[0][1].p_rows).toEqual(expect.arrayContaining([
-      expect.objectContaining({ pseudo: 'Alpha', day: 6, score: 9999999999 })
-    ]));
+    expect(calls[0][1].p_rows).toEqual(
+      expect.arrayContaining([expect.objectContaining({ pseudo: 'Alpha', day: 6, score: 9999999999 })])
+    );
   });
 
   it('creates/updates the war opponent through gm_upsert_war_session', async () => {
@@ -289,11 +346,13 @@ describe('EventsView — granular war mode', () => {
     const calls = rpcMock.mock.calls.filter((c) => c[0] === 'gm_upsert_war_session');
     expect(calls.length).toBeGreaterThan(0);
     const last = calls[calls.length - 1][1];
-    expect(last).toEqual(expect.objectContaining({
-      p_event_name: 'SvS',
-      p_session_id: SESSION,
-      p_opponent: expect.objectContaining({ kind: 'server', name: '412' })
-    }));
+    expect(last).toEqual(
+      expect.objectContaining({
+        p_event_name: 'SvS',
+        p_session_id: SESSION,
+        p_opponent: expect.objectContaining({ kind: 'server', name: '412' }),
+      })
+    );
   });
 
   it('cycles and saves the Day Won/Lost state through gm_upsert_war_session (neutral -> won -> lost -> neutral)', async () => {
@@ -349,9 +408,21 @@ describe('EventsView — granular war mode', () => {
   });
 
   it('keeps the OCR buttons clickable across sessions (GvG active, SvS inactive)', async () => {
-    currentTables.event_status = [{ event_name: 'GvG', guild: 'ALPHA', is_active: true, session_id: SESSION, stage: null, start_at: '2026-08-02' }];
+    currentTables.event_status = [
+      { event_name: 'GvG', guild: 'ALPHA', is_active: true, session_id: SESSION, stage: null, start_at: '2026-08-02' },
+    ];
     currentTables.event_participants = [
-      { pseudo: 'Alpha', guild: 'ALPHA', event_name: 'GvG', session_id: SESSION, participated: 1, score_prep: 10, score_pvp: 5, is_pending: false, appointed: false }
+      {
+        pseudo: 'Alpha',
+        guild: 'ALPHA',
+        event_name: 'GvG',
+        session_id: SESSION,
+        participated: 1,
+        score_prep: 10,
+        score_pvp: 5,
+        is_pending: false,
+        appointed: false,
+      },
     ];
     const view = new EventsView();
     await view.loadEvent('GvG');
@@ -360,7 +431,9 @@ describe('EventsView — granular war mode', () => {
     expect(prep.disabled).toBe(false);
 
     // Switching to an inactive SvS session keeps that panel's buttons usable.
-    currentTables.event_status = [{ event_name: 'SvS', guild: 'ALPHA', is_active: false, session_id: null, stage: null, start_at: null }];
+    currentTables.event_status = [
+      { event_name: 'SvS', guild: 'ALPHA', is_active: false, session_id: null, stage: null, start_at: null },
+    ];
     await view.loadEvent('SvS');
     const svsPrep = document.querySelector('#event-svs .btn-ocr-trigger[data-metric="svs_prep"]');
     expect(svsPrep.disabled).toBe(false);

@@ -87,9 +87,7 @@ export async function issueBackupCodes(
   throw new Error("backup_code_generation_failed");
 }
 
-export type BackupCodeResult =
-  | { ok: true; remaining: number }
-  | { ok: false; error: "invalid_code" | "server_error" };
+export type BackupCodeResult = { ok: true; remaining: number } | { ok: false; error: "invalid_code" | "server_error" };
 
 /**
  * Verifies a backup code for `accountId` and consumes it.
@@ -118,10 +116,7 @@ export async function verifyAndConsumeBackupCode(
   if (codeErr) return { ok: false, error: "server_error" };
   if (!codeRow) return { ok: false, error: "invalid_code" };
 
-  await admin
-    .from("account_backup_codes")
-    .update({ used_at: new Date().toISOString() })
-    .eq("id", codeRow.id);
+  await admin.from("account_backup_codes").update({ used_at: new Date().toISOString() }).eq("id", codeRow.id);
 
   const { count } = await admin
     .from("account_backup_codes")

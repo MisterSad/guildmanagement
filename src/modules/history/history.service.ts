@@ -30,21 +30,46 @@ export interface HistorySession {
 }
 
 export const EVENT_META: Record<string, HistoryEventMeta> = {
-  'SvS':                { icon: 'ph-sword',      label: 'SvS',         filterKey: 'SvS',         hasScore: true,  border: 'var(--accent)' },
-  'GvG':                { icon: 'ph-flag-banner', label: 'GvG',         filterKey: 'GvG',         hasScore: true,  border: 'var(--accent)' },
-  'Shadowfront':        { icon: 'ph-ghost',       label: 'Shadowfront', filterKey: 'Shadowfront', hasScore: false, border: 'var(--info)'   },
-  'Defend Trade Route': { icon: 'ph-truck',       label: 'DTR',         filterKey: 'DTR',         hasScore: false, border: 'var(--info)'   },
-  'ARMS RACE STAGE A':  { icon: 'ph-crosshair',   label: 'Arms Race A', filterKey: 'Arms Race',   hasScore: false, border: 'var(--warning)'},
-  'ARMS RACE STAGE B':  { icon: 'ph-target',      label: 'Arms Race B', filterKey: 'Arms Race',   hasScore: false, border: 'var(--warning)'},
-  'Glory':              { icon: 'ph-trophy',      label: 'Glory',       filterKey: 'Glory',       hasScore: true,  border: 'var(--success)'}
+  'SvS': { icon: 'ph-sword', label: 'SvS', filterKey: 'SvS', hasScore: true, border: 'var(--accent)' },
+  'GvG': { icon: 'ph-flag-banner', label: 'GvG', filterKey: 'GvG', hasScore: true, border: 'var(--accent)' },
+  'Shadowfront': {
+    icon: 'ph-ghost',
+    label: 'Shadowfront',
+    filterKey: 'Shadowfront',
+    hasScore: false,
+    border: 'var(--info)',
+  },
+  'Defend Trade Route': { icon: 'ph-truck', label: 'DTR', filterKey: 'DTR', hasScore: false, border: 'var(--info)' },
+  'ARMS RACE STAGE A': {
+    icon: 'ph-crosshair',
+    label: 'Arms Race A',
+    filterKey: 'Arms Race',
+    hasScore: false,
+    border: 'var(--warning)',
+  },
+  'ARMS RACE STAGE B': {
+    icon: 'ph-target',
+    label: 'Arms Race B',
+    filterKey: 'Arms Race',
+    hasScore: false,
+    border: 'var(--warning)',
+  },
+  'Glory': { icon: 'ph-trophy', label: 'Glory', filterKey: 'Glory', hasScore: true, border: 'var(--success)' },
 };
 
 export const FILTERS = ['All', 'SvS', 'GvG', 'Shadowfront', 'DTR', 'Arms Race', 'Glory'];
 
 /** Secure whitelist: only these participant fields may be edited from History. */
 export const ALLOWED_HISTORY_FIELDS = [
-  'participated', 'score', 'score_prep', 'score_pvp',
-  'late', 'excused', 'sub_present', 'appointed', 'is_pending'
+  'participated',
+  'score',
+  'score_prep',
+  'score_pvp',
+  'late',
+  'excused',
+  'sub_present',
+  'appointed',
+  'is_pending',
 ];
 
 export const HISTORY_CACHE_TTL_MS = 15000;
@@ -139,19 +164,28 @@ export function sortSessionsDesc(sessions: HistorySession[]): HistorySession[] {
  * their participants, status and squads -- and squads not yet started are
  * kept (owner decision, 2026-10-03). Throws on refusal.
  */
-export function clearEventHistory(eventNames: string[]): Promise<{ ok: true; participants: number; sessions: number; spared: number }> {
+export function clearEventHistory(
+  eventNames: string[]
+): Promise<{ ok: true; participants: number; sessions: number; spared: number }> {
   return guildWrite('gm_clear_event_history', { p_event_names: eventNames });
 }
 
 /** Deletes one session of the History detail dialog in one transaction. Throws on refusal. */
-export function deleteHistorySession(eventName: string, weekStart: string, sessionId: string | null): Promise<{ ok: true; participants: number }> {
-  return guildWrite('gm_delete_history_session', { p_event_name: eventName, p_week_start: weekStart, p_session_id: sessionId });
+export function deleteHistorySession(
+  eventName: string,
+  weekStart: string,
+  sessionId: string | null
+): Promise<{ ok: true; participants: number }> {
+  return guildWrite('gm_delete_history_session', {
+    p_event_name: eventName,
+    p_week_start: weekStart,
+    p_session_id: sessionId,
+  });
 }
 
 // ── Data access (M4b) ─────────────────────────────────────────────────────────
 // Each builder takes the client the view hands it and returns the
 // builder/promise; the view awaits it and keeps its own error handling.
-
 
 /** List the guild's event sessions through `gm_list_event_sessions`. */
 export function listEventSessions(db: DbClient, guild: string | null) {
@@ -165,15 +199,23 @@ export function listAllWarSessions(db: DbClient, guild: string | null) {
 
 /** Read every Glory participant row of the guild. */
 export function fetchGloryParticipantRows(db: DbClient, guild: string | null) {
-  return db.from('event_participants')
+  return db
+    .from('event_participants')
     .select('pseudo, week_start, participated, score, session_id')
     .eq('guild', guild)
     .eq('event_name', 'Glory');
 }
 
 /** Read one session's participant rows for the History detail dialog. */
-export function fetchSessionParticipants(db: DbClient, guild: string | null, eventName: string, weekStart: string, sessionId: string | null) {
-  let query: any = db.from('event_participants')
+export function fetchSessionParticipants(
+  db: DbClient,
+  guild: string | null,
+  eventName: string,
+  weekStart: string,
+  sessionId: string | null
+) {
+  let query: any = db
+    .from('event_participants')
     .select('pseudo, participated, score, score_prep, score_pvp, appointed, excused, late, sub_present')
     .eq('guild', guild)
     .eq('event_name', eventName)
@@ -185,8 +227,18 @@ export function fetchSessionParticipants(db: DbClient, guild: string | null, eve
 }
 
 /** Update one whitelisted field of a participant row in a session. The caller enforces the whitelist. */
-export function updateSessionParticipantField(db: DbClient, guild: string | null, eventName: string, weekStart: string, sessionId: string | null, pseudo: string, field: string, value: unknown) {
-  let query: any = db.from('event_participants')
+export function updateSessionParticipantField(
+  db: DbClient,
+  guild: string | null,
+  eventName: string,
+  weekStart: string,
+  sessionId: string | null,
+  pseudo: string,
+  field: string,
+  value: unknown
+) {
+  let query: any = db
+    .from('event_participants')
     .update({ [field]: value })
     .eq('guild', guild)
     .eq('event_name', eventName)

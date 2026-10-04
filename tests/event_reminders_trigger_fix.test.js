@@ -27,7 +27,10 @@ import {
   isSvsActiveForWeek,
 } from '../supabase/functions/_shared/reminder-rules';
 
-const migrationPath = path.resolve(__dirname, '../supabase/migrations/20260914110000_fix_event_reminders_trigger_and_tz.sql');
+const migrationPath = path.resolve(
+  __dirname,
+  '../supabase/migrations/20260914110000_fix_event_reminders_trigger_and_tz.sql'
+);
 const migrationContent = fs.readFileSync(migrationPath, 'utf-8');
 const edgeContent = edgeSource('event-reminders');
 
@@ -36,7 +39,7 @@ const edgeContent = edgeSource('event-reminders');
  * ------------------------------------------------------------------------- */
 
 describe('RC4: gm_invoke_event_reminders() is UTC-pinned and keeps the Vault guard', () => {
-  it('evaluates every slot extract against timezone(\'utc\', now())', () => {
+  it("evaluates every slot extract against timezone('utc', now())", () => {
     expect(migrationContent).toContain("extract(dow FROM timezone('utc', now()))");
     expect(migrationContent).toContain("extract(hour FROM timezone('utc', now()))");
     expect(migrationContent).toContain("extract(minute FROM timezone('utc', now()))");
@@ -49,7 +52,9 @@ describe('RC4: gm_invoke_event_reminders() is UTC-pinned and keeps the Vault gua
   });
 
   it('keeps the active-event due-window as a pure TIMESTAMPTZ comparison', () => {
-    expect(migrationContent).toContain("start_at BETWEEN now() - interval '5 minutes' AND now() + interval '35 minutes'");
+    expect(migrationContent).toContain(
+      "start_at BETWEEN now() - interval '5 minutes' AND now() + interval '35 minutes'"
+    );
   });
 
   it('keeps the Vault secret guard and emits an explicit warning when missing', () => {
@@ -60,7 +65,7 @@ describe('RC4: gm_invoke_event_reminders() is UTC-pinned and keeps the Vault gua
   it('redefines public.gm_invoke_event_reminders with SECURITY DEFINER and service_role EXECUTE only', () => {
     expect(migrationContent).toContain('CREATE OR REPLACE FUNCTION public.gm_invoke_event_reminders()');
     expect(migrationContent).toContain('SECURITY DEFINER');
-    expect(migrationContent).toContain("GRANT EXECUTE ON FUNCTION public.gm_invoke_event_reminders() TO service_role");
+    expect(migrationContent).toContain('GRANT EXECUTE ON FUNCTION public.gm_invoke_event_reminders() TO service_role');
   });
 });
 
@@ -177,22 +182,36 @@ describe('RC6: SvS calendar-week session detection', () => {
   });
 
   it('active event_status SvS with start_at in the current week is active', () => {
-    expect(isSvsActiveForWeek(nowMs, { eventActive: true, eventStartAtMs: thisWeekFriday, warSessionTimestampsMs: [] })).toBe(true);
+    expect(
+      isSvsActiveForWeek(nowMs, { eventActive: true, eventStartAtMs: thisWeekFriday, warSessionTimestampsMs: [] })
+    ).toBe(true);
   });
 
   it('an active SvS row without start_at remains active (fallback)', () => {
-    expect(isSvsActiveForWeek(nowMs, { eventActive: true, eventStartAtMs: null, warSessionTimestampsMs: [] })).toBe(true);
+    expect(isSvsActiveForWeek(nowMs, { eventActive: true, eventStartAtMs: null, warSessionTimestampsMs: [] })).toBe(
+      true
+    );
   });
 
   it('a stale start_at from a previous week is NOT active (no more 7.5-day window)', () => {
-    expect(isSvsActiveForWeek(nowMs, { eventActive: true, eventStartAtMs: lastWeek, warSessionTimestampsMs: [] })).toBe(false);
-    expect(isSvsActiveForWeek(nowMs, { eventActive: true, eventStartAtMs: nextWeek, warSessionTimestampsMs: [] })).toBe(false);
+    expect(isSvsActiveForWeek(nowMs, { eventActive: true, eventStartAtMs: lastWeek, warSessionTimestampsMs: [] })).toBe(
+      false
+    );
+    expect(isSvsActiveForWeek(nowMs, { eventActive: true, eventStartAtMs: nextWeek, warSessionTimestampsMs: [] })).toBe(
+      false
+    );
   });
 
   it('falls back to a durable war_sessions SvS row of the current week', () => {
-    expect(isSvsActiveForWeek(nowMs, { eventActive: false, eventStartAtMs: null, warSessionTimestampsMs: [thisWeekFriday] })).toBe(true);
-    expect(isSvsActiveForWeek(nowMs, { eventActive: false, eventStartAtMs: null, warSessionTimestampsMs: [lastWeek] })).toBe(false);
-    expect(isSvsActiveForWeek(nowMs, { eventActive: false, eventStartAtMs: null, warSessionTimestampsMs: [] })).toBe(false);
+    expect(
+      isSvsActiveForWeek(nowMs, { eventActive: false, eventStartAtMs: null, warSessionTimestampsMs: [thisWeekFriday] })
+    ).toBe(true);
+    expect(
+      isSvsActiveForWeek(nowMs, { eventActive: false, eventStartAtMs: null, warSessionTimestampsMs: [lastWeek] })
+    ).toBe(false);
+    expect(isSvsActiveForWeek(nowMs, { eventActive: false, eventStartAtMs: null, warSessionTimestampsMs: [] })).toBe(
+      false
+    );
   });
 });
 

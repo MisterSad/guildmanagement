@@ -76,7 +76,7 @@ export async function getGuildAverages(
       flagship_power: avgOf("flagship_power"),
       champion_power: avgOf("champion_power"),
       crew_power: avgOf("crew_power"),
-      glory_score: avgOf("glory_score")
+      glory_score: avgOf("glory_score"),
     };
   } catch (_) {
     return { avg_power: 0, member_count: 0 };

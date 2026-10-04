@@ -4,7 +4,6 @@ import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.
 import { serviceClient } from "../_shared/clients.ts";
 import { serveUnlessTest } from "../_shared/serve.ts";
 
-
 function makeJson(req: Request) {
   return (body: unknown, status = 200): Response =>
     new Response(JSON.stringify(body), {
@@ -48,7 +47,10 @@ export async function handler(req: Request): Promise<Response> {
     return json({ ok: false, error: "too_many_attempts" }, 429);
   }
 
-  let id = "", password = "", uid = "", code = "";
+  let id = "",
+    password = "",
+    uid = "",
+    code = "";
   try {
     const body = await req.json();
     id = (body?.id ?? "").toString().trim();

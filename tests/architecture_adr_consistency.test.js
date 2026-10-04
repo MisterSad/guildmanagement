@@ -21,7 +21,8 @@ describe('TICKET-15 [DOC-01]: Architecture Decision Records Integrity', () => {
   // and had been stale since ADR-015 was written: four ADRs existed that no
   // test looked at. A list that must be edited by hand to stay true is not a
   // guard, it is a second thing to forget.
-  const expectedAdrs = fs.readdirSync(adrDir)
+  const expectedAdrs = fs
+    .readdirSync(adrDir)
     .filter((f) => /^ADR-\d{3}-.+\.md$/.test(f))
     .sort();
 

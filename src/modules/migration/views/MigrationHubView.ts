@@ -5,7 +5,6 @@
  * for cross-server migrations with dual Guild and Server scopes.
  */
 
-
 import { escapeHTML } from '../../../core/utils/text';
 import { debounce } from '../../../core/utils/async';
 import { getActiveGuild, currentAccountId, getCurrentPseudo, roleFromStorage } from '../../../core/auth/roles';
@@ -13,18 +12,14 @@ import { getClient } from '../../../core/api/supabase';
 import { getAppState } from '../../../core/state/app-state';
 import { showToast } from '../../../core/dom/toast';
 import { showConfirm } from '../../app/dialogs/dialogs.service';
-import {
-  compressImage,
-  extractImagesFromClipboard,
-  extractImagesFromDrop
-} from '../../../core/utils/image-compressor';
+import { compressImage, extractImagesFromClipboard, extractImagesFromDrop } from '../../../core/utils/image-compressor';
 import {
   MigrationWikiPage,
   MigrationWikiAttachment,
   MigrationWikiScope,
   MigrationWikiCategory,
   MigrationHubFilterState,
-  MigrationWikiComment
+  MigrationWikiComment,
 } from '../types';
 import {
   queryWikiPages,
@@ -36,7 +31,7 @@ import {
   insertWikiComment,
   deleteWikiComment,
   requestPageSummary,
-  requestScopeBriefing
+  requestScopeBriefing,
 } from '../migration.service';
 
 /**
@@ -47,7 +42,7 @@ function getServerNumber(guildId: string): string {
   const entry = getAppState().guildsData[guildId];
   if (entry && entry.server_number) return String(entry.server_number);
   const store = typeof localStorage !== 'undefined' ? localStorage : null;
-  return store ? (store.getItem('gm_server_restriction') || '') : '';
+  return store ? store.getItem('gm_server_restriction') || '' : '';
 }
 
 const CATEGORY_LABELS: Record<MigrationWikiCategory, string> = {
@@ -56,7 +51,7 @@ const CATEGORY_LABELS: Record<MigrationWikiCategory, string> = {
   agreements: 'Agreements',
   diplomacy: 'Diplomacy',
   recruitment: 'Recruitment',
-  blacklist: 'Blacklist'
+  blacklist: 'Blacklist',
 };
 
 const CATEGORY_CHIP_CLASSES: Record<MigrationWikiCategory, string> = {
@@ -65,14 +60,18 @@ const CATEGORY_CHIP_CLASSES: Record<MigrationWikiCategory, string> = {
   agreements: 'gm-chip-blue',
   diplomacy: 'gm-chip-blue',
   recruitment: 'gm-chip-success',
-  blacklist: 'gm-chip-danger'
+  blacklist: 'gm-chip-danger',
 };
 
 /**
  * Mirrors the gm_migration_wiki_update / _delete policies: a page belongs to the
  * guild that wrote it, and only that guild (or a super admin) edits or deletes it.
  */
-export function canManageWikiPage(page: { owner_guild?: string | null }, guild: string | null, role: string | null): boolean {
+export function canManageWikiPage(
+  page: { owner_guild?: string | null },
+  guild: string | null,
+  role: string | null
+): boolean {
   if (role === 'super_admin') return true;
   return !!guild && !!page.owner_guild && page.owner_guild === guild;
 }
@@ -84,7 +83,7 @@ export class MigrationHubView {
     scope: 'guild',
     category: 'all',
     searchQuery: '',
-    activePageId: null
+    activePageId: null,
   };
 
   private editingPageId: string | null = null;
@@ -311,7 +310,7 @@ export class MigrationHubView {
 
       this.pages = (data || []).map((row: any) => ({
         ...row,
-        attachments: Array.isArray(row.attachments) ? row.attachments : []
+        attachments: Array.isArray(row.attachments) ? row.attachments : [],
       })) as MigrationWikiPage[];
 
       // If activePageId is null or not in pages, select first page if available
@@ -337,34 +336,26 @@ export class MigrationHubView {
     if (!this.realtimeChannel) {
       this.realtimeChannel = db
         .channel('public:migration_wiki_pages')
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'migration_wiki_pages' },
-          () => {
-            // Any remote change re-runs a full select('*') of the wiki table,
-            // so an unthrottled handler meant that with n admins editing, each
-            // edit cost n full refetches. Debounced: a burst of edits (a rename
-            // followed by a body save, or several people typing) collapses into
-            // one refetch instead of one per event.
-            this.reloadFromRealtime();
-          }
-        )
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'migration_wiki_pages' }, () => {
+          // Any remote change re-runs a full select('*') of the wiki table,
+          // so an unthrottled handler meant that with n admins editing, each
+          // edit cost n full refetches. Debounced: a burst of edits (a rename
+          // followed by a body save, or several people typing) collapses into
+          // one refetch instead of one per event.
+          this.reloadFromRealtime();
+        })
         .subscribe();
     }
 
     if (!this.commentsRealtimeChannel) {
       this.commentsRealtimeChannel = db
         .channel('public:migration_wiki_comments')
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'migration_wiki_comments' },
-          (payload: any) => {
-            const activePageId = this.filterState.activePageId;
-            if (activePageId && (payload.new?.page_id === activePageId || payload.old?.page_id === activePageId)) {
-              this.loadComments(activePageId);
-            }
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'migration_wiki_comments' }, (payload: any) => {
+          const activePageId = this.filterState.activePageId;
+          if (activePageId && (payload.new?.page_id === activePageId || payload.old?.page_id === activePageId)) {
+            this.loadComments(activePageId);
           }
-        )
+        })
         .subscribe();
     }
   }
@@ -526,7 +517,8 @@ export class MigrationHubView {
 
     const scopeBadge = document.getElementById('migration-hub-view-scope-badge');
     if (scopeBadge) {
-      scopeBadge.textContent = activePage.scope === 'guild' ? `Guild [${activePage.guild_id || ''}]` : `Server [${activePage.server_number}]`;
+      scopeBadge.textContent =
+        activePage.scope === 'guild' ? `Guild [${activePage.guild_id || ''}]` : `Server [${activePage.server_number}]`;
     }
 
     // Set title & meta
@@ -535,8 +527,20 @@ export class MigrationHubView {
 
     const metaEl = document.getElementById('migration-hub-view-meta');
     if (metaEl) {
-      const createdDate = new Date(activePage.created_at).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-      const updatedDate = new Date(activePage.updated_at).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+      const createdDate = new Date(activePage.created_at).toLocaleString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+      const updatedDate = new Date(activePage.updated_at).toLocaleString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
       metaEl.textContent = `Created by ${activePage.created_by_pseudo} on ${createdDate} · Last updated by ${activePage.updated_by_pseudo || activePage.created_by_pseudo} on ${updatedDate}`;
     }
 
@@ -608,7 +612,8 @@ export class MigrationHubView {
     editCard.style.display = 'block';
 
     const formTitle = document.getElementById('migration-hub-form-title');
-    if (formTitle) formTitle.textContent = `New Page (${this.filterState.scope === 'guild' ? 'Guild Intel' : 'Server Intel'})`;
+    if (formTitle)
+      formTitle.textContent = `New Page (${this.filterState.scope === 'guild' ? 'Guild Intel' : 'Server Intel'})`;
 
     const titleInput = document.getElementById('migration-hub-form-title-input') as HTMLInputElement | null;
     if (titleInput) titleInput.value = '';
@@ -708,7 +713,15 @@ export class MigrationHubView {
     try {
       if (this.editingPageId) {
         // Update existing page
-        const { error } = await updateWikiPage(db, this.editingPageId, title, category, content, isPinned, this.pendingAttachments);
+        const { error } = await updateWikiPage(
+          db,
+          this.editingPageId,
+          title,
+          category,
+          content,
+          isPinned,
+          this.pendingAttachments
+        );
 
         if (error) {
           console.error('[MigrationHub] Update failed', error);
@@ -720,7 +733,18 @@ export class MigrationHubView {
         this.filterState.activePageId = this.editingPageId;
       } else {
         // Create new page
-        const { data, error } = await insertWikiPage(db, this.filterState.scope, serverNumber, currentG, category, title, content, isPinned, this.pendingAttachments, pseudo);
+        const { data, error } = await insertWikiPage(
+          db,
+          this.filterState.scope,
+          serverNumber,
+          currentG,
+          category,
+          title,
+          content,
+          isPinned,
+          this.pendingAttachments,
+          pseudo
+        );
 
         if (error) {
           console.error('[MigrationHub] Insert failed', error);
@@ -789,7 +813,12 @@ export class MigrationHubView {
         // for the deleted rows back and check one came.
         const { data, error } = await deleteWikiPage(db, page.id);
         if (error || !data || data.length === 0) {
-          showToast(error ? 'Failed to delete page: ' + (error.message || 'Forbidden') : 'Only the page\'s creator can delete it.', 'error');
+          showToast(
+            error
+              ? 'Failed to delete page: ' + (error.message || 'Forbidden')
+              : "Only the page's creator can delete it.",
+            'error'
+          );
           return;
         }
 
@@ -815,7 +844,7 @@ export class MigrationHubView {
       `*Scope: ${scopeLabel} | By: ${page.created_by_pseudo}*`,
       '---',
       page.content,
-      page.attachments && page.attachments.length > 0 ? `\n*(${page.attachments.length} screenshot(s) attached)*` : ''
+      page.attachments && page.attachments.length > 0 ? `\n*(${page.attachments.length} screenshot(s) attached)*` : '',
     ].join('\n');
 
     try {
@@ -877,11 +906,15 @@ export class MigrationHubView {
         day: '2-digit',
         month: 'short',
         hour: '2-digit',
-        minute: '2-digit'
+        minute: '2-digit',
       });
       const canDelete = isSuperAdmin || (c.author_account_id && c.author_account_id === currentAccId);
-      const guildBadge = c.author_guild_id ? `<span class="gm-chip gm-chip-blue" style="font-size:0.68rem; padding:1px 5px;">[${escapeHTML(c.author_guild_id)}]</span>` : '';
-      const roleLabel = c.author_role ? `<span style="font-size:0.7rem; color:var(--text-muted);">(${escapeHTML(c.author_role.replace('_', ' '))})</span>` : '';
+      const guildBadge = c.author_guild_id
+        ? `<span class="gm-chip gm-chip-blue" style="font-size:0.68rem; padding:1px 5px;">[${escapeHTML(c.author_guild_id)}]</span>`
+        : '';
+      const roleLabel = c.author_role
+        ? `<span style="font-size:0.7rem; color:var(--text-muted);">(${escapeHTML(c.author_role.replace('_', ' '))})</span>`
+        : '';
 
       html += `
         <div class="gm-card" style="padding:0.75rem; background:var(--bg-1); border:1px solid var(--border-soft); border-radius:6px;" data-comment-id="${escapeHTML(c.id)}">
@@ -895,11 +928,15 @@ export class MigrationHubView {
               ${roleLabel}
               <span style="font-size:0.72rem; color:var(--text-muted); margin-left:0.25rem;">· ${escapeHTML(dateStr)}</span>
             </div>
-            ${canDelete ? `
+            ${
+              canDelete
+                ? `
               <button type="button" class="gm-btn gm-btn-ghost gm-btn-sm btn-delete-comment" data-id="${escapeHTML(c.id)}" title="Delete comment" style="color:var(--danger); padding:2px 6px; font-size:0.75rem;">
                 <i class="ph ph-trash"></i>
               </button>
-            ` : ''}
+            `
+                : ''
+            }
           </div>
           <div style="font-size:0.85rem; line-height:1.5; color:var(--text-normal); white-space:pre-wrap; word-break:break-word; padding-left:1.8rem;">${escapeHTML(c.content)}</div>
         </div>
@@ -995,7 +1032,7 @@ export class MigrationHubView {
           maxWidth: 1440,
           maxHeight: 1440,
           quality: 0.78,
-          preferredMimeType: 'image/webp'
+          preferredMimeType: 'image/webp',
         });
 
         const attachment: MigrationWikiAttachment = {
@@ -1005,7 +1042,7 @@ export class MigrationHubView {
           sizeBytes: compressed.sizeBytes,
           width: compressed.width,
           height: compressed.height,
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
         };
 
         this.pendingAttachments.push(attachment);
@@ -1133,13 +1170,28 @@ export class MigrationHubView {
     let html = escapeHTML(raw);
 
     // Step 2: Headings
-    html = html.replace(/^### (.*$)/gim, '<h3 style="margin:1.1rem 0 0.4rem; font-size:1.05rem; font-weight:700; color:var(--fg);">$1</h3>');
-    html = html.replace(/^## (.*$)/gim, '<h2 style="margin:1.3rem 0 0.5rem; font-size:1.22rem; font-weight:700; color:var(--fg); border-bottom:1px solid var(--border-soft); padding-bottom:0.25rem;">$1</h2>');
-    html = html.replace(/^# (.*$)/gim, '<h1 style="margin:1.5rem 0 0.6rem; font-size:1.4rem; font-weight:700; color:var(--fg);">$1</h1>');
+    html = html.replace(
+      /^### (.*$)/gim,
+      '<h3 style="margin:1.1rem 0 0.4rem; font-size:1.05rem; font-weight:700; color:var(--fg);">$1</h3>'
+    );
+    html = html.replace(
+      /^## (.*$)/gim,
+      '<h2 style="margin:1.3rem 0 0.5rem; font-size:1.22rem; font-weight:700; color:var(--fg); border-bottom:1px solid var(--border-soft); padding-bottom:0.25rem;">$1</h2>'
+    );
+    html = html.replace(
+      /^# (.*$)/gim,
+      '<h1 style="margin:1.5rem 0 0.6rem; font-size:1.4rem; font-weight:700; color:var(--fg);">$1</h1>'
+    );
 
     // Step 3: Blockquotes
-    html = html.replace(/^&gt; (.*$)/gim, '<blockquote style="border-left:3px solid var(--accent); padding-left:0.75rem; margin:0.6rem 0; color:var(--text-muted); font-style:italic;">$1</blockquote>');
-    html = html.replace(/^> (.*$)/gim, '<blockquote style="border-left:3px solid var(--accent); padding-left:0.75rem; margin:0.6rem 0; color:var(--text-muted); font-style:italic;">$1</blockquote>');
+    html = html.replace(
+      /^&gt; (.*$)/gim,
+      '<blockquote style="border-left:3px solid var(--accent); padding-left:0.75rem; margin:0.6rem 0; color:var(--text-muted); font-style:italic;">$1</blockquote>'
+    );
+    html = html.replace(
+      /^> (.*$)/gim,
+      '<blockquote style="border-left:3px solid var(--accent); padding-left:0.75rem; margin:0.6rem 0; color:var(--text-muted); font-style:italic;">$1</blockquote>'
+    );
 
     // Step 4: Tables
     // Simple markdown table parser for rows starting with |
@@ -1152,7 +1204,9 @@ export class MigrationHubView {
       if (line.startsWith('|') && line.endsWith('|')) {
         if (!inTable) {
           inTable = true;
-          processedLines.push('<table style="width:100%; border-collapse:collapse; margin:1rem 0; font-size:0.85rem; border:1px solid var(--border-soft);">');
+          processedLines.push(
+            '<table style="width:100%; border-collapse:collapse; margin:1rem 0; font-size:0.85rem; border:1px solid var(--border-soft);">'
+          );
         }
 
         // Check if separator line (| :--- |)
@@ -1164,8 +1218,14 @@ export class MigrationHubView {
         const isHeader = !processedLines.some((l) => l.includes('<tbody>'));
 
         if (isHeader) {
-          processedLines.push('<thead style="background:var(--bg-1); border-bottom:2px solid var(--border-soft);"><tr>');
-          cells.forEach((c) => processedLines.push(`<th style="padding:0.5rem 0.75rem; text-align:left; font-weight:600;">${c.trim()}</th>`));
+          processedLines.push(
+            '<thead style="background:var(--bg-1); border-bottom:2px solid var(--border-soft);"><tr>'
+          );
+          cells.forEach((c) =>
+            processedLines.push(
+              `<th style="padding:0.5rem 0.75rem; text-align:left; font-weight:600;">${c.trim()}</th>`
+            )
+          );
           processedLines.push('</tr></thead><tbody>');
         } else {
           processedLines.push('<tr style="border-bottom:1px solid var(--border-soft);">');
@@ -1188,7 +1248,10 @@ export class MigrationHubView {
     html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
 
     // Step 6: Inline code (handles both raw and escaped backticks from escapeHTML)
-    html = html.replace(/(?:`|&#96;)(.*?)(?:`|&#96;)/g, '<code style="background:rgba(0,0,0,0.25); padding:2px 5px; border-radius:4px; font-family:monospace; font-size:0.85em; color:var(--accent);">$1</code>');
+    html = html.replace(
+      /(?:`|&#96;)(.*?)(?:`|&#96;)/g,
+      '<code style="background:rgba(0,0,0,0.25); padding:2px 5px; border-radius:4px; font-family:monospace; font-size:0.85em; color:var(--accent);">$1</code>'
+    );
 
     // Step 7: Bullet lists
     html = html.replace(/^- (.*$)/gim, '<li style="margin-left:1.25rem; margin-bottom:0.25rem;">$1</li>');
@@ -1228,7 +1291,13 @@ export class MigrationHubView {
 
     try {
       const db = getClient();
-      const { data, error } = await requestPageSummary(db, activePage.id, activePage.scope, activePage.guild_id, activePage.server_number);
+      const { data, error } = await requestPageSummary(
+        db,
+        activePage.id,
+        activePage.scope,
+        activePage.guild_id,
+        activePage.server_number
+      );
 
       if (error || !data || !data.ok) {
         const errMsg = error?.message || data?.message || 'Failed to generate summary';
@@ -1343,4 +1412,3 @@ export class MigrationHubView {
 
 /** Shared singleton instance for Migration Hub. */
 export const migrationHubView = new MigrationHubView();
-

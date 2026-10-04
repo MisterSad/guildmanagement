@@ -8,8 +8,25 @@
 import { type EdgeLogger } from "../_shared/logger.ts";
 import { isAllowedOrigin } from "../_shared/cors.ts";
 import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.ts";
-import { DISCORD_ME_URL, DISCORD_REVOKE_URL, DISCORD_TOKEN_URL, buildAuthorizeUrl, buildErrorReturnUrl, buildReturnUrl, generatePkcePair, randomToken } from "../_shared/discord-oauth.ts";
-import { CLIENT_ID, CLIENT_SECRET, REDIRECT_URI, DEFAULT_ORIGIN, STATE_TTL_MS, TICKET_TTL_MS, IP_LIMIT } from "./config.ts";
+import {
+  DISCORD_ME_URL,
+  DISCORD_REVOKE_URL,
+  DISCORD_TOKEN_URL,
+  buildAuthorizeUrl,
+  buildErrorReturnUrl,
+  buildReturnUrl,
+  generatePkcePair,
+  randomToken,
+} from "../_shared/discord-oauth.ts";
+import {
+  CLIENT_ID,
+  CLIENT_SECRET,
+  REDIRECT_URI,
+  DEFAULT_ORIGIN,
+  STATE_TTL_MS,
+  TICKET_TTL_MS,
+  IP_LIMIT,
+} from "./config.ts";
 import { redirect, resolveOrigin } from "./http.ts";
 import { issueTicket } from "./tickets.ts";
 
@@ -38,12 +55,14 @@ export async function handleStart(req: Request, url: URL, admin: any, logger: Ed
     return redirect(buildErrorReturnUrl(origin, "server_error"));
   }
 
-  return redirect(buildAuthorizeUrl({
-    clientId: CLIENT_ID,
-    redirectUri: REDIRECT_URI,
-    state,
-    codeChallenge: pkce.challenge,
-  }));
+  return redirect(
+    buildAuthorizeUrl({
+      clientId: CLIENT_ID,
+      redirectUri: REDIRECT_URI,
+      state,
+      codeChallenge: pkce.challenge,
+    })
+  );
 }
 
 // ── GET /callback ───────────────────────────────────────────────────────────
@@ -54,8 +73,7 @@ export async function handleCallback(_req: Request, url: URL, admin: any, logger
   // The state is consumed FIRST and atomically (DELETE ... RETURNING), so a
   // replayed callback finds nothing. Until it resolves we do not know the real
   // origin, so errors before this point go to the default origin.
-  const { data: stateRows, error: stateErr } = await admin
-    .rpc("gm_consume_discord_oauth_state", { p_state: state });
+  const { data: stateRows, error: stateErr } = await admin.rpc("gm_consume_discord_oauth_state", { p_state: state });
   if (stateErr) {
     logger.error("Failed to consume OAuth state", stateErr);
     return redirect(buildErrorReturnUrl(DEFAULT_ORIGIN, "server_error"));
@@ -136,17 +154,20 @@ export async function handleCallback(_req: Request, url: URL, admin: any, logger
     // a token. Runs on every exit path out of the block above, including the
     // early returns, which is the point — we hold no Discord token at rest.
     try {
-      if (accessToken) await fetch(DISCORD_REVOKE_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          client_id: CLIENT_ID,
-          client_secret: CLIENT_SECRET,
-          token: accessToken,
-          token_type_hint: "access_token",
-        }),
-      });
-    } catch { /* ignore */ }
+      if (accessToken)
+        await fetch(DISCORD_REVOKE_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            client_id: CLIENT_ID,
+            client_secret: CLIENT_SECRET,
+            token: accessToken,
+            token_type_hint: "access_token",
+          }),
+        });
+    } catch {
+      /* ignore */
+    }
   }
 
   // ── Issue the ticket. Note it is issued whether or not the Discord account
@@ -156,7 +177,10 @@ export async function handleCallback(_req: Request, url: URL, admin: any, logger
   // the SPA within a second of landing. Continuations, which wait on a person,
   // get CONTINUATION_TTL_MS instead.
   const ticket = await issueTicket(
-    admin, { discordUserId, discordUsername, displayName, attempts: 0 }, logger, TICKET_TTL_MS,
+    admin,
+    { discordUserId, discordUsername, displayName, attempts: 0 },
+    logger,
+    TICKET_TTL_MS
   );
   if (!ticket) return redirect(buildErrorReturnUrl(origin, "server_error"));
 

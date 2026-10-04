@@ -58,7 +58,7 @@ export const COMMON_TIMEZONES: TimezoneOption[] = [
   { zone: 'Africa/Johannesburg', label: 'Johannesburg, Cape Town (SAST)', region: 'Africa' },
   { zone: 'Africa/Lagos', label: 'Lagos (WAT)', region: 'Africa' },
   { zone: 'Africa/Nairobi', label: 'Nairobi (EAT)', region: 'Africa' },
-  { zone: 'Africa/Casablanca', label: 'Casablanca (WEST)', region: 'Africa' }
+  { zone: 'Africa/Casablanca', label: 'Casablanca (WEST)', region: 'Africa' },
 ];
 
 /**
@@ -101,7 +101,7 @@ export function getTimezoneOffset(timeZone: string, date: Date = new Date()): nu
       hour: 'numeric',
       minute: 'numeric',
       second: 'numeric',
-      hour12: false
+      hour12: false,
     });
 
     const tzFormatter = new Intl.DateTimeFormat('en-US', {
@@ -112,7 +112,7 @@ export function getTimezoneOffset(timeZone: string, date: Date = new Date()): nu
       hour: 'numeric',
       minute: 'numeric',
       second: 'numeric',
-      hour12: false
+      hour12: false,
     });
 
     const utcParts = utcFormatter.formatToParts(date);
@@ -173,7 +173,7 @@ export function formatTimeInZone(timeZone: string, date: Date = new Date(), with
       hour: '2-digit',
       minute: '2-digit',
       second: withSeconds ? '2-digit' : undefined,
-      hour12: false
+      hour12: false,
     });
     return formatter.format(date);
   } catch (_) {
@@ -202,7 +202,7 @@ export function formatTimezoneDisplay(
       offset,
       offsetText,
       timeText,
-      tooltip: `Local time: ${timeText} (${timeZone} • ${offsetText})`
+      tooltip: `Local time: ${timeText} (${timeZone} • ${offsetText})`,
     };
   }
 
@@ -218,7 +218,7 @@ export function formatTimezoneDisplay(
       offset,
       offsetText,
       timeText,
-      tooltip: `Local time: ~${timeText} (${offsetText})`
+      tooltip: `Local time: ~${timeText} (${offsetText})`,
     };
   }
 

@@ -21,7 +21,14 @@ const read = (p) => fs.readFileSync(path.resolve(__dirname, '..', p), 'utf-8');
 
 describe('1. transfers: whoever asks never decides', () => {
   const pull = { id: 't', uid: '1', pseudo: 'P', source_guild: 'LOSER', target_guild: 'PULLER', requested_by: 'admin' };
-  const playerReq = { id: 't', uid: '1', pseudo: 'P', source_guild: 'OLD', target_guild: 'NEW', requested_by: 'player' };
+  const playerReq = {
+    id: 't',
+    uid: '1',
+    pseudo: 'P',
+    source_guild: 'OLD',
+    target_guild: 'NEW',
+    requested_by: 'player',
+  };
 
   it('an admin pull is decided by the guild the player is leaving', () => {
     expect(transferActionFor(pull, 'LOSER')).toBe('decide');
@@ -42,16 +49,23 @@ describe('1. transfers: whoever asks never decides', () => {
   const sql = read('supabase/migrations/20260930182818_transfer_requester_cannot_approve.sql');
   it('records who asked, and resolves the approver from it', () => {
     expect(sql).toContain("VALUES (p_uid, v_pseudo, v_source_guild, v_target, 'pending', 'admin')");
-    expect(sql).toMatch(/v_approver_guild := CASE WHEN v_transfer\.requested_by = 'admin'\s+THEN v_transfer\.source_guild ELSE v_transfer\.target_guild END;/);
+    expect(sql).toMatch(
+      /v_approver_guild := CASE WHEN v_transfer\.requested_by = 'admin'\s+THEN v_transfer\.source_guild ELSE v_transfer\.target_guild END;/
+    );
     expect(sql).toContain("IF NOT v_is_approver AND NOT (p_action = 'reject' AND v_is_requester) THEN");
   });
   it('closes the direct-UPDATE path around the RPC', () => {
     expect(sql).toContain('DROP POLICY IF EXISTS gm_authenticated_update ON public.guild_transfers;');
     expect(sql).toContain('REVOKE ALL ON public.guild_transfers FROM anon;');
-    expect(sql).toMatch(/REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON public\.guild_transfers FROM authenticated;/);
+    expect(sql).toMatch(
+      /REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON public\.guild_transfers FROM authenticated;/
+    );
   });
   it("no longer falls back to 'ALPHA'", () => {
-    const code = sql.split('\n').filter((l) => !l.trim().startsWith('--')).join('\n');
+    const code = sql
+      .split('\n')
+      .filter((l) => !l.trim().startsWith('--'))
+      .join('\n');
     expect(code).not.toMatch(/'ALPHA'/);
   });
   it('the client never writes guild_transfers directly', () => {
@@ -67,10 +81,18 @@ describe('2. Migration Hub AI summary: checked on the data actually read', () =>
   const serverAdmin = { role: 'server_admin', guild: null, serverNumber: '1058' };
 
   it('guild intel: own guild only for a guild admin, own server for a server admin', () => {
-    expect(canReadIntel(guildAdmin, { scope: 'guild', guildId: 'ALPHA', serverNumber: '1058', guildServerNumber: '1058' })).toBe(true);
-    expect(canReadIntel(guildAdmin, { scope: 'guild', guildId: 'OMEGA', serverNumber: '1058', guildServerNumber: '1058' })).toBe(false);
-    expect(canReadIntel(serverAdmin, { scope: 'guild', guildId: 'OMEGA', serverNumber: '1058', guildServerNumber: '1058' })).toBe(true);
-    expect(canReadIntel(serverAdmin, { scope: 'guild', guildId: 'FAR', serverNumber: '2000', guildServerNumber: '2000' })).toBe(false);
+    expect(
+      canReadIntel(guildAdmin, { scope: 'guild', guildId: 'ALPHA', serverNumber: '1058', guildServerNumber: '1058' })
+    ).toBe(true);
+    expect(
+      canReadIntel(guildAdmin, { scope: 'guild', guildId: 'OMEGA', serverNumber: '1058', guildServerNumber: '1058' })
+    ).toBe(false);
+    expect(
+      canReadIntel(serverAdmin, { scope: 'guild', guildId: 'OMEGA', serverNumber: '1058', guildServerNumber: '1058' })
+    ).toBe(true);
+    expect(
+      canReadIntel(serverAdmin, { scope: 'guild', guildId: 'FAR', serverNumber: '2000', guildServerNumber: '2000' })
+    ).toBe(false);
   });
 
   it('server intel: own server only, for guild admins too', () => {
@@ -79,15 +101,27 @@ describe('2. Migration Hub AI summary: checked on the data actually read', () =>
   });
 
   it('refuses members, unknown scopes and missing data', () => {
-    expect(canReadIntel({ role: 'member', guild: 'ALPHA', serverNumber: '1058' }, { scope: 'server', guildId: null, serverNumber: '1058' })).toBe(false);
+    expect(
+      canReadIntel(
+        { role: 'member', guild: 'ALPHA', serverNumber: '1058' },
+        { scope: 'server', guildId: null, serverNumber: '1058' }
+      )
+    ).toBe(false);
     expect(canReadIntel(guildAdmin, { scope: 'weird', guildId: 'ALPHA', serverNumber: '1058' })).toBe(false);
     expect(canReadIntel(guildAdmin, { scope: 'guild', guildId: null, serverNumber: '1058' })).toBe(false);
-    expect(canReadIntel({ role: 'guild_admin', guild: 'ALPHA', serverNumber: null }, { scope: 'server', guildId: null, serverNumber: '1058' })).toBe(false);
+    expect(
+      canReadIntel(
+        { role: 'guild_admin', guild: 'ALPHA', serverNumber: null },
+        { scope: 'server', guildId: null, serverNumber: '1058' }
+      )
+    ).toBe(false);
   });
 
   const fn = read('supabase/functions/migration-summary/index.ts');
   it("checks a page against the page's own scope, not the request's", () => {
-    expect(squash(fn)).toMatch(/scope: page\.scope, guildId: page\.guild_id \?\? null, serverNumber: page\.server_number \?\? null/);
+    expect(squash(fn)).toMatch(
+      /scope: page\.scope, guildId: page\.guild_id \?\? null, serverNumber: page\.server_number \?\? null/
+    );
   });
   it('rate-limits per account, and never echoes the provider error', () => {
     expect(fn).toContain('`migration-summary:${caller.accountId}`');
@@ -110,22 +144,37 @@ describe('3. the R5 leader is never removed by accident', () => {
     { pseudo: 'Gone', uid: '100003', role: 'R1', overall_power: 1 },
   ];
   it('a Members OCR scan that misses the R5 does not list them for removal', () => {
-    const diff = categorizeOcrDiff([{ pseudo: 'Officer', overall_power: 8 }], roster, null, 'overall_power', false, 'members');
+    const diff = categorizeOcrDiff(
+      [{ pseudo: 'Officer', overall_power: 8 }],
+      roster,
+      null,
+      'overall_power',
+      false,
+      'members'
+    );
     const removed = diff.removed.map((r) => r.pseudo);
     expect(removed).toContain('Gone');
     expect(removed).not.toContain('Leader');
   });
 
   it('the commit, the single delete and the ban all refuse an R5 before any request', () => {
-    expect(read('src/modules/app/ocr/ocr.controller.ts')).toContain("if (p && !r5Pseudos.has(p.toLowerCase())) checkedRemovalPseudos.push(p);");
-    expect(squash(read('src/modules/app/members/members.controller.ts'))).toMatch(/if \(target && target\.role === 'R5'\) \{ showToast\(R5_DELETE_MESSAGE/);
+    expect(read('src/modules/app/ocr/ocr.controller.ts')).toContain(
+      'if (p && !r5Pseudos.has(p.toLowerCase())) checkedRemovalPseudos.push(p);'
+    );
+    expect(squash(read('src/modules/app/members/members.controller.ts'))).toMatch(
+      /if \(target && target\.role === 'R5'\) \{ showToast\(R5_DELETE_MESSAGE/
+    );
     expect(read('src/modules/app/members/banned.controller.ts')).toContain("m.uid === uidVal && m.role === 'R5'");
   });
 
   it('the database refuses it from a user session, and leaves system paths alone', () => {
     const sql = read('supabase/migrations/20260930182821_protect_r5_from_deletion.sql');
-    expect(sql).toMatch(/IF OLD\.role = 'R5'\s+AND auth\.uid\(\) IS NOT NULL\s+AND NOT public\.is_super_admin\(\) THEN/);
+    expect(sql).toMatch(
+      /IF OLD\.role = 'R5'\s+AND auth\.uid\(\) IS NOT NULL\s+AND NOT public\.is_super_admin\(\) THEN/
+    );
     expect(sql).toContain('BEFORE DELETE ON public.guild_members');
-    expect(sql).toContain('REVOKE EXECUTE ON FUNCTION public.gm_protect_r5_deletion() FROM PUBLIC, anon, authenticated;');
+    expect(sql).toContain(
+      'REVOKE EXECUTE ON FUNCTION public.gm_protect_r5_deletion() FROM PUBLIC, anon, authenticated;'
+    );
   });
 });

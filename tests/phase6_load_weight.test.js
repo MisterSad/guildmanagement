@@ -13,7 +13,10 @@ import path from 'node:path';
 const rootDir = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(rootDir, p), 'utf8');
 const stripComments = (s) =>
-  s.replace(/<!--[\s\S]*?-->/g, '').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  s
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '');
 
 function walk(dir, out = []) {
   for (const e of fs.readdirSync(path.join(rootDir, dir), { withFileTypes: true })) {
@@ -104,7 +107,15 @@ describe('fonts are not requested in weights nothing uses', () => {
 
   it('never declares font-weight 300 anywhere', () => {
     const offenders = [];
-    for (const f of [...walk('src'), 'index.html', 'styles.css', 'components.css', 'shell.css', 'tokens.css', 'theme.css']) {
+    for (const f of [
+      ...walk('src'),
+      'index.html',
+      'styles.css',
+      'components.css',
+      'shell.css',
+      'tokens.css',
+      'theme.css',
+    ]) {
       if (!/\.(ts|css|html)$/.test(f)) continue;
       if (/font-weight:\s*300/.test(read(f))) offenders.push(f);
     }
@@ -129,7 +140,7 @@ describe('phase-6 findings that measurement contradicted', () => {
     // from `block` to `swap`, for some time.
     const vite = read('vite.config.ts');
     expect(vite).toContain('phosphorFontTrimPlugin');
-    expect(vite).toContain("format(\"woff2\")");
+    expect(vite).toContain('format("woff2")');
     expect(vite).toContain('font-display: swap;');
   });
 

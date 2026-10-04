@@ -18,13 +18,15 @@ const configSrc = fs.readFileSync(CONFIG_PATH, 'utf-8');
 // Subdirectories are deployable functions; _shared only holds imported
 // modules and is never deployed as an endpoint of its own.
 function listFunctionNames() {
-  return fs
-    .readdirSync(FUNCTIONS_DIR, { withFileTypes: true })
-    // A leading underscore marks a non-function directory (_shared, _test), as the
-    // Supabase CLI and scripts/deploy-edge-functions.sh treat it.
-    .filter((entry) => entry.isDirectory() && !entry.name.startsWith('_'))
-    .map((entry) => entry.name)
-    .sort();
+  return (
+    fs
+      .readdirSync(FUNCTIONS_DIR, { withFileTypes: true })
+      // A leading underscore marks a non-function directory (_shared, _test), as the
+      // Supabase CLI and scripts/deploy-edge-functions.sh treat it.
+      .filter((entry) => entry.isDirectory() && !entry.name.startsWith('_'))
+      .map((entry) => entry.name)
+      .sort()
+  );
 }
 
 // Parses every [functions.<name>] block into Map<name, true|false|undefined>,

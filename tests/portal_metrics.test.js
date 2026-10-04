@@ -17,7 +17,9 @@ describe('Player Portal military metrics response (v127.1)', () => {
     // 1) so discord-bot-interactions can reuse the exact same query for
     // /myinfo instead of duplicating it -- member-portal now imports it.
     const content = squash(fs.readFileSync(memberLookupPath, 'utf-8'));
-    const selectMatch = content.match(/\.select\("pseudo, guild, overall_power, power_updated_at, metrics_updated_at, tech_power, champion_power, crew_power, flagship_power, fleet_rating, glory_score, role, timezone_offset(?:,\s*timezone)?"\)/);
+    const selectMatch = content.match(
+      /\.select\("pseudo, guild, overall_power, power_updated_at, metrics_updated_at, tech_power, champion_power, crew_power, flagship_power, fleet_rating, glory_score, role, timezone_offset(?:,\s*timezone)?"\)/
+    );
     expect(selectMatch).not.toBeNull();
   });
 
@@ -31,9 +33,16 @@ describe('Player Portal military metrics response (v127.1)', () => {
     const _content = edgeSource('member-portal');
     const sessionsBlock = edgeFunctionBody('member-portal', 'getActiveSessions');
     for (const field of [
-      'overall_power', 'tech_power', 'champion_power', 'crew_power',
-      'flagship_power', 'fleet_rating', 'glory_score',
-      'timezone_offset', 'power_updated_at', 'metrics_updated_at'
+      'overall_power',
+      'tech_power',
+      'champion_power',
+      'crew_power',
+      'flagship_power',
+      'fleet_rating',
+      'glory_score',
+      'timezone_offset',
+      'power_updated_at',
+      'metrics_updated_at',
     ]) {
       expect(
         sessionsBlock.includes(`${field}: member.${field}`),
@@ -49,13 +58,14 @@ describe('Player Portal military metrics response (v127.1)', () => {
       content.indexOf('async function', content.indexOf('async function getGuildAverages') + 10)
     );
     for (const field of [
-      'fleet_rating', 'tech_power', 'flagship_power',
-      'champion_power', 'crew_power', 'glory_score'
+      'fleet_rating',
+      'tech_power',
+      'flagship_power',
+      'champion_power',
+      'crew_power',
+      'glory_score',
     ]) {
-      expect(
-        avgBlock.includes(`${field}: avgOf(`),
-        `getGuildAverages must return ${field} average`
-      ).toBe(true);
+      expect(avgBlock.includes(`${field}: avgOf(`), `getGuildAverages must return ${field} average`).toBe(true);
     }
     // overall_power average may be inlined via the pre-computed avgPower variable
     expect(avgBlock).toContain('overall_power: avg');
@@ -69,8 +79,9 @@ describe('Player Portal military metrics response (v127.1)', () => {
     // gone, with the unbounded scan that fed it; the rate now comes from
     // gm_player_stats on the same rules both sides use.
     expect(avgBlock).not.toContain('attendance_rate');
-    expect(avgBlock, 'the unbounded event_participants scan must not come back')
-      .not.toContain('.from("event_participants")');
+    expect(avgBlock, 'the unbounded event_participants scan must not come back').not.toContain(
+      '.from("event_participants")'
+    );
     expect(avgBlock).toContain('avg_power');
     expect(avgBlock).toContain('member_count');
   });

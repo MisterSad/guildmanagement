@@ -14,7 +14,7 @@ import { setDbClient, resetSupabaseClient } from '../src/core/api/supabase';
 // i18n as the identity so assertions can match translation keys.
 vi.mock('../src/core/i18n/i18n', async (importOriginal) => ({
   ...(await importOriginal()),
-  t: (k) => k
+  t: (k) => k,
 }));
 
 const STAGE_A = 'ARMS RACE STAGE A';
@@ -28,7 +28,9 @@ function chained(value) {
   const filters = [];
   const apply = () => {
     let res = (value || []).slice();
-    filters.forEach((f) => { res = res.filter(f); });
+    filters.forEach((f) => {
+      res = res.filter(f);
+    });
     return res;
   };
   const chain = {
@@ -36,15 +38,26 @@ function chained(value) {
     order: () => chain,
     limit: () => chain,
     single: () => chain,
-    eq: (field, val) => { filters.push((r) => r[field] === val); return chain; },
-    neq: (field, val) => { filters.push((r) => r[field] !== val); return chain; },
-    in: (field, list) => { filters.push((r) => list.indexOf(r[field]) !== -1); return chain; },
+    eq: (field, val) => {
+      filters.push((r) => r[field] === val);
+      return chain;
+    },
+    neq: (field, val) => {
+      filters.push((r) => r[field] !== val);
+      return chain;
+    },
+    in: (field, list) => {
+      filters.push((r) => list.indexOf(r[field]) !== -1);
+      return chain;
+    },
     update: () => chain,
     upsert: () => chain,
     insert: () => chain,
     delete: () => chain,
-    maybeSingle: () => ({ then: (resolve) => Promise.resolve({ data: apply()[0] || null, error: null }).then(resolve) }),
-    then: (resolve, reject) => Promise.resolve({ data: apply(), error: null }).then(resolve, reject)
+    maybeSingle: () => ({
+      then: (resolve) => Promise.resolve({ data: apply()[0] || null, error: null }).then(resolve),
+    }),
+    then: (resolve, reject) => Promise.resolve({ data: apply(), error: null }).then(resolve, reject),
   };
   return chain;
 }
@@ -52,7 +65,7 @@ function chained(value) {
 function installDb() {
   setDbClient({
     from: (table) => chained(tables[table] || []),
-    rpc: vi.fn().mockResolvedValue({ data: null, error: null })
+    rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
   });
 }
 
@@ -60,17 +73,31 @@ function baseTables() {
   return {
     event_status: [
       { event_name: STAGE_A, guild: 'ALPHA', is_active: true, session_id: SESSION_A, start_at: '2026-08-02T12:00:00Z' },
-      { event_name: STAGE_B, guild: 'ALPHA', is_active: false, session_id: null, start_at: null }
+      { event_name: STAGE_B, guild: 'ALPHA', is_active: false, session_id: null, start_at: null },
     ],
     guild_members: [
       { pseudo: 'Alpha', guild: 'ALPHA', uid: 'uid1' },
       { pseudo: 'Bravo', guild: 'ALPHA', uid: 'uid2' },
-      { pseudo: 'Charlie', guild: 'ALPHA', uid: 'uid3' }
+      { pseudo: 'Charlie', guild: 'ALPHA', uid: 'uid3' },
     ],
     event_participants: [
-      { pseudo: 'Alpha', guild: 'ALPHA', event_name: STAGE_A, session_id: SESSION_A, participated: 1, week_start: '2026-08-02' },
-      { pseudo: 'Bravo', guild: 'ALPHA', event_name: STAGE_A, session_id: SESSION_A, participated: 0, week_start: '2026-08-02' }
-    ]
+      {
+        pseudo: 'Alpha',
+        guild: 'ALPHA',
+        event_name: STAGE_A,
+        session_id: SESSION_A,
+        participated: 1,
+        week_start: '2026-08-02',
+      },
+      {
+        pseudo: 'Bravo',
+        guild: 'ALPHA',
+        event_name: STAGE_A,
+        session_id: SESSION_A,
+        participated: 0,
+        week_start: '2026-08-02',
+      },
+    ],
   };
 }
 
@@ -121,7 +148,11 @@ describe('ArmsRaceView — load & render', () => {
     expect(html).toContain('Stage B');
     expect(area().querySelector('.sf-main-tab.stageA').classList.contains('active')).toBe(true);
     expect(area().querySelector('.sf-main-tab.stageB').classList.contains('active')).toBe(false);
-    expect(rows().map((r) => r.getAttribute('data-pseudo')).sort()).toEqual(['Alpha', 'Bravo']);
+    expect(
+      rows()
+        .map((r) => r.getAttribute('data-pseudo'))
+        .sort()
+    ).toEqual(['Alpha', 'Bravo']);
     // Alpha participated → 1 done, 1 absent chips.
     const chips = area().querySelectorAll('.event-stats .gm-chip');
     expect(chips[1].textContent).toContain('1');
@@ -143,8 +174,10 @@ describe('ArmsRaceView — load & render', () => {
 
   it('always renders even when the data layer throws (panel never blank)', async () => {
     setDbClient({
-      from: () => { throw new Error('network down'); },
-      rpc: vi.fn()
+      from: () => {
+        throw new Error('network down');
+      },
+      rpc: vi.fn(),
     });
     const view = newView();
     await view.load();
@@ -197,7 +230,7 @@ describe('ArmsRaceView — in-memory member sync', () => {
   it('is a no-op when no stage is active', async () => {
     tables.event_status = [
       { event_name: STAGE_A, guild: 'ALPHA', is_active: false, session_id: SESSION_A, start_at: null },
-      { event_name: STAGE_B, guild: 'ALPHA', is_active: false, session_id: null, start_at: null }
+      { event_name: STAGE_B, guild: 'ALPHA', is_active: false, session_id: null, start_at: null },
     ];
     const view = newView();
     await view.load();
@@ -244,12 +277,16 @@ describe('ArmsRaceView — local search & participation', () => {
 
 describe('ArmsRaceView — cutover guard', () => {
   it('does not expose any window.GM_* global', async () => {
-    const baseline = Object.getOwnPropertyNames(window).filter((k) => k.startsWith('GM_')).sort();
+    const baseline = Object.getOwnPropertyNames(window)
+      .filter((k) => k.startsWith('GM_'))
+      .sort();
 
     const view = newView();
     await view.load();
 
-    const after = Object.getOwnPropertyNames(window).filter((k) => k.startsWith('GM_')).sort();
+    const after = Object.getOwnPropertyNames(window)
+      .filter((k) => k.startsWith('GM_'))
+      .sort();
     expect(after).toEqual(baseline);
     expect(window.GM_ARMSRACE).toBeUndefined();
   });

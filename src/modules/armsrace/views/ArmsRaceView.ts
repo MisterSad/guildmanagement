@@ -16,7 +16,6 @@
  *   - This module never assigns any `window.GM_*` variable.
  */
 
-
 import {
   ARMSRACE_STAGE_KEYS,
   ARMSRACE_STAGE_EVENTS,
@@ -35,7 +34,7 @@ import {
   updateStageParticipation,
   type ArmsRaceStageKey,
   type ArmsRaceStageState,
-  type ArmsRaceParticipantRow
+  type ArmsRaceParticipantRow,
 } from '../armsrace.service';
 import { pendingApprovalHtml, wirePendingApprovals } from '../../events/pending-approval';
 import { EventsService } from '../../events/events.service';
@@ -61,9 +60,9 @@ function createState(): ArmsRaceState {
   return {
     stages: {
       stageA: { active: false, sessionId: null, startAt: null, participants: [] },
-      stageB: { active: false, sessionId: null, startAt: null, participants: [] }
+      stageB: { active: false, sessionId: null, startAt: null, participants: [] },
     },
-    uidMap: {}
+    uidMap: {},
   };
 }
 
@@ -102,11 +101,11 @@ export class ArmsRaceView {
       });
 
       this.state.uidMap = {};
-      ((membersRes.data || []) as any[]).forEach((m) => { this.state.uidMap[m.pseudo] = m.uid; });
+      ((membersRes.data || []) as any[]).forEach((m) => {
+        this.state.uidMap[m.pseudo] = m.uid;
+      });
 
-      const sids = ARMSRACE_STAGE_KEYS
-        .map((k) => this.state.stages[k].sessionId)
-        .filter(Boolean) as string[];
+      const sids = ARMSRACE_STAGE_KEYS.map((k) => this.state.stages[k].sessionId).filter(Boolean) as string[];
 
       if (sids.length) {
         const partRes = await fetchArmsRaceParticipants(db, currentG, sids);
@@ -123,7 +122,9 @@ export class ArmsRaceView {
             const week = getWeekStart(this.state.stages[k].startAt);
             try {
               await populateStageParticipants(db, k, sid, week, currentG);
-            } catch (_) { /* best-effort */ }
+            } catch (_) {
+              /* best-effort */
+            }
             const healRes = await fetchStageParticipants(db, currentG, evName, sid);
             this.state.stages[k].participants = (healRes.data || []) as ArmsRaceParticipantRow[];
           }
@@ -167,17 +168,15 @@ export class ArmsRaceView {
     }
 
     try {
-      const res = await upsertStageStatus(db,
-        {
-          guild: currentG,
-          event_name: evName,
-          is_active: true,
-          session_id: sessionId,
-          start_at: startAt || null,
-          stage: stageLetter,
-          updated_at: new Date().toISOString()
-        }
-      );
+      const res = await upsertStageStatus(db, {
+        guild: currentG,
+        event_name: evName,
+        is_active: true,
+        session_id: sessionId,
+        start_at: startAt || null,
+        stage: stageLetter,
+        updated_at: new Date().toISOString(),
+      });
       if (res.error) throw res.error;
 
       const week = getWeekStart(startAt);
@@ -201,18 +200,18 @@ export class ArmsRaceView {
     const currentG = getActiveGuild();
 
     try {
-      await upsertStageStatus(db,
-        {
-          guild: currentG,
-          event_name: ARMSRACE_STAGE_EVENTS[stageKey],
-          is_active: false,
-          session_id: stg.sessionId,
-          start_at: null,
-          stage: armsRaceStageLetter(stageKey),
-          updated_at: new Date().toISOString()
-        }
-      );
-    } catch (err) { console.error('endStage', err); }
+      await upsertStageStatus(db, {
+        guild: currentG,
+        event_name: ARMSRACE_STAGE_EVENTS[stageKey],
+        is_active: false,
+        session_id: stg.sessionId,
+        start_at: null,
+        stage: armsRaceStageLetter(stageKey),
+        updated_at: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.error('endStage', err);
+    }
 
     showToast(t('event_session_ended'), 'success');
     await this.load();
@@ -231,28 +230,36 @@ export class ArmsRaceView {
 
       const currentStartAt = res.data ? res.data.start_at : null;
 
-      pickEventStart({
-        eventLabel: 'Arms Race ' + armsRaceStageLabel(stageKey) + ' - ' + t('edit_title'),
-        defaultVal: currentStartAt
-      }, async (startAt: string | null) => {
-        if (!startAt) return;
+      pickEventStart(
+        {
+          eventLabel: 'Arms Race ' + armsRaceStageLabel(stageKey) + ' - ' + t('edit_title'),
+          defaultVal: currentStartAt,
+        },
+        async (startAt: string | null) => {
+          if (!startAt) return;
 
-        try {
-          // One transaction (M4a): status and participants move together.
-          // Recalculate session_id: pass [] to avoid collision check (renaming).
-          const newSessionId = buildEventSessionId(ARMSRACE_STAGE_EVENTS[stageKey], new Date(startAt), []);
-          const moved = await EventsService.rescheduleSession(ARMSRACE_STAGE_EVENTS[stageKey], stg.sessionId, newSessionId, startAt);
-          stg.sessionId = moved.session_id;
+          try {
+            // One transaction (M4a): status and participants move together.
+            // Recalculate session_id: pass [] to avoid collision check (renaming).
+            const newSessionId = buildEventSessionId(ARMSRACE_STAGE_EVENTS[stageKey], new Date(startAt), []);
+            const moved = await EventsService.rescheduleSession(
+              ARMSRACE_STAGE_EVENTS[stageKey],
+              stg.sessionId,
+              newSessionId,
+              startAt
+            );
+            stg.sessionId = moved.session_id;
 
-          showToast(t('toast_member_updated'), 'success');
-          notifyDiscordEvent(ARMSRACE_STAGE_EVENTS[stageKey], startAt, 'edit');
+            showToast(t('toast_member_updated'), 'success');
+            notifyDiscordEvent(ARMSRACE_STAGE_EVENTS[stageKey], startAt, 'edit');
 
-          await this.load();
-        } catch (err: any) {
-          console.error('editStageSchedule update', err);
-          showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+            await this.load();
+          } catch (err: any) {
+            console.error('editStageSchedule update', err);
+            showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+          }
         }
-      });
+      );
     } catch (err: any) {
       console.error('editStageSchedule fetch', err);
       showToast(t('toast_err_generic') + ' ' + err.message, 'error');
@@ -267,7 +274,10 @@ export class ArmsRaceView {
 
     showConfirm(
       t('confirm_delete_session_title'),
-      '<strong>Arms Race ' + escapeHTML(armsRaceStageLabel(stageKey)) + '</strong><br>' + t('confirm_delete_session_body'),
+      '<strong>Arms Race ' +
+        escapeHTML(armsRaceStageLabel(stageKey)) +
+        '</strong><br>' +
+        t('confirm_delete_session_body'),
       async () => {
         try {
           // Participants and status, in one transaction (M4a).
@@ -308,7 +318,7 @@ export class ArmsRaceView {
           week_start: getWeekStart(stg.startAt || new Date(stg.sessionId as string)),
           pseudo: pseudo,
           participated: 0,
-          score: null
+          score: null,
         });
         stg.participants = sortArmsRaceParticipants(stg.participants);
       });
@@ -344,44 +354,88 @@ export class ArmsRaceView {
     const dotColor = isActive ? 'var(--success)' : 'var(--fg-dim)';
     const subText = stg.startAt
       ? formatDateTimeUTC(stg.startAt)
-      : (isActive ? t('event_active') : t('event_not_active_hint'));
+      : isActive
+        ? t('event_active')
+        : t('event_not_active_hint');
 
     let html =
       '<div class="sf-main-tabs">' +
-        '<button class="sf-main-tab stageA' + (this.activeStage === 'stageA' ? ' active' : '') + '" data-stage="stageA"><i class="ph ph-target"></i> Stage A</button>' +
-        '<button class="sf-main-tab stageB' + (this.activeStage === 'stageB' ? ' active' : '') + '" data-stage="stageB"><i class="ph ph-target"></i> Stage B</button>' +
+      '<button class="sf-main-tab stageA' +
+      (this.activeStage === 'stageA' ? ' active' : '') +
+      '" data-stage="stageA"><i class="ph ph-target"></i> Stage A</button>' +
+      '<button class="sf-main-tab stageB' +
+      (this.activeStage === 'stageB' ? ' active' : '') +
+      '" data-stage="stageB"><i class="ph ph-target"></i> Stage B</button>' +
       '</div>';
 
     html +=
       '<div class="gm-event-banner" style="display: flex; margin-bottom: 1.5rem; background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--radius-lg); padding: 1rem 1.5rem; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">' +
-        '<div class="gm-event-meta" style="display: flex; align-items: center; gap: 1rem; flex: 1; min-width: 250px;">' +
-          '<div class="gm-event-icon" style="width: 48px; height: 48px; border-radius: 50%; background: ' + (isActive ? 'var(--primary-soft)' : 'rgba(255,255,255,0.05)') + '; color: ' + (isActive ? 'var(--primary)' : 'var(--text-muted)') + '; display: flex; align-items: center; justify-content: center; font-size: var(--fs-3xl);"><i class="ph ph-target"></i></div>' +
-          '<div class="gm-grow" style="display: flex; flex-direction: column; gap: 0.25rem;">' +
-            '<div class="gm-event-name" style="font-size: var(--fs-xl); font-weight: 700; font-family: var(--font-family-title);">Arms Race ' + escapeHTML(stgLabel) + '</div>' +
-            '<div class="gm-event-status-line" style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">' +
-              '<span class="event-status-badge gm-chip ' + statusBadgeClass + '" style="display: inline-flex; align-items: center; gap: 0.35rem; font-size: var(--fs-sm);"><span class="gm-dot" style="background: ' + dotColor + '; width: 8px; height: 8px; border-radius: 50%;"></span> ' + statusText + '</span>' +
-              '<span class="gm-dim" style="font-size: var(--fs-sm); color: var(--text-muted);">' + escapeHTML(subText) + '</span>' +
-            '</div>' +
-          '</div>' +
-        '</div>' +
-        '<div class="gm-event-actions" style="display: flex; gap: 0.5rem;">' +
-          (isActive ?
-            '<button class="gm-btn gm-btn-danger event-end-btn ar-stage-end-btn" data-stage="' + this.activeStage + '" style="margin-right: 0.25rem;"><i class="ph ph-stop-circle"></i> <span>' + t('event_end') + '</span></button>' +
-            '<button class="gm-btn ar-stage-edit-btn" style="background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.3); color: #a5b4fc; margin-right: 0.25rem;" data-stage="' + this.activeStage + '" title="' + t('edit_title') + '"><i class="ph ph-calendar"></i> <span>' + t('edit_title') + '</span></button>' +
-            '<button class="gm-btn ar-stage-delete-btn" style="background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.25); color: var(--error);" data-stage="' + this.activeStage + '" title="' + t('delete_title') + '"><i class="ph ph-trash"></i></button>'
-          :
-            '<button class="gm-btn gm-btn-success event-start-btn ar-stage-start-btn" data-stage="' + this.activeStage + '"><i class="ph ph-play"></i> <span>' + t('event_start') + '</span></button>' +
-            '<button class="gm-btn gm-btn-danger event-end-btn ar-stage-end-btn" data-stage="' + this.activeStage + '" disabled><i class="ph ph-stop-circle"></i> <span>' + t('event_end') + '</span></button>'
-          ) +
-        '</div>' +
+      '<div class="gm-event-meta" style="display: flex; align-items: center; gap: 1rem; flex: 1; min-width: 250px;">' +
+      '<div class="gm-event-icon" style="width: 48px; height: 48px; border-radius: 50%; background: ' +
+      (isActive ? 'var(--primary-soft)' : 'rgba(255,255,255,0.05)') +
+      '; color: ' +
+      (isActive ? 'var(--primary)' : 'var(--text-muted)') +
+      '; display: flex; align-items: center; justify-content: center; font-size: var(--fs-3xl);"><i class="ph ph-target"></i></div>' +
+      '<div class="gm-grow" style="display: flex; flex-direction: column; gap: 0.25rem;">' +
+      '<div class="gm-event-name" style="font-size: var(--fs-xl); font-weight: 700; font-family: var(--font-family-title);">Arms Race ' +
+      escapeHTML(stgLabel) +
+      '</div>' +
+      '<div class="gm-event-status-line" style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">' +
+      '<span class="event-status-badge gm-chip ' +
+      statusBadgeClass +
+      '" style="display: inline-flex; align-items: center; gap: 0.35rem; font-size: var(--fs-sm);"><span class="gm-dot" style="background: ' +
+      dotColor +
+      '; width: 8px; height: 8px; border-radius: 50%;"></span> ' +
+      statusText +
+      '</span>' +
+      '<span class="gm-dim" style="font-size: var(--fs-sm); color: var(--text-muted);">' +
+      escapeHTML(subText) +
+      '</span>' +
+      '</div>' +
+      '</div>' +
+      '</div>' +
+      '<div class="gm-event-actions" style="display: flex; gap: 0.5rem;">' +
+      (isActive
+        ? '<button class="gm-btn gm-btn-danger event-end-btn ar-stage-end-btn" data-stage="' +
+          this.activeStage +
+          '" style="margin-right: 0.25rem;"><i class="ph ph-stop-circle"></i> <span>' +
+          t('event_end') +
+          '</span></button>' +
+          '<button class="gm-btn ar-stage-edit-btn" style="background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.3); color: #a5b4fc; margin-right: 0.25rem;" data-stage="' +
+          this.activeStage +
+          '" title="' +
+          t('edit_title') +
+          '"><i class="ph ph-calendar"></i> <span>' +
+          t('edit_title') +
+          '</span></button>' +
+          '<button class="gm-btn ar-stage-delete-btn" style="background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.25); color: var(--error);" data-stage="' +
+          this.activeStage +
+          '" title="' +
+          t('delete_title') +
+          '"><i class="ph ph-trash"></i></button>'
+        : '<button class="gm-btn gm-btn-success event-start-btn ar-stage-start-btn" data-stage="' +
+          this.activeStage +
+          '"><i class="ph ph-play"></i> <span>' +
+          t('event_start') +
+          '</span></button>' +
+          '<button class="gm-btn gm-btn-danger event-end-btn ar-stage-end-btn" data-stage="' +
+          this.activeStage +
+          '" disabled><i class="ph ph-stop-circle"></i> <span>' +
+          t('event_end') +
+          '</span></button>') +
+      '</div>' +
       '</div>';
 
     if (!isActive) {
       html +=
         '<div class="gm-empty" style="margin-top: 2rem;">' +
-          '<i class="ph ph-rocket-launch gm-icon"></i>' +
-          '<div class="gm-empty-title">' + t('event_not_active') + '</div>' +
-          '<div class="gm-empty-hint">' + t('event_not_active_hint') + '</div>' +
+        '<i class="ph ph-rocket-launch gm-icon"></i>' +
+        '<div class="gm-empty-title">' +
+        t('event_not_active') +
+        '</div>' +
+        '<div class="gm-empty-hint">' +
+        t('event_not_active_hint') +
+        '</div>' +
         '</div>';
       area.innerHTML = html;
       this.attachARListeners(area);
@@ -390,7 +444,10 @@ export class ArmsRaceView {
 
     const participants = stg.participants;
     if (!participants.length) {
-      html += '<div class="gm-empty"><i class="ph ph-ghost gm-icon"></i><div class="gm-empty-title">' + t('empty_members') + '</div></div>';
+      html +=
+        '<div class="gm-empty"><i class="ph ph-ghost gm-icon"></i><div class="gm-empty-title">' +
+        t('empty_members') +
+        '</div></div>';
       area.innerHTML = html;
       this.attachARListeners(area);
       return;
@@ -400,42 +457,78 @@ export class ArmsRaceView {
 
     html +=
       '<div class="gm-row" style="gap:.5rem; margin-bottom:1rem; flex-wrap:wrap; justify-content:space-between;">' +
-        '<div class="gm-row event-stats" style="gap:.5rem; flex-wrap:wrap;">' +
-          '<span class="gm-chip"><i class="ph ph-users"></i> ' + stats.total + ' ' + t('event_total') + '</span>' +
-          '<span class="gm-chip gm-chip-success"><i class="ph ph-check-circle"></i> ' + stats.done + ' ' + t('event_participated') + '</span>' +
-          '<span class="gm-chip"><i class="ph ph-x-circle"></i> ' + stats.absent + ' ' + t('event_absent') + '</span>' +
-        '</div>' +
-        '<div class="gm-input-with-icon" style="min-width: 220px; max-width: 320px;">' +
-          '<i class="ph ph-magnifying-glass gm-icon"></i>' +
-          '<input type="text" class="gm-input event-search-input" aria-label="' + escapeHTML(t('search_placeholder')) + '" placeholder="' + t('search_placeholder') + '">' +
-          '<button type="button" class="gm-search-clear-btn" data-gm-search-clear aria-label="Clear search" tabindex="-1"><i class="ph ph-x-circle"></i></button>' +
-        '</div>' +
+      '<div class="gm-row event-stats" style="gap:.5rem; flex-wrap:wrap;">' +
+      '<span class="gm-chip"><i class="ph ph-users"></i> ' +
+      stats.total +
+      ' ' +
+      t('event_total') +
+      '</span>' +
+      '<span class="gm-chip gm-chip-success"><i class="ph ph-check-circle"></i> ' +
+      stats.done +
+      ' ' +
+      t('event_participated') +
+      '</span>' +
+      '<span class="gm-chip"><i class="ph ph-x-circle"></i> ' +
+      stats.absent +
+      ' ' +
+      t('event_absent') +
+      '</span>' +
+      '</div>' +
+      '<div class="gm-input-with-icon" style="min-width: 220px; max-width: 320px;">' +
+      '<i class="ph ph-magnifying-glass gm-icon"></i>' +
+      '<input type="text" class="gm-input event-search-input" aria-label="' +
+      escapeHTML(t('search_placeholder')) +
+      '" placeholder="' +
+      t('search_placeholder') +
+      '">' +
+      '<button type="button" class="gm-search-clear-btn" data-gm-search-clear aria-label="Clear search" tabindex="-1"><i class="ph ph-x-circle"></i></button>' +
+      '</div>' +
       '</div>' +
       '<div class="gm-table-wrap"><div class="gm-table-scroll">' +
       '<table class="gm-table gm-resp-table">' +
-        '<thead><tr>' +
-          '<th>' + t('col_member') + '</th>' +
-          '<th class="gm-center">' + t('col_participated') + '</th>' +
-        '</tr></thead><tbody>';
+      '<thead><tr>' +
+      '<th>' +
+      t('col_member') +
+      '</th>' +
+      '<th class="gm-center">' +
+      t('col_participated') +
+      '</th>' +
+      '</tr></thead><tbody>';
 
     participants.forEach((p) => {
       const isChecked = Number(p.participated) > 0;
       const initial = avatarInit(p.pseudo);
       html +=
-        '<tr class="participant-row' + (isChecked ? ' participated' : '') + '" data-pseudo="' + escapeHTML(p.pseudo) + '">' +
-          '<td data-label="' + t('col_member') + '">' +
-            '<div class="gm-row" style="gap:.6rem;">' +
-              '<div class="gm-avatar">' + escapeHTML(initial) + '</div>' +
-              '<strong>' + escapeHTML(p.pseudo) + '</strong>' +
-              pendingApprovalHtml(p.pseudo, p.is_pending) +
-            '</div>' +
-          '</td>' +
-          '<td class="gm-center" data-label="' + t('col_participated') + '">' +
-            '<label class="check-toggle">' +
-              '<input type="checkbox" class="participation-checkbox" data-pseudo="' + escapeHTML(p.pseudo) + '"' + (isChecked ? ' checked' : '') + '>' +
-              '<span class="check-slider"></span>' +
-            '</label>' +
-          '</td>' +
+        '<tr class="participant-row' +
+        (isChecked ? ' participated' : '') +
+        '" data-pseudo="' +
+        escapeHTML(p.pseudo) +
+        '">' +
+        '<td data-label="' +
+        t('col_member') +
+        '">' +
+        '<div class="gm-row" style="gap:.6rem;">' +
+        '<div class="gm-avatar">' +
+        escapeHTML(initial) +
+        '</div>' +
+        '<strong>' +
+        escapeHTML(p.pseudo) +
+        '</strong>' +
+        pendingApprovalHtml(p.pseudo, p.is_pending) +
+        '</div>' +
+        '</td>' +
+        '<td class="gm-center" data-label="' +
+        t('col_participated') +
+        '">' +
+        '<label class="check-toggle">' +
+        '<input type="checkbox" class="participation-checkbox" data-pseudo="' +
+        escapeHTML(p.pseudo) +
+        '"' +
+        (isChecked ? ' checked' : '') +
+        '>' +
+        '<span class="check-slider"></span>' +
+        '</label>' +
+        '</td>' +
         '</tr>';
     });
 
@@ -470,7 +563,9 @@ export class ArmsRaceView {
         showConfirm(
           t('event_end'),
           '<strong>Arms Race ' + armsRaceStageLabel(stageKey) + '</strong><br>' + t('event_session_ended'),
-          () => { this.endStage(stageKey); }
+          () => {
+            this.endStage(stageKey);
+          }
         );
       });
     }
@@ -511,13 +606,21 @@ export class ArmsRaceView {
     const db = getClient();
     const guild = getActiveGuild();
     if (db && guild && stg.sessionId) {
-      wirePendingApprovals(area, {
-        db, guild, eventName: ARMSRACE_STAGE_EVENTS[this.activeStage], sessionId: stg.sessionId, showToast
-      }, (pseudo) => {
-        const pp = stg.participants.find((p) => p.pseudo === pseudo);
-        if (pp) pp.is_pending = false;
-        this.render();
-      });
+      wirePendingApprovals(
+        area,
+        {
+          db,
+          guild,
+          eventName: ARMSRACE_STAGE_EVENTS[this.activeStage],
+          sessionId: stg.sessionId,
+          showToast,
+        },
+        (pseudo) => {
+          const pp = stg.participants.find((p) => p.pseudo === pseudo);
+          if (pp) pp.is_pending = false;
+          this.render();
+        }
+      );
     }
 
     const searchInput = area.querySelector('.event-search-input') as HTMLInputElement | null;
@@ -537,7 +640,8 @@ export class ArmsRaceView {
     const participants = this.state.stages[this.activeStage].participants;
     const stats = computeArmsRaceStats(participants);
     const chips = el.querySelectorAll('.event-stats .gm-chip');
-    if (chips[1]) chips[1].innerHTML = '<i class="ph ph-check-circle"></i> ' + stats.done + ' ' + t('event_participated');
+    if (chips[1])
+      chips[1].innerHTML = '<i class="ph ph-check-circle"></i> ' + stats.done + ' ' + t('event_participated');
     if (chips[2]) chips[2].innerHTML = '<i class="ph ph-x-circle"></i> ' + stats.absent + ' ' + t('event_absent');
   }
 }

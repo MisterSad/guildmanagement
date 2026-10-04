@@ -33,7 +33,9 @@ describe('participantEventName', () => {
 
 describe('isOfficerRecorded', () => {
   it('does not treat the row created at Start as validated', () => {
-    expect(isOfficerRecorded({ is_pending: false, participated: 0, score: null, score_prep: null, score_pvp: null })).toBe(false);
+    expect(
+      isOfficerRecorded({ is_pending: false, participated: 0, score: null, score_prep: null, score_pvp: null })
+    ).toBe(false);
     expect(isOfficerRecorded({ is_pending: null, participated: 0 })).toBe(false);
   });
   it('treats a row carrying participation or a score as recorded', () => {
@@ -65,7 +67,9 @@ describe('member-portal submit-scores', () => {
 
   it('refuses loudly when the player has no row, instead of updating zero rows', () => {
     expect(handler).toContain('error: "not_in_session"');
-    expect(handler).toMatch(/\.select\("pseudo"\);\s*\n\s*if \(uErr \|\| !updatedRows \|\| updatedRows\.length === 0\)/);
+    expect(handler).toMatch(
+      /\.select\("pseudo"\);\s*\n\s*if \(uErr \|\| !updatedRows \|\| updatedRows\.length === 0\)/
+    );
   });
   it('reads and writes the participant rows under the mapped name', () => {
     expect(handler).toContain('const rowEventName = participantEventName(eventName);');
@@ -81,9 +85,14 @@ describe('member-portal submit-scores', () => {
 });
 
 describe('gm_upsert_daily_scores service-role parity migration', () => {
-  const sql = fs.readFileSync(path.resolve(__dirname, '../supabase/migrations/20260930173247_daily_scores_service_role_parity.sql'), 'utf-8');
+  const sql = fs.readFileSync(
+    path.resolve(__dirname, '../supabase/migrations/20260930173247_daily_scores_service_role_parity.sql'),
+    'utf-8'
+  );
   it('gates on write access only when there is a JWT', () => {
-    expect(sql).toMatch(/IF auth\.uid\(\) IS NOT NULL THEN\s+IF NOT public\.check_user_guild_write_access\(v_target\) THEN/);
+    expect(sql).toMatch(
+      /IF auth\.uid\(\) IS NOT NULL THEN\s+IF NOT public\.check_user_guild_write_access\(v_target\) THEN/
+    );
   });
   it('reloads the PostgREST schema', () => {
     expect(sql).toContain("NOTIFY pgrst, 'reload schema';");
@@ -91,7 +100,9 @@ describe('gm_upsert_daily_scores service-role parity migration', () => {
 });
 
 describe('pending approval control (Arms Race, Shadowfront)', () => {
-  beforeEach(() => { document.body.innerHTML = ''; });
+  beforeEach(() => {
+    document.body.innerHTML = '';
+  });
 
   it('renders nothing for a row that is not pending', () => {
     expect(pendingApprovalHtml('Ann', false)).toBe('');
@@ -105,12 +116,19 @@ describe('pending approval control (Arms Race, Shadowfront)', () => {
     document.body.innerHTML = '<div id="a">' + pendingApprovalHtml('Ann', true) + '</div>';
     const rpc = vi.fn(async () => ({ data: { ok: true, updated: 1 }, error: null }));
     const onApproved = vi.fn();
-    wirePendingApprovals(document.getElementById('a'),
-      { db: { rpc }, guild: 'DEMO', eventName: 'Shadowfront', sessionId: 'SF1-20260930-1', showToast: vi.fn() }, onApproved);
+    wirePendingApprovals(
+      document.getElementById('a'),
+      { db: { rpc }, guild: 'DEMO', eventName: 'Shadowfront', sessionId: 'SF1-20260930-1', showToast: vi.fn() },
+      onApproved
+    );
     document.querySelector('.pending-approve-btn').click();
     await new Promise((r) => setTimeout(r, 0));
-    expect(rpc).toHaveBeenCalledWith('gm_approve_participant_submission',
-      { p_guild: 'DEMO', p_event_name: 'Shadowfront', p_session_id: 'SF1-20260930-1', p_pseudo: 'Ann' });
+    expect(rpc).toHaveBeenCalledWith('gm_approve_participant_submission', {
+      p_guild: 'DEMO',
+      p_event_name: 'Shadowfront',
+      p_session_id: 'SF1-20260930-1',
+      p_pseudo: 'Ann',
+    });
     expect(onApproved).toHaveBeenCalledWith('Ann');
   });
 
@@ -118,8 +136,17 @@ describe('pending approval control (Arms Race, Shadowfront)', () => {
     document.body.innerHTML = '<div id="a">' + pendingApprovalHtml('Ann', true) + '</div>';
     const showToast = vi.fn();
     const onApproved = vi.fn();
-    wirePendingApprovals(document.getElementById('a'),
-      { db: { rpc: async () => ({ data: { ok: false, error: 'forbidden' }, error: null }) }, guild: 'DEMO', eventName: 'X', sessionId: 'S', showToast }, onApproved);
+    wirePendingApprovals(
+      document.getElementById('a'),
+      {
+        db: { rpc: async () => ({ data: { ok: false, error: 'forbidden' }, error: null }) },
+        guild: 'DEMO',
+        eventName: 'X',
+        sessionId: 'S',
+        showToast,
+      },
+      onApproved
+    );
     document.querySelector('.pending-approve-btn').click();
     await new Promise((r) => setTimeout(r, 0));
     expect(onApproved).not.toHaveBeenCalled();

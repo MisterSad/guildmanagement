@@ -6,7 +6,6 @@
  * gm-utils.js#getGuildConfig / setGuildConfig / getGuildTag exactly.
  */
 
-
 import { getClient } from '../api/supabase';
 import { getActiveGuild } from '../auth/roles';
 import { defaultCoeffConfigEntries } from './event-coeffs';
@@ -30,7 +29,7 @@ export const LOCAL_CONFIG_FALLBACK: Record<string, string> = {
   notify_gvg_pvp: 'true',
   notify_svs_garrison: 'true',
   notify_svs_pvp: 'true',
-  notify_svs_won_prep: 'false'
+  notify_svs_won_prep: 'false',
 };
 
 /*
@@ -79,7 +78,9 @@ export function purgeLocalWebhookCopies(): void {
       if (k && /^gm_config_.+_(discord_webhook_url|webhook_[a-z0-9_]+)$/.test(k)) doomed.push(k);
     }
     doomed.forEach((k) => store.removeItem(k));
-  } catch (_) { /* storage blocked: nothing was stored either */ }
+  } catch (_) {
+    /* storage blocked: nothing was stored either */
+  }
 }
 
 /**
@@ -139,10 +140,12 @@ export async function setGuildConfig(key: string, value: any, guild?: string | n
   const c = getClient();
   if (c) {
     try {
-      const res = await c.from('guild_config').upsert(
-        { guild: currentG, key: key, value: value, updated_at: new Date().toISOString() },
-        { onConflict: 'guild,key' }
-      );
+      const res = await c
+        .from('guild_config')
+        .upsert(
+          { guild: currentG, key: key, value: value, updated_at: new Date().toISOString() },
+          { onConflict: 'guild,key' }
+        );
       if (res && (res as any).error) {
         console.error(`[guild-config] Failed to persist "${key}" for guild "${currentG}":`, (res as any).error);
         return false;
@@ -175,7 +178,9 @@ export async function getGuildTag(guild?: string | null): Promise<string> {
       if (!t.startsWith('[') && !t.endsWith(']')) return '[' + t + ']';
       return t;
     }
-  } catch (_) { /* fall through to the derived form */ }
+  } catch (_) {
+    /* fall through to the derived form */
+  }
   return '[' + g + ']';
 }
 

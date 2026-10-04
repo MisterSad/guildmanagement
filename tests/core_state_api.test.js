@@ -31,16 +31,16 @@ function makeDb(opts = {}) {
             maybeSingle: async () => {
               calls.push({ op: 'select', table, filters });
               return { data: opts.selectValue !== undefined ? { value: opts.selectValue } : null, error: null };
-            }
+            },
           };
           return chain;
         },
         upsert(payload) {
           calls.push({ op: 'upsert', table, payload });
           return Promise.resolve({ error: opts.upsertError || null });
-        }
+        },
       };
-    }
+    },
   };
   return db;
 }
@@ -175,12 +175,30 @@ describe('parseFunctionsInvokeResult', () => {
 
   it('recovers the JSON body from a non-2xx error context', async () => {
     const body = { ok: false, error: 'rate_limited' };
-    const result = { data: null, error: { message: 'Edge Function returned a non-2xx status code', context: { clone: () => ({ json: async () => body }) } } };
+    const result = {
+      data: null,
+      error: {
+        message: 'Edge Function returned a non-2xx status code',
+        context: { clone: () => ({ json: async () => body }) },
+      },
+    };
     expect(await parseFunctionsInvokeResult(result)).toEqual(body);
   });
 
   it('falls back to the error message when the context is not JSON', async () => {
-    const result = { data: null, error: { message: 'unauthorized', context: { clone: () => ({ json: async () => { throw new Error('no json'); } }) } } };
+    const result = {
+      data: null,
+      error: {
+        message: 'unauthorized',
+        context: {
+          clone: () => ({
+            json: async () => {
+              throw new Error('no json');
+            },
+          }),
+        },
+      },
+    };
     expect(await parseFunctionsInvokeResult(result)).toEqual({ ok: false, error: 'unauthorized' });
   });
 
@@ -230,7 +248,7 @@ describe('RBAC — roles & write access', () => {
     localStorage.setItem('gm_server_restriction', '1234');
     patchAppState({
       currentGuild: 'ALPHA',
-      guildsData: { ALPHA: { server_number: '1234' }, BETA: { server_number: '9999' } }
+      guildsData: { ALPHA: { server_number: '1234' }, BETA: { server_number: '9999' } },
     });
     expect(roles.canWriteGuild('ALPHA')).toBe(true);
     expect(roles.canWriteGuild('BETA')).toBe(false);
@@ -256,12 +274,16 @@ describe('RBAC — roles & write access', () => {
 
 describe('gating helpers', () => {
   it('detectClientEnvironment parses OS/browser', () => {
-    const chrome = roles.detectClientEnvironment('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+    const chrome = roles.detectClientEnvironment(
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    );
     expect(chrome.os).toBe('macOS');
     expect(chrome.browser).toBe('Chrome 120');
     expect(chrome.appVersion).toBeTruthy();
 
-    const ios = roles.detectClientEnvironment('Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6 Mobile/15E148 Safari/604.1');
+    const ios = roles.detectClientEnvironment(
+      'Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6 Mobile/15E148 Safari/604.1'
+    );
     expect(ios.os).toBe('iOS');
     expect(ios.browser).toBe('Safari 26');
   });

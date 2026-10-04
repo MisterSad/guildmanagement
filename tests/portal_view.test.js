@@ -33,9 +33,24 @@ import { setDbClient, resetSupabaseClient } from '../src/core/api/supabase';
 
 const FIXTURES = {
   'get-active-sessions': {
-    ok: true, pseudo: 'AlphaPrime', guild: 'ALPHA',
-    overall_power: 80000000, timezone_offset: 1, glory: 5000,
-    sessions: [{ event_name: 'GvG', session_id: 'GVG-2026-W32', start_at: null, participated: true, score_prep: 1000, is_pending: false, validated: true, in_session: true }]
+    ok: true,
+    pseudo: 'AlphaPrime',
+    guild: 'ALPHA',
+    overall_power: 80000000,
+    timezone_offset: 1,
+    glory: 5000,
+    sessions: [
+      {
+        event_name: 'GvG',
+        session_id: 'GVG-2026-W32',
+        start_at: null,
+        participated: true,
+        score_prep: 1000,
+        is_pending: false,
+        validated: true,
+        in_session: true,
+      },
+    ],
   },
   'get-history': { ok: true, events: {} },
   'get-personal-kpis': {
@@ -43,20 +58,36 @@ const FIXTURES = {
     power: { current: 80000000, guild_max: 100000000, rank: 3, members: 20, percentile: 15, guild_avg: 70000000 },
     glory: { current_week: 5000, rank: 2, guild_max_week: 9000, best_ever: 7000, guild_avg_week: 4000 },
     participation: { rate: 75, attended: 9, total: 12, guild_avg_rate: 70 },
-    role: 'R3'
+    role: 'R3',
   },
   'get-weekly-challenges': {
-    ok: true, week: '2026-08-03',
+    ok: true,
+    week: '2026-08-03',
     challenges: [
-      { id: 'events1', label: 'Attend 1 event this week', icon: 'ph-calendar-check', done: true, progress: 1, target: 1 },
-      { id: 'events3', label: 'Attend 3 events this week', icon: 'ph-lightning', done: false, progress: 1, target: 3 }
+      {
+        id: 'events1',
+        label: 'Attend 1 event this week',
+        icon: 'ph-calendar-check',
+        done: true,
+        progress: 1,
+        target: 1,
+      },
+      { id: 'events3', label: 'Attend 3 events this week', icon: 'ph-lightning', done: false, progress: 1, target: 3 },
     ],
-    completed: 1, total: 2,
-    season: { level: 'Silver', events: 9 }
+    completed: 1,
+    total: 2,
+    season: { level: 'Silver', events: 9 },
   },
-  'get-badges': { ok: true, role: 'R3', created_at: '2026-06-01T00:00:00Z', overall_power: 80000000, attended: 12, glory_best: 4000 },
+  'get-badges': {
+    ok: true,
+    role: 'R3',
+    created_at: '2026-06-01T00:00:00Z',
+    overall_power: 80000000,
+    attended: 12,
+    glory_best: 4000,
+  },
   'get-transfer-guilds': { ok: true, guilds: [] },
-  'get-absences': { ok: true, absences: [] }
+  'get-absences': { ok: true, absences: [] },
 };
 
 let invokeMock;
@@ -76,9 +107,27 @@ function installGlobals() {
   vi.mocked(computeBadges).mockReturnValue({
     earned: 1,
     total: 1,
-    categories: [{ key: 'power', label: 'Power', icon: 'ph-lightning', color: '#ffe088', badges: [
-      { category: 'power', earned: true, current: 80000000, target: 100000000, progress: 100, color: '#ffe088', icon: 'ph-lightning', name: 'High Power', desc: 'Reach 100M power' }
-    ] }]
+    categories: [
+      {
+        key: 'power',
+        label: 'Power',
+        icon: 'ph-lightning',
+        color: '#ffe088',
+        badges: [
+          {
+            category: 'power',
+            earned: true,
+            current: 80000000,
+            target: 100000000,
+            progress: 100,
+            color: '#ffe088',
+            icon: 'ph-lightning',
+            name: 'High Power',
+            desc: 'Reach 100M power',
+          },
+        ],
+      },
+    ],
   });
 }
 
@@ -104,7 +153,10 @@ beforeEach(() => {
   localStorage.clear();
   installGlobals();
   installDb();
-  window.requestAnimationFrame = (cb) => { cb(0); return 0; };
+  window.requestAnimationFrame = (cb) => {
+    cb(0);
+    return 0;
+  };
 });
 
 afterEach(() => {
@@ -190,7 +242,7 @@ describe('PortalView — chart delegation & cleanup', () => {
   it('delegates chart drawing to drawScoreTrendChart', async () => {
     FIXTURES['get-history'] = {
       ok: true,
-      events: { 'SvS': { has_score: true, history: [{ week_start: '2026-08-03', score: 100 }] } }
+      events: { 'SvS': { has_score: true, history: [{ week_start: '2026-08-03', score: 100 }] } },
     };
     const view = newView();
     await view.loadDashboard();
@@ -211,21 +263,26 @@ describe('PortalView — chart delegation & cleanup', () => {
   });
 
   it('does not expose any GM_* global', async () => {
-    const baseline = Object.getOwnPropertyNames(window).filter((k) => k.startsWith('GM_')).sort();
+    const baseline = Object.getOwnPropertyNames(window)
+      .filter((k) => k.startsWith('GM_'))
+      .sort();
 
     const view = newView();
     await view.loadDashboard();
 
-    const after = Object.getOwnPropertyNames(window).filter((k) => k.startsWith('GM_')).sort();
+    const after = Object.getOwnPropertyNames(window)
+      .filter((k) => k.startsWith('GM_'))
+      .sort();
     expect(after).toEqual(baseline);
     expect('GM_PORTAL' in window).toBe(false);
   });
 });
 
-
 describe('PortalView — Active Events card states', () => {
   const baseSessions = FIXTURES['get-active-sessions'].sessions;
-  afterEach(() => { FIXTURES['get-active-sessions'].sessions = baseSessions; });
+  afterEach(() => {
+    FIXTURES['get-active-sessions'].sessions = baseSessions;
+  });
 
   async function renderEvents(sessions) {
     FIXTURES['get-active-sessions'].sessions = sessions;
@@ -236,27 +293,69 @@ describe('PortalView — Active Events card states', () => {
   }
 
   it('shows a pending submission as awaiting approval, with its button disabled', async () => {
-    const panel = await renderEvents([{ event_name: 'Defend Trade Route', session_id: 'DTR-20260930-1', participated: true, is_pending: true, validated: false, in_session: true }]);
+    const panel = await renderEvents([
+      {
+        event_name: 'Defend Trade Route',
+        session_id: 'DTR-20260930-1',
+        participated: true,
+        is_pending: true,
+        validated: false,
+        in_session: true,
+      },
+    ]);
     expect(panel.textContent).toContain('Awaiting approval');
     expect(panel.querySelector('.portal-submit-event-btn').disabled).toBe(true);
   });
 
   it('treats a squad-named Shadowfront session as Shadowfront: no score field, late/excused toggles', async () => {
-    const panel = await renderEvents([{ event_name: 'Shadowfront Squad 1', session_id: 'SF1-20260930-1', participated: false, is_pending: false, validated: false, in_session: true }]);
+    const panel = await renderEvents([
+      {
+        event_name: 'Shadowfront Squad 1',
+        session_id: 'SF1-20260930-1',
+        participated: false,
+        is_pending: false,
+        validated: false,
+        in_session: true,
+      },
+    ]);
     expect(panel.querySelector('.portal-score')).toBeNull();
     expect(panel.querySelector('.portal-check-late')).not.toBeNull();
     expect(panel.querySelector('.portal-submit-event-btn')).not.toBeNull();
   });
 
   it('offers no toggle the server would discard (appointed, excused)', async () => {
-    const dtr = await renderEvents([{ event_name: 'Defend Trade Route', session_id: 'DTR-20260930-1', is_pending: false, validated: false, in_session: true }]);
+    const dtr = await renderEvents([
+      {
+        event_name: 'Defend Trade Route',
+        session_id: 'DTR-20260930-1',
+        is_pending: false,
+        validated: false,
+        in_session: true,
+      },
+    ]);
     expect(dtr.querySelector('.portal-check-appointed')).toBeNull();
-    const sf = await renderEvents([{ event_name: 'Shadowfront Squad 1', session_id: 'SF1-20260930-1', is_pending: false, validated: false, in_session: true }]);
+    const sf = await renderEvents([
+      {
+        event_name: 'Shadowfront Squad 1',
+        session_id: 'SF1-20260930-1',
+        is_pending: false,
+        validated: false,
+        in_session: true,
+      },
+    ]);
     expect(sf.querySelector('.portal-check-excused')).toBeNull();
   });
 
   it('tells a player outside the squad so, instead of offering a Submit that cannot land', async () => {
-    const panel = await renderEvents([{ event_name: 'Shadowfront Squad 2', session_id: 'SF2-20260930-1', is_pending: false, validated: false, in_session: false }]);
+    const panel = await renderEvents([
+      {
+        event_name: 'Shadowfront Squad 2',
+        session_id: 'SF2-20260930-1',
+        is_pending: false,
+        validated: false,
+        in_session: false,
+      },
+    ]);
     expect(panel.textContent).toContain('Not in this squad');
     expect(panel.querySelector('.portal-submit-event-btn')).toBeNull();
   });

@@ -18,7 +18,7 @@ import type { DbClient } from '../../core/api/db-client';
  */
 export const ARMSRACE_STAGE_EVENTS = {
   stageA: 'ARMS RACE STAGE A',
-  stageB: 'ARMS RACE STAGE B'
+  stageB: 'ARMS RACE STAGE B',
 } as const;
 
 export type ArmsRaceStageKey = keyof typeof ARMSRACE_STAGE_EVENTS;
@@ -83,12 +83,16 @@ export function buildPopulateParams(
     p_event_name: ARMSRACE_STAGE_EVENTS[stageKey],
     p_session_id: sessionId,
     p_week_start: weekStart,
-    p_guild: guild
+    p_guild: guild,
   };
 }
 
 /** Participation counters used by the header chips. */
-export function computeArmsRaceStats(participants: ArmsRaceParticipantRow[]): { total: number; done: number; absent: number } {
+export function computeArmsRaceStats(participants: ArmsRaceParticipantRow[]): {
+  total: number;
+  done: number;
+  absent: number;
+} {
   const total = participants.length;
   const done = participants.reduce((acc, p) => acc + (Number(p.participated) || 0), 0);
   return { total, done, absent: total - done };
@@ -96,10 +100,11 @@ export function computeArmsRaceStats(participants: ArmsRaceParticipantRow[]): { 
 
 // ── Data access (M4b) ─────────────────────────────────────────────────────────
 
-
 /** Read both stages' `event_status` rows for a guild. */
 export function fetchArmsRaceStatus(db: DbClient, guild: string | null) {
-  let statusQ: any = db.from('event_status').select('event_name, is_active, session_id, start_at')
+  let statusQ: any = db
+    .from('event_status')
+    .select('event_name, is_active, session_id, start_at')
     .in('event_name', [ARMSRACE_STAGE_EVENTS.stageA, ARMSRACE_STAGE_EVENTS.stageB]);
   statusQ = statusQ.eq('guild', guild);
   return statusQ;
@@ -114,7 +119,9 @@ export function fetchArmsRaceMembers(db: DbClient, guild: string | null) {
 
 /** Read the participants of both stages for the given session ids. */
 export function fetchArmsRaceParticipants(db: DbClient, guild: string | null, sessionIds: string[]) {
-  return db.from('event_participants').select('*')
+  return db
+    .from('event_participants')
+    .select('*')
     .eq('guild', guild)
     .in('event_name', [ARMSRACE_STAGE_EVENTS.stageA, ARMSRACE_STAGE_EVENTS.stageB])
     .in('session_id', sessionIds)
@@ -122,8 +129,15 @@ export function fetchArmsRaceParticipants(db: DbClient, guild: string | null, se
 }
 
 /** Read the participants of one stage session. */
-export function fetchStageParticipants(db: DbClient, guild: string | null, eventName: string, sessionId: string | null) {
-  return db.from('event_participants').select('*')
+export function fetchStageParticipants(
+  db: DbClient,
+  guild: string | null,
+  eventName: string,
+  sessionId: string | null
+) {
+  return db
+    .from('event_participants')
+    .select('*')
     .eq('guild', guild)
     .eq('event_name', eventName)
     .eq('session_id', sessionId)
@@ -131,28 +145,38 @@ export function fetchStageParticipants(db: DbClient, guild: string | null, event
 }
 
 /** Enrol the guild's members into a stage session through `gm_populate_event_participants`. */
-export function populateStageParticipants(db: DbClient, stageKey: ArmsRaceStageKey, sessionId: string, weekStart: string, guild: string) {
+export function populateStageParticipants(
+  db: DbClient,
+  stageKey: ArmsRaceStageKey,
+  sessionId: string,
+  weekStart: string,
+  guild: string
+) {
   return db.rpc('gm_populate_event_participants', buildPopulateParams(stageKey, sessionId, weekStart, guild));
 }
 
 /** Upsert a stage's `event_status` row (start or end). */
 export function upsertStageStatus(db: DbClient, row: Record<string, unknown>) {
-  return db.from('event_status').upsert(
-    row,
-    { onConflict: 'guild,event_name' }
-  );
+  return db.from('event_status').upsert(row, { onConflict: 'guild,event_name' });
 }
 
 /** Read a stage's scheduled start. */
 export function fetchStageStartAt(db: DbClient, guild: string | null, eventName: string) {
-  return db.from('event_status').select('start_at')
-    .eq('guild', guild)
-    .eq('event_name', eventName).maybeSingle();
+  return db.from('event_status').select('start_at').eq('guild', guild).eq('event_name', eventName).maybeSingle();
 }
 
 /** Set one participant's participation flag in a stage session. */
-export function updateStageParticipation(db: DbClient, guild: string | null, eventName: string, sessionId: string | null, pseudo: string, value: number) {
-  return db.from('event_participants').update({ participated: value })
+export function updateStageParticipation(
+  db: DbClient,
+  guild: string | null,
+  eventName: string,
+  sessionId: string | null,
+  pseudo: string,
+  value: number
+) {
+  return db
+    .from('event_participants')
+    .update({ participated: value })
     .eq('guild', guild)
     .eq('event_name', eventName)
     .eq('session_id', sessionId)

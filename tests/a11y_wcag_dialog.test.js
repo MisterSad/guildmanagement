@@ -24,7 +24,7 @@ describe('WCAG 2.2 AA Accessibility & Focus Management (TICKET-11 / A11Y-01)', (
         title: 'Edit Profile',
         body: '<p>Edit your profile details.</p>',
         confirmLabel: 'Save',
-        cancelLabel: 'Cancel'
+        cancelLabel: 'Cancel',
       });
 
       const card = dialog.querySelector('.gm-ui-dialog-wrap');
@@ -39,7 +39,7 @@ describe('WCAG 2.2 AA Accessibility & Focus Management (TICKET-11 / A11Y-01)', (
         tone: 'danger',
         body: '<p>This action cannot be undone.</p>',
         confirmLabel: 'Delete',
-        cancelLabel: 'Cancel'
+        cancelLabel: 'Cancel',
       });
 
       const card = dialog.querySelector('.gm-ui-dialog-wrap');
@@ -52,7 +52,7 @@ describe('WCAG 2.2 AA Accessibility & Focus Management (TICKET-11 / A11Y-01)', (
       const dialog = createDialog({
         id: 'test-dlg',
         title: 'Modal Title',
-        body: 'Content'
+        body: 'Content',
       });
 
       const card = dialog.querySelector('.gm-ui-dialog-wrap');
@@ -68,7 +68,7 @@ describe('WCAG 2.2 AA Accessibility & Focus Management (TICKET-11 / A11Y-01)', (
         id: 'sub-dlg',
         title: 'With Subtitle',
         subtitle: 'Secondary hint text',
-        body: 'Content'
+        body: 'Content',
       });
 
       const card = dialogWithSubtitle.querySelector('.gm-ui-dialog-wrap');
@@ -84,7 +84,7 @@ describe('WCAG 2.2 AA Accessibility & Focus Management (TICKET-11 / A11Y-01)', (
         title: 'Settings',
         iconClass: 'ph-gear',
         body: 'Body',
-        cancelLabel: 'Dismiss'
+        cancelLabel: 'Dismiss',
       });
 
       const closeBtn = dialog.querySelector('.gm-ui-dialog-header-close');
@@ -107,7 +107,7 @@ describe('WCAG 2.2 AA Accessibility & Focus Management (TICKET-11 / A11Y-01)', (
         title: 'Focus Test',
         body: '<input id="test-input" type="text"><button id="inner-btn">Submit</button>',
         confirmLabel: 'Confirm',
-        cancelLabel: 'Cancel'
+        cancelLabel: 'Cancel',
       });
 
       // Dialog opens, focus is moved inside the dialog card
@@ -127,7 +127,7 @@ describe('WCAG 2.2 AA Accessibility & Focus Management (TICKET-11 / A11Y-01)', (
 
       const dialog = openDialog({
         title: 'Inert Background Test',
-        body: 'Testing background accessibility'
+        body: 'Testing background accessibility',
       });
 
       expect(app.getAttribute('aria-hidden')).toBe('true');
@@ -140,7 +140,7 @@ describe('WCAG 2.2 AA Accessibility & Focus Management (TICKET-11 / A11Y-01)', (
     it('traps focus inside the dialog cycling on Tab and Shift+Tab', () => {
       const dialog = openDialog({
         title: 'Focus Trap',
-        body: '<input id="field-1" type="text"><input id="field-2" type="text">'
+        body: '<input id="field-1" type="text"><input id="field-2" type="text">',
       });
 
       const card = dialog.querySelector('.gm-ui-dialog-wrap');
@@ -160,7 +160,12 @@ describe('WCAG 2.2 AA Accessibility & Focus Management (TICKET-11 / A11Y-01)', (
 
       // Shift+Tab on first element wraps to last
       firstEl.focus();
-      const shiftTabEvent = new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true });
+      const shiftTabEvent = new KeyboardEvent('keydown', {
+        key: 'Tab',
+        shiftKey: true,
+        bubbles: true,
+        cancelable: true,
+      });
       document.dispatchEvent(shiftTabEvent);
       expect(document.activeElement).toBe(lastEl);
     });
@@ -173,7 +178,7 @@ describe('WCAG 2.2 AA Accessibility & Focus Management (TICKET-11 / A11Y-01)', (
         title: 'Escape Test',
         body: 'Press escape to close',
         onCancel,
-        onClose
+        onClose,
       });
 
       const escEvent = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
@@ -191,7 +196,9 @@ describe('WCAG 2.2 AA Accessibility & Focus Management (TICKET-11 / A11Y-01)', (
 
     it('ocr-modal-overlay contains role="dialog", aria-modal="true", and aria-labelledby', () => {
       expect(html).toContain('id="ocr-modal-overlay"');
-      expect(html).toContain('role="dialog" aria-modal="true" aria-labelledby="ocr-modal-title" aria-describedby="ocr-modal-subtitle"');
+      expect(html).toContain(
+        'role="dialog" aria-modal="true" aria-labelledby="ocr-modal-title" aria-describedby="ocr-modal-subtitle"'
+      );
       expect(html).toMatch(/id="ocr-modal-close" aria-label="Close"/);
     });
 

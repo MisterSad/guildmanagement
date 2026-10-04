@@ -33,7 +33,9 @@ export async function getPlayer(
 ): Promise<MemberSnapshot | null> {
   let query = admin
     .from("guild_members")
-    .select("pseudo, guild, overall_power, power_updated_at, metrics_updated_at, tech_power, champion_power, crew_power, flagship_power, fleet_rating, glory_score, role, timezone_offset, timezone")
+    .select(
+      "pseudo, guild, overall_power, power_updated_at, metrics_updated_at, tech_power, champion_power, crew_power, flagship_power, fleet_rating, glory_score, role, timezone_offset, timezone"
+    )
     .eq("uid", uid);
 
   if (guildContext) {

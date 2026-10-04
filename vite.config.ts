@@ -82,10 +82,7 @@ function phosphorFontTrimPlugin(): Plugin {
       if (!code.includes('@font-face')) return null;
 
       const trimmed = code
-        .replace(
-          /src:\s*[^;]*;/,
-          'src: url("./Phosphor.woff2") format("woff2");'
-        )
+        .replace(/src:\s*[^;]*;/, 'src: url("./Phosphor.woff2") format("woff2");')
         .replace(/font-display:\s*block;/, 'font-display: swap;');
 
       return trimmed === code ? null : { code: trimmed, map: null };

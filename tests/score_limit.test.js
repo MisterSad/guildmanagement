@@ -44,7 +44,7 @@ describe('Score limit raising (500M -> 9,999,999,999)', () => {
   });
 
   it('raises the daily grid RPC bound to 9,999,999,999 with BIGINT-safe sums', () => {
-    expect(migration).toContain("CREATE OR REPLACE FUNCTION public.gm_upsert_daily_scores(");
+    expect(migration).toContain('CREATE OR REPLACE FUNCTION public.gm_upsert_daily_scores(');
     expect(migration).toContain('v_score >= 0 AND v_score <= 9999999999');
     // The derived D1-5 / D6 sums must no longer be squashed through INT4.
     expect(migration).toContain('SUM(CASE WHEN day <= 5 THEN score ELSE 0 END)::bigint');
@@ -77,6 +77,8 @@ describe('Score limit raising (500M -> 9,999,999,999)', () => {
 
   it('the war migration daily grid bound is superseded by the new migration', () => {
     expect(warMigration).toContain('v_score <= 500000000');
-    expect(migration.indexOf('v_score <= 9999999999')).toBeGreaterThan(migration.indexOf('CREATE OR REPLACE FUNCTION public.gm_upsert_daily_scores('));
+    expect(migration.indexOf('v_score <= 9999999999')).toBeGreaterThan(
+      migration.indexOf('CREATE OR REPLACE FUNCTION public.gm_upsert_daily_scores(')
+    );
   });
 });

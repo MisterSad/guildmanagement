@@ -6,7 +6,7 @@ import {
   getTimezoneOffset,
   formatOffsetLabel,
   formatTimeInZone,
-  formatTimezoneDisplay
+  formatTimezoneDisplay,
 } from '../src/utils/timezone';
 
 describe('src/utils/timezone.ts — IANA Timezone Engine', () => {
@@ -137,7 +137,7 @@ describe('src/utils/timezone.ts — IANA Timezone Engine', () => {
         { pseudo: 'Captain', role: 'R4', timezone: 'America/New_York' },
         { pseudo: 'Leader', role: 'R5', timezone: 'Europe/Paris' },
         { pseudo: 'NoTzOfficer', role: 'R4', timezone: null, timezone_offset: null },
-        { pseudo: 'OffsetOfficer', role: 'R4', timezone: null, timezone_offset: 3 }
+        { pseudo: 'OffsetOfficer', role: 'R4', timezone: null, timezone_offset: 3 },
       ];
 
       const summer = new Date('2026-07-15T12:00:00Z');
@@ -164,7 +164,7 @@ describe('src/utils/timezone.ts — IANA Timezone Engine', () => {
       const { buildOfficerClocks } = await import('../src/modules/overview/overview.service');
       const members = [
         { pseudo: 'Player1', role: 'R1', timezone: 'UTC' },
-        { pseudo: 'Leader', role: 'R5', timezone: null, timezone_offset: null }
+        { pseudo: 'Leader', role: 'R5', timezone: null, timezone_offset: null },
       ];
       expect(buildOfficerClocks(members)).toEqual([]);
     });

@@ -15,7 +15,6 @@
  * decides on its own that a rename is allowed.
  */
 
-
 import { adoptDialog } from '../../../components/ui/Dialog';
 import { esc, byId, getDb, ls } from './utils';
 import { getActiveGuild } from '../../../core/auth/roles';
@@ -51,7 +50,11 @@ export interface TagHistory {
 
 /** Uppercases and strips the brackets people type around a tag ("[ab]" -> "AB"). */
 export function normalizeTag(raw: unknown): string {
-  return String(raw ?? '').trim().replace(/^\[+|\]+$/g, '').trim().toUpperCase();
+  return String(raw ?? '')
+    .trim()
+    .replace(/^\[+|\]+$/g, '')
+    .trim()
+    .toUpperCase();
 }
 
 function formatDate(iso: string | null | undefined): string {
@@ -67,7 +70,7 @@ export function renameErrorMessage(code: string | undefined, nextAllowedAt?: str
     case 'invalid_tag':
       return 'A TAG is 2 to 12 characters: letters, digits or underscore.';
     case 'unchanged':
-      return 'That is already the guild\'s TAG.';
+      return "That is already the guild's TAG.";
     case 'tag_taken':
       return 'Another guild already uses this TAG.';
     case 'tag_reserved':
@@ -79,7 +82,7 @@ export function renameErrorMessage(code: string | undefined, nextAllowedAt?: str
       return 'The TAG was changed less than 7 days ago.' + (when ? ' Next change possible on ' + when + '.' : '');
     }
     case 'unauthorized':
-      return 'Only the guild\'s admin or the super admin can change its TAG.';
+      return "Only the guild's admin or the super admin can change its TAG.";
     case 'guild_not_found':
       return 'This guild no longer exists. Reload the page.';
     default:
@@ -160,7 +163,11 @@ export async function fetchTagHistory(guild: string): Promise<TagHistory> {
  * one place every module re-resolves its tenant, its caches and its realtime
  * subscriptions from scratch; patching each of them in place would miss one.
  */
-export function applyRenameToSession(oldTag: string, newTag: string, reload: () => void = () => window.location.reload()): void {
+export function applyRenameToSession(
+  oldTag: string,
+  newTag: string,
+  reload: () => void = () => window.location.reload()
+): void {
   migrateLocalGuildKeys(ls(), oldTag, newTag);
   const st = getAppState();
   patchAppState({
@@ -189,27 +196,31 @@ export function openRenameGuildDialog(guild: string, onRenamed?: (newTag: string
   overlay.style.zIndex = '1000001';
   overlay.innerHTML =
     '<div class="gm-modal-card" style="max-width: 440px; width: 92%;">' +
-      '<h3 id="guild-rename-title"><i class="ph ph-tag" aria-hidden="true"></i> Change the TAG of ' + esc(guild) + '</h3>' +
-      '<label class="gm-dim" for="guild-rename-input" style="font-size: 0.85rem;">New TAG</label>' +
-      '<span class="gm-ui-input gm-ui-input-md" style="margin: 0.35rem 0 0.25rem;">' +
-        '<input type="text" id="guild-rename-input" class="gm-ui-input-field" maxlength="14" autocomplete="off" spellcheck="false" ' +
-        'style="font-weight: 700; text-transform: uppercase;" placeholder="e.g. PR1M">' +
-      '</span>' +
-      '<div id="guild-rename-error" class="text-error" role="alert" style="min-height: 1.2em; font-size: 0.85rem;"></div>' +
-      '<ul class="gm-dim" style="font-size: 0.85rem; margin: 0.5rem 0 1rem; padding-left: 1.1rem; text-align: left;">' +
-        '<li>Every member, score, event and setting moves to the new TAG.</li>' +
-        '<li>Other admins signed in right now will need to reload the page.</li>' +
-        '<li>Discord roles and channels named after the old TAG are not renamed: rename your guild role in Discord, the bot finds it by name.</li>' +
-        '<li>Discord verification picks up the new TAG within 5 minutes.</li>' +
-        '<li>A guild admin can change the TAG once every 7 days.</li>' +
-      '</ul>' +
-      '<div class="confirm-actions">' +
-        '<button type="button" id="guild-rename-cancel" class="gm-btn gm-btn-ghost">Cancel</button>' +
-        '<button type="button" id="guild-rename-ok" class="gm-btn gm-btn-primary" disabled>Change TAG</button>' +
-      '</div>' +
+    '<h3 id="guild-rename-title"><i class="ph ph-tag" aria-hidden="true"></i> Change the TAG of ' +
+    esc(guild) +
+    '</h3>' +
+    '<label class="gm-dim" for="guild-rename-input" style="font-size: 0.85rem;">New TAG</label>' +
+    '<span class="gm-ui-input gm-ui-input-md" style="margin: 0.35rem 0 0.25rem;">' +
+    '<input type="text" id="guild-rename-input" class="gm-ui-input-field" maxlength="14" autocomplete="off" spellcheck="false" ' +
+    'style="font-weight: 700; text-transform: uppercase;" placeholder="e.g. PR1M">' +
+    '</span>' +
+    '<div id="guild-rename-error" class="text-error" role="alert" style="min-height: 1.2em; font-size: 0.85rem;"></div>' +
+    '<ul class="gm-dim" style="font-size: 0.85rem; margin: 0.5rem 0 1rem; padding-left: 1.1rem; text-align: left;">' +
+    '<li>Every member, score, event and setting moves to the new TAG.</li>' +
+    '<li>Other admins signed in right now will need to reload the page.</li>' +
+    '<li>Discord roles and channels named after the old TAG are not renamed: rename your guild role in Discord, the bot finds it by name.</li>' +
+    '<li>Discord verification picks up the new TAG within 5 minutes.</li>' +
+    '<li>A guild admin can change the TAG once every 7 days.</li>' +
+    '</ul>' +
+    '<div class="confirm-actions">' +
+    '<button type="button" id="guild-rename-cancel" class="gm-btn gm-btn-ghost">Cancel</button>' +
+    '<button type="button" id="guild-rename-ok" class="gm-btn gm-btn-primary" disabled>Change TAG</button>' +
+    '</div>' +
     '</div>';
   document.body.appendChild(overlay);
-  requestAnimationFrame(() => { overlay.classList.add('visible'); });
+  requestAnimationFrame(() => {
+    overlay.classList.add('visible');
+  });
 
   const input = document.getElementById('guild-rename-input') as HTMLInputElement;
   const errorEl = document.getElementById('guild-rename-error') as HTMLElement;
@@ -219,7 +230,9 @@ export function openRenameGuildDialog(guild: string, onRenamed?: (newTag: string
 
   function close(): void {
     overlay.classList.remove('visible');
-    setTimeout(() => { overlay.remove(); }, 300);
+    setTimeout(() => {
+      overlay.remove();
+    }, 300);
   }
 
   function validate(): string {
@@ -265,11 +278,22 @@ export function openRenameGuildDialog(guild: string, onRenamed?: (newTag: string
     }
   }
 
-  input.addEventListener('input', () => { validate(); });
-  input.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); void submit(); } });
-  okBtn.addEventListener('click', () => { void submit(); });
+  input.addEventListener('input', () => {
+    validate();
+  });
+  input.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Enter') {
+      ev.preventDefault();
+      void submit();
+    }
+  });
+  okBtn.addEventListener('click', () => {
+    void submit();
+  });
   cancelBtn.addEventListener('click', close);
-  overlay.addEventListener('click', (ev) => { if (ev.target === overlay) close(); });
+  overlay.addEventListener('click', (ev) => {
+    if (ev.target === overlay) close();
+  });
   // Role, label, focus trap and Escape (M5); focus starts in the TAG field.
   adoptDialog(overlay, { labelledBy: 'guild-rename-title', onEscape: close, initialFocus: input });
 }
@@ -312,9 +336,18 @@ export async function loadGuildTagCard(): Promise<void> {
       : 'You can change the TAG once every 7 days.';
   }
   if (historyEl) {
-    historyEl.innerHTML = hist.history.map((h) =>
-      '<li>' + esc(h.old_tag) + ' → <strong>' + esc(h.new_tag) + '</strong> <span class="gm-dim">· ' + esc(formatDate(h.changed_at)) + '</span></li>'
-    ).join('');
+    historyEl.innerHTML = hist.history
+      .map(
+        (h) =>
+          '<li>' +
+          esc(h.old_tag) +
+          ' → <strong>' +
+          esc(h.new_tag) +
+          '</strong> <span class="gm-dim">· ' +
+          esc(formatDate(h.changed_at)) +
+          '</span></li>'
+      )
+      .join('');
     historyEl.classList.toggle('hidden', hist.history.length === 0);
   }
 
@@ -322,7 +355,10 @@ export async function loadGuildTagCard(): Promise<void> {
     (btn as any).__gmAdminWired = true;
     btn.addEventListener('click', () => {
       const active = getActiveGuild();
-      if (active) openRenameGuildDialog(active, () => { void loadGuildTagCard(); });
+      if (active)
+        openRenameGuildDialog(active, () => {
+          void loadGuildTagCard();
+        });
     });
   }
 }

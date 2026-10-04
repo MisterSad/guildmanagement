@@ -5,7 +5,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     environmentOptions: {
-      jsdom: { url: 'http://localhost:3000/' }
+      jsdom: { url: 'http://localhost:3000/' },
     },
     setupFiles: ['tests/setup.js'],
     include: ['tests/**/*.{test,spec}.{js,ts}'],
@@ -28,21 +28,20 @@ export default defineConfig({
         statements: 56,
         branches: 45,
         functions: 62,
-        lines: 59
-      }
-    }
+        lines: 59,
+      },
+    },
   },
   resolve: {
     alias: [
       {
         find: 'discord.js',
-        replacement: path.resolve(__dirname, 'tests/mocks/discord.js')
+        replacement: path.resolve(__dirname, 'tests/mocks/discord.js'),
       },
       {
         find: /^https:\/\/esm\.sh\/zod(?:@[\d.]+)?$/,
-        replacement: 'zod'
-      }
-    ]
-  }
+        replacement: 'zod',
+      },
+    ],
+  },
 });
-

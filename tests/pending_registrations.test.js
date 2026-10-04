@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { squash } from './helpers/source-text.js';
 import fs from 'fs';
 import path from 'path';
@@ -39,7 +39,9 @@ describe('Pending Player Registration Visibility & Validation', () => {
     const edgeCode = edgeSource('admin-accounts');
 
     it('performs case-insensitive guild comparison when filtering list for guild_admin', () => {
-      expect(edgeCode).toMatch(/const callerGuildNorm = callerGuild \? String\(callerGuild\)\.trim\(\)\.toUpperCase\(\) : "";/);
+      expect(edgeCode).toMatch(
+        /const callerGuildNorm = callerGuild \? String\(callerGuild\)\.trim\(\)\.toUpperCase\(\) : "";/
+      );
       expect(edgeCode).toMatch(/String\(acc\.guild\)\.trim\(\)\.toUpperCase\(\) === callerGuildNorm/);
     });
 
@@ -47,12 +49,12 @@ describe('Pending Player Registration Visibility & Validation', () => {
       const caller = {
         role: 'guild_admin',
         guild: 'ALPHA',
-        serverNumber: '1058'
+        serverNumber: '1058',
       };
       const pendingTarget = {
         role: 'member',
         guild: 'alpha', // case variation
-        serverNumber: null
+        serverNumber: null,
       };
 
       expect(canManageAccount(caller, pendingTarget)).toBe(true);
@@ -62,12 +64,12 @@ describe('Pending Player Registration Visibility & Validation', () => {
       const caller = {
         role: 'guild_admin',
         guild: 'ALPHA',
-        serverNumber: '1058'
+        serverNumber: '1058',
       };
       const foreignTarget = {
         role: 'member',
         guild: 'BABE',
-        serverNumber: '1058'
+        serverNumber: '1058',
       };
 
       expect(canManageAccount(caller, foreignTarget)).toBe(false);
@@ -91,7 +93,8 @@ describe('Pending Player Registration Visibility & Validation', () => {
     });
 
     it('matches guild case-insensitively in renderPendingRegistrations and renderAccounts', () => {
-      const appJs = read('src/modules/app/admin/guild-requests.controller.ts') + read('src/modules/app/admin/accounts.render.ts');
+      const appJs =
+        read('src/modules/app/admin/guild-requests.controller.ts') + read('src/modules/app/admin/accounts.render.ts');
       expect(squash(appJs)).toMatch(/const activeGUpper = String\(guild \|\| ''\)\.trim\(\)\.toUpperCase\(\);/);
       expect(squash(appJs)).toMatch(/accGuildUpper === activeGUpper/);
       expect(squash(appJs)).toMatch(/String\(accGuild\)\.trim\(\)\.toUpperCase\(\) === activeGUpper/);
@@ -119,18 +122,48 @@ describe('Pending Player Registration Visibility & Validation', () => {
 
     it('correctly populates pending list and counts in both Overview and Admin containers', () => {
       const mockAccounts = [
-        { id: 'PlayerAlpha1', role: 'member', status: 'pending', guild: 'Alpha', uid: '12345', created_at: '2026-09-03T10:00:00Z' },
-        { id: 'PlayerAlpha2', role: 'member', status: 'active', guild: 'ALPHA', uid: '67890', created_at: '2026-09-01T10:00:00Z' },
-        { id: 'AdminAlpha', role: 'guild_admin', status: 'active', guild: 'ALPHA', uid: null, created_at: '2026-08-01T10:00:00Z' },
-        { id: 'PlayerBabe1', role: 'member', status: 'pending', guild: 'BABE', uid: '11111', created_at: '2026-09-03T11:00:00Z' }
+        {
+          id: 'PlayerAlpha1',
+          role: 'member',
+          status: 'pending',
+          guild: 'Alpha',
+          uid: '12345',
+          created_at: '2026-09-03T10:00:00Z',
+        },
+        {
+          id: 'PlayerAlpha2',
+          role: 'member',
+          status: 'active',
+          guild: 'ALPHA',
+          uid: '67890',
+          created_at: '2026-09-01T10:00:00Z',
+        },
+        {
+          id: 'AdminAlpha',
+          role: 'guild_admin',
+          status: 'active',
+          guild: 'ALPHA',
+          uid: null,
+          created_at: '2026-08-01T10:00:00Z',
+        },
+        {
+          id: 'PlayerBabe1',
+          role: 'member',
+          status: 'pending',
+          guild: 'BABE',
+          uid: '11111',
+          created_at: '2026-09-03T11:00:00Z',
+        },
       ];
 
       const activeG = 'ALPHA';
       const activeGUpper = activeG.trim().toUpperCase();
 
       // Simulate the logic in app.js
-      const pending = mockAccounts.filter(acc => {
-        const accGuildUpper = String(acc.guild || 'ALPHA').trim().toUpperCase();
+      const pending = mockAccounts.filter((acc) => {
+        const accGuildUpper = String(acc.guild || 'ALPHA')
+          .trim()
+          .toUpperCase();
         return acc.status === 'pending' && acc.role === 'member' && accGuildUpper === activeGUpper;
       });
 
@@ -138,16 +171,18 @@ describe('Pending Player Registration Visibility & Validation', () => {
       expect(pending[0].id).toBe('PlayerAlpha1');
 
       // Check active accounts logic
-      const activeAccounts = mockAccounts.filter(acc => {
+      const activeAccounts = mockAccounts.filter((acc) => {
         if (acc.status === 'pending') return false;
-        const accGuildUpper = String(acc.guild || 'ALPHA').trim().toUpperCase();
+        const accGuildUpper = String(acc.guild || 'ALPHA')
+          .trim()
+          .toUpperCase();
         return accGuildUpper === activeGUpper;
       });
 
       expect(activeAccounts).toHaveLength(2);
-      expect(activeAccounts.map(a => a.id)).toEqual(['PlayerAlpha2', 'AdminAlpha']);
+      expect(activeAccounts.map((a) => a.id)).toEqual(['PlayerAlpha2', 'AdminAlpha']);
 
-      const memberAccounts = activeAccounts.filter(acc => acc.role === 'member');
+      const memberAccounts = activeAccounts.filter((acc) => acc.role === 'member');
       expect(memberAccounts).toHaveLength(1);
       expect(memberAccounts[0].id).toBe('PlayerAlpha2');
     });

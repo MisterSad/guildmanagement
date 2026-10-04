@@ -9,8 +9,14 @@ import path from 'node:path';
 
 const root = path.resolve(__dirname, '..');
 const dir = path.join(root, 'supabase/migrations');
-const snapshot = JSON.parse(fs.readFileSync(path.join(root, 'tests/fixtures/migration_history.json'), 'utf-8')).migrations;
-const files = fs.readdirSync(dir).filter((f) => f.endsWith('.sql')).map((f) => f.slice(0, -4)).sort();
+const snapshot = JSON.parse(
+  fs.readFileSync(path.join(root, 'tests/fixtures/migration_history.json'), 'utf-8')
+).migrations;
+const files = fs
+  .readdirSync(dir)
+  .filter((f) => f.endsWith('.sql'))
+  .map((f) => f.slice(0, -4))
+  .sort();
 
 // Production sometimes stored the old file name as the migration name
 // ("20260926180000_drop_payments"); the file is named after the version.
@@ -24,7 +30,10 @@ describe('supabase/migrations matches the production history', () => {
 
   it('has no file that production neither recorded nor could still be waiting to apply', () => {
     const recorded = new Set(snapshot.map(expectedName));
-    const latest = snapshot.map((m) => m.version).sort().at(-1);
+    const latest = snapshot
+      .map((m) => m.version)
+      .sort()
+      .at(-1);
     const unexplained = files.filter((f) => !recorded.has(f) && f.slice(0, 14) <= latest);
     expect(unexplained).toEqual([]);
   });

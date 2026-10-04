@@ -8,7 +8,6 @@
  * When no grid exists yet in the DB, a sensible default grid is rendered.
  */
 
-
 import { EventsService, WarEventName } from './events.service';
 import { ChestTier } from '../../types/database';
 import { getActiveGuild } from '../../core/auth/roles';
@@ -29,9 +28,7 @@ let grid: ChestTier[] = [];
 let initialized = false;
 
 function dayTiers(day: number): ChestTier[] {
-  return grid
-    .filter((tier) => tier.day === day)
-    .sort((a, b) => a.min_score - b.min_score);
+  return grid.filter((tier) => tier.day === day).sort((a, b) => a.min_score - b.min_score);
 }
 
 function tierIndexBadge(_day: number, idx: number): string {
@@ -39,7 +36,7 @@ function tierIndexBadge(_day: number, idx: number): string {
     text: 'T' + (idx + 1),
     tone: currentEvent === 'SvS' ? 'svs' : 'gvg',
     style: 'soft',
-    size: 'sm'
+    size: 'sm',
   });
 }
 
@@ -49,23 +46,54 @@ function renderGrid(): void {
 
   gridEl.innerHTML = DAYS.map((day) => {
     const tiers = dayTiers(day);
-    const rows = tiers.map((tier, idx) =>
-      '<div class="chest-tier-row" data-day="' + day + '">' +
-        '<span class="chest-tier-index">' + tierIndexBadge(day, idx) + '</span>' +
-        '<input type="number" class="chest-tier-min gm-input gm-input-sm" min="0" step="1" value="' + esc(tier.min_score) + '" placeholder="' + t('war_min_score') + '" aria-label="' + esc(t('war_min_score')) + '">' +
-        '<span class="chest-tier-arrow">→</span>' +
-        '<input type="number" class="chest-tier-chests gm-input gm-input-sm" min="1" step="1" value="' + esc(tier.chests) + '" placeholder="' + t('war_chests_count') + '" aria-label="' + esc(t('war_chests_count')) + '">' +
-        '<button type="button" class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm chest-tier-remove" title="' + t('war_chest_tier_remove') + '" aria-label="' + t('war_chest_tier_remove') + '"><i class="ph ph-trash"></i></button>' +
-      '</div>'
-    ).join('');
+    const rows = tiers
+      .map(
+        (tier, idx) =>
+          '<div class="chest-tier-row" data-day="' +
+          day +
+          '">' +
+          '<span class="chest-tier-index">' +
+          tierIndexBadge(day, idx) +
+          '</span>' +
+          '<input type="number" class="chest-tier-min gm-input gm-input-sm" min="0" step="1" value="' +
+          esc(tier.min_score) +
+          '" placeholder="' +
+          t('war_min_score') +
+          '" aria-label="' +
+          esc(t('war_min_score')) +
+          '">' +
+          '<span class="chest-tier-arrow">→</span>' +
+          '<input type="number" class="chest-tier-chests gm-input gm-input-sm" min="1" step="1" value="' +
+          esc(tier.chests) +
+          '" placeholder="' +
+          t('war_chests_count') +
+          '" aria-label="' +
+          esc(t('war_chests_count')) +
+          '">' +
+          '<button type="button" class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm chest-tier-remove" title="' +
+          t('war_chest_tier_remove') +
+          '" aria-label="' +
+          t('war_chest_tier_remove') +
+          '"><i class="ph ph-trash"></i></button>' +
+          '</div>'
+      )
+      .join('');
 
-    return '<div class="chest-tier-day">' +
-      '<div class="chest-tier-day-header">' + dayHeader(day) + '</div>' +
+    return (
+      '<div class="chest-tier-day">' +
+      '<div class="chest-tier-day-header">' +
+      dayHeader(day) +
+      '</div>' +
       (rows || '<div class="chest-tier-empty">' + t('war_tiers_empty_day') + '</div>') +
-      '<button type="button" class="gm-btn gm-btn-ghost gm-btn-sm chest-tier-add" data-day="' + day + '">' +
-        '<i class="ph ph-plus"></i> <span>' + t('war_chest_tier_add') + '</span>' +
+      '<button type="button" class="gm-btn gm-btn-ghost gm-btn-sm chest-tier-add" data-day="' +
+      day +
+      '">' +
+      '<i class="ph ph-plus"></i> <span>' +
+      t('war_chest_tier_add') +
+      '</span>' +
       '</button>' +
-    '</div>';
+      '</div>'
+    );
   }).join('');
 }
 
@@ -80,14 +108,33 @@ function addTier(day: number): void {
   const nextMin = tiers.length > 0 ? Number(tiers[tiers.length - 1].min_score) + 1000 : 1000;
   const nextChests = tiers.length > 0 ? tiers[tiers.length - 1].chests : 1;
   row.innerHTML =
-    '<span class="chest-tier-index">' + tierIndexBadge(day, tiers.length) + '</span>' +
-    '<input type="number" class="chest-tier-min gm-input gm-input-sm" min="0" step="1" value="' + nextMin + '" placeholder="' + t('war_min_score') + '" aria-label="' + esc(t('war_min_score')) + '">' +
+    '<span class="chest-tier-index">' +
+    tierIndexBadge(day, tiers.length) +
+    '</span>' +
+    '<input type="number" class="chest-tier-min gm-input gm-input-sm" min="0" step="1" value="' +
+    nextMin +
+    '" placeholder="' +
+    t('war_min_score') +
+    '" aria-label="' +
+    esc(t('war_min_score')) +
+    '">' +
     '<span class="chest-tier-arrow">→</span>' +
-    '<input type="number" class="chest-tier-chests gm-input gm-input-sm" min="1" step="1" value="' + nextChests + '" placeholder="' + t('war_chests_count') + '" aria-label="' + esc(t('war_chests_count')) + '">' +
-    '<button type="button" class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm chest-tier-remove" title="' + t('war_chest_tier_remove') + '" aria-label="' + t('war_chest_tier_remove') + '"><i class="ph ph-trash"></i></button>';
+    '<input type="number" class="chest-tier-chests gm-input gm-input-sm" min="1" step="1" value="' +
+    nextChests +
+    '" placeholder="' +
+    t('war_chests_count') +
+    '" aria-label="' +
+    esc(t('war_chests_count')) +
+    '">' +
+    '<button type="button" class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm chest-tier-remove" title="' +
+    t('war_chest_tier_remove') +
+    '" aria-label="' +
+    t('war_chest_tier_remove') +
+    '"><i class="ph ph-trash"></i></button>';
 
-  const dayBlock = Array.from(gridEl.querySelectorAll('.chest-tier-day'))
-    .find((block) => (block.querySelector('.chest-tier-add') as HTMLElement | null)?.getAttribute('data-day') === String(day));
+  const dayBlock = Array.from(gridEl.querySelectorAll('.chest-tier-day')).find(
+    (block) => (block.querySelector('.chest-tier-add') as HTMLElement | null)?.getAttribute('data-day') === String(day)
+  );
   const empty = dayBlock ? dayBlock.querySelector('.chest-tier-empty') : null;
   if (empty) empty.remove();
   if (dayBlock) {
@@ -148,8 +195,7 @@ async function saveTiers(): Promise<void> {
 
     const min = Number(minRaw);
     const chests = Number(chestRaw);
-    if (!Number.isInteger(min) || min < 0 || !Number.isInteger(chests) || chests < 1
-        || day < 0 || day > 6) {
+    if (!Number.isInteger(min) || min < 0 || !Number.isInteger(chests) || chests < 1 || day < 0 || day > 6) {
       showToast(t('war_save_tiers_error'), 'error');
       if (saveBtn) saveBtn.disabled = false;
       return;
@@ -159,9 +205,7 @@ async function saveTiers(): Promise<void> {
 
   const normalized: ChestTier[] = [];
   for (const day of DAYS) {
-    const dayEntries = collected
-      .filter((entry) => entry.day === day)
-      .sort((a, b) => a.min_score - b.min_score);
+    const dayEntries = collected.filter((entry) => entry.day === day).sort((a, b) => a.min_score - b.min_score);
     dayEntries.forEach((entry, idx) => {
       normalized.push({ day, tier: idx + 1, min_score: entry.min_score, chests: entry.chests });
     });
@@ -176,7 +220,10 @@ async function saveTiers(): Promise<void> {
     }
     const result = await EventsService.saveChestTiers(saveGuild, currentEvent, normalized);
     if (!result.ok) {
-      showToast(t('war_save_tiers_error') + (result.error && result.error !== 'rpc_failed' ? ' ' + result.error : ''), 'error');
+      showToast(
+        t('war_save_tiers_error') + (result.error && result.error !== 'rpc_failed' ? ' ' + result.error : ''),
+        'error'
+      );
     } else {
       showToast(t('war_save_tiers_success'), 'success');
       grid = normalized;
@@ -220,7 +267,10 @@ export function initChestTiersSettings(): void {
   }
 
   const saveBtn = byId<HTMLButtonElement>('chest-tiers-save');
-  if (saveBtn) saveBtn.addEventListener('click', () => { void saveTiers(); });
+  if (saveBtn)
+    saveBtn.addEventListener('click', () => {
+      void saveTiers();
+    });
 
   switchEvent(currentEvent);
 }

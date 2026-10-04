@@ -9,7 +9,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 // Phase 7: `revealPortal` imports the portal view instead of probing the
 // GM_PORTAL global, so the stub these tests used no longer intercepts it.
 vi.mock('../src/modules/portal/views/PortalView', () => ({
-  portalView: { loadDashboard: vi.fn(), renderDashboard: vi.fn() }
+  portalView: { loadDashboard: vi.fn(), renderDashboard: vi.fn() },
 }));
 import { portalView } from '../src/modules/portal/views/PortalView';
 
@@ -24,30 +24,30 @@ const mocks = vi.hoisted(() => ({
   ensureGuildRestriction: vi.fn(),
   showAdminDashboard: vi.fn(),
   reloadActiveView: vi.fn(),
-  fetchGuilds: vi.fn()
+  fetchGuilds: vi.fn(),
 }));
 vi.mock('../src/core/api/supabase', async (importOriginal) => ({
   ...(await importOriginal()),
   sessionInfo: mocks.sessionInfo,
-  forceRefreshPortalSession: mocks.forceRefreshPortalSession
+  forceRefreshPortalSession: mocks.forceRefreshPortalSession,
 }));
 vi.mock('../src/core/auth/session', async (importOriginal) => ({
   ...(await importOriginal()),
   login: mocks.login,
-  logout: mocks.logout
+  logout: mocks.logout,
 }));
 vi.mock('../src/core/auth/roles', async (importOriginal) => ({
   ...(await importOriginal()),
-  ensureGuildRestriction: mocks.ensureGuildRestriction
+  ensureGuildRestriction: mocks.ensureGuildRestriction,
 }));
 vi.mock('../src/modules/app/router', async (importOriginal) => ({
   ...(await importOriginal()),
   showAdminDashboard: mocks.showAdminDashboard,
-  reloadActiveView: mocks.reloadActiveView
+  reloadActiveView: mocks.reloadActiveView,
 }));
 vi.mock('../src/modules/app/admin/accounts.controller', async (importOriginal) => ({
   ...(await importOriginal()),
-  fetchGuilds: mocks.fetchGuilds
+  fetchGuilds: mocks.fetchGuilds,
 }));
 
 import {
@@ -56,13 +56,9 @@ import {
   doLogout,
   initAuthForms,
   revealAdmin,
-  revealPortal
+  revealPortal,
 } from '../src/modules/app/auth/auth.controller';
-import {
-  checkForNewVersion,
-  showNewVersionBanner,
-  resetVersionCheck
-} from '../src/modules/app/auth/version-check';
+import { checkForNewVersion, showNewVersionBanner, resetVersionCheck } from '../src/modules/app/auth/version-check';
 import { getAppState, patchAppState, resetAppState } from '../src/core/state/app-state';
 import { APP_VERSION } from '../src/core/config/constants';
 import { setDbClient, resetSupabaseClient } from '../src/core/api/supabase';
@@ -91,13 +87,19 @@ function stubDb(account) {
   return {
     from() {
       const chain = {
-        select() { return chain; },
-        ilike() { return chain; },
-        eq() { return chain; },
-        maybeSingle: async () => ({ data: account, error: null })
+        select() {
+          return chain;
+        },
+        ilike() {
+          return chain;
+        },
+        eq() {
+          return chain;
+        },
+        maybeSingle: async () => ({ data: account, error: null }),
       };
       return chain;
-    }
+    },
   };
 }
 
@@ -148,7 +150,10 @@ describe('checkForNewVersion', () => {
   });
 
   it('shows no banner when the running version matches', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => ({ version: APP_VERSION }) })));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({ ok: true, json: async () => ({ version: APP_VERSION }) }))
+    );
 
     await checkForNewVersion();
 
@@ -181,7 +186,12 @@ describe('restoreSession', () => {
     localStorage.setItem('gm_user', 'Alpha');
 
     let resolveInfo;
-    mocks.sessionInfo.mockImplementation(() => new Promise((r) => { resolveInfo = r; }));
+    mocks.sessionInfo.mockImplementation(
+      () =>
+        new Promise((r) => {
+          resolveInfo = r;
+        })
+    );
 
     const pending = restoreSession();
 
@@ -269,7 +279,6 @@ describe('restoreSession', () => {
 
 describe('handleSuccessfulLogin', () => {
   it('routes a member login directly to the player portal and sets portal session', async () => {
-
     await handleSuccessfulLogin({ ok: true, role: 'member', id: 'Player1' }, 'Player1');
 
     expect(getAppState().currentGuildRestriction).toBeNull();
@@ -382,6 +391,4 @@ describe('auth forms', () => {
     expect(mocks.showAdminDashboard).not.toHaveBeenCalled();
     expect(document.getElementById('login-error').querySelector('span').textContent).toBeTruthy();
   });
-
 });
-

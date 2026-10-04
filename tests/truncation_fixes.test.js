@@ -21,7 +21,10 @@ const mockSupabase = {
     const q = {
       select: () => q,
       eq: () => q,
-      like: (col, pattern) => { likeCalls.push([col, pattern]); return Promise.resolve(response); },
+      like: (col, pattern) => {
+        likeCalls.push([col, pattern]);
+        return Promise.resolve(response);
+      },
     };
     return q;
   },
@@ -47,8 +50,7 @@ describe('fetchAllRows reads past the 1,000-row cap', () => {
   });
 
   it('is not fooled by a server cap smaller than the page size', async () => {
-    const res = await fetchAllRows((from) =>
-      Promise.resolve({ data: source.slice(from, from + 300), error: null }));
+    const res = await fetchAllRows((from) => Promise.resolve({ data: source.slice(from, from + 300), error: null }));
     expect(res.data).toHaveLength(2500);
   });
 
@@ -56,13 +58,15 @@ describe('fetchAllRows reads past the 1,000-row cap', () => {
     let n = 0;
     const res = await fetchAllRows((from) => {
       n++;
-      return Promise.resolve(n === 2 ? { data: null, error: new Error('boom') } : { data: source.slice(from, from + 1000), error: null });
+      return Promise.resolve(
+        n === 2 ? { data: null, error: new Error('boom') } : { data: source.slice(from, from + 1000), error: null }
+      );
     });
     expect(res.error).toBeInstanceOf(Error);
   });
 });
 
-describe('session ids: only today\'s are read', () => {
+describe("session ids: only today's are read", () => {
   const day = new Date('2026-10-03T12:00:00Z');
 
   it('sessionIdBase gives the daily prefix, and nothing for weekly or ad-hoc events', () => {
@@ -78,10 +82,16 @@ describe('session ids: only today\'s are read', () => {
     expect(buildEventSessionId('SvS', day)).toMatch(/^SVS-/);
   });
 
-  beforeEach(() => { likeCalls = []; response = { data: [], error: null }; });
+  beforeEach(() => {
+    likeCalls = [];
+    response = { data: [], error: null };
+  });
 
   it('takenSessionIdsToday filters by prefix server-side and de-duplicates', async () => {
-    response = { data: [{ session_id: 'ARA-20261003-1' }, { session_id: 'ARA-20261003-1' }, { session_id: 'ARA-20261003-2' }], error: null };
+    response = {
+      data: [{ session_id: 'ARA-20261003-1' }, { session_id: 'ARA-20261003-1' }, { session_id: 'ARA-20261003-2' }],
+      error: null,
+    };
     const res = await EventsService.takenSessionIdsToday('DEMO', 'Arms Race Stage A', 'Arms Race Stage A', day);
     expect(likeCalls).toEqual([['session_id', 'ARA-20261003-%']]);
     expect(res).toEqual({ ok: true, ids: ['ARA-20261003-1', 'ARA-20261003-2'] });
@@ -93,8 +103,12 @@ describe('session ids: only today\'s are read', () => {
     expect(res.ok).toBe(false);
   });
 
-  it('the three views refuse to start a session when today\'s ids are unknown', () => {
-    for (const f of ['src/modules/armsrace/views/ArmsRaceView.ts', 'src/modules/events/views/EventsView.ts', 'src/modules/shadowfront/views/ShadowfrontView.ts']) {
+  it("the three views refuse to start a session when today's ids are unknown", () => {
+    for (const f of [
+      'src/modules/armsrace/views/ArmsRaceView.ts',
+      'src/modules/events/views/EventsView.ts',
+      'src/modules/shadowfront/views/ShadowfrontView.ts',
+    ]) {
       const src = read(f);
       expect(src, f).toContain('EventsService.takenSessionIdsToday(');
       expect(src, f).toMatch(/if \(!taken\.ok\) \{[\s\S]{0,200}return;/);
@@ -105,8 +119,10 @@ describe('session ids: only today\'s are read', () => {
 
 describe('whole-history reads', () => {
   it('no .limit(100000) pretends to lift the cap anywhere in src/', () => {
-    const walk = (d) => fs.readdirSync(d, { withFileTypes: true })
-      .flatMap((e) => e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)]);
+    const walk = (d) =>
+      fs
+        .readdirSync(d, { withFileTypes: true })
+        .flatMap((e) => (e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)]));
     for (const f of walk(path.join(root, 'src')).filter((f) => /\.(ts|js)$/.test(f))) {
       expect(fs.readFileSync(f, 'utf-8'), f).not.toMatch(/\.limit\(\s*\d{5,}\s*\)/);
     }
@@ -121,7 +137,9 @@ describe('whole-history reads', () => {
   it('member-portal aggregates guild session stats in SQL', () => {
     const _src = edgeSource('member-portal');
     const block = edgeFunctionBody('member-portal', 'getHistory');
-    expect(block).toContain('admin.rpc("gm_player_session_guild_stats", { p_guild: member.guild, p_pseudo: member.pseudo })');
+    expect(block).toContain(
+      'admin.rpc("gm_player_session_guild_stats", { p_guild: member.guild, p_pseudo: member.pseudo })'
+    );
     expect(block).not.toContain('allGuildParticipants');
     expect(block).toContain('if (sessionStatsRes.error)');
   });
@@ -129,30 +147,47 @@ describe('whole-history reads', () => {
   it('the roster reads one Glory score per player', () => {
     const src = read('src/modules/app/members/members.controller.ts');
     expect(src).toContain('fetchLatestGloryScores(client, currentG)');
-    expect(read('src/modules/members/members.service.ts')).toContain("db.rpc('gm_latest_glory_scores', { p_guild: guild })");
+    expect(read('src/modules/members/members.service.ts')).toContain(
+      "db.rpc('gm_latest_glory_scores', { p_guild: guild })"
+    );
     expect(src).not.toMatch(/eq\('event_name', 'Glory'\)\.not\('score'/);
   });
 });
 
 describe('the migration', () => {
   const sql = read('supabase/migrations/20261003112152_truncation_fixes_and_log_retention.sql');
-  const fn = (name) => sql.slice(sql.indexOf(`FUNCTION public.${name}(`), sql.indexOf('$$;', sql.indexOf(`FUNCTION public.${name}(`)));
+  const fn = (name) =>
+    sql.slice(sql.indexOf(`FUNCTION public.${name}(`), sql.indexOf('$$;', sql.indexOf(`FUNCTION public.${name}(`)));
 
-  it('the two read RPCs run with the caller\'s rights', () => {
+  it("the two read RPCs run with the caller's rights", () => {
     expect(fn('gm_player_session_guild_stats')).not.toContain('SECURITY DEFINER');
     expect(fn('gm_latest_glory_scores')).not.toContain('SECURITY DEFINER');
-    expect(sql).toMatch(/REVOKE ALL ON FUNCTION public\.gm_player_session_guild_stats\(text, text\) FROM PUBLIC, anon, authenticated;/);
-    expect(sql).toMatch(/GRANT EXECUTE ON FUNCTION public\.gm_latest_glory_scores\(text\) TO authenticated, service_role;/);
+    expect(sql).toMatch(
+      /REVOKE ALL ON FUNCTION public\.gm_player_session_guild_stats\(text, text\) FROM PUBLIC, anon, authenticated;/
+    );
+    expect(sql).toMatch(
+      /GRANT EXECUTE ON FUNCTION public\.gm_latest_glory_scores\(text\) TO authenticated, service_role;/
+    );
   });
 
   it('counts a row the way the TypeScript it replaces did', () => {
-    expect(fn('gm_player_session_guild_stats')).toMatch(/> 0\s+OR COALESCE\(ep\.participated, 0\) > 0\s+OR COALESCE\(ep\.sub_present, false\)/);
+    expect(fn('gm_player_session_guild_stats')).toMatch(
+      /> 0\s+OR COALESCE\(ep\.participated, 0\) > 0\s+OR COALESCE\(ep\.sub_present, false\)/
+    );
   });
 
   it('purges the ephemeral auth tables and two-week-old cron history', () => {
-    expect(fn('gm_purge_discord_ephemera')).toContain('DELETE FROM public.webauthn_challenges WHERE expires_at <= now();');
-    expect(fn('gm_purge_discord_ephemera')).toContain("DELETE FROM public.discord_verification_throttle WHERE window_start < now() - interval '24 hours';");
-    expect(fn('gm_purge_cron_history')).toContain("DELETE FROM cron.job_run_details WHERE end_time < now() - interval '14 days';");
-    expect(sql).toContain("cron.schedule('daily-cron-history-purge', '50 4 * * *', 'SELECT public.gm_purge_cron_history();')");
+    expect(fn('gm_purge_discord_ephemera')).toContain(
+      'DELETE FROM public.webauthn_challenges WHERE expires_at <= now();'
+    );
+    expect(fn('gm_purge_discord_ephemera')).toContain(
+      "DELETE FROM public.discord_verification_throttle WHERE window_start < now() - interval '24 hours';"
+    );
+    expect(fn('gm_purge_cron_history')).toContain(
+      "DELETE FROM cron.job_run_details WHERE end_time < now() - interval '14 days';"
+    );
+    expect(sql).toContain(
+      "cron.schedule('daily-cron-history-purge', '50 4 * * *', 'SELECT public.gm_purge_cron_history();')"
+    );
   });
 });

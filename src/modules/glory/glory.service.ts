@@ -15,15 +15,26 @@ export function fetchGloryMembers(db: DbClient, guild: string | null) {
 
 /** List the guild's Glory scores for one week. */
 export function fetchGloryWeekScores(db: DbClient, guild: string | null, week: string | null) {
-  return db.from('event_participants').select('pseudo,score').eq('guild', guild).eq('event_name', 'Glory').eq('week_start', week);
+  return db
+    .from('event_participants')
+    .select('pseudo,score')
+    .eq('guild', guild)
+    .eq('event_name', 'Glory')
+    .eq('week_start', week);
 }
 
 /** Upsert one player's Glory score for a week through `gm_upsert_player_glory`. */
-export function upsertPlayerGlory(db: DbClient, guild: string | null, pseudo: string, week: string | null, glory: number) {
+export function upsertPlayerGlory(
+  db: DbClient,
+  guild: string | null,
+  pseudo: string,
+  week: string | null,
+  glory: number
+) {
   return db.rpc('gm_upsert_player_glory', {
     p_guild: guild,
     p_pseudo: pseudo,
     p_week_start: week,
-    p_glory: glory
+    p_glory: glory,
   });
 }

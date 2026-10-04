@@ -35,7 +35,7 @@ describe('Legacy button/modal classes unified to the gm-btn / gm-modal-* system'
     'src/core/dom/ui.ts',
     'src/modules/history/views/HistoryView.ts',
     'src/modules/overview/views/OverviewView.ts',
-    'index.html'
+    'index.html',
   ];
 
   it('no file constructs a .confirm-overlay or .confirm-card element anymore', () => {
@@ -70,7 +70,8 @@ describe('CSS dead-code removal: unreachable light theme + superseded leaderboar
 
   it('styles.css no longer defines the old .leaderboard-table family, superseded by gm-table/gm-resp-table', () => {
     const styles = read('styles.css');
-    ['.leaderboard-table', '.leaderboard-wrap', '.rank-cell', '.week-cell', '.score-badge', '.profile-btn']
-      .forEach((sel) => expect(styles).not.toContain(sel));
+    ['.leaderboard-table', '.leaderboard-wrap', '.rank-cell', '.week-cell', '.score-badge', '.profile-btn'].forEach(
+      (sel) => expect(styles).not.toContain(sel)
+    );
   });
 });

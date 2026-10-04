@@ -19,12 +19,14 @@ export async function getHistory(ctx: PortalContext): Promise<Response> {
   const [memberRowsRes, sessionStatsRes, guildAverages] = await Promise.all([
     admin
       .from("event_participants")
-      .select("event_name, session_id, week_start, participated, score, score_prep, score_pvp, late, excused, sub_present, appointed")
+      .select(
+        "event_name, session_id, week_start, participated, score, score_prep, score_pvp, late, excused, sub_present, appointed"
+      )
       .eq("guild", member.guild)
       .eq("pseudo", member.pseudo)
       .order("week_start", { ascending: false }),
     admin.rpc("gm_player_session_guild_stats", { p_guild: member.guild, p_pseudo: member.pseudo }),
-    getGuildAverages(admin, member.guild)
+    getGuildAverages(admin, member.guild),
   ]);
 
   if (memberRowsRes.error) {
@@ -39,14 +41,20 @@ export async function getHistory(ctx: PortalContext): Promise<Response> {
   const rows = memberRowsRes.data || [];
 
   const guildSessionStats: Record<string, { totalScore: number; count: number; maxScore: number }> = {};
-  ((sessionStatsRes.data || []) as Array<{ session_key: string; total_score: number; counted: number; max_score: number }>)
-    .forEach((s) => {
-      guildSessionStats[s.session_key] = {
-        totalScore: Number(s.total_score) || 0,
-        count: Number(s.counted) || 0,
-        maxScore: Number(s.max_score) || 0,
-      };
-    });
+  (
+    (sessionStatsRes.data || []) as Array<{
+      session_key: string;
+      total_score: number;
+      counted: number;
+      max_score: number;
+    }>
+  ).forEach((s) => {
+    guildSessionStats[s.session_key] = {
+      totalScore: Number(s.total_score) || 0,
+      count: Number(s.counted) || 0,
+      maxScore: Number(s.max_score) || 0,
+    };
+  });
 
   const byEvent: Record<string, any[]> = {};
   const hasScoreEvent = (name: string): boolean => {
@@ -74,7 +82,7 @@ export async function getHistory(ctx: PortalContext): Promise<Response> {
       late: !!r.late,
       excused: !!r.excused,
       sub_present: !!r.sub_present,
-      appointed: !!r.appointed
+      appointed: !!r.appointed,
     });
   });
 
@@ -88,7 +96,7 @@ export async function getHistory(ctx: PortalContext): Promise<Response> {
       attended: attended,
       rate: total > 0 ? Math.round((attended / total) * 100) : 0,
       has_score: hasScoreEvent(key),
-      history: list.slice(0, 60)
+      history: list.slice(0, 60),
     };
   });
 
@@ -146,8 +154,7 @@ export async function getBadges(ctx: PortalContext): Promise<Response> {
   // 369,393,189, which is seven times the top badge threshold. A further
   // 287 had their best week silently dropped for being their first.
   // Nothing documented why, and nothing in the badge catalogue implies it.
-  const gloryBest = (gloryRows ?? [])
-    .reduce((m: number, r: any) => Math.max(m, Number(r.score) || 0), 0);
+  const gloryBest = (gloryRows ?? []).reduce((m: number, r: any) => Math.max(m, Number(r.score) || 0), 0);
 
   return json({
     ok: true,
@@ -155,7 +162,7 @@ export async function getBadges(ctx: PortalContext): Promise<Response> {
     created_at: full.created_at,
     overall_power: full.overall_power || 0,
     attended: attended,
-    glory_best: gloryBest
+    glory_best: gloryBest,
   });
 }
 
@@ -187,10 +194,10 @@ export async function getPersonalKpis(ctx: PortalContext): Promise<Response> {
   // comparison offered is against the guild, not against other members.
   const [rpcRes, statsRes, guildAverages] = await Promise.all([
     admin.rpc("gm_personal_kpis", { p_uid: uid }),
-    (targetGuild && member?.pseudo)
+    targetGuild && member?.pseudo
       ? admin.rpc("gm_player_stats", { p_guild: targetGuild, p_pseudo: member.pseudo, p_weeks: 4 })
       : Promise.resolve({ data: null, error: null }),
-    targetGuild ? getGuildAverages(admin, targetGuild) : Promise.resolve(null)
+    targetGuild ? getGuildAverages(admin, targetGuild) : Promise.resolve(null),
   ]);
   if (rpcRes.error) {
     logger.error("DB error executing gm_personal_kpis", rpcRes.error, { uid });
@@ -209,11 +216,14 @@ export async function getPersonalKpis(ctx: PortalContext): Promise<Response> {
   return json({
     ...row,
     guild_averages: guildAverages,
-    reliability: (stats && stats.ok) ? {
-      weeks: stats.weeks,
-      player: stats.player,
-      guild_totals: stats.guild_totals
-    } : null,
-    glory_history: (stats && stats.ok) ? stats.glory : null
+    reliability:
+      stats && stats.ok
+        ? {
+            weeks: stats.weeks,
+            player: stats.player,
+            guild_totals: stats.guild_totals,
+          }
+        : null,
+    glory_history: stats && stats.ok ? stats.glory : null,
   });
 }

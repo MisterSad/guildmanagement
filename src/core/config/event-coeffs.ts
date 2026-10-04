@@ -39,7 +39,7 @@ export const DEFAULT_EVENT_COEFFS: EventCoeffs = {
   GvG: 5,
   Shadowfront: 3,
   DTR: 2,
-  'Arms Race': 1
+  'Arms Race': 1,
 };
 
 /** `guild_config` key for each bucket, so the two representations cannot drift. */
@@ -48,7 +48,7 @@ export const EVENT_COEFF_CONFIG_KEYS: Record<EventCoeffBucket, string> = {
   GvG: 'coeff_gvg',
   Shadowfront: 'coeff_shadowfront',
   DTR: 'coeff_dtr',
-  'Arms Race': 'coeff_armsrace'
+  'Arms Race': 'coeff_armsrace',
 };
 
 /** The defaults shaped as the `coeff_*` string entries `guild_config` stores. */

@@ -72,7 +72,7 @@ export const GVG_CHEST_THRESHOLDS: Record<number, ReadonlyArray<number>> = {
   // Day 5
   5: [152000, 612000, 1072000, 1378000, 2297500, 2872500, 3678000, 4368000, 5040000],
   // Day 6 (PvP)
-  6: [120000, 250000, 752000, 1232000, 1572000, 2572000, 3172000, 4344000, 8500000]
+  6: [120000, 250000, 752000, 1232000, 1572000, 2572000, 3172000, 4344000, 8500000],
 };
 
 /** Canonical 9-tier score thresholds per day for SvS. */
@@ -87,7 +87,7 @@ export const SVS_CHEST_THRESHOLDS: Record<number, ReadonlyArray<number>> = {
   // Day 5
   5: [76000, 306000, 536000, 689000, 919000, 1149000, 1226000, 1456000, 1680000],
   // Day 6 (PvP)
-  6: [100000, 400000, 700000, 800000, 1200000, 1600000, 1800000, 2400000, 3020000]
+  6: [100000, 400000, 700000, 800000, 1200000, 1600000, 1800000, 2400000, 3020000],
 };
 
 /**
@@ -158,7 +158,10 @@ export function resolvePrepChests(
   if (days.length > 0) {
     let total = 0;
     for (const { day, score } of days) {
-      total += resolveChestsForScore(grid.filter((tier) => Number(tier.day) === day), score);
+      total += resolveChestsForScore(
+        grid.filter((tier) => Number(tier.day) === day),
+        score
+      );
     }
     return total;
   }
@@ -183,7 +186,7 @@ export function defaultChestGrid(eventName?: 'SvS' | 'GvG' | string): ChestTier[
         day,
         tier: idx + 1,
         min_score,
-        chests: idx + 1
+        chests: idx + 1,
       });
     });
   }

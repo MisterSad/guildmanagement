@@ -7,284 +7,287 @@ import { buildEventSessionId, eventScoringKey } from '../src/core/config/events'
 import { patchAppState } from '../src/core/state/app-state';
 
 function setStorage(map) {
-    Object.keys(map).forEach((k) => localStorage.setItem(k, map[k]));
+  Object.keys(map).forEach((k) => localStorage.setItem(k, map[k]));
 }
 
 function clearStorage() {
-    localStorage.clear();
+  localStorage.clear();
 }
 
 describe('guild config (localStorage + DB fallback)', () => {
-    beforeEach(() => {
-        clearStorage();
-        patchAppState({ currentGuildRestriction: null, currentGuild: 'ALPHA' });
-        setDbClient(null);
-    });
+  beforeEach(() => {
+    clearStorage();
+    patchAppState({ currentGuildRestriction: null, currentGuild: 'ALPHA' });
+    setDbClient(null);
+  });
 
-    afterEach(() => {
-        setDbClient(null);
-    });
+  afterEach(() => {
+    setDbClient(null);
+  });
 
-    it('getGuildConfig returns the stored localStorage value', async () => {
-        setStorage({ gm_config_ALPHA_mykey: 'myvalue' });
-        expect(await config.get('mykey')).toBe('myvalue');
-    });
+  it('getGuildConfig returns the stored localStorage value', async () => {
+    setStorage({ gm_config_ALPHA_mykey: 'myvalue' });
+    expect(await config.get('mykey')).toBe('myvalue');
+  });
 
-    it('getGuildConfig falls back to built-in defaults for known keys', async () => {
-        expect(await config.get('coeff_svs')).toBe('5');
-        expect(await config.get('coeff_armsrace')).toBe('1');
-    });
+  it('getGuildConfig falls back to built-in defaults for known keys', async () => {
+    expect(await config.get('coeff_svs')).toBe('5');
+    expect(await config.get('coeff_armsrace')).toBe('1');
+  });
 
-    it('getGuildConfig returns empty string for unknown keys', async () => {
-        expect(await config.get('nope_nope')).toBe('');
-    });
+  it('getGuildConfig returns empty string for unknown keys', async () => {
+    expect(await config.get('nope_nope')).toBe('');
+  });
 
-    it('setGuildConfig persists to localStorage', async () => {
-        await config.set('coeff_gvg', '7');
-        expect(localStorage.getItem('gm_config_ALPHA_coeff_gvg')).toBe('7');
-    });
+  it('setGuildConfig persists to localStorage', async () => {
+    await config.set('coeff_gvg', '7');
+    expect(localStorage.getItem('gm_config_ALPHA_coeff_gvg')).toBe('7');
+  });
 
-    it('getGuildConfig prefers the DB when a client is present', async () => {
-        let upserted = null;
-        const eqBuilder = {
-            eq: () => eqBuilder,
-            maybeSingle: async () => ({ data: { value: 'from-db' }, error: null }),
-        };
-        setDbClient({
-            from: (_table) => ({
-                select: () => ({
-                    eq: () => eqBuilder,
-                }),
-                upsert: async (row) => {
-                    upserted = row;
-                    return { error: null };
-                },
-            }),
-        });
-        expect(await config.get('coeff_svs')).toBe('from-db');
-        await config.set('coeff_svs', '9');
-        expect(upserted.value).toBe('9');
-        expect(upserted.guild).toBe('ALPHA');
-        expect(localStorage.getItem('gm_config_ALPHA_coeff_svs')).toBe('9');
+  it('getGuildConfig prefers the DB when a client is present', async () => {
+    let upserted = null;
+    const eqBuilder = {
+      eq: () => eqBuilder,
+      maybeSingle: async () => ({ data: { value: 'from-db' }, error: null }),
+    };
+    setDbClient({
+      from: (_table) => ({
+        select: () => ({
+          eq: () => eqBuilder,
+        }),
+        upsert: async (row) => {
+          upserted = row;
+          return { error: null };
+        },
+      }),
     });
+    expect(await config.get('coeff_svs')).toBe('from-db');
+    await config.set('coeff_svs', '9');
+    expect(upserted.value).toBe('9');
+    expect(upserted.guild).toBe('ALPHA');
+    expect(localStorage.getItem('gm_config_ALPHA_coeff_svs')).toBe('9');
+  });
 
-    it('getGuildConfig falls back to localStorage when the DB errors', async () => {
-        setStorage({ gm_config_ALPHA_coeff_svs: '3' });
-        setDbClient({
-            from: () => ({
-                select: () => ({
-                    eq: () => ({
-                        maybeSingle: async () => ({ data: null, error: { message: 'boom' } }),
-                    }),
-                }),
-            }),
-        });
-        expect(await config.get('coeff_svs')).toBe('3');
+  it('getGuildConfig falls back to localStorage when the DB errors', async () => {
+    setStorage({ gm_config_ALPHA_coeff_svs: '3' });
+    setDbClient({
+      from: () => ({
+        select: () => ({
+          eq: () => ({
+            maybeSingle: async () => ({ data: null, error: { message: 'boom' } }),
+          }),
+        }),
+      }),
     });
+    expect(await config.get('coeff_svs')).toBe('3');
+  });
 });
 
 describe('forceRefreshPortalSession (refresh-token fallback)', () => {
-    beforeEach(() => {
-        clearStorage();
-        patchAppState({ currentGuildRestriction: null, currentGuild: 'ALPHA' });
-        setDbClient(null);
+  beforeEach(() => {
+    clearStorage();
+    patchAppState({ currentGuildRestriction: null, currentGuild: 'ALPHA' });
+    setDbClient(null);
+  });
+
+  afterEach(() => {
+    setDbClient(null);
+    delete globalThis.fetch;
+  });
+
+  it('returns null when no session is stored', async () => {
+    expect(await forceRefreshPortalSession()).toBeNull();
+  });
+
+  it('returns null when supabase-js storage entry is missing', async () => {
+    setStorage({ some_other_key: 'x' });
+    expect(await forceRefreshPortalSession()).toBeNull();
+  });
+
+  it('exchanges the stored refresh token and re-injects the session', async () => {
+    setStorage({
+      'sb-vgweufzwmfwplusskmuf-auth-token': JSON.stringify({
+        access_token: 'old.access.token',
+        refresh_token: 'rt-abc',
+      }),
     });
 
-    afterEach(() => {
-        setDbClient(null);
-        delete globalThis.fetch;
+    let setSessionArgs = null;
+    setDbClient({
+      auth: {
+        setSession: async (args) => {
+          setSessionArgs = args;
+          return { error: null };
+        },
+      },
     });
 
-    it('returns null when no session is stored', async () => {
-        expect(await forceRefreshPortalSession()).toBeNull();
+    const makeJwt = (payload) => {
+      const b64 = (o) => btoa(JSON.stringify(o)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      return 'header.' + b64(payload) + '.sig';
+    };
+
+    globalThis.fetch = async () => ({
+      json: async () => ({
+        access_token: makeJwt({ app_metadata: { app_role: 'member', account_id: 'HawkEyePlayer' } }),
+        refresh_token: 'rt-new',
+      }),
     });
 
-    it('returns null when supabase-js storage entry is missing', async () => {
-        setStorage({ some_other_key: 'x' });
-        expect(await forceRefreshPortalSession()).toBeNull();
+    const info = await forceRefreshPortalSession();
+    expect(info).toEqual({ role: 'member', accountId: 'HawkEyePlayer' });
+    expect(setSessionArgs).toEqual({
+      access_token: expect.stringContaining('.'),
+      refresh_token: 'rt-new',
     });
+  });
 
-    it('exchanges the stored refresh token and re-injects the session', async () => {
-        setStorage({
-            'sb-vgweufzwmfwplusskmuf-auth-token': JSON.stringify({
-                access_token: 'old.access.token',
-                refresh_token: 'rt-abc'
-            })
-        });
-
-        let setSessionArgs = null;
-        setDbClient({
-            auth: {
-                setSession: async (args) => {
-                    setSessionArgs = args;
-                    return { error: null };
-                }
-            }
-        });
-
-        const makeJwt = (payload) => {
-            const b64 = (o) => btoa(JSON.stringify(o)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-            return 'header.' + b64(payload) + '.sig';
-        };
-
-        globalThis.fetch = async () => ({
-            json: async () => ({
-                access_token: makeJwt({ app_metadata: { app_role: 'member', account_id: 'HawkEyePlayer' } }),
-                refresh_token: 'rt-new'
-            })
-        });
-
-        const info = await forceRefreshPortalSession();
-        expect(info).toEqual({ role: 'member', accountId: 'HawkEyePlayer' });
-        expect(setSessionArgs).toEqual({
-            access_token: expect.stringContaining('.'),
-            refresh_token: 'rt-new'
-        });
+  it('returns null when the refresh endpoint fails', async () => {
+    setStorage({
+      'sb-vgweufzwmfwplusskmuf-auth-token': JSON.stringify({
+        access_token: 'a.b.c',
+        refresh_token: 'rt-bad',
+      }),
     });
+    setDbClient({ auth: { setSession: async () => ({ error: null }) } });
 
-    it('returns null when the refresh endpoint fails', async () => {
-        setStorage({
-            'sb-vgweufzwmfwplusskmuf-auth-token': JSON.stringify({
-                access_token: 'a.b.c',
-                refresh_token: 'rt-bad'
-            })
-        });
-        setDbClient({ auth: { setSession: async () => ({ error: null }) } });
-
-        globalThis.fetch = async () => ({ json: async () => ({ error: 'invalid_grant' }) });
-        expect(await forceRefreshPortalSession()).toBeNull();
-    });
+    globalThis.fetch = async () => ({ json: async () => ({ error: 'invalid_grant' }) });
+    expect(await forceRefreshPortalSession()).toBeNull();
+  });
 });
 
 describe('localStorage rad_* → gm_* migration shim', () => {
-    it('migrates legacy keys on boot and removes the originals', async () => {
-        clearStorage();
-        setStorage({ rad_role: 'R4', rad_current_guild: 'IMK', rad_config_ALPHA_x: '1' });
-        migrateLegacyStorageKeys();
-        expect(localStorage.getItem('gm_role')).toBe('R4');
-        expect(localStorage.getItem('gm_current_guild')).toBe('IMK');
-        expect(localStorage.getItem('gm_config_ALPHA_x')).toBe('1');
-        expect(localStorage.getItem('rad_role')).toBeNull();
-        expect(localStorage.getItem('rad_current_guild')).toBeNull();
-    });
+  it('migrates legacy keys on boot and removes the originals', async () => {
+    clearStorage();
+    setStorage({ rad_role: 'R4', rad_current_guild: 'IMK', rad_config_ALPHA_x: '1' });
+    migrateLegacyStorageKeys();
+    expect(localStorage.getItem('gm_role')).toBe('R4');
+    expect(localStorage.getItem('gm_current_guild')).toBe('IMK');
+    expect(localStorage.getItem('gm_config_ALPHA_x')).toBe('1');
+    expect(localStorage.getItem('rad_role')).toBeNull();
+    expect(localStorage.getItem('rad_current_guild')).toBeNull();
+  });
 });
 
 describe('canWriteGuild (role-based write access)', () => {
-    beforeEach(() => {
-        clearStorage();
-        patchAppState({
-            currentGuildRestriction: null,
-            currentGuild: 'ALPHA',
-            guildsData: {
-                ALPHA: { type: 'Unlimited' },
-                OMEGA: { type: 'Unlimited' },
-                IMK: { type: 'Premium', end: new Date(Date.now() + 86400000).toISOString() },
-                BABE: { type: 'Premium', end: new Date(Date.now() - 86400000).toISOString() },
-            },
-        });
+  beforeEach(() => {
+    clearStorage();
+    patchAppState({
+      currentGuildRestriction: null,
+      currentGuild: 'ALPHA',
+      guildsData: {
+        ALPHA: { type: 'Unlimited' },
+        OMEGA: { type: 'Unlimited' },
+        IMK: { type: 'Premium', end: new Date(Date.now() + 86400000).toISOString() },
+        BABE: { type: 'Premium', end: new Date(Date.now() - 86400000).toISOString() },
+      },
     });
+  });
 
-    it('super_admin can write to every guild', () => {
-        setStorage({ gm_role: 'super_admin' });
-        expect(canWriteGuild('ALPHA')).toBe(true);
-        expect(canWriteGuild('OMEGA')).toBe(true);
-        expect(canWriteGuild('IMK')).toBe(true);
-    });
+  it('super_admin can write to every guild', () => {
+    setStorage({ gm_role: 'super_admin' });
+    expect(canWriteGuild('ALPHA')).toBe(true);
+    expect(canWriteGuild('OMEGA')).toBe(true);
+    expect(canWriteGuild('IMK')).toBe(true);
+  });
 
-    it('guild_admin can write to their own guild when the subscription is active', () => {
-        setStorage({ gm_role: 'guild_admin' });
-        patchAppState({ currentGuildRestriction: 'IMK' });
-        expect(canWriteGuild('IMK')).toBe(true);
-        expect(canWriteGuild('ALPHA')).toBe(false);
-    });
+  it('guild_admin can write to their own guild when the subscription is active', () => {
+    setStorage({ gm_role: 'guild_admin' });
+    patchAppState({ currentGuildRestriction: 'IMK' });
+    expect(canWriteGuild('IMK')).toBe(true);
+    expect(canWriteGuild('ALPHA')).toBe(false);
+  });
 
-    it('guild_admin can write to their assigned guild (subscription expiry no longer blocks writes since v127.0)', () => {
-        setStorage({ gm_role: 'guild_admin' });
-        patchAppState({ currentGuildRestriction: 'BABE' });
-        expect(canWriteGuild('BABE')).toBe(true);
-    });
+  it('guild_admin can write to their assigned guild (subscription expiry no longer blocks writes since v127.0)', () => {
+    setStorage({ gm_role: 'guild_admin' });
+    patchAppState({ currentGuildRestriction: 'BABE' });
+    expect(canWriteGuild('BABE')).toBe(true);
+  });
 
-    it('guild_admin cannot write when the restriction is missing (no fallback)', () => {
-        setStorage({ gm_role: 'guild_admin' });
-        patchAppState({ currentGuildRestriction: null, currentGuild: 'OMEGA' });
-        expect(canWriteGuild('OMEGA')).toBe(false);
-    });
+  it('guild_admin cannot write when the restriction is missing (no fallback)', () => {
+    setStorage({ gm_role: 'guild_admin' });
+    patchAppState({ currentGuildRestriction: null, currentGuild: 'OMEGA' });
+    expect(canWriteGuild('OMEGA')).toBe(false);
+  });
 
-    it('guild_admin cannot write to a different guild', () => {
-        setStorage({ gm_role: 'guild_admin' });
-        patchAppState({ currentGuildRestriction: 'OMEGA' });
-        expect(canWriteGuild('ALPHA')).toBe(false);
-    });
+  it('guild_admin cannot write to a different guild', () => {
+    setStorage({ gm_role: 'guild_admin' });
+    patchAppState({ currentGuildRestriction: 'OMEGA' });
+    expect(canWriteGuild('ALPHA')).toBe(false);
+  });
 
-    it('member can never write', () => {
-        setStorage({ gm_role: 'member' });
-        expect(canWriteGuild('ALPHA')).toBe(false);
-        expect(canWriteGuild('OMEGA')).toBe(false);
-    });
+  it('member can never write', () => {
+    setStorage({ gm_role: 'member' });
+    expect(canWriteGuild('ALPHA')).toBe(false);
+    expect(canWriteGuild('OMEGA')).toBe(false);
+  });
 });
 
 describe('buildEventSessionId (deterministic event ids, all tenants)', () => {
-    it('weekly events use the ISO week of the battle date', () => {
-        expect(buildEventSessionId('SvS', '2026-08-03T19:00:00Z')).toBe('SVS-2026-W32');
-        expect(buildEventSessionId('GvG', '2026-08-03T00:00:00Z')).toBe('GVG-2026-W32');
-        expect(buildEventSessionId('Glory', '2026-08-03T12:00:00Z')).toBe('GLORY-2026-W32');
-        expect(buildEventSessionId('SvS', '2026-08-02T18:00:00Z')).toBe('SVS-2026-W31');
-    });
+  it('weekly events use the ISO week of the battle date', () => {
+    expect(buildEventSessionId('SvS', '2026-08-03T19:00:00Z')).toBe('SVS-2026-W32');
+    expect(buildEventSessionId('GvG', '2026-08-03T00:00:00Z')).toBe('GVG-2026-W32');
+    expect(buildEventSessionId('Glory', '2026-08-03T12:00:00Z')).toBe('GLORY-2026-W32');
+    expect(buildEventSessionId('SvS', '2026-08-02T18:00:00Z')).toBe('SVS-2026-W31');
+  });
 
-    it('dated events use YYYYMMDD of the battle date with sequence suffix -1 when no existing ids', () => {
-        // No existingIds -> first session gets suffix -1
-        expect(buildEventSessionId('ARMS RACE STAGE A', '2026-08-09T12:00:00Z', [])).toBe('ARA-20260809-1');
-        expect(buildEventSessionId('ARMS RACE STAGE B', '2026-08-09T12:00:00Z', [])).toBe('ARB-20260809-1');
-        expect(buildEventSessionId('Defend Trade Route', '2026-08-08T19:30:00Z', [])).toBe('DTR-20260808-1');
-        // Second session on the same day gets -2
-        expect(buildEventSessionId('Defend Trade Route', '2026-08-08T19:30:00Z', ['DTR-20260808-1'])).toBe('DTR-20260808-2');
-        // Third session skips to -3 if -2 is also taken
-        expect(buildEventSessionId('Defend Trade Route', '2026-08-08T19:30:00Z', ['DTR-20260808-1', 'DTR-20260808-2'])).toBe('DTR-20260808-3');
-    });
+  it('dated events use YYYYMMDD of the battle date with sequence suffix -1 when no existing ids', () => {
+    // No existingIds -> first session gets suffix -1
+    expect(buildEventSessionId('ARMS RACE STAGE A', '2026-08-09T12:00:00Z', [])).toBe('ARA-20260809-1');
+    expect(buildEventSessionId('ARMS RACE STAGE B', '2026-08-09T12:00:00Z', [])).toBe('ARB-20260809-1');
+    expect(buildEventSessionId('Defend Trade Route', '2026-08-08T19:30:00Z', [])).toBe('DTR-20260808-1');
+    // Second session on the same day gets -2
+    expect(buildEventSessionId('Defend Trade Route', '2026-08-08T19:30:00Z', ['DTR-20260808-1'])).toBe(
+      'DTR-20260808-2'
+    );
+    // Third session skips to -3 if -2 is also taken
+    expect(
+      buildEventSessionId('Defend Trade Route', '2026-08-08T19:30:00Z', ['DTR-20260808-1', 'DTR-20260808-2'])
+    ).toBe('DTR-20260808-3');
+  });
 
-    it('shadowfront squads get their own prefix and sequence suffix', () => {
-        expect(buildEventSessionId('Shadowfront Squad 1', '2026-08-02T12:00:00Z', [])).toBe('SF1-20260802-1');
-        expect(buildEventSessionId('Shadowfront Squad 2', '2026-08-05T12:00:00Z', [])).toBe('SF2-20260805-1');
-        // Collision avoidance
-        expect(buildEventSessionId('Shadowfront Squad 1', '2026-08-02T12:00:00Z', ['SF1-20260802-1'])).toBe('SF1-20260802-2');
-    });
+  it('shadowfront squads get their own prefix and sequence suffix', () => {
+    expect(buildEventSessionId('Shadowfront Squad 1', '2026-08-02T12:00:00Z', [])).toBe('SF1-20260802-1');
+    expect(buildEventSessionId('Shadowfront Squad 2', '2026-08-05T12:00:00Z', [])).toBe('SF2-20260805-1');
+    // Collision avoidance
+    expect(buildEventSessionId('Shadowfront Squad 1', '2026-08-02T12:00:00Z', ['SF1-20260802-1'])).toBe(
+      'SF1-20260802-2'
+    );
+  });
 
-    it('the same battle date yields the same id (re-start reuses the session)', () => {
-        // With the same existingIds, both calls get the same first available slot
-        const a = buildEventSessionId('ARMS RACE STAGE A', '2026-08-09T12:00:00Z', []);
-        const b = buildEventSessionId('ARMS RACE STAGE A', '2026-08-09T18:00:00Z', []);
-        expect(a).toBe(b); // Both -> ARA-20260809-1
-    });
+  it('the same battle date yields the same id (re-start reuses the session)', () => {
+    // With the same existingIds, both calls get the same first available slot
+    const a = buildEventSessionId('ARMS RACE STAGE A', '2026-08-09T12:00:00Z', []);
+    const b = buildEventSessionId('ARMS RACE STAGE A', '2026-08-09T18:00:00Z', []);
+    expect(a).toBe(b); // Both -> ARA-20260809-1
+  });
 
-    it('unknown event names fall back to a timestamp', () => {
-        expect(buildEventSessionId('Something Else')).toMatch(/^\d{4}-\d{2}-\d{2}T/);
-    });
+  it('unknown event names fall back to a timestamp', () => {
+    expect(buildEventSessionId('Something Else')).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+  });
 });
 
 describe('eventScoringKey (participation counted once per week for weekly events)', () => {
-    it('Arms Race Stage A and B are separate events keyed by session', () => {
-        expect(eventScoringKey('ARMS RACE STAGE A', 'ARA-20260805', '2026-08-03'))
-            .toBe('Arms Race|ARA-20260805');
-        expect(eventScoringKey('ARMS RACE STAGE B', 'ARB-20260805', '2026-08-03'))
-            .toBe('Arms Race|ARB-20260805');
-        expect(eventScoringKey('ARMS RACE STAGE A', 'ARA-20260805', '2026-08-03'))
-            .not.toBe(eventScoringKey('ARMS RACE STAGE A', 'ARA-20260808', '2026-08-03'));
-    });
+  it('Arms Race Stage A and B are separate events keyed by session', () => {
+    expect(eventScoringKey('ARMS RACE STAGE A', 'ARA-20260805', '2026-08-03')).toBe('Arms Race|ARA-20260805');
+    expect(eventScoringKey('ARMS RACE STAGE B', 'ARB-20260805', '2026-08-03')).toBe('Arms Race|ARB-20260805');
+    expect(eventScoringKey('ARMS RACE STAGE A', 'ARA-20260805', '2026-08-03')).not.toBe(
+      eventScoringKey('ARMS RACE STAGE A', 'ARA-20260808', '2026-08-03')
+    );
+  });
 
-    it('Shadowfront squads of the same week share one key', () => {
-        expect(eventScoringKey('Shadowfront', 'SF1-20260802', '2026-07-27'))
-            .toBe('Shadowfront|2026-07-27');
-        expect(eventScoringKey('Shadowfront', 'SF2-20260805', '2026-08-03'))
-            .toBe('Shadowfront|2026-08-03');
-    });
+  it('Shadowfront squads of the same week share one key', () => {
+    expect(eventScoringKey('Shadowfront', 'SF1-20260802', '2026-07-27')).toBe('Shadowfront|2026-07-27');
+    expect(eventScoringKey('Shadowfront', 'SF2-20260805', '2026-08-03')).toBe('Shadowfront|2026-08-03');
+  });
 
-    it('SvS and GvG are keyed by week', () => {
-        expect(eventScoringKey('SvS', 'SVS-2026-W32', '2026-08-03')).toBe('SvS|2026-08-03');
-        expect(eventScoringKey('GvG', 'GVG-2026-W32', '2026-08-03')).toBe('GvG|2026-08-03');
-    });
+  it('SvS and GvG are keyed by week', () => {
+    expect(eventScoringKey('SvS', 'SVS-2026-W32', '2026-08-03')).toBe('SvS|2026-08-03');
+    expect(eventScoringKey('GvG', 'GVG-2026-W32', '2026-08-03')).toBe('GvG|2026-08-03');
+  });
 
-    it('each DTR session counts separately', () => {
-        expect(eventScoringKey('Defend Trade Route', 'DTR-20260804', '2026-08-03')).toBe('DTR|DTR-20260804');
-        expect(eventScoringKey('Defend Trade Route', 'DTR-20260812', '2026-08-10')).toBe('DTR|DTR-20260812');
-    });
+  it('each DTR session counts separately', () => {
+    expect(eventScoringKey('Defend Trade Route', 'DTR-20260804', '2026-08-03')).toBe('DTR|DTR-20260804');
+    expect(eventScoringKey('Defend Trade Route', 'DTR-20260812', '2026-08-10')).toBe('DTR|DTR-20260812');
+  });
 });

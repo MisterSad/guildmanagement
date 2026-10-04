@@ -25,7 +25,10 @@ vi.mock('../src/modules/app/router', () => ({
   reloadActiveView: vi.fn(),
   restoreSavedTab: vi.fn(),
 }));
-vi.mock('../src/modules/app/admin/accounts.controller', () => ({ initAccountsUi: h.initAccountsUi, fetchGuilds: vi.fn() }));
+vi.mock('../src/modules/app/admin/accounts.controller', () => ({
+  initAccountsUi: h.initAccountsUi,
+  fetchGuilds: vi.fn(),
+}));
 vi.mock('../src/modules/app/admin/guild-requests.controller', () => ({ initGuildRequestsUi: h.initGuildRequestsUi }));
 vi.mock('../src/modules/app/members/members.controller', () => ({ initMembersUi: h.initMembersUi }));
 vi.mock('../src/modules/app/members/banned.controller', () => ({ initBannedUi: h.initBannedUi }));
@@ -40,16 +43,25 @@ import { loadAdmin } from '../src/modules/app/admin-loader';
 
 describe('the admin chunk', () => {
   beforeEach(() => {
-    document.body.innerHTML = '<button class="btn-ocr-trigger" data-metric="kills"><span>scan</span></button>'
-      + '<button class="btn-ocr-trigger" id="bare">scan</button>';
+    document.body.innerHTML =
+      '<button class="btn-ocr-trigger" data-metric="kills"><span>scan</span></button>' +
+      '<button class="btn-ocr-trigger" id="bare">scan</button>';
   });
 
   it('wires every admin controller and the shell exactly once, however often it is loaded', async () => {
     const [a, b] = await Promise.all([loadAdmin(), loadAdmin()]);
     await loadAdmin();
     expect(a).toBe(b);
-    for (const fn of [h.initTabNavigation, h.initAccountsUi, h.initGuildRequestsUi, h.initMembersUi,
-      h.initBannedUi, h.initOcrDropdown, h.initTimezoneCollapsible, h.shellInit]) {
+    for (const fn of [
+      h.initTabNavigation,
+      h.initAccountsUi,
+      h.initGuildRequestsUi,
+      h.initMembersUi,
+      h.initBannedUi,
+      h.initOcrDropdown,
+      h.initTimezoneCollapsible,
+      h.shellInit,
+    ]) {
       expect(fn).toHaveBeenCalledTimes(1);
     }
   });

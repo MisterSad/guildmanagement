@@ -21,10 +21,14 @@ export function freezeClock(iso: string): () => void {
       // deno-lint-ignore no-explicit-any
       else super(...(args as [any]));
     }
-    static override now() { return fixed; }
+    static override now() {
+      return fixed;
+    }
   }
   globalThis.Date = FrozenDate as DateConstructor;
-  return () => { globalThis.Date = RealDate; };
+  return () => {
+    globalThis.Date = RealDate;
+  };
 }
 
 const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g;
@@ -35,8 +39,13 @@ function scrub(v: unknown): unknown {
 
 /** A row EdgeLogger writes: logging, not behaviour, and never twice the same. */
 function isLoggerRow(c: { kind: string; name: string; args?: unknown }): boolean {
-  return c.kind === "from" && c.name === "system_audit_logs" &&
-    !!c.args && typeof c.args === "object" && "correlation_id" in (c.args as Record<string, unknown>);
+  return (
+    c.kind === "from" &&
+    c.name === "system_audit_logs" &&
+    !!c.args &&
+    typeof c.args === "object" &&
+    "correlation_id" in (c.args as Record<string, unknown>)
+  );
 }
 
 /**
@@ -55,7 +64,11 @@ export function recordedCalls(fake: FakeSupabase): unknown[] {
 export async function recordedResponse(res: Response): Promise<unknown> {
   const text = await res.text();
   let body: unknown = text;
-  try { body = JSON.parse(text); } catch { /* not JSON */ }
+  try {
+    body = JSON.parse(text);
+  } catch {
+    /* not JSON */
+  }
   return scrub({ status: res.status, body });
 }
 
@@ -69,12 +82,21 @@ export function freezeRandom(): () => void {
   let n = 7;
   // deno-lint-ignore no-explicit-any
   (crypto as any).getRandomValues = <T extends ArrayBufferView | null>(arr: T): T => {
-    const bytes = new Uint8Array((arr as unknown as ArrayBufferView).buffer, (arr as unknown as ArrayBufferView).byteOffset, (arr as unknown as ArrayBufferView).byteLength);
-    for (let i = 0; i < bytes.length; i++) { n = (n * 73 + 41) % 251; bytes[i] = n; }
+    const bytes = new Uint8Array(
+      (arr as unknown as ArrayBufferView).buffer,
+      (arr as unknown as ArrayBufferView).byteOffset,
+      (arr as unknown as ArrayBufferView).byteLength
+    );
+    for (let i = 0; i < bytes.length; i++) {
+      n = (n * 73 + 41) % 251;
+      bytes[i] = n;
+    }
     return arr;
   };
   // deno-lint-ignore no-explicit-any
-  return () => { (crypto as any).getRandomValues = real; };
+  return () => {
+    (crypto as any).getRandomValues = real;
+  };
 }
 
 /** Replaces fetch with a recorder answering `status`; returns the log and the restore function. */
@@ -83,9 +105,18 @@ export function stubFetch(status = 204): { sent: Array<{ url: string; body: unkn
   const sent: Array<{ url: string; body: unknown }> = [];
   globalThis.fetch = ((url: string | URL | Request, init?: RequestInit) => {
     let body: unknown = init?.body ?? null;
-    try { body = JSON.parse(String(init?.body)); } catch { /* keep raw */ }
+    try {
+      body = JSON.parse(String(init?.body));
+    } catch {
+      /* keep raw */
+    }
     sent.push({ url: String(url), body });
     return Promise.resolve(new Response(status === 204 ? null : "{}", { status }));
   }) as typeof fetch;
-  return { sent, restore: () => { globalThis.fetch = real; } };
+  return {
+    sent,
+    restore: () => {
+      globalThis.fetch = real;
+    },
+  };
 }

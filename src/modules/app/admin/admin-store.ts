@@ -7,7 +7,6 @@
  * guild-requests controller without duplicating module-level state.
  */
 
-
 import { getAppState } from '../../../core/state/app-state';
 
 export interface AccountRow {
@@ -77,7 +76,9 @@ export function getServerNumberForGuild(guildId: string): string {
   try {
     const ls = typeof localStorage !== 'undefined' ? localStorage.getItem('gm_server_number_' + guildId) : null;
     if (ls) return String(ls);
-  } catch (_) { /* ignore */ }
+  } catch (_) {
+    /* ignore */
+  }
   return '';
 }
 

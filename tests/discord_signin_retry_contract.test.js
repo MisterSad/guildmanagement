@@ -42,8 +42,12 @@ describe('the retry chain is bounded in SQL', () => {
     expect(def).toContain("SET search_path = ''");
     expect(def).toMatch(/DELETE FROM public\.discord_auth_tickets[\s\S]*RETURNING/);
     expect(def).toContain('t.expires_at > now()');
-    expect(migration).toContain('REVOKE ALL ON FUNCTION public.gm_consume_discord_auth_ticket(text) FROM PUBLIC, anon, authenticated;');
-    expect(migration).toContain('GRANT EXECUTE ON FUNCTION public.gm_consume_discord_auth_ticket(text) TO service_role;');
+    expect(migration).toContain(
+      'REVOKE ALL ON FUNCTION public.gm_consume_discord_auth_ticket(text) FROM PUBLIC, anon, authenticated;'
+    );
+    expect(migration).toContain(
+      'GRANT EXECUTE ON FUNCTION public.gm_consume_discord_auth_ticket(text) TO service_role;'
+    );
   });
 
   it('mirrors the SQL bound in the Edge Function', () => {
@@ -63,20 +67,38 @@ describe('a recoverable mistake hands back a fresh ticket', () => {
 
   it('treats field mistakes as recoverable', () => {
     const set = slice(fn, 'const RECOVERABLE_ERRORS', ']);');
-    for (const code of ['invalid_code', 'code_invalid', 'uid_not_in_guild', 'uid_already_claimed', 'tag_taken', 'invalid_credentials']) {
+    for (const code of [
+      'invalid_code',
+      'code_invalid',
+      'uid_not_in_guild',
+      'uid_already_claimed',
+      'tag_taken',
+      'invalid_credentials',
+    ]) {
       expect(set, code).toContain(`"${code}"`);
     }
   });
 
   it('never re-issues for states a retry cannot fix', () => {
     const set = slice(fn, 'const RECOVERABLE_ERRORS', ']);');
-    for (const code of ['discord_already_linked', 'discord_account_too_new', 'daily_limit_reached', 'account_locked', 'server_error', 'too_many_attempts']) {
+    for (const code of [
+      'discord_already_linked',
+      'discord_account_too_new',
+      'daily_limit_reached',
+      'account_locked',
+      'server_error',
+      'too_many_attempts',
+    ]) {
       expect(set, code).not.toContain(`"${code}"`);
     }
   });
 
   it('is used by claim, onboard and redeem-code', () => {
-    for (const handler of ['async function handleClaim', 'async function handleOnboard', 'async function handleRedeemCode']) {
+    for (const handler of [
+      'async function handleClaim',
+      'async function handleOnboard',
+      'async function handleRedeemCode',
+    ]) {
       const body = slice(fn, handler, '\nasync function ');
       expect(body, handler).toContain('failContinuation(json, admin, logger, consumed');
     }
@@ -145,7 +167,10 @@ describe('the player hears the outcome by DM', () => {
 
   it('notifies on approval and on rejection, after the decision commits', () => {
     const decide = slice(decisionFn, 'export async function decideRegistration', 'async function auditDecision');
-    const approve = decide.slice(decide.indexOf('if (decision === "approve")'), decide.indexOf('const rejectedDiscordId'));
+    const approve = decide.slice(
+      decide.indexOf('if (decision === "approve")'),
+      decide.indexOf('const rejectedDiscordId')
+    );
     expect(approve.indexOf('notifyRegistrationOutcome(')).toBeGreaterThan(approve.indexOf('gm_approve_player_account'));
     expect(approve).toContain('"approved"');
 
@@ -168,8 +193,12 @@ describe('one decision path for the app and for Discord', () => {
 
   it('authorizes inside the shared function, before any write', () => {
     const decide = slice(decisionFn, 'export async function decideRegistration', 'async function auditDecision');
-    expect(decide.indexOf('canManageAccount(actor, targetCtx)')).toBeLessThan(decide.indexOf('gm_approve_player_account'));
-    expect(decide.indexOf('canManageAccount(actor, targetCtx)')).toBeLessThan(decide.indexOf('gm_reject_player_account'));
+    expect(decide.indexOf('canManageAccount(actor, targetCtx)')).toBeLessThan(
+      decide.indexOf('gm_approve_player_account')
+    );
+    expect(decide.indexOf('canManageAccount(actor, targetCtx)')).toBeLessThan(
+      decide.indexOf('gm_reject_player_account')
+    );
     expect(decide).toContain('target.status !== "pending" || !isMember(target.role)');
   });
 

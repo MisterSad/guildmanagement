@@ -25,7 +25,10 @@ import { patchAppState } from '../src/core/state/app-state';
 const rootDir = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(rootDir, p), 'utf8');
 const stripComments = (s) =>
-  s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '').replace(/\/\/.*$/gm, '');
+  s
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '')
+    .replace(/\/\/.*$/gm, '');
 
 function walk(dir, out = []) {
   for (const e of fs.readdirSync(path.join(rootDir, dir), { withFileTypes: true })) {
@@ -73,7 +76,7 @@ describe('H2 — the resolver reports failure instead of inventing a tenant', ()
   });
 });
 
-describe('H2 — an unresolved tenant blocks writes, including a super_admin\'s', () => {
+describe("H2 — an unresolved tenant blocks writes, including a super_admin's", () => {
   it('refuses a super_admin when no guild is resolved', () => {
     // This is the load-bearing line of the finding. `canWriteGuild` returns true
     // unconditionally for a super_admin, so without an explicit guard the null
@@ -143,9 +146,11 @@ describe('H2 — no tenant name survives in logic', () => {
     // these coercions were dead -- except in `accounts`, where the single real
     // super_admin row has guild NULL by design and was being displayed as an
     // ALPHA member.
-    for (const f of ['src/modules/app/members/members.render.ts',
-                     'src/modules/app/admin/accounts.render.ts',
-                     'src/modules/app/admin/guild-requests.controller.ts']) {
+    for (const f of [
+      'src/modules/app/members/members.render.ts',
+      'src/modules/app/admin/accounts.render.ts',
+      'src/modules/app/admin/guild-requests.controller.ts',
+    ]) {
       expect(stripComments(read(f)), f).not.toMatch(/\|\|\s*['"]ALPHA['"]/);
     }
   });
@@ -171,31 +176,31 @@ describe('H2 — one resolver, not four', () => {
     // ALPHA` locally, so any one of them could disagree with the others.
     for (const f of duplicated) {
       const code = stripComments(read(f));
-      expect(code, `${f} must not re-read gm_current_guild itself`)
-        .not.toContain("localStorage.getItem('gm_current_guild')");
-      expect(read(f), `${f} must use the canonical resolver`)
-        .toContain("from '../../../core/auth/roles'");
+      expect(code, `${f} must not re-read gm_current_guild itself`).not.toContain(
+        "localStorage.getItem('gm_current_guild')"
+      );
+      expect(read(f), `${f} must use the canonical resolver`).toContain("from '../../../core/auth/roles'");
     }
   });
 
   it('stops probing the window bridge for the resolver in every view', () => {
     for (const f of walk('src/modules')) {
       const code = stripComments(read(f));
-      expect(code, `${f}: the bridge probe must not reintroduce a tenant default`)
-        .not.toMatch(/getActiveGuild === 'function' \? [^:]+ : ['"]ALPHA['"]/);
+      expect(code, `${f}: the bridge probe must not reintroduce a tenant default`).not.toMatch(
+        /getActiveGuild === 'function' \? [^:]+ : ['"]ALPHA['"]/
+      );
     }
   });
 });
 
-describe('H2 — the user is told, rather than shown someone else\'s guild', () => {
+describe("H2 — the user is told, rather than shown someone else's guild", () => {
   it('has a message for it', () => {
     const dict = read('src/core/i18n/i18n.dictionary.ts');
     expect(dict).toContain('guild_unresolved');
   });
 
   it('renders a badge that cannot be mistaken for a guild name', () => {
-    expect(read('src/modules/shell/views/ShellView.ts'))
-      .toContain('gm-sidebar-guild-badge--unresolved');
+    expect(read('src/modules/shell/views/ShellView.ts')).toContain('gm-sidebar-guild-badge--unresolved');
     expect(read('shell.css')).toContain('.gm-sidebar-guild-badge--unresolved');
   });
 

@@ -6,7 +6,7 @@
 // a minimal fake Supabase client, not just regex assertions on source text.
 
 import { describe, it, expect } from 'vitest';
-import { edgeSource, } from './helpers/edge-source.js';
+import { edgeSource } from './helpers/edge-source.js';
 import fs from 'fs';
 import path from 'path';
 import {
@@ -62,17 +62,44 @@ function makeFakeAdmin({ tableResponses = {}, rpcResponses = {} } = {}) {
   function builder(table) {
     const state = { table, op: null, single: false };
     const chain = {
-      select() { if (!state.op) state.op = 'select'; return chain; },
-      insert() { if (!state.op) state.op = 'insert'; return chain; },
-      update() { if (!state.op) state.op = 'update'; return chain; },
-      delete() { if (!state.op) state.op = 'delete'; return chain; },
-      eq() { return chain; },
-      neq() { return chain; },
-      gt() { return chain; },
-      or() { return chain; },
-      order() { return chain; },
-      limit() { return chain; },
-      maybeSingle() { state.single = true; return chain; },
+      select() {
+        if (!state.op) state.op = 'select';
+        return chain;
+      },
+      insert() {
+        if (!state.op) state.op = 'insert';
+        return chain;
+      },
+      update() {
+        if (!state.op) state.op = 'update';
+        return chain;
+      },
+      delete() {
+        if (!state.op) state.op = 'delete';
+        return chain;
+      },
+      eq() {
+        return chain;
+      },
+      neq() {
+        return chain;
+      },
+      gt() {
+        return chain;
+      },
+      or() {
+        return chain;
+      },
+      order() {
+        return chain;
+      },
+      limit() {
+        return chain;
+      },
+      maybeSingle() {
+        state.single = true;
+        return chain;
+      },
       then(resolve) {
         const key = `${state.table}:${state.op}`;
         const res = nextResponse(key);
@@ -88,7 +115,9 @@ function makeFakeAdmin({ tableResponses = {}, rpcResponses = {} } = {}) {
   }
 
   return {
-    from(table) { return builder(table); },
+    from(table) {
+      return builder(table);
+    },
     async rpc(name, params) {
       const entry = rpcResponses[name];
       if (typeof entry === 'function') return entry(params);
@@ -194,10 +223,12 @@ describe('updatePlayerTimezone', () => {
 describe('setPlayerAbsence / listPlayerAbsences / deletePlayerAbsence', () => {
   it('rejects a missing date range or an invalid kind before touching the database', async () => {
     const admin = makeFakeAdmin();
-    expect(await setPlayerAbsence(admin, 'uid1', 'ALPHA', { startDate: '', endDate: '2026-09-10', kind: 'full' }))
-      .toEqual({ ok: false, error: 'missing_dates' });
-    expect(await setPlayerAbsence(admin, 'uid1', 'ALPHA', { startDate: '2026-09-05', endDate: '2026-09-10', kind: 'bogus' }))
-      .toEqual({ ok: false, error: 'invalid_kind' });
+    expect(
+      await setPlayerAbsence(admin, 'uid1', 'ALPHA', { startDate: '', endDate: '2026-09-10', kind: 'full' })
+    ).toEqual({ ok: false, error: 'missing_dates' });
+    expect(
+      await setPlayerAbsence(admin, 'uid1', 'ALPHA', { startDate: '2026-09-05', endDate: '2026-09-10', kind: 'bogus' })
+    ).toEqual({ ok: false, error: 'invalid_kind' });
   });
 
   it('declares a valid absence', async () => {
@@ -205,7 +236,12 @@ describe('setPlayerAbsence / listPlayerAbsences / deletePlayerAbsence', () => {
       tableResponses: { 'guild_members:select': { data: [MEMBER_ROW], error: null } },
       rpcResponses: { gm_upsert_player_absence: { data: { ok: true }, error: null } },
     });
-    const res = await setPlayerAbsence(admin, 'uid1', 'ALPHA', { startDate: '2026-09-05', endDate: '2026-09-10', kind: 'full', note: null });
+    const res = await setPlayerAbsence(admin, 'uid1', 'ALPHA', {
+      startDate: '2026-09-05',
+      endDate: '2026-09-10',
+      kind: 'full',
+      note: null,
+    });
     expect(res).toEqual({ ok: true });
   });
 
@@ -262,12 +298,21 @@ describe('Regression: member-portal reuses _shared/player-actions.ts instead of 
 
   it('imports every relocated helper instead of defining it locally', () => {
     for (const name of [
-      'logPlayerAction', 'getWeekStartIso', 'eventScoringKey',
-      'updatePlayerPower', 'updatePlayerGlory', 'updatePlayerTimezone',
-      'getPlayerChallenges', 'listPlayerAbsences', 'setPlayerAbsence', 'deletePlayerAbsence',
+      'logPlayerAction',
+      'getWeekStartIso',
+      'eventScoringKey',
+      'updatePlayerPower',
+      'updatePlayerGlory',
+      'updatePlayerTimezone',
+      'getPlayerChallenges',
+      'listPlayerAbsences',
+      'setPlayerAbsence',
+      'deletePlayerAbsence',
     ]) {
       // Imported from the shared module by whichever action module uses it.
-      expect(memberPortalSrc, name).toMatch(new RegExp(`import \\{[^}]*\\b${name}\\b[^}]*\\} from "(?:\\.\\./)+_shared/player-actions\\.ts"`));
+      expect(memberPortalSrc, name).toMatch(
+        new RegExp(`import \\{[^}]*\\b${name}\\b[^}]*\\} from "(?:\\.\\./)+_shared/player-actions\\.ts"`)
+      );
     }
     expect(memberPortalSrc).toMatch(/\} from "(?:\.\.\/)+_shared\/player-actions\.ts"/);
     expect(memberPortalSrc).not.toMatch(/^async function logPlayerAction\(/m);
@@ -295,8 +340,12 @@ describe('Regression: discord-bot-interactions exposes the Phase 2 commands via 
 
   it('imports the shared write/read functions rather than reimplementing them', () => {
     for (const name of [
-      'updatePlayerPower', 'updatePlayerGlory', 'updatePlayerTimezone',
-      'getPlayerChallenges', 'listPlayerAbsences', 'deletePlayerAbsence',
+      'updatePlayerPower',
+      'updatePlayerGlory',
+      'updatePlayerTimezone',
+      'getPlayerChallenges',
+      'listPlayerAbsences',
+      'deletePlayerAbsence',
     ]) {
       expect(botSrc).toContain(`  ${name},`);
     }
@@ -336,10 +385,7 @@ describe('Regression: discord-bot-interactions exposes the Phase 2 commands via 
 // Deleted 2026-09-28: the worker registers every command on boot (globally and
 // per guild), so its definitions are the single source of truth.
 describe('Regression: the worker owns the full Phase 2 command set', () => {
-  const scriptSrc = fs.readFileSync(
-    path.resolve(__dirname, '../discord-verification-worker/index.js'),
-    'utf-8'
-  );
+  const scriptSrc = fs.readFileSync(path.resolve(__dirname, '../discord-verification-worker/index.js'), 'utf-8');
 
   it('declares the live commands, and no longer declares /link', () => {
     for (const name of ['myinfo', 'timezone', 'challenges', 'absence']) {

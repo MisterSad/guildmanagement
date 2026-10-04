@@ -21,7 +21,6 @@ function makeJson(req: Request) {
 const env = getValidatedEnv({ requireGemini: true });
 const GEMINI_API_KEY = env.GEMINI_API_KEY;
 
-
 const RequestSchema = z
   .object({
     mode: z.enum(["page", "scope"]).default("page"),
@@ -79,9 +78,19 @@ export async function handler(req: Request): Promise<Response> {
   // Each summary is a paid model call over up to 25 pages: bound it per
   // account (its own bucket, apart from the per-IP login budgets). Fails
   // closed with the helper.
-  const budget = await checkAndRecordIpAttempt(adminClient, `migration-summary:${caller.accountId}`, { limit: 10, windowMs: 600_000 });
+  const budget = await checkAndRecordIpAttempt(adminClient, `migration-summary:${caller.accountId}`, {
+    limit: 10,
+    windowMs: 600_000,
+  });
   if (!budget.allowed) {
-    return json({ ok: false, error: "rate_limited", message: "Too many AI summaries in a short time. Please wait a few minutes." }, 429);
+    return json(
+      {
+        ok: false,
+        error: "rate_limited",
+        message: "Too many AI summaries in a short time. Please wait a few minutes.",
+      },
+      429
+    );
   }
 
   const guildServer = async (g: string | null | undefined): Promise<string | null> => {
@@ -97,7 +106,9 @@ export async function handler(req: Request): Promise<Response> {
   if (mode === "scope") {
     if (scope === "guild" && !guildId) return json({ ok: false, error: "missing_guild_id" }, 400);
     const allowed = canReadIntel(callerScope, {
-      scope, guildId: guildId ?? null, serverNumber,
+      scope,
+      guildId: guildId ?? null,
+      serverNumber,
       guildServerNumber: scope === "guild" ? await guildServer(guildId) : null,
     });
     if (!allowed) {
@@ -115,7 +126,9 @@ export async function handler(req: Request): Promise<Response> {
 
     const { data: page, error: pageErr } = await adminClient
       .from("migration_wiki_pages")
-      .select("id, title, category, scope, server_number, guild_id, content, is_pinned, created_by_pseudo, updated_by_pseudo, updated_at")
+      .select(
+        "id, title, category, scope, server_number, guild_id, content, is_pinned, created_by_pseudo, updated_by_pseudo, updated_at"
+      )
       .eq("id", pageId)
       .single();
 
@@ -129,7 +142,9 @@ export async function handler(req: Request): Promise<Response> {
     // and another tenant's page. Same answer as a missing page, so a page id
     // reveals nothing about pages the caller cannot read.
     const allowed = canReadIntel(callerScope, {
-      scope: page.scope, guildId: page.guild_id ?? null, serverNumber: page.server_number ?? null,
+      scope: page.scope,
+      guildId: page.guild_id ?? null,
+      serverNumber: page.server_number ?? null,
       guildServerNumber: page.scope === "guild" ? await guildServer(page.guild_id) : null,
     });
     if (!allowed) {

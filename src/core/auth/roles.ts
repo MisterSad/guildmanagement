@@ -101,10 +101,9 @@ export function getRoleInfoFromStorage(): RoleInfo {
     isGuildAdmin: role === 'guild_admin' || role === 'server_admin' || role === 'super_admin',
     isAdmin: role === 'super_admin' || role === 'server_admin' || role === 'guild_admin',
     guild,
-    serverNumber
+    serverNumber,
   };
 }
-
 
 function ls(): Storage | null {
   return typeof localStorage !== 'undefined' ? localStorage : null;
@@ -132,8 +131,7 @@ export function getActiveGuild(): string | null {
   // and there is one reader of this chain instead of four.
   const st = getAppState();
   const store = ls();
-  const resolved =
-    st.currentGuildRestriction || st.currentGuild || (store ? store.getItem('gm_current_guild') : null);
+  const resolved = st.currentGuildRestriction || st.currentGuild || (store ? store.getItem('gm_current_guild') : null);
   const trimmed = typeof resolved === 'string' ? resolved.trim() : '';
   return trimmed !== '' ? trimmed : null;
 }
@@ -219,10 +217,14 @@ export async function ensureGuildRestriction(): Promise<string | null> {
           store.setItem('gm_current_guild', guild);
           store.setItem('gm_guild_restriction', guild);
         }
-      } catch (_) { /* storage unavailable */ }
+      } catch (_) {
+        /* storage unavailable */
+      }
       return guild;
     }
-  } catch (_) { /* best-effort */ }
+  } catch (_) {
+    /* best-effort */
+  }
   return null;
 }
 
@@ -234,9 +236,12 @@ export interface ClientEnvironment {
 
 /** UA-based OS/browser detection (port of gm-utils.js#detectClientEnvironment). */
 export function detectClientEnvironment(ua?: string): ClientEnvironment {
-  const userAgent = (typeof ua === 'string' && ua)
-    ? ua
-    : (typeof navigator !== 'undefined' && navigator.userAgent ? navigator.userAgent : '');
+  const userAgent =
+    typeof ua === 'string' && ua
+      ? ua
+      : typeof navigator !== 'undefined' && navigator.userAgent
+        ? navigator.userAgent
+        : '';
   let os = 'Unknown OS';
   if (/iPhone|iPad|iPod/i.test(userAgent)) os = 'iOS';
   else if (/Macintosh|Mac\s+OS\s+X/i.test(userAgent)) os = 'macOS';

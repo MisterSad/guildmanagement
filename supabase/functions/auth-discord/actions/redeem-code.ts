@@ -95,7 +95,10 @@ export async function handleRedeemCode(req: Request, body: unknown, admin: any, 
   if (!shadow.ok) return json({ ok: false, error: shadow.error }, shadow.status);
 
   logger.info("Link code redeemed", {
-    kind: codeRow.kind, accountId, role, discordUserId: consumed.discordUserId,
+    kind: codeRow.kind,
+    accountId,
+    role,
+    discordUserId: consumed.discordUserId,
   });
 
   return json({

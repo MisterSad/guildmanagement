@@ -30,13 +30,30 @@ class MockBuilder {
     this.notWhere = [];
     this.inWhere = null;
   }
-  select() { return this; }
-  eq(field, value) { this.where.push([field, value]); return this; }
-  neq(field, value) { this.notWhere.push([field, value]); return this; }
-  in(field, values) { this.inWhere = [field, values]; return this; }
-  or() { return this; }
-  order() { return this; }
-  limit() { return this; }
+  select() {
+    return this;
+  }
+  eq(field, value) {
+    this.where.push([field, value]);
+    return this;
+  }
+  neq(field, value) {
+    this.notWhere.push([field, value]);
+    return this;
+  }
+  in(field, values) {
+    this.inWhere = [field, values];
+    return this;
+  }
+  or() {
+    return this;
+  }
+  order() {
+    return this;
+  }
+  limit() {
+    return this;
+  }
   _apply() {
     let rows = this.rows;
     for (const [field, value] of this.where) rows = rows.filter((r) => r[field] === value);
@@ -66,7 +83,7 @@ function makeDb(handlers) {
       const h = handlers.from && handlers.from[table];
       return h ? h() : new MockBuilder([]);
     },
-    auth: { getSession: async () => ({ data: { session: null }, error: null }) }
+    auth: { getSession: async () => ({ data: { session: null }, error: null }) },
   };
 }
 
@@ -83,27 +100,82 @@ const G = 'ALPHA';
 const MEMBERS = [
   { pseudo: 'AlphaPrime', uid: '111', guild: G },
   { pseudo: 'BetaKnight', uid: '222', guild: G },
-  { pseudo: 'GammaGhost', uid: '333', guild: G }
+  { pseudo: 'GammaGhost', uid: '333', guild: G },
 ];
 
 const PARTS = [
-  { pseudo: 'AlphaPrime', event_name: 'SvS', session_id: 's1', week_start: W1, participated: 1, score: 100, score_prep: 0, score_pvp: 0, is_pending: false, guild: G },
-  { pseudo: 'BetaKnight', event_name: 'SvS', session_id: 's1', week_start: W1, participated: 0, score: 0, score_prep: 0, score_pvp: 0, is_pending: false, guild: G },
-  { pseudo: 'AlphaPrime', event_name: 'SvS', session_id: 's2', week_start: W2, participated: 1, score: 200, score_prep: 0, score_pvp: 0, is_pending: false, guild: G },
-  { pseudo: 'BetaKnight', event_name: 'SvS', session_id: 's2', week_start: W2, participated: 1, score: 50, score_prep: 0, score_pvp: 0, is_pending: false, guild: G },
-  { pseudo: 'GammaGhost', event_name: 'SvS', session_id: 's2', week_start: W2, participated: 1, score: 999, score_prep: 0, score_pvp: 0, is_pending: true, guild: G }
+  {
+    pseudo: 'AlphaPrime',
+    event_name: 'SvS',
+    session_id: 's1',
+    week_start: W1,
+    participated: 1,
+    score: 100,
+    score_prep: 0,
+    score_pvp: 0,
+    is_pending: false,
+    guild: G,
+  },
+  {
+    pseudo: 'BetaKnight',
+    event_name: 'SvS',
+    session_id: 's1',
+    week_start: W1,
+    participated: 0,
+    score: 0,
+    score_prep: 0,
+    score_pvp: 0,
+    is_pending: false,
+    guild: G,
+  },
+  {
+    pseudo: 'AlphaPrime',
+    event_name: 'SvS',
+    session_id: 's2',
+    week_start: W2,
+    participated: 1,
+    score: 200,
+    score_prep: 0,
+    score_pvp: 0,
+    is_pending: false,
+    guild: G,
+  },
+  {
+    pseudo: 'BetaKnight',
+    event_name: 'SvS',
+    session_id: 's2',
+    week_start: W2,
+    participated: 1,
+    score: 50,
+    score_prep: 0,
+    score_pvp: 0,
+    is_pending: false,
+    guild: G,
+  },
+  {
+    pseudo: 'GammaGhost',
+    event_name: 'SvS',
+    session_id: 's2',
+    week_start: W2,
+    participated: 1,
+    score: 999,
+    score_prep: 0,
+    score_pvp: 0,
+    is_pending: true,
+    guild: G,
+  },
 ];
 
 const GLORY = [
   { pseudo: 'AlphaPrime', event_name: 'Glory', week_start: W1, score: 1000, guild: G },
   { pseudo: 'BetaKnight', event_name: 'Glory', week_start: W1, score: 0, guild: G },
   { pseudo: 'AlphaPrime', event_name: 'Glory', week_start: W2, score: 1500, guild: G },
-  { pseudo: 'BetaKnight', event_name: 'Glory', week_start: W2, score: 0, guild: G }
+  { pseudo: 'BetaKnight', event_name: 'Glory', week_start: W2, score: 0, guild: G },
 ];
 
 const SQUADS = [
   { pseudo: 'AlphaPrime', role: 'Infantry', week_start: W1, guild: G },
-  { pseudo: 'BetaKnight', role: 'Infantry', week_start: W2, guild: G }
+  { pseudo: 'BetaKnight', role: 'Infantry', week_start: W2, guild: G },
 ];
 
 function buildDb() {
@@ -112,23 +184,25 @@ function buildDb() {
       gm_stats_weeks: () => ({ data: { ok: true, weeks: [W2, W1] }, error: null }),
       gm_stats_data: () => ({
         data: { guild: G, members: MEMBERS, participants: PARTS, glory: GLORY, squads: SQUADS },
-        error: null
+        error: null,
       }),
       gm_stats_members: mockStatsMembers({ rows: PARTS, glory: GLORY, members: MEMBERS }),
-      gm_stats_events: mockStatsEvents({ rows: PARTS.concat(GLORY), members: MEMBERS, squads: typeof SQUADS !== 'undefined' ? SQUADS : [] })
+      gm_stats_events: mockStatsEvents({
+        rows: PARTS.concat(GLORY),
+        members: MEMBERS,
+        squads: typeof SQUADS !== 'undefined' ? SQUADS : [],
+      }),
     },
     from: {
       guild_members: () => new MockBuilder(MEMBERS),
       event_participants: () => new MockBuilder(PARTS.concat(GLORY)),
-      shadowfront_squads: () => new MockBuilder(SQUADS)
-    }
+      shadowfront_squads: () => new MockBuilder(SQUADS),
+    },
   });
 }
 
 function mountContainers() {
-  document.body.innerHTML =
-    '<div class="stats-controls"></div>' +
-    '<div class="stats-leaderboard-area"></div>';
+  document.body.innerHTML = '<div class="stats-controls"></div>' + '<div class="stats-leaderboard-area"></div>';
 }
 
 // Phase S3 columns: rank | member | by-event chips | attended | reliability.
@@ -147,7 +221,7 @@ function parseLeaderboard() {
       pseudo: tds[1].querySelector('.gm-member-pseudo')?.textContent.trim() ?? '',
       buckets: cell('By event'),
       attended: cell('Attended'),
-      reliability: cell('Reliability')
+      reliability: cell('Reliability'),
     };
   });
 }
@@ -166,10 +240,14 @@ describe('StatsView golden results (post stats.js cutover)', () => {
   });
 
   it('does not expose any new GM_* global on window (cutover guard)', async () => {
-    const baseline = Object.getOwnPropertyNames(window).filter((k) => k.startsWith('GM_')).sort();
+    const baseline = Object.getOwnPropertyNames(window)
+      .filter((k) => k.startsWith('GM_'))
+      .sort();
     const view = new StatsView();
     await view.load();
-    const after = Object.getOwnPropertyNames(window).filter((k) => k.startsWith('GM_')).sort();
+    const after = Object.getOwnPropertyNames(window)
+      .filter((k) => k.startsWith('GM_'))
+      .sort();
     expect(after).toEqual(baseline);
     expect(after).not.toContain('GM_STATS');
   });
@@ -184,7 +262,7 @@ describe('StatsView golden results (post stats.js cutover)', () => {
     expect(parseLeaderboard()).toEqual([
       { pseudo: 'AlphaPrime', buckets: 'SvS 1/1', attended: '1/1', reliability: '100%' },
       { pseudo: 'BetaKnight', buckets: 'SvS 1/1', attended: '1/1', reliability: '100%' },
-      { pseudo: 'GammaGhost', buckets: 'SvS 0/1', attended: '0/1', reliability: '0%' }
+      { pseudo: 'GammaGhost', buckets: 'SvS 0/1', attended: '0/1', reliability: '0%' },
     ]);
   });
 
@@ -210,7 +288,7 @@ describe('StatsView golden results (post stats.js cutover)', () => {
     expect(view.getState().leaderboardData.map((r) => [r.pseudo, r.score])).toEqual([
       ['AlphaPrime', 300],
       ['BetaKnight', 50],
-      ['GammaGhost', 0]
+      ['GammaGhost', 0],
     ]);
   });
 

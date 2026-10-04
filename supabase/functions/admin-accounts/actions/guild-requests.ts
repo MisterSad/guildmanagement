@@ -16,7 +16,9 @@ export async function listGuildRequests(ctx: AdminContext): Promise<Response> {
 
   const { data, error } = await admin
     .from("guild_creation_requests")
-    .select("id, guild_tag, server_number, admin_id, discord_handle, note, status, reject_reason, created_at, reviewed_at")
+    .select(
+      "id, guild_tag, server_number, admin_id, discord_handle, note, status, reject_reason, created_at, reviewed_at"
+    )
     .order("created_at", { ascending: false })
     .limit(200);
 
@@ -35,11 +37,7 @@ export async function clearResolvedGuildRequests(ctx: AdminContext): Promise<Res
   // Only ever removes already-resolved rows (approved/rejected/expired) --
   // pending requests are never touched by this, so nothing awaiting review
   // can silently disappear.
-  const { data, error } = await admin
-    .from("guild_creation_requests")
-    .delete()
-    .neq("status", "pending")
-    .select("id");
+  const { data, error } = await admin.from("guild_creation_requests").delete().neq("status", "pending").select("id");
 
   if (error) {
     logger.error("Failed to clear resolved guild requests", error);
@@ -65,9 +63,13 @@ export async function approveGuildRequest(ctx: AdminContext): Promise<Response> 
     logger.error("Failed gm_approve_guild_request", approveErr, { requestId: parsed.data.id });
     return json({ ok: false, error: "server_error", message: approveErr.message }, 500);
   }
-  const approveRow = (Array.isArray(approveData) ? approveData[0] : approveData) as
-    | { ok?: boolean; error?: string; guild_tag?: string; admin_id?: string; server_number?: string }
-    | null;
+  const approveRow = (Array.isArray(approveData) ? approveData[0] : approveData) as {
+    ok?: boolean;
+    error?: string;
+    guild_tag?: string;
+    admin_id?: string;
+    server_number?: string;
+  } | null;
   if (!approveRow || !approveRow.ok) {
     return json({ ok: false, error: approveRow?.error || "approve_failed" }, 200);
   }
@@ -79,19 +81,31 @@ export async function approveGuildRequest(ctx: AdminContext): Promise<Response> 
   // gm_approve_guild_request already refused a taken admin_id; the
   // create-only provisioning below closes the race behind that check.
   const provisioned = await provisionNewAccount(admin, logger, {
-    id: newAdminId, password: newPassword, role: "guild_admin", guild: newGuildTag,
+    id: newAdminId,
+    password: newPassword,
+    role: "guild_admin",
+    guild: newGuildTag,
   });
   if (!provisioned.ok) {
-    logger.error("Account provisioning failed on guild request approval", null, { newAdminId, newGuildTag, error: provisioned.error });
-    return json({ ok: false, error: provisioned.error === "account_exists" ? "admin_id_taken" : provisioned.error }, provisioned.status);
+    logger.error("Account provisioning failed on guild request approval", null, {
+      newAdminId,
+      newGuildTag,
+      error: provisioned.error,
+    });
+    return json(
+      { ok: false, error: provisioned.error === "account_exists" ? "admin_id_taken" : provisioned.error },
+      provisioned.status
+    );
   }
 
-  await admin
-    .from("guild_creation_requests")
-    .update({ reviewed_by: info.accountId })
-    .eq("id", parsed.data.id);
+  await admin.from("guild_creation_requests").update({ reviewed_by: info.accountId }).eq("id", parsed.data.id);
 
-  logger.info("Guild creation request approved", { requestId: parsed.data.id, guildTag: newGuildTag, adminId: newAdminId, reviewedBy: info.accountId });
+  logger.info("Guild creation request approved", {
+    requestId: parsed.data.id,
+    guildTag: newGuildTag,
+    adminId: newAdminId,
+    reviewedBy: info.accountId,
+  });
   return json({ ok: true, guild: newGuildTag, id: newAdminId, password: newPassword });
 }
 
@@ -112,10 +126,7 @@ export async function rejectGuildRequest(ctx: AdminContext): Promise<Response> {
     return json({ ok: false, error: "server_error", message: rejectErr.message }, 500);
   }
 
-  await admin
-    .from("guild_creation_requests")
-    .update({ reviewed_by: info.accountId })
-    .eq("id", parsed.data.id);
+  await admin.from("guild_creation_requests").update({ reviewed_by: info.accountId }).eq("id", parsed.data.id);
 
   logger.info("Guild creation request rejected", { requestId: parsed.data.id, reviewedBy: info.accountId });
   return json(rejectData);

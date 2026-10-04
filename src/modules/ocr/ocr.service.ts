@@ -6,7 +6,6 @@
  * metrics upsert, guild export).
  */
 
-
 import { findBestMatchingMember, cleanPlayerPseudo, parseGeminiJson } from '../../core/utils/text';
 import { getClient } from '../../core/api/supabase';
 import { SUPABASE_URL } from '../../core/config/constants';
@@ -32,13 +31,28 @@ export function getUidStatus(uid?: string | null): UidStatus {
     return { valid: false, status: 'missing', label: 'Missing UID', reason: 'UID is not set' };
   }
   if (/^TEMP[-_]/i.test(clean) || /^TMP[-_]/i.test(clean) || clean.toUpperCase() === 'TEMP') {
-    return { valid: false, status: 'temp', label: 'Temporary UID', reason: 'Temporary placeholder UID generated during import' };
+    return {
+      valid: false,
+      status: 'temp',
+      label: 'Temporary UID',
+      reason: 'Temporary placeholder UID generated during import',
+    };
   }
   if (!/^[0-9]+$/.test(clean)) {
-    return { valid: false, status: 'nan', label: 'Invalid Format', reason: 'UID must contain only digits (no letters or symbols)' };
+    return {
+      valid: false,
+      status: 'nan',
+      label: 'Invalid Format',
+      reason: 'UID must contain only digits (no letters or symbols)',
+    };
   }
   if (clean.length < 6 || clean.length > 10) {
-    return { valid: false, status: 'length', label: 'Invalid Length', reason: 'FGF game UID must be between 6 and 10 digits' };
+    return {
+      valid: false,
+      status: 'length',
+      label: 'Invalid Length',
+      reason: 'FGF game UID must be between 6 and 10 digits',
+    };
   }
   return { valid: true, status: 'valid', label: 'Valid Game UID', reason: null };
 }
@@ -63,7 +77,7 @@ export function categorizeOcrDiff(
   isMultiGuild: boolean,
   mode?: string
 ): OcrDiffResult {
-  const opMode = (mode === 'metric') ? 'metric' : 'members';
+  const opMode = mode === 'metric' ? 'metric' : 'members';
 
   if (!players || !Array.isArray(players) || players.length === 0) {
     return { existing: [], new: [], removed: [], unknown: [] };
@@ -92,26 +106,53 @@ export function categorizeOcrDiff(
     if (member) {
       seenMemberPseudos.add(member.pseudo.trim().toLowerCase());
       const currentVal = parseInt((member as any)[field], 10) || 0;
-      const pScore = p.score != null ? p.score : (p.overall_power || 0);
+      const pScore = p.score != null ? p.score : p.overall_power || 0;
 
       let status = 'unchanged';
-      if ((matchType === 'fuzzy' || matchType === 'normalized' || matchType === 'clean_tag') && p.pseudo !== member.pseudo) {
+      if (
+        (matchType === 'fuzzy' || matchType === 'normalized' || matchType === 'clean_tag') &&
+        p.pseudo !== member.pseudo
+      ) {
         status = 'reconciled';
       } else if (currentVal !== pScore) {
         status = 'update';
       }
 
       existingList.push({
-        index: idx, ocrPlayer: p, member: member, matchType: matchType, matchScore: matchRes ? matchRes.score : 0,
-        status: status, currentVal: currentVal, newVal: pScore, effectivePseudo: member.pseudo, uid: member.uid || ''
+        index: idx,
+        ocrPlayer: p,
+        member: member,
+        matchType: matchType,
+        matchScore: matchRes ? matchRes.score : 0,
+        status: status,
+        currentVal: currentVal,
+        newVal: pScore,
+        effectivePseudo: member.pseudo,
+        uid: member.uid || '',
       });
     } else {
-      const score = p.score != null ? p.score : (p.overall_power || 0);
+      const score = p.score != null ? p.score : p.overall_power || 0;
       if (opMode === 'metric') {
-        unknownList.push({ index: idx, ocrPlayer: p, status: 'not_in_roster', currentVal: 0, newVal: score, effectivePseudo: effectivePseudo, uid: p.uid || '' });
+        unknownList.push({
+          index: idx,
+          ocrPlayer: p,
+          status: 'not_in_roster',
+          currentVal: 0,
+          newVal: score,
+          effectivePseudo: effectivePseudo,
+          uid: p.uid || '',
+        });
       } else {
         const newStatus = isMulti ? 'other_guild' : 'new';
-        newList.push({ index: idx, ocrPlayer: p, status: newStatus, currentVal: 0, newVal: score, effectivePseudo: effectivePseudo, uid: p.uid || '' });
+        newList.push({
+          index: idx,
+          ocrPlayer: p,
+          status: newStatus,
+          currentVal: 0,
+          newVal: score,
+          effectivePseudo: effectivePseudo,
+          uid: p.uid || '',
+        });
       }
     }
   });
@@ -126,8 +167,12 @@ export function categorizeOcrDiff(
       const pseudoKey = m.pseudo.trim().toLowerCase();
       if (!seenMemberPseudos.has(pseudoKey)) {
         removedList.push({
-          member: m, pseudo: m.pseudo, uid: m.uid || '', role: m.role || 'R1',
-          currentPower: parseInt(m.overall_power, 10) || 0, status: 'to_remove'
+          member: m,
+          pseudo: m.pseudo,
+          uid: m.uid || '',
+          role: m.role || 'R1',
+          currentPower: parseInt(m.overall_power, 10) || 0,
+          status: 'to_remove',
         });
       }
     });
@@ -137,7 +182,11 @@ export function categorizeOcrDiff(
 }
 
 /** Projects the roster size before/after applying selected adds/removals. */
-export function computeOcrRosterDelta(rosterCount: unknown, selectedNewCount: unknown, selectedRemovalCount: unknown): { before: number; after: number; added: number; removed: number } {
+export function computeOcrRosterDelta(
+  rosterCount: unknown,
+  selectedNewCount: unknown,
+  selectedRemovalCount: unknown
+): { before: number; after: number; added: number; removed: number } {
   const before = Math.max(0, parseInt(String(rosterCount), 10) || 0);
   const added = Math.max(0, parseInt(String(selectedNewCount), 10) || 0);
   const removed = Math.max(0, parseInt(String(selectedRemovalCount), 10) || 0);
@@ -158,7 +207,7 @@ export async function upsertPlayerMetrics(arg1: any, arg2?: any, arg3?: any, arg
   } else {
     guild = arg1;
     pseudo = arg2;
-    metrics = (typeof arg3 === 'object' && arg3 !== null) ? arg3 : (arg4 || {});
+    metrics = typeof arg3 === 'object' && arg3 !== null ? arg3 : arg4 || {};
   }
   if (!guild || !pseudo) return null;
   const supabase: any = getClient();
@@ -173,7 +222,7 @@ export async function upsertPlayerMetrics(arg1: any, arg2?: any, arg3?: any, arg
       p_crew_power: metrics.crew_power != null ? metrics.crew_power : null,
       p_flagship_power: metrics.flagship_power != null ? metrics.flagship_power : null,
       p_fleet_rating: metrics.fleet_rating != null ? metrics.fleet_rating : null,
-      p_glory_score: metrics.glory_score != null ? metrics.glory_score : null
+      p_glory_score: metrics.glory_score != null ? metrics.glory_score : null,
     });
   } catch (err) {
     console.warn('gm_upsert_player_metrics rpc error for ' + pseudo + ':', err);
@@ -188,8 +237,11 @@ export function ocrDownsampleEvenly<T>(items: T[], maxCount: number): T[] {
   const result: T[] = [];
   const seen: Record<number, boolean> = {};
   for (let i = 0; i < maxCount; i++) {
-    const idx = Math.round(i * (items.length - 1) / (maxCount - 1));
-    if (!seen[idx]) { seen[idx] = true; result.push(items[idx]); }
+    const idx = Math.round((i * (items.length - 1)) / (maxCount - 1));
+    if (!seen[idx]) {
+      seen[idx] = true;
+      result.push(items[idx]);
+    }
   }
   return result;
 }
@@ -223,13 +275,13 @@ export function fuseOcrPlayers(rawPlayers: any[], existingMembers?: any[], guild
     const cleanPseudo = cleanPlayerPseudo(p.pseudo, tag) || String(p.pseudo).trim();
     if (!cleanPseudo) continue;
 
-    const pScore = p.score != null ? p.score : (p.overall_power || 0);
+    const pScore = p.score != null ? p.score : p.overall_power || 0;
 
     let canonicalPseudo = cleanPseudo;
     let memberMatch = null;
     if (members.length > 0) {
       const matchRes = findBestMatchingMember(cleanPseudo, members, tag);
-      if (matchRes && matchRes.score >= 0.80) {
+      if (matchRes && matchRes.score >= 0.8) {
         const memberKey = String(matchRes.member.pseudo).trim().toLowerCase();
         const owner = claimedBy[memberKey];
         const sameName = !!owner && owner.name.toLowerCase() === cleanPseudo.toLowerCase();
@@ -248,7 +300,7 @@ export function fuseOcrPlayers(rawPlayers: any[], existingMembers?: any[], guild
     }
 
     const key = canonicalPseudo.toLowerCase().trim();
-    const pUid = p.uid ? String(p.uid).trim() : (memberMatch ? (memberMatch.uid || null) : null);
+    const pUid = p.uid ? String(p.uid).trim() : memberMatch ? memberMatch.uid || null : null;
     const pRank = p.rank || null;
 
     const existing = fusedMap[key];
@@ -260,7 +312,7 @@ export function fuseOcrPlayers(rawPlayers: any[], existingMembers?: any[], guild
         score: pScore,
         overall_power: pScore,
         uid: pUid,
-        rank: pRank
+        rank: pRank,
       };
     } else {
       if (pScore > (existing.score || 0)) {
@@ -276,7 +328,6 @@ export function fuseOcrPlayers(rawPlayers: any[], existingMembers?: any[], guild
   return Object.values(fusedMap);
 }
 
-
 /**
  * Downscales + JPEG-compresses an image to a data URL (falls back to raw).
  *
@@ -290,7 +341,7 @@ export function fuseOcrPlayers(rawPlayers: any[], existingMembers?: any[], guild
  */
 export function compressImageForUpload(fileOrBlob: Blob, maxDimension?: number, quality?: number): Promise<string> {
   const maxDim = maxDimension || 1280;
-  const q = (typeof quality === 'number') ? quality : 0.82;
+  const q = typeof quality === 'number' ? quality : 0.82;
   const sourceType = String((fileOrBlob as File).type || '').toLowerCase();
   const alreadyJpeg = sourceType === 'image/jpeg' || sourceType === 'image/jpg';
 
@@ -313,8 +364,13 @@ export function compressImageForUpload(fileOrBlob: Blob, maxDimension?: number, 
             return resolve(e.target.result);
           }
           if (w > maxDim || h > maxDim) {
-            if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
-            else { w = Math.round((w * maxDim) / h); h = maxDim; }
+            if (w > h) {
+              h = Math.round((h * maxDim) / w);
+              w = maxDim;
+            } else {
+              w = Math.round((w * maxDim) / h);
+              h = maxDim;
+            }
           }
           const canvas = document.createElement('canvas');
           canvas.width = w;
@@ -327,7 +383,9 @@ export function compressImageForUpload(fileOrBlob: Blob, maxDimension?: number, 
           resolve(e.target.result);
         }
       };
-      img.onerror = () => { resolve(e.target.result); };
+      img.onerror = () => {
+        resolve(e.target.result);
+      };
       img.src = e.target.result;
     };
     reader.onerror = (err) => reject(err);
@@ -336,11 +394,17 @@ export function compressImageForUpload(fileOrBlob: Blob, maxDimension?: number, 
 }
 
 /** Downloads the caller's guild data as an .xlsx workbook (Edge Function). */
-export async function exportGuildData(guild?: string): Promise<{ ok: boolean; error?: string; message?: string; filename?: string }> {
+export async function exportGuildData(
+  guild?: string
+): Promise<{ ok: boolean; error?: string; message?: string; filename?: string }> {
   const c = getClient();
   if (!c) return { ok: false, error: 'no_client' };
   let sessionRes: any;
-  try { sessionRes = await c.auth.getSession(); } catch (_) { return { ok: false, error: 'no_session' }; }
+  try {
+    sessionRes = await c.auth.getSession();
+  } catch (_) {
+    return { ok: false, error: 'no_session' };
+  }
   const session = sessionRes && sessionRes.data && sessionRes.data.session;
   if (!session || !session.access_token) return { ok: false, error: 'no_session' };
 
@@ -349,7 +413,7 @@ export async function exportGuildData(guild?: string): Promise<{ ok: boolean; er
     res = await fetch(SUPABASE_URL + '/functions/v1/guild-data-export', {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + session.access_token, 'Content-Type': 'application/json' },
-      body: JSON.stringify(guild ? { guild: guild } : {})
+      body: JSON.stringify(guild ? { guild: guild } : {}),
     });
   } catch (err: any) {
     return { ok: false, error: 'network_error', message: err.message };
@@ -357,7 +421,11 @@ export async function exportGuildData(guild?: string): Promise<{ ok: boolean; er
 
   if (!res.ok) {
     let errBody: any = null;
-    try { errBody = await res.json(); } catch (_) { /* ignore */ }
+    try {
+      errBody = await res.json();
+    } catch (_) {
+      /* ignore */
+    }
     return { ok: false, error: (errBody && errBody.error) || 'export_failed' };
   }
 
@@ -466,23 +534,32 @@ export function parseOcrScore(rawScore: unknown, rawText?: string | null): numbe
   return 0;
 }
 
-
-
 /**
  * Marks the players an OCR read as present in a session, in one transaction:
  * an existing row is updated, a missing one created. `sub_present` marks a
  * Shadowfront reserve, `appointed` a Trade Route appointee. Throws on refusal.
  */
 export function recordEventAttendance(
-  eventName: string, sessionId: string, weekStart: string,
+  eventName: string,
+  sessionId: string,
+  weekStart: string,
   rows: Array<{ pseudo: string; sub_present?: boolean; appointed?: boolean }>
 ): Promise<{ ok: true; updated: number; inserted: number }> {
   return guildWrite('gm_record_event_attendance', {
-    p_event_name: eventName, p_session_id: sessionId, p_week_start: weekStart, p_rows: rows
+    p_event_name: eventName,
+    p_session_id: sessionId,
+    p_week_start: weekStart,
+    p_rows: rows,
   });
 }
 
-export interface OcrRosterResult { ok: true; updated: number; added: number; removed: number; ranks_assigned: number }
+export interface OcrRosterResult {
+  ok: true;
+  updated: number;
+  added: number;
+  removed: number;
+  ranks_assigned: number;
+}
 
 /**
  * Applies an OCR roster import all-or-nothing (owner decision, 2026-10-03):
@@ -494,7 +571,12 @@ export function commitOcrRoster(
   newRows: Array<{ pseudo: string; uid?: string | null; score: number; role?: string }>,
   removals: string[]
 ): Promise<OcrRosterResult> {
-  return guildWrite('gm_commit_ocr_roster', { p_field: field, p_existing: existing, p_new: newRows, p_removals: removals });
+  return guildWrite('gm_commit_ocr_roster', {
+    p_field: field,
+    p_existing: existing,
+    p_new: newRows,
+    p_removals: removals,
+  });
 }
 
 // ── OCR queries (M4b) ───────────────────────────────────────────────────────
@@ -505,20 +587,42 @@ export function commitOcrRoster(
 export { checkUidExistsGlobally, findPlayerByUid } from '../members/members.service';
 
 /** Sends an uploaded OCR video to the `ocr-guild-members` Edge Function. */
-export function invokeOcrVideo(db: DbClient, path: string, mimeType: string, metricType: any, guildTag: any, rankHint: any, metadata: { scanDay: number } | undefined) {
+export function invokeOcrVideo(
+  db: DbClient,
+  path: string,
+  mimeType: string,
+  metricType: any,
+  guildTag: any,
+  rankHint: any,
+  metadata: { scanDay: number } | undefined
+) {
   return db.functions.invoke('ocr-guild-members', {
-      body: { video: { path, mimeType }, metricType, guildTag, rankHint: rankHint || null, metadata },
-    });
+    body: { video: { path, mimeType }, metricType, guildTag, rankHint: rankHint || null, metadata },
+  });
 }
 
 /** Sends a batch of screenshots to the `ocr-guild-members` Edge Function. */
-export function invokeOcrImages(db: DbClient, batchImageItems: any[], metricType: any, guildTag: any, rankHint: any, metadata: { scanDay: number } | undefined) {
-  return db.functions.invoke('ocr-guild-members', { body: { images: batchImageItems, metricType, guildTag, rankHint: rankHint || null, metadata } });
+export function invokeOcrImages(
+  db: DbClient,
+  batchImageItems: any[],
+  metricType: any,
+  guildTag: any,
+  rankHint: any,
+  metadata: { scanDay: number } | undefined
+) {
+  return db.functions.invoke('ocr-guild-members', {
+    body: { images: batchImageItems, metricType, guildTag, rankHint: rankHint || null, metadata },
+  });
 }
 
 /** Reads one event's session status (session id, active flag, start) in a guild. */
 export function fetchEventSessionStatus(db: DbClient, guild: string | null, eventName: string) {
-  return db.from('event_status').select('session_id, is_active, start_at').eq('guild', guild).eq('event_name', eventName).maybeSingle();
+  return db
+    .from('event_status')
+    .select('session_id, is_active, start_at')
+    .eq('guild', guild)
+    .eq('event_name', eventName)
+    .maybeSingle();
 }
 
 /** Lists the Shadowfront squad assignments of one session. */

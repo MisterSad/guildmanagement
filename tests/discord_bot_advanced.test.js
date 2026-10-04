@@ -1,26 +1,23 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import {
-  resolveAuditChannelId,
-  evaluateVerification,
-} from '../supabase/functions/_shared/discord-verification.ts';
+import { resolveAuditChannelId, evaluateVerification } from '../supabase/functions/_shared/discord-verification.ts';
 
 function formatNumber(value) {
-  if (value === null || value === undefined || value === "") return "—";
+  if (value === null || value === undefined || value === '') return '—';
   const n = Number(value);
-  return Number.isFinite(n) ? n.toLocaleString("en-US") : "—";
+  return Number.isFinite(n) ? n.toLocaleString('en-US') : '—';
 }
 
-function formatPlayerLocalTime(offset, referenceUtcDate = new Date("2026-09-16T14:30:00Z")) {
-  if (offset === null || offset === undefined || offset === "") return null;
+function formatPlayerLocalTime(offset, referenceUtcDate = new Date('2026-09-16T14:30:00Z')) {
+  if (offset === null || offset === undefined || offset === '') return null;
   const n = Number(offset);
   if (!Number.isFinite(n)) return null;
   const utc = referenceUtcDate.getTime();
   const target = new Date(utc + n * 3600000);
-  const hh = String(target.getUTCHours()).padStart(2, "0");
-  const mm = String(target.getUTCMinutes()).padStart(2, "0");
-  const sign = n >= 0 ? "+" : "";
+  const hh = String(target.getUTCHours()).padStart(2, '0');
+  const mm = String(target.getUTCMinutes()).padStart(2, '0');
+  const sign = n >= 0 ? '+' : '';
   return `${hh}:${mm} (UTC${sign}${n})`;
 }
 
@@ -42,15 +39,44 @@ function makeFakeAdmin({ tableResponses = {}, rpcResponses = {} } = {}) {
   function builder(table) {
     const state = { table, op: null, single: false };
     const chain = {
-      select() { if (!state.op) state.op = 'select'; return chain; },
-      insert(payload) { if (!state.op) { state.op = 'insert'; calls.push({ table, op: 'insert', payload }); } return chain; },
-      update(payload) { if (!state.op) { state.op = 'update'; calls.push({ table, op: 'update', payload }); } return chain; },
-      delete() { if (!state.op) state.op = 'delete'; return chain; },
-      eq() { return chain; },
-      neq() { return chain; },
-      limit() { return chain; },
-      in() { return chain; },
-      maybeSingle() { state.single = true; return chain; },
+      select() {
+        if (!state.op) state.op = 'select';
+        return chain;
+      },
+      insert(payload) {
+        if (!state.op) {
+          state.op = 'insert';
+          calls.push({ table, op: 'insert', payload });
+        }
+        return chain;
+      },
+      update(payload) {
+        if (!state.op) {
+          state.op = 'update';
+          calls.push({ table, op: 'update', payload });
+        }
+        return chain;
+      },
+      delete() {
+        if (!state.op) state.op = 'delete';
+        return chain;
+      },
+      eq() {
+        return chain;
+      },
+      neq() {
+        return chain;
+      },
+      limit() {
+        return chain;
+      },
+      in() {
+        return chain;
+      },
+      maybeSingle() {
+        state.single = true;
+        return chain;
+      },
       then(resolve) {
         const key = `${state.table}:${state.op}`;
         const res = nextResponse(key);
@@ -67,7 +93,9 @@ function makeFakeAdmin({ tableResponses = {}, rpcResponses = {} } = {}) {
 
   return {
     calls,
-    from(table) { return builder(table); },
+    from(table) {
+      return builder(table);
+    },
     async rpc(name, params) {
       calls.push({ rpc: name, params });
       const entry = rpcResponses[name];
@@ -79,7 +107,7 @@ function makeFakeAdmin({ tableResponses = {}, rpcResponses = {} } = {}) {
 }
 
 describe('Discord Bot Advanced: Local Time calculation', () => {
-  const refDate = new Date("2026-09-16T14:30:00Z");
+  const refDate = new Date('2026-09-16T14:30:00Z');
 
   it('calculates exact local time for positive UTC offsets', () => {
     expect(formatPlayerLocalTime(2, refDate)).toBe('16:30 (UTC+2)');
@@ -209,10 +237,7 @@ describe('Discord Bot Advanced: evaluateVerification previousPower tracking', ()
 });
 
 describe('Discord Bot Advanced: Worker Security & Invariants', () => {
-  const workerSrc = fs.readFileSync(
-    path.resolve(__dirname, '../discord-verification-worker/index.js'),
-    'utf-8'
-  );
+  const workerSrc = fs.readFileSync(path.resolve(__dirname, '../discord-verification-worker/index.js'), 'utf-8');
 
   it('does not contain banned_players (respecting existing regression invariant)', () => {
     expect(workerSrc).not.toContain('banned_players');

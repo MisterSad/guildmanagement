@@ -28,7 +28,6 @@ import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.
 import { serviceClient } from "../_shared/clients.ts";
 import { serveUnlessTest } from "../_shared/serve.ts";
 
-
 interface ColumnDef {
   key: string;
   name: string;
@@ -106,7 +105,10 @@ export async function handler(req: Request): Promise<Response> {
 
   // An export reads every table of a guild into a workbook: the heaviest
   // request this API serves, and it had no rate limit (audit SEC-13).
-  const throttle = await checkAndRecordIpAttempt(admin, extractClientIp(req.headers), { limit: 5, windowMs: 10 * 60_000 });
+  const throttle = await checkAndRecordIpAttempt(admin, extractClientIp(req.headers), {
+    limit: 5,
+    windowMs: 10 * 60_000,
+  });
   if (!throttle.allowed) return json({ ok: false, error: "rate_limited" }, 429);
 
   let body: any = {};
@@ -115,12 +117,15 @@ export async function handler(req: Request): Promise<Response> {
   } catch {
     // No body is fine for guild_admin (their own guild is implied below).
   }
-  if (body?.guild !== undefined && body?.guild !== null
-      && (typeof body.guild !== "string" || !/^[A-Za-z0-9_]{2,12}$/.test(body.guild.trim()))) {
+  if (
+    body?.guild !== undefined &&
+    body?.guild !== null &&
+    (typeof body.guild !== "string" || !/^[A-Za-z0-9_]{2,12}$/.test(body.guild.trim()))
+  ) {
     return json({ ok: false, error: "invalid_guild" }, 400);
   }
 
-  const targetGuild: string | null = isGuildAdmin(caller.role) ? caller.guild : (body?.guild || null);
+  const targetGuild: string | null = isGuildAdmin(caller.role) ? caller.guild : body?.guild || null;
   if (!targetGuild) {
     return json({ ok: false, error: "missing_guild" }, 400);
   }
@@ -137,7 +142,13 @@ export async function handler(req: Request): Promise<Response> {
     if (!g) {
       return json({ ok: false, error: "guild_not_found" }, 404);
     }
-    if (!isGuildInScope({ role: caller.role, guild: caller.guild, serverNumber: caller.serverNumber }, targetGuild, g.server_number ?? null)) {
+    if (
+      !isGuildInScope(
+        { role: caller.role, guild: caller.guild, serverNumber: caller.serverNumber },
+        targetGuild,
+        g.server_number ?? null
+      )
+    ) {
       return json({ ok: false, error: "forbidden" }, 403);
     }
   }
@@ -145,7 +156,10 @@ export async function handler(req: Request): Promise<Response> {
   logger.setContext({ tenantId: targetGuild, userId: caller.accountId });
 
   try {
-    const byGuild = (col = "guild") => (q: any) => q.eq(col, targetGuild);
+    const byGuild =
+      (col = "guild") =>
+      (q: any) =>
+        q.eq(col, targetGuild);
 
     const [
       roster,
@@ -162,18 +176,46 @@ export async function handler(req: Request): Promise<Response> {
       transfers,
       settings,
     ] = await Promise.all([
-      fetchAllRows(admin, "guild_members", "pseudo, uid, role, overall_power, tech_power, champion_power, crew_power, flagship_power, fleet_rating, glory_score, timezone_offset, power_updated_at, metrics_updated_at, created_at", byGuild()),
-      fetchAllRows(admin, "event_participants", "event_name, session_id, week_start, pseudo, participated, score, score_prep, score_pvp, late, excused, appointed, sub_present, created_at", byGuild()),
+      fetchAllRows(
+        admin,
+        "guild_members",
+        "pseudo, uid, role, overall_power, tech_power, champion_power, crew_power, flagship_power, fleet_rating, glory_score, timezone_offset, power_updated_at, metrics_updated_at, created_at",
+        byGuild()
+      ),
+      fetchAllRows(
+        admin,
+        "event_participants",
+        "event_name, session_id, week_start, pseudo, participated, score, score_prep, score_pvp, late, excused, appointed, sub_present, created_at",
+        byGuild()
+      ),
       fetchAllRows(admin, "event_status", "event_name, session_id, is_active, stage, start_at, updated_at", byGuild()),
-      fetchAllRows(admin, "weekly_scores", "pseudo, week_start, score_20, events_done, events_total, glory_score, computed_at", byGuild()),
-      fetchAllRows(admin, "player_metrics_history", "pseudo, week_start, total_power, tech_power, champion_power, crew_power, flagship_power, fleet_rating, glory_score, created_at", byGuild()),
+      fetchAllRows(
+        admin,
+        "weekly_scores",
+        "pseudo, week_start, score_20, events_done, events_total, glory_score, computed_at",
+        byGuild()
+      ),
+      fetchAllRows(
+        admin,
+        "player_metrics_history",
+        "pseudo, week_start, total_power, tech_power, champion_power, crew_power, flagship_power, fleet_rating, glory_score, created_at",
+        byGuild()
+      ),
       fetchAllRows(admin, "sanctions", "pseudo, comment, created_by, created_at", byGuild()),
       fetchAllRows(admin, "player_absences", "pseudo, uid, start_date, end_date, kind, note, created_at", byGuild()),
       fetchAllRows(admin, "banned_players", "uid, pseudo, reason, created_by, created_at", byGuild()),
       fetchAllRows(admin, "player_name_history", "uid, old_pseudo, new_pseudo, changed_by, changed_at", byGuild()),
       fetchAllRows(admin, "shadowfront_squads", "week_start, squad, pseudo, role, is_commander, session_id", byGuild()),
       fetchAllRows(admin, "shadowfront_signups", "week_start, pseudo, availability, updated_at", byGuild()),
-      fetchAllRows(admin, "guild_transfers", "uid, pseudo, source_guild, target_guild, status, resolved_at, created_at", (q) => q.or(`source_guild.eq.${escapeOrFilterValue(targetGuild!)},target_guild.eq.${escapeOrFilterValue(targetGuild!)}`)),
+      fetchAllRows(
+        admin,
+        "guild_transfers",
+        "uid, pseudo, source_guild, target_guild, status, resolved_at, created_at",
+        (q) =>
+          q.or(
+            `source_guild.eq.${escapeOrFilterValue(targetGuild!)},target_guild.eq.${escapeOrFilterValue(targetGuild!)}`
+          )
+      ),
       fetchAllRows(admin, "guild_config", "key, value, updated_at", byGuild()),
     ]);
 
@@ -181,135 +223,213 @@ export async function handler(req: Request): Promise<Response> {
     workbook.creator = "FGF Guild Management Tool";
     workbook.created = new Date();
 
-    addDataSheet(workbook, "Roster", "RosterTable", [
-      { key: "pseudo", name: "Pseudo", width: 20 },
-      { key: "uid", name: "UID", width: 14 },
-      { key: "role", name: "Role", width: 8 },
-      { key: "overall_power", name: "Overall Power", width: 16 },
-      { key: "tech_power", name: "Tech Power", width: 14 },
-      { key: "champion_power", name: "Champion Power", width: 16 },
-      { key: "crew_power", name: "Crew Power", width: 14 },
-      { key: "flagship_power", name: "Flagship Power", width: 16 },
-      { key: "fleet_rating", name: "Fleet Rating", width: 14 },
-      { key: "glory_score", name: "Glory Score", width: 14 },
-      { key: "timezone_offset", name: "Timezone (UTC)", width: 14 },
-      { key: "power_updated_at", name: "Power Updated", width: 20, isDate: true },
-      { key: "metrics_updated_at", name: "Metrics Updated", width: 20, isDate: true },
-      { key: "created_at", name: "Member Since", width: 20, isDate: true },
-    ], roster);
+    addDataSheet(
+      workbook,
+      "Roster",
+      "RosterTable",
+      [
+        { key: "pseudo", name: "Pseudo", width: 20 },
+        { key: "uid", name: "UID", width: 14 },
+        { key: "role", name: "Role", width: 8 },
+        { key: "overall_power", name: "Overall Power", width: 16 },
+        { key: "tech_power", name: "Tech Power", width: 14 },
+        { key: "champion_power", name: "Champion Power", width: 16 },
+        { key: "crew_power", name: "Crew Power", width: 14 },
+        { key: "flagship_power", name: "Flagship Power", width: 16 },
+        { key: "fleet_rating", name: "Fleet Rating", width: 14 },
+        { key: "glory_score", name: "Glory Score", width: 14 },
+        { key: "timezone_offset", name: "Timezone (UTC)", width: 14 },
+        { key: "power_updated_at", name: "Power Updated", width: 20, isDate: true },
+        { key: "metrics_updated_at", name: "Metrics Updated", width: 20, isDate: true },
+        { key: "created_at", name: "Member Since", width: 20, isDate: true },
+      ],
+      roster
+    );
 
-    addDataSheet(workbook, "Participation", "ParticipationTable", [
-      { key: "event_name", name: "Event", width: 22 },
-      { key: "session_id", name: "Session ID", width: 20 },
-      { key: "week_start", name: "Week", width: 14, isDate: true },
-      { key: "pseudo", name: "Pseudo", width: 20 },
-      { key: "participated", name: "Participated", width: 14 },
-      { key: "score", name: "Score", width: 12 },
-      { key: "score_prep", name: "Score (Prep)", width: 14 },
-      { key: "score_pvp", name: "Score (PvP)", width: 14 },
-      { key: "late", name: "Late", width: 10 },
-      { key: "excused", name: "Excused", width: 10 },
-      { key: "appointed", name: "Appointed", width: 12 },
-      { key: "sub_present", name: "Substitute", width: 12 },
-      { key: "created_at", name: "Recorded", width: 20, isDate: true },
-    ], participation);
+    addDataSheet(
+      workbook,
+      "Participation",
+      "ParticipationTable",
+      [
+        { key: "event_name", name: "Event", width: 22 },
+        { key: "session_id", name: "Session ID", width: 20 },
+        { key: "week_start", name: "Week", width: 14, isDate: true },
+        { key: "pseudo", name: "Pseudo", width: 20 },
+        { key: "participated", name: "Participated", width: 14 },
+        { key: "score", name: "Score", width: 12 },
+        { key: "score_prep", name: "Score (Prep)", width: 14 },
+        { key: "score_pvp", name: "Score (PvP)", width: 14 },
+        { key: "late", name: "Late", width: 10 },
+        { key: "excused", name: "Excused", width: 10 },
+        { key: "appointed", name: "Appointed", width: 12 },
+        { key: "sub_present", name: "Substitute", width: 12 },
+        { key: "created_at", name: "Recorded", width: 20, isDate: true },
+      ],
+      participation
+    );
 
-    addDataSheet(workbook, "Events", "EventsTable", [
-      { key: "event_name", name: "Event", width: 22 },
-      { key: "session_id", name: "Session ID", width: 20 },
-      { key: "is_active", name: "Active", width: 10 },
-      { key: "stage", name: "Stage", width: 14 },
-      { key: "start_at", name: "Start Time", width: 20, isDate: true },
-      { key: "updated_at", name: "Updated", width: 20, isDate: true },
-    ], events);
+    addDataSheet(
+      workbook,
+      "Events",
+      "EventsTable",
+      [
+        { key: "event_name", name: "Event", width: 22 },
+        { key: "session_id", name: "Session ID", width: 20 },
+        { key: "is_active", name: "Active", width: 10 },
+        { key: "stage", name: "Stage", width: 14 },
+        { key: "start_at", name: "Start Time", width: 20, isDate: true },
+        { key: "updated_at", name: "Updated", width: 20, isDate: true },
+      ],
+      events
+    );
 
-    addDataSheet(workbook, "Weekly Scores", "WeeklyScoresTable", [
-      { key: "pseudo", name: "Pseudo", width: 20 },
-      { key: "week_start", name: "Week", width: 14, isDate: true },
-      { key: "score_20", name: "Score (/20)", width: 14 },
-      { key: "events_done", name: "Events Done", width: 14 },
-      { key: "events_total", name: "Events Total", width: 14 },
-      { key: "glory_score", name: "Glory Score", width: 14 },
-      { key: "computed_at", name: "Computed", width: 20, isDate: true },
-    ], weeklyScores);
+    addDataSheet(
+      workbook,
+      "Weekly Scores",
+      "WeeklyScoresTable",
+      [
+        { key: "pseudo", name: "Pseudo", width: 20 },
+        { key: "week_start", name: "Week", width: 14, isDate: true },
+        { key: "score_20", name: "Score (/20)", width: 14 },
+        { key: "events_done", name: "Events Done", width: 14 },
+        { key: "events_total", name: "Events Total", width: 14 },
+        { key: "glory_score", name: "Glory Score", width: 14 },
+        { key: "computed_at", name: "Computed", width: 20, isDate: true },
+      ],
+      weeklyScores
+    );
 
-    addDataSheet(workbook, "Power History", "PowerHistoryTable", [
-      { key: "pseudo", name: "Pseudo", width: 20 },
-      { key: "week_start", name: "Week", width: 14, isDate: true },
-      { key: "total_power", name: "Total Power", width: 16 },
-      { key: "tech_power", name: "Tech Power", width: 14 },
-      { key: "champion_power", name: "Champion Power", width: 16 },
-      { key: "crew_power", name: "Crew Power", width: 14 },
-      { key: "flagship_power", name: "Flagship Power", width: 16 },
-      { key: "fleet_rating", name: "Fleet Rating", width: 14 },
-      { key: "glory_score", name: "Glory Score", width: 14 },
-      { key: "created_at", name: "Recorded", width: 20, isDate: true },
-    ], powerHistory);
+    addDataSheet(
+      workbook,
+      "Power History",
+      "PowerHistoryTable",
+      [
+        { key: "pseudo", name: "Pseudo", width: 20 },
+        { key: "week_start", name: "Week", width: 14, isDate: true },
+        { key: "total_power", name: "Total Power", width: 16 },
+        { key: "tech_power", name: "Tech Power", width: 14 },
+        { key: "champion_power", name: "Champion Power", width: 16 },
+        { key: "crew_power", name: "Crew Power", width: 14 },
+        { key: "flagship_power", name: "Flagship Power", width: 16 },
+        { key: "fleet_rating", name: "Fleet Rating", width: 14 },
+        { key: "glory_score", name: "Glory Score", width: 14 },
+        { key: "created_at", name: "Recorded", width: 20, isDate: true },
+      ],
+      powerHistory
+    );
 
-    addDataSheet(workbook, "Sanctions", "SanctionsTable", [
-      { key: "pseudo", name: "Pseudo", width: 20 },
-      { key: "comment", name: "Comment", width: 50 },
-      { key: "created_by", name: "Issued By", width: 20 },
-      { key: "created_at", name: "Date", width: 20, isDate: true },
-    ], sanctions);
+    addDataSheet(
+      workbook,
+      "Sanctions",
+      "SanctionsTable",
+      [
+        { key: "pseudo", name: "Pseudo", width: 20 },
+        { key: "comment", name: "Comment", width: 50 },
+        { key: "created_by", name: "Issued By", width: 20 },
+        { key: "created_at", name: "Date", width: 20, isDate: true },
+      ],
+      sanctions
+    );
 
-    addDataSheet(workbook, "Absences", "AbsencesTable", [
-      { key: "pseudo", name: "Pseudo", width: 20 },
-      { key: "uid", name: "UID", width: 14 },
-      { key: "start_date", name: "Start Date", width: 16, isDate: true },
-      { key: "end_date", name: "End Date", width: 16, isDate: true },
-      { key: "kind", name: "Type", width: 12 },
-      { key: "note", name: "Note", width: 40 },
-      { key: "created_at", name: "Declared", width: 20, isDate: true },
-    ], absences);
+    addDataSheet(
+      workbook,
+      "Absences",
+      "AbsencesTable",
+      [
+        { key: "pseudo", name: "Pseudo", width: 20 },
+        { key: "uid", name: "UID", width: 14 },
+        { key: "start_date", name: "Start Date", width: 16, isDate: true },
+        { key: "end_date", name: "End Date", width: 16, isDate: true },
+        { key: "kind", name: "Type", width: 12 },
+        { key: "note", name: "Note", width: 40 },
+        { key: "created_at", name: "Declared", width: 20, isDate: true },
+      ],
+      absences
+    );
 
-    addDataSheet(workbook, "Banned Players", "BannedTable", [
-      { key: "uid", name: "UID", width: 14 },
-      { key: "pseudo", name: "Pseudo", width: 20 },
-      { key: "reason", name: "Reason", width: 40 },
-      { key: "created_by", name: "Banned By", width: 20 },
-      { key: "created_at", name: "Date", width: 20, isDate: true },
-    ], banned);
+    addDataSheet(
+      workbook,
+      "Banned Players",
+      "BannedTable",
+      [
+        { key: "uid", name: "UID", width: 14 },
+        { key: "pseudo", name: "Pseudo", width: 20 },
+        { key: "reason", name: "Reason", width: 40 },
+        { key: "created_by", name: "Banned By", width: 20 },
+        { key: "created_at", name: "Date", width: 20, isDate: true },
+      ],
+      banned
+    );
 
-    addDataSheet(workbook, "Name History", "NameHistoryTable", [
-      { key: "uid", name: "UID", width: 14 },
-      { key: "old_pseudo", name: "Old Pseudo", width: 20 },
-      { key: "new_pseudo", name: "New Pseudo", width: 20 },
-      { key: "changed_by", name: "Changed By", width: 20 },
-      { key: "changed_at", name: "Date", width: 20, isDate: true },
-    ], nameHistory);
+    addDataSheet(
+      workbook,
+      "Name History",
+      "NameHistoryTable",
+      [
+        { key: "uid", name: "UID", width: 14 },
+        { key: "old_pseudo", name: "Old Pseudo", width: 20 },
+        { key: "new_pseudo", name: "New Pseudo", width: 20 },
+        { key: "changed_by", name: "Changed By", width: 20 },
+        { key: "changed_at", name: "Date", width: 20, isDate: true },
+      ],
+      nameHistory
+    );
 
-    addDataSheet(workbook, "Shadowfront Squads", "SquadsTable", [
-      { key: "week_start", name: "Week", width: 14, isDate: true },
-      { key: "squad", name: "Squad", width: 12 },
-      { key: "pseudo", name: "Pseudo", width: 20 },
-      { key: "role", name: "Role", width: 14 },
-      { key: "is_commander", name: "Commander", width: 14 },
-      { key: "session_id", name: "Session ID", width: 20 },
-    ], squads);
+    addDataSheet(
+      workbook,
+      "Shadowfront Squads",
+      "SquadsTable",
+      [
+        { key: "week_start", name: "Week", width: 14, isDate: true },
+        { key: "squad", name: "Squad", width: 12 },
+        { key: "pseudo", name: "Pseudo", width: 20 },
+        { key: "role", name: "Role", width: 14 },
+        { key: "is_commander", name: "Commander", width: 14 },
+        { key: "session_id", name: "Session ID", width: 20 },
+      ],
+      squads
+    );
 
-    addDataSheet(workbook, "Shadowfront Signups", "SignupsTable", [
-      { key: "week_start", name: "Week", width: 14 },
-      { key: "pseudo", name: "Pseudo", width: 20 },
-      { key: "availability", name: "Availability", width: 16 },
-      { key: "updated_at", name: "Updated", width: 20, isDate: true },
-    ], signups);
+    addDataSheet(
+      workbook,
+      "Shadowfront Signups",
+      "SignupsTable",
+      [
+        { key: "week_start", name: "Week", width: 14 },
+        { key: "pseudo", name: "Pseudo", width: 20 },
+        { key: "availability", name: "Availability", width: 16 },
+        { key: "updated_at", name: "Updated", width: 20, isDate: true },
+      ],
+      signups
+    );
 
-    addDataSheet(workbook, "Transfers", "TransfersTable", [
-      { key: "uid", name: "UID", width: 14 },
-      { key: "pseudo", name: "Pseudo", width: 20 },
-      { key: "source_guild", name: "From Guild", width: 16 },
-      { key: "target_guild", name: "To Guild", width: 16 },
-      { key: "status", name: "Status", width: 14 },
-      { key: "resolved_at", name: "Resolved", width: 20, isDate: true },
-      { key: "created_at", name: "Requested", width: 20, isDate: true },
-    ], transfers);
+    addDataSheet(
+      workbook,
+      "Transfers",
+      "TransfersTable",
+      [
+        { key: "uid", name: "UID", width: 14 },
+        { key: "pseudo", name: "Pseudo", width: 20 },
+        { key: "source_guild", name: "From Guild", width: 16 },
+        { key: "target_guild", name: "To Guild", width: 16 },
+        { key: "status", name: "Status", width: 14 },
+        { key: "resolved_at", name: "Resolved", width: 20, isDate: true },
+        { key: "created_at", name: "Requested", width: 20, isDate: true },
+      ],
+      transfers
+    );
 
-    addDataSheet(workbook, "Settings", "SettingsTable", [
-      { key: "key", name: "Setting", width: 28 },
-      { key: "value", name: "Value", width: 40 },
-      { key: "updated_at", name: "Updated", width: 20, isDate: true },
-    ], settings);
+    addDataSheet(
+      workbook,
+      "Settings",
+      "SettingsTable",
+      [
+        { key: "key", name: "Setting", width: 28 },
+        { key: "value", name: "Value", width: 40 },
+        { key: "updated_at", name: "Updated", width: 20, isDate: true },
+      ],
+      settings
+    );
 
     const buffer = await workbook.xlsx.writeBuffer();
     const filename = `${targetGuild}_export_${new Date().toISOString().slice(0, 10)}.xlsx`;

@@ -9,7 +9,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // Phase 7: resolveRegistration refreshes the Overview through an import now.
 vi.mock('../src/modules/overview/views/OverviewView', () => ({
-  overviewView: { load: vi.fn(), destroy: vi.fn() }
+  overviewView: { load: vi.fn(), destroy: vi.fn() },
 }));
 import { overviewView } from '../src/modules/overview/views/OverviewView';
 import { overviewViewLazy } from '../src/modules/app/lazy-views';
@@ -17,16 +17,16 @@ import { overviewViewLazy } from '../src/modules/app/lazy-views';
 // The admin modules import these directly; each test sets the behaviour it needs.
 vi.mock('../src/core/auth/session', async (importOriginal) => ({
   ...(await importOriginal()),
-  adminAccounts: vi.fn()
+  adminAccounts: vi.fn(),
 }));
 vi.mock('../src/core/config/guild-config', async (importOriginal) => ({
   ...(await importOriginal()),
   config: { get: vi.fn(async () => ''), set: vi.fn(async () => true) },
-  getGuildTag: vi.fn(async () => '')
+  getGuildTag: vi.fn(async () => ''),
 }));
 vi.mock('../src/modules/app/dialogs/dialogs.service', async (importOriginal) => ({
   ...(await importOriginal()),
-  showConfirm: vi.fn()
+  showConfirm: vi.fn(),
 }));
 import { adminAccounts } from '../src/core/auth/session';
 import { config as guildConfig, getGuildTag } from '../src/core/config/guild-config';
@@ -40,7 +40,7 @@ import {
   fetchGuilds,
   populateAccountGuildSelect,
   deleteAccount,
-  initAccountsUi
+  initAccountsUi,
 } from '../src/modules/app/admin/accounts.controller';
 import {
   fetchGuildRequests,
@@ -83,25 +83,43 @@ function makeDb(opts = {}) {
       if (table === 'guilds') {
         return {
           select: () => ({ order: async () => ({ data: guilds, error: null }) }),
-          update: (payload) => ({ eq: async () => { calls.update.push({ table, payload }); return { data: null, error: null }; } }),
-          insert: (payload) => { calls.insert.push({ table, payload }); return { select: () => ({ single: async () => ({ data: { id: 'new-group' }, error: null }) }) }; }
+          update: (payload) => ({
+            eq: async () => {
+              calls.update.push({ table, payload });
+              return { data: null, error: null };
+            },
+          }),
+          insert: (payload) => {
+            calls.insert.push({ table, payload });
+            return { select: () => ({ single: async () => ({ data: { id: 'new-group' }, error: null }) }) };
+          },
         };
       }
       if (table === 'server_migration_groups') {
         return {
           select: () => ({ order: async () => ({ data: groups, error: null }) }),
-          insert: (_payload) => ({ select: () => ({ single: async () => ({ data: { id: 'new-group' }, error: null }) }) }),
-          update: (payload) => ({ eq: async () => { calls.update.push({ table, payload }); return { data: null, error: null }; } })
+          insert: (_payload) => ({
+            select: () => ({ single: async () => ({ data: { id: 'new-group' }, error: null }) }),
+          }),
+          update: (payload) => ({
+            eq: async () => {
+              calls.update.push({ table, payload });
+              return { data: null, error: null };
+            },
+          }),
         };
       }
       if (table === 'server_migration_group_servers') {
         return {
           select: async () => ({ data: groupServers, error: null }),
-          insert: async (payload) => { calls.insert.push({ table, payload }); return { data: null, error: null }; }
+          insert: async (payload) => {
+            calls.insert.push({ table, payload });
+            return { data: null, error: null };
+          },
         };
       }
       return {};
-    }
+    },
   };
   return db;
 }
@@ -118,7 +136,9 @@ beforeEach(() => {
   setDbClient(makeDb());
   patchAppState({ currentGuild: 'ALPHA' });
   showConfirm.mockReset();
-  showConfirm.mockImplementation((_title, _msg, onConfirm) => { void onConfirm(); });
+  showConfirm.mockImplementation((_title, _msg, onConfirm) => {
+    void onConfirm();
+  });
 });
 
 afterEach(() => {
@@ -135,12 +155,21 @@ const ACCOUNTS = [
   { id: 'Super1', role: 'super_admin', guild: null, created_at: '2026-01-01T00:00:00Z' },
   { id: 'AdminA', role: 'guild_admin', guild: 'ALPHA', created_at: '2026-01-02T00:00:00Z' },
   { id: 'MemberA', role: 'member', guild: 'ALPHA', created_at: '2026-01-03T00:00:00Z' },
-  { id: 'Pending1', role: 'member', status: 'pending', guild: 'ALPHA', uid: '12345', created_at: '2026-01-04T00:00:00Z' }
+  {
+    id: 'Pending1',
+    role: 'member',
+    status: 'pending',
+    guild: 'ALPHA',
+    uid: '12345',
+    created_at: '2026-01-04T00:00:00Z',
+  },
 ];
 
 describe('fetchAccounts + account cards', () => {
   it('renders admins, members and pending registrations by role', async () => {
-    adminAccounts.mockImplementation(async (action) => (action === 'list' ? { ok: true, accounts: ACCOUNTS } : { ok: true }));
+    adminAccounts.mockImplementation(async (action) =>
+      action === 'list' ? { ok: true, accounts: ACCOUNTS } : { ok: true }
+    );
 
     await fetchAccounts();
 
@@ -164,7 +193,9 @@ describe('fetchAccounts + account cards', () => {
 
   it('renders role chips (no selectors) for a non-super-admin viewer', async () => {
     setVerifiedRole('guild_admin', 'AdminA');
-    adminAccounts.mockImplementation(async (action) => (action === 'list' ? { ok: true, accounts: ACCOUNTS } : { ok: true }));
+    adminAccounts.mockImplementation(async (action) =>
+      action === 'list' ? { ok: true, accounts: ACCOUNTS } : { ok: true }
+    );
 
     await fetchAccounts();
 
@@ -174,7 +205,9 @@ describe('fetchAccounts + account cards', () => {
 
   it('supports grouped super-admin rendering by server', async () => {
     patchAppState({ guildsData: { ALPHA: { server_number: '1058' } } });
-    adminAccounts.mockImplementation(async (action) => (action === 'list' ? { ok: true, accounts: ACCOUNTS } : { ok: true }));
+    adminAccounts.mockImplementation(async (action) =>
+      action === 'list' ? { ok: true, accounts: ACCOUNTS } : { ok: true }
+    );
 
     await fetchAccounts();
 
@@ -194,14 +227,17 @@ describe('fetchAccounts + account cards', () => {
       if (action === 'create') return { ok: true, password: 'Srv3rIssued!Pw' };
       return { ok: true };
     });
-    document.body.insertAdjacentHTML('beforeend',
+    document.body.insertAdjacentHTML(
+      'beforeend',
       '<form id="create-account-form"><input id="account-id" value="NewOfficer" />' +
-      '<button type="submit"><span>Generate Access</span></button></form>');
+        '<button type="submit"><span>Generate Access</span></button></form>'
+    );
     document.getElementById('account-guild').innerHTML = '<option value="ALPHA" selected>ALPHA</option>';
 
     initAccountsUi();
     document.getElementById('create-account-form').dispatchEvent(new Event('submit', { cancelable: true }));
-    await tick(); await tick();
+    await tick();
+    await tick();
 
     const [, payload] = adminAccounts.mock.calls.find(([a]) => a === 'create');
     expect(payload).not.toHaveProperty('password');
@@ -244,7 +280,20 @@ describe('guild requests', () => {
   it('renders requests and wires approve/reject actions through showConfirm', async () => {
     adminAccounts.mockImplementation(async (action) => {
       if (action === 'list-guild-requests') {
-        return { ok: true, requests: [{ id: 'req1', guild_tag: 'NEW', server_number: '1058', admin_id: 'admin1', discord_handle: 'a#1', status: 'pending', created_at: '2026-01-01' }] };
+        return {
+          ok: true,
+          requests: [
+            {
+              id: 'req1',
+              guild_tag: 'NEW',
+              server_number: '1058',
+              admin_id: 'admin1',
+              discord_handle: 'a#1',
+              status: 'pending',
+              created_at: '2026-01-01',
+            },
+          ],
+        };
       }
       if (action === 'approve-guild-request') return { ok: true, password: 'PW', guild: 'NEW', id: 'admin1' };
       return { ok: true };
@@ -265,16 +314,18 @@ describe('guild requests', () => {
   });
 
   it('escapes malicious guild tags and notes (XSS invariant)', () => {
-    renderGuildRequestsList([{
-      id: 'req2',
-      guild_tag: '<img src=x onerror=alert(1)>',
-      server_number: '1058',
-      admin_id: 'admin2',
-      discord_handle: '<script>bad()</script>',
-      status: 'pending',
-      note: '<b>note</b>',
-      created_at: '2026-01-01'
-    }]);
+    renderGuildRequestsList([
+      {
+        id: 'req2',
+        guild_tag: '<img src=x onerror=alert(1)>',
+        server_number: '1058',
+        admin_id: 'admin2',
+        discord_handle: '<script>bad()</script>',
+        status: 'pending',
+        note: '<b>note</b>',
+        created_at: '2026-01-01',
+      },
+    ]);
     const html = document.getElementById('guild-requests-list').innerHTML;
     expect(html).not.toContain('<img src=x');
     expect(html).not.toContain('<script>bad');
@@ -285,7 +336,9 @@ describe('guild requests', () => {
 
 describe('pending registrations', () => {
   it('renders pending accounts into both containers', async () => {
-    adminAccounts.mockImplementation(async (action) => (action === 'list' ? { ok: true, accounts: ACCOUNTS } : { ok: true }));
+    adminAccounts.mockImplementation(async (action) =>
+      action === 'list' ? { ok: true, accounts: ACCOUNTS } : { ok: true }
+    );
     await fetchAccounts();
 
     await renderPendingRegistrations('ALPHA');
@@ -332,9 +385,16 @@ describe('loadGuildSettings', () => {
   it('loads config values and checkbox state into the form', async () => {
     const config = {};
     guildConfig.get.mockImplementation(async (key) => (key in config ? config[key] : ''));
-    guildConfig.set.mockImplementation(async (key, value) => { config[key] = value; });
+    guildConfig.set.mockImplementation(async (key, value) => {
+      config[key] = value;
+    });
     getGuildTag.mockImplementation(async () => '[FGF]');
-    document.getElementById('guild-settings-form').insertAdjacentHTML('beforeend', '<input id="coeff-svs" /><input id="notify-svs-pvp" type="checkbox" /><input id="guild-tag-setting" /><input id="guild-server-number-setting" />');
+    document
+      .getElementById('guild-settings-form')
+      .insertAdjacentHTML(
+        'beforeend',
+        '<input id="coeff-svs" /><input id="notify-svs-pvp" type="checkbox" /><input id="guild-tag-setting" /><input id="guild-server-number-setting" />'
+      );
 
     await loadGuildSettings();
 
@@ -344,10 +404,15 @@ describe('loadGuildSettings', () => {
 
 describe('migration groups', () => {
   it('renders open groups with their servers and wires close/reopen', async () => {
-    setDbClient(makeDb({
-      groups: [{ id: 'g1', name: 'EU Migration', status: 'open' }],
-      groupServers: [{ group_id: 'g1', server_number: '1058' }, { group_id: 'g1', server_number: '1089' }]
-    }));
+    setDbClient(
+      makeDb({
+        groups: [{ id: 'g1', name: 'EU Migration', status: 'open' }],
+        groupServers: [
+          { group_id: 'g1', server_number: '1058' },
+          { group_id: 'g1', server_number: '1089' },
+        ],
+      })
+    );
 
     await renderMigrationGroupsList();
 

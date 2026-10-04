@@ -14,7 +14,7 @@ const TIERS = [
   { day: 1, tier: 1, min_score: 0, chests: 1 },
   { day: 1, tier: 2, min_score: 1000, chests: 2 },
   { day: 1, tier: 3, min_score: 2500, chests: 3 },
-  { day: 1, tier: 4, min_score: 5000, chests: 4 }
+  { day: 1, tier: 4, min_score: 5000, chests: 4 },
 ];
 
 describe('resolveChestsForScore', () => {
@@ -27,7 +27,7 @@ describe('resolveChestsForScore', () => {
   it('returns 0 when the score is below every threshold', () => {
     const noFreeTier = [
       { day: 1, tier: 1, min_score: 100, chests: 1 },
-      { day: 1, tier: 2, min_score: 1000, chests: 2 }
+      { day: 1, tier: 2, min_score: 1000, chests: 2 },
     ];
     expect(resolveChestsForScore(noFreeTier, 0)).toBe(0);
     expect(resolveChestsForScore(noFreeTier, 99)).toBe(0);
@@ -58,7 +58,7 @@ describe('resolveChestsForScore', () => {
       { day: 3, tier: 1, min_score: 0, chests: 0 },
       { day: 3, tier: 2, min_score: 500, chests: 5 },
       { day: 3, tier: 3, min_score: 2000, chests: 10 },
-      { day: 3, tier: 4, min_score: 10000, chests: 25 }
+      { day: 3, tier: 4, min_score: 10000, chests: 25 },
     ];
     expect(resolveChestsForScore(grid, 750)).toBe(5);
     expect(resolveChestsForScore(grid, 2000)).toBe(10);
@@ -68,9 +68,7 @@ describe('resolveChestsForScore', () => {
 
   it('is order-independent (same result for shuffled tier lists)', () => {
     const shuffled = [TIERS[3], TIERS[0], TIERS[2], TIERS[1]];
-    expect(resolveChestsForScore(shuffled, 4999)).toBe(
-      resolveChestsForScore(TIERS, 4999)
-    );
+    expect(resolveChestsForScore(shuffled, 4999)).toBe(resolveChestsForScore(TIERS, 4999));
   });
 
   it('returns 0 for negative or non-numeric scores', () => {
@@ -92,7 +90,7 @@ describe('resolveChestsForScore', () => {
       { day: 9, tier: 0, min_score: NaN, chests: 3 },
       { day: 1, tier: 9, min_score: 2000, chests: 7 },
       'not-an-object',
-      { day: 1, tier: 10, min_score: 0, chests: 1 }
+      { day: 1, tier: 10, min_score: 0, chests: 1 },
     ];
     // SQL contract: only entries with numeric min_score/chests count.
     expect(resolveChestsForScore(malformed, 2500)).toBe(7);
@@ -103,7 +101,7 @@ describe('resolveChestsForScore', () => {
     const widthAware = [
       { day: 2, tier: 1, min_score: 0, chests: 1 },
       { day: 2, tier: 2, min_score: 10, chests: 9 },
-      { day: 2, tier: 3, min_score: 1000, chests: 5 }
+      { day: 2, tier: 3, min_score: 1000, chests: 5 },
     ];
     // At score 50 both tier 1 and tier 2 are satisfied: 9 > 1.
     expect(resolveChestsForScore(widthAware, 50)).toBe(9);

@@ -110,7 +110,14 @@ describe('guild rename migration', () => {
   it('is gated and validated before any write', () => {
     const body = functionBody('gm_rename_guild');
     const firstWrite = body.indexOf('SET CONSTRAINTS ALL DEFERRED');
-    for (const guard of ["'unauthorized'", "'invalid_tag'", "'demo_protected'", "'tag_taken'", "'tag_reserved'", "'cooldown'"]) {
+    for (const guard of [
+      "'unauthorized'",
+      "'invalid_tag'",
+      "'demo_protected'",
+      "'tag_taken'",
+      "'tag_reserved'",
+      "'cooldown'",
+    ]) {
       const at = body.indexOf(guard);
       expect(at, guard).toBeGreaterThan(-1);
       expect(at, guard + ' must be checked before the first write').toBeLessThan(firstWrite);
@@ -121,7 +128,16 @@ describe('guild rename migration', () => {
 
   it('refuses a tag that still owns residual rows in non-FK tables', () => {
     const body = functionBody('gm_rename_guild');
-    for (const t of ['guild_members', 'accounts', 'account_link_codes', 'banned_players', 'event_status', 'guild_config', 'player_absences', 'system_audit_logs']) {
+    for (const t of [
+      'guild_members',
+      'accounts',
+      'account_link_codes',
+      'banned_players',
+      'event_status',
+      'guild_config',
+      'player_absences',
+      'system_audit_logs',
+    ]) {
       expect(body, t).toMatch(new RegExp('FROM public\\.' + t + '\\s+WHERE guild = v_new'));
     }
   });

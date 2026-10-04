@@ -67,7 +67,9 @@ describe('gm_verify_password is the single password implementation', () => {
   });
 
   it('is reachable only by service_role', () => {
-    expect(migration).toMatch(/REVOKE ALL ON FUNCTION public\.gm_verify_password\(text, text\) FROM PUBLIC, anon, authenticated/);
+    expect(migration).toMatch(
+      /REVOKE ALL ON FUNCTION public\.gm_verify_password\(text, text\) FROM PUBLIC, anon, authenticated/
+    );
     expect(migration).toMatch(/GRANT EXECUTE ON FUNCTION public\.gm_verify_password\(text, text\) TO service_role/);
   });
 
@@ -96,7 +98,7 @@ describe('gm_reset_account_password writes both credential columns', () => {
 
   it('keeps its service-role safety guard and its authorization matrix', () => {
     expect(body).toContain('IF auth.uid() IS NOT NULL THEN');
-    expect(body).toContain("length(p_password) < 6");
+    expect(body).toContain('length(p_password) < 6');
     expect(body).toMatch(/v_target_role = 'super_admin'/);
   });
 });
@@ -111,8 +113,12 @@ describe('gm_admin_upsert never writes a bcrypt hash of an empty password', () =
   it('leaves BOTH credential columns untouched on an empty-password update', () => {
     // src/core/auth/session.ts calls this with p_password: '' for role syncs.
     // Writing crypt('', ...) there would make the empty string a valid password.
-    expect(body).toMatch(/password_enc\s*=\s*CASE WHEN v_has_password THEN EXCLUDED\.password_enc\s*ELSE public\.accounts\.password_enc\s*END/);
-    expect(body).toMatch(/password_hash\s*=\s*CASE WHEN v_has_password THEN EXCLUDED\.password_hash\s*ELSE public\.accounts\.password_hash\s*END/);
+    expect(body).toMatch(
+      /password_enc\s*=\s*CASE WHEN v_has_password THEN EXCLUDED\.password_enc\s*ELSE public\.accounts\.password_enc\s*END/
+    );
+    expect(body).toMatch(
+      /password_hash\s*=\s*CASE WHEN v_has_password THEN EXCLUDED\.password_hash\s*ELSE public\.accounts\.password_hash\s*END/
+    );
   });
 
   it('refuses to create a brand-new account with no credential at all', () => {
@@ -149,5 +155,4 @@ describe('member-portal no longer decrypts the shadow secret on every request', 
     expect(code).not.toContain('gm_get_shadow');
     expect(code).not.toMatch(/row\?\.player_uid/);
   });
-
 });

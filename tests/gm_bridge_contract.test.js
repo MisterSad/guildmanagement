@@ -26,7 +26,10 @@ import path from 'node:path';
 const rootDir = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(rootDir, p), 'utf8');
 const stripComments = (s) =>
-  s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '').replace(/([^:])\/\/.*$/gm, '$1');
+  s
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '')
+    .replace(/([^:])\/\/.*$/gm, '$1');
 
 function walk(dir, exts, out = []) {
   for (const e of fs.readdirSync(path.join(rootDir, dir), { withFileTypes: true })) {
@@ -116,7 +119,7 @@ describe('M4c — main.ts installs exactly one global, GM_E2E', () => {
   const defineAt = mainSrc.search(/Object\.defineProperty\(\s*window\s*,\s*'GM_E2E'\s*,\s*\{/);
 
   it('defines GM_E2E with Object.defineProperty', () => {
-    expect(defineAt, 'Object.defineProperty(window, \'GM_E2E\', {...}) not found in main.ts').toBeGreaterThanOrEqual(0);
+    expect(defineAt, "Object.defineProperty(window, 'GM_E2E', {...}) not found in main.ts").toBeGreaterThanOrEqual(0);
   });
 
   it('freezes the value and makes the property non-writable and non-configurable', () => {
@@ -141,7 +144,10 @@ describe('M4c — main.ts installs exactly one global, GM_E2E', () => {
     for (const f of srcFiles) {
       const code = stripComments(read(f));
       const aliases = windowAliases(code);
-      const re = new RegExp(`Object\\.(?:defineProperty|defineProperties|assign)\\(\\s*${receiverPattern(aliases)}\\s*,\\s*([^,]*)`, 'g');
+      const re = new RegExp(
+        `Object\\.(?:defineProperty|defineProperties|assign)\\(\\s*${receiverPattern(aliases)}\\s*,\\s*([^,]*)`,
+        'g'
+      );
       for (const m of code.matchAll(re)) hits.push(`${f}: ${m[1].trim()}`);
     }
     expect(hits).toEqual(["src/main.ts: 'GM_E2E'"]);
@@ -154,7 +160,10 @@ describe('M4c — no other global is installed or read anywhere in src/', () => 
     const offenders = [];
     for (const f of srcFiles) {
       const code = stripComments(read(f));
-      const re = new RegExp(`${receiverPattern(windowAliases(code))}\\.((?:[A-Za-z_$][\\w$]*)(?:\\.[A-Za-z_$][\\w$]*)*)\\s*(?:=(?!=)|\\+=|\\|\\|=|\\?\\?=)`, 'g');
+      const re = new RegExp(
+        `${receiverPattern(windowAliases(code))}\\.((?:[A-Za-z_$][\\w$]*)(?:\\.[A-Za-z_$][\\w$]*)*)\\s*(?:=(?!=)|\\+=|\\|\\|=|\\?\\?=)`,
+        'g'
+      );
       for (const m of code.matchAll(re)) {
         if (/^location(\.|$)/.test(m[1])) continue;
         offenders.push(`${f}: window.${m[1]} =`);
@@ -179,8 +188,12 @@ describe('M4c — no other global is installed or read anywhere in src/', () => 
     // The state lives in core/state/app-state.ts (getAppState / patchAppState);
     // a read off `window` now silently sees `undefined`.
     const retired = [
-      'currentGuild', 'currentGuildRestriction', 'currentServerRestriction',
-      'guildsList', 'guildsData', 'showConfirm'
+      'currentGuild',
+      'currentGuildRestriction',
+      'currentServerRestriction',
+      'guildsList',
+      'guildsData',
+      'showConfirm',
     ];
     const offenders = [];
     for (const f of srcFiles) {
@@ -203,7 +216,7 @@ describe('M4c — the e2e suite drives the app only through GM_E2E', () => {
       const patterns = [
         new RegExp(`${recv}\\.GM\\b`, 'g'),
         new RegExp(`${recv}\\.showConfirm\\b`, 'g'),
-        /\bGM_(?:APP|OCR|PORTAL)\b/g
+        /\bGM_(?:APP|OCR|PORTAL)\b/g,
       ];
       for (const re of patterns) for (const m of code.matchAll(re)) offenders.push(`${f}: ${m[0]}`);
     }

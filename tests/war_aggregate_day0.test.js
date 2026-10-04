@@ -21,7 +21,7 @@ import {
   resolvePrepChests,
   prepTotal,
   aggregateTierSlice,
-  defaultChestGrid
+  defaultChestGrid,
 } from '../src/core/scoring/chests';
 
 const root = path.resolve(__dirname, '..');
@@ -32,8 +32,12 @@ const migration = read(MIGRATION_PATH);
 
 describe('war_aggregate_day0 migration — SQL surface', () => {
   it('widens event_daily_scores.day and event_chest_tiers.day to 0..6', () => {
-    expect(migration).toMatch(/ALTER TABLE public\.event_daily_scores[\s\S]*?event_daily_scores_day_check CHECK \(day BETWEEN 0 AND 6\)/);
-    expect(migration).toMatch(/ALTER TABLE public\.event_chest_tiers[\s\S]*?event_chest_tiers_day_check CHECK \(day BETWEEN 0 AND 6\)/);
+    expect(migration).toMatch(
+      /ALTER TABLE public\.event_daily_scores[\s\S]*?event_daily_scores_day_check CHECK \(day BETWEEN 0 AND 6\)/
+    );
+    expect(migration).toMatch(
+      /ALTER TABLE public\.event_chest_tiers[\s\S]*?event_chest_tiers_day_check CHECK \(day BETWEEN 0 AND 6\)/
+    );
     // The historical 1..6 CHECKs are no longer (re)created by this migration.
     expect(migration).not.toMatch(/CHECK \(day BETWEEN 1 AND 6\)/);
   });
@@ -64,7 +68,9 @@ describe('war_aggregate_day0 migration — SQL surface', () => {
   });
 
   it('gm_save_chest_tiers accepts the day-0 bucket', () => {
-    expect(migration).toContain('CREATE OR REPLACE FUNCTION public.gm_save_chest_tiers(p_guild text, p_event_name text, p_tiers jsonb)');
+    expect(migration).toContain(
+      'CREATE OR REPLACE FUNCTION public.gm_save_chest_tiers(p_guild text, p_event_name text, p_tiers jsonb)'
+    );
     expect(migration).toContain('IF v_day BETWEEN 0 AND 6');
     expect(migration).toContain('v_last_agg := v_min_score;');
   });
@@ -99,19 +105,21 @@ const GRID_WITH_AGG = [
   { day: 2, tier: 1, min_score: 0, chests: 1 },
   { day: 2, tier: 2, min_score: 500, chests: 3 },
   { day: 6, tier: 1, min_score: 0, chests: 1 },
-  { day: 6, tier: 2, min_score: 10000, chests: 5 }
+  { day: 6, tier: 2, min_score: 10000, chests: 5 },
 ];
 
 const GRID_WITHOUT_AGG = GRID_WITH_AGG.filter((t) => t.day !== 0);
 
 describe('prepTotal — canonical preparation total', () => {
   it('prioritizes the real sum over Day 1..5 when any daily score exists', () => {
-    expect(prepTotal([
-      { day: 1, score: 1000 },
-      { day: 2, score: 2000 },
-      { day: 3, score: 500 },
-      { day: 0, score: 50000 }
-    ])).toBe(3500);
+    expect(
+      prepTotal([
+        { day: 1, score: 1000 },
+        { day: 2, score: 2000 },
+        { day: 3, score: 500 },
+        { day: 0, score: 50000 },
+      ])
+    ).toBe(3500);
   });
 
   it('falls back to the aggregate (day 0) total when no daily score exists', () => {
@@ -119,10 +127,12 @@ describe('prepTotal — canonical preparation total', () => {
   });
 
   it('ignores Day 6 and non-prep days in the prep total', () => {
-    expect(prepTotal([
-      { day: 6, score: 999999999 },
-      { day: 0, score: 42 }
-    ])).toBe(42);
+    expect(
+      prepTotal([
+        { day: 6, score: 999999999 },
+        { day: 0, score: 42 },
+      ])
+    ).toBe(42);
   });
 
   it('resolves to 0 for empty, null, malformed or negative inputs', () => {

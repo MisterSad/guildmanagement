@@ -52,9 +52,7 @@ describe('the connection constants live in exactly one place', () => {
     // A client built from that path would have skipped installDbWriteGuard.
     // Comments are stripped first: the module documents *why* the fallback was
     // removed, and naming it in prose must not fail this assertion.
-    const code = supabaseApiContent
-      .replace(/\/\*[\s\S]*?\*\//g, '')
-      .replace(/\/\/.*$/gm, '');
+    const code = supabaseApiContent.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
     expect(code).not.toContain('import.meta.env');
     expect(code).not.toContain('getSupabaseConfig');
     expect(code).not.toContain('validateSupabaseEnv');
@@ -63,13 +61,9 @@ describe('the connection constants live in exactly one place', () => {
   it('builds the one client in main.ts and wraps it in the tenant write guard', () => {
     // The guard must be applied in the same statement that installs the
     // client, otherwise an unguarded client is briefly reachable.
-    expect(mainContent).toContain(
-      'setDbClient(installDbWriteGuard(createClient(SUPABASE_URL, SUPABASE_KEY)))'
-    );
+    expect(mainContent).toContain('setDbClient(installDbWriteGuard(createClient(SUPABASE_URL, SUPABASE_KEY)))');
     // ...and that is the only client main.ts ever installs or builds.
-    const code = mainContent
-      .replace(/\/\*[\s\S]*?\*\//g, '')
-      .replace(/\/\/.*$/gm, '');
+    const code = mainContent.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
     expect(code.match(/setDbClient\(/g)).toHaveLength(1);
     expect(code.match(/createClient\(/g)).toHaveLength(1);
   });

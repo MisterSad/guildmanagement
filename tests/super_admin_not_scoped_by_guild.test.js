@@ -24,7 +24,10 @@ import path from 'node:path';
 const rootDir = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(rootDir, p), 'utf8');
 const stripComments = (s) =>
-  s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '').replace(/\/\/.*$/gm, '');
+  s
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '')
+    .replace(/\/\/.*$/gm, '');
 
 const authCtrl = stripComments(read('src/modules/app/auth/auth.controller.ts'));
 const authService = stripComments(read('src/modules/app/auth/auth.service.ts'));
@@ -45,16 +48,17 @@ describe('a super_admin is never scoped by their own accounts.guild', () => {
     // The accounts.guild reads are built in auth.service.ts since M4b; the
     // controller calls them, and the branching that matters is still here.
     expect(authService).toMatch(/fetchAccountGuild\([\s\S]*?from\('accounts'\)\s*\.select\('guild'\)/);
-    expect(authService).toMatch(/fetchAccountGuildAndServer\([\s\S]*?from\('accounts'\)\s*\.select\('guild, server_number'\)/);
+    expect(authService).toMatch(
+      /fetchAccountGuildAndServer\([\s\S]*?from\('accounts'\)\s*\.select\('guild, server_number'\)/
+    );
     const lookups = [...authCtrl.matchAll(/fetchAccountGuild(?:AndServer)?\(client,[^\n]*/g)];
-    expect(lookups.length, 'no account-guild lookup found: the check would be vacuous')
-      .toBeGreaterThanOrEqual(2);
+    expect(lookups.length, 'no account-guild lookup found: the check would be vacuous').toBeGreaterThanOrEqual(2);
 
     for (const m of lookups) {
       // Look at the 900 characters after the lookup: whatever it feeds.
       const after = authCtrl.slice(m.index, m.index + 900);
       const setsRestriction = /currentGuildRestriction:\s*guild\b/.test(after);
-      if (!setsRestriction) continue;   // feeds a selection only: fine.
+      if (!setsRestriction) continue; // feeds a selection only: fine.
 
       const before = authCtrl.slice(Math.max(0, m.index - 600), m.index);
       expect(
@@ -70,8 +74,9 @@ describe('a super_admin is never scoped by their own accounts.guild', () => {
     const body = fn.slice(0, fn.indexOf('\n}\n'));
     expect(body.length, 'ensureInitialGuildSelection not found').toBeGreaterThan(200);
     expect(body).toMatch(/patchAppState\(\{ currentGuild: guild \}\)/);
-    expect(body, 'it must not set a restriction: that removes the tenant switcher')
-      .not.toMatch(/currentGuildRestriction/);
+    expect(body, 'it must not set a restriction: that removes the tenant switcher').not.toMatch(
+      /currentGuildRestriction/
+    );
     // And it must not invent a tenant when none is visible.
     expect(body).toMatch(/if \(!guild\) return;/);
   });

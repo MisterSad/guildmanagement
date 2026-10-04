@@ -8,7 +8,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { handleOcrFiles, callGeminiOcrVideoApi, resetOcrModalState } from '../src/modules/app/ocr/ocr.controller';
-import { setCurrentOcrMetric, setOcrExtractedPlayers, getOcrExtractedPlayers, getOcrVideoCoverage } from '../src/modules/app/ocr/ocr.meta';
+import {
+  setCurrentOcrMetric,
+  setOcrExtractedPlayers,
+  getOcrExtractedPlayers,
+  getOcrVideoCoverage,
+} from '../src/modules/app/ocr/ocr.meta';
 import { renderOcrCoverage } from '../src/modules/app/ocr/ocr.render';
 import { setGuildMembers, clearMembersStore } from '../src/modules/app/members/members.store';
 import { patchAppState, resetAppState } from '../src/core/state/app-state';
@@ -62,8 +67,12 @@ function browserReadsDuration(seconds) {
   Object.defineProperty(HTMLMediaElement.prototype, 'duration', { configurable: true, get: () => seconds });
   Object.defineProperty(HTMLMediaElement.prototype, 'src', {
     configurable: true,
-    set(_v) { queueMicrotask(() => this.dispatchEvent(new Event(seconds === null ? 'error' : 'loadedmetadata'))); },
-    get() { return ''; },
+    set(_v) {
+      queueMicrotask(() => this.dispatchEvent(new Event(seconds === null ? 'error' : 'loadedmetadata')));
+    },
+    get() {
+      return '';
+    },
   });
 }
 
@@ -93,7 +102,13 @@ afterEach(() => {
 
 describe('a video is staged, then read whole by the server', () => {
   it('uploads under <guild>/<uuid>.<ext> and sends only that path', async () => {
-    const db = stubDb({ response: { ok: true, players: [{ pseudo: 'ODIN', score: 59080000, raw_score: '59,08M', position: 2 }], coverage: { expected: 1, found: 1, missingPositions: [] } } });
+    const db = stubDb({
+      response: {
+        ok: true,
+        players: [{ pseudo: 'ODIN', score: 59080000, raw_score: '59,08M', position: 2 }],
+        coverage: { expected: 1, found: 1, missingPositions: [] },
+      },
+    });
 
     const out = await callGeminiOcrVideoApi(video(), 'glory', 'PR1M', null);
 
@@ -126,13 +141,17 @@ describe('a video is staged, then read whole by the server', () => {
 describe('refused before anything is uploaded', () => {
   it('an unsupported format', async () => {
     const db = stubDb({ response: { ok: true, players: [] } });
-    await expect(callGeminiOcrVideoApi(video('video/x-matroska'), 'glory', '', null)).rejects.toThrow('video_unsupported_type');
+    await expect(callGeminiOcrVideoApi(video('video/x-matroska'), 'glory', '', null)).rejects.toThrow(
+      'video_unsupported_type'
+    );
     expect(db.upload).not.toHaveBeenCalled();
   });
 
   it('a file over the bucket limit', async () => {
     const db = stubDb({ response: { ok: true, players: [] } });
-    await expect(callGeminiOcrVideoApi(video('video/mp4', 64 * 1024 * 1024 + 1), 'glory', '', null)).rejects.toThrow('video_too_large');
+    await expect(callGeminiOcrVideoApi(video('video/mp4', 64 * 1024 * 1024 + 1), 'glory', '', null)).rejects.toThrow(
+      'video_too_large'
+    );
     expect(db.upload).not.toHaveBeenCalled();
   });
 
@@ -153,14 +172,21 @@ describe('refused before anything is uploaded', () => {
   it('no active guild: it fails visibly, it never guesses one', async () => {
     resetAppState();
     patchAppState({ currentGuild: null, currentGuildRestriction: null });
-    try { localStorage.removeItem('gm_current_guild'); } catch { /* jsdom */ }
+    try {
+      localStorage.removeItem('gm_current_guild');
+    } catch {
+      /* jsdom */
+    }
     const db = stubDb({ response: { ok: true, players: [] } });
     await expect(callGeminiOcrVideoApi(video(), 'glory', '', null)).rejects.toThrow('no_active_guild');
     expect(db.upload).not.toHaveBeenCalled();
   });
 
   it('an upload the bucket rejected', async () => {
-    stubDb({ uploadError: { message: 'new row violates row-level security policy' }, response: { ok: true, players: [] } });
+    stubDb({
+      uploadError: { message: 'new row violates row-level security policy' },
+      response: { ok: true, players: [] },
+    });
     vi.spyOn(console, 'error').mockImplementation(() => {});
     await expect(callGeminiOcrVideoApi(video(), 'glory', '', null)).rejects.toThrow('video_upload_failed');
   });
@@ -182,7 +208,11 @@ describe('the scan flow', () => {
 
     await handleOcrFiles([video()]);
 
-    expect(getOcrExtractedPlayers().map((p) => p.pseudo).sort()).toEqual(['Cookiegami', 'ODIN']);
+    expect(
+      getOcrExtractedPlayers()
+        .map((p) => p.pseudo)
+        .sort()
+    ).toEqual(['Cookiegami', 'ODIN']);
     expect(getOcrVideoCoverage()).toEqual({ expected: 41, found: 2, missingPositions: [1, 4, 5] });
     expect(banner().style.display).toBe('block');
     expect(banner().textContent).toContain('2 / 41');
@@ -227,7 +257,13 @@ describe('the frame extractor is gone', () => {
   const ctrl = read('src/modules/app/ocr/ocr.controller.ts');
   const svc = read('src/modules/ocr/ocr.service.ts');
   it('leaves no frame selection in the browser', () => {
-    for (const gone of ['extractFramesFromVideo', 'ocrSampleRoi', 'ocrEstimateProfileShift', 'ocrProfileFromRoi', 'OCR_VIDEO_ADVANCE_FRACTION']) {
+    for (const gone of [
+      'extractFramesFromVideo',
+      'ocrSampleRoi',
+      'ocrEstimateProfileShift',
+      'ocrProfileFromRoi',
+      'OCR_VIDEO_ADVANCE_FRACTION',
+    ]) {
       expect(ctrl, gone).not.toContain(gone);
       expect(svc, gone).not.toContain(gone);
     }

@@ -30,7 +30,9 @@ const content = edgeSource('event-reminders');
 
 describe('event-reminders: Web Push decommissioning', () => {
   it('confirms Web Push has been decommissioned in favor of Discord notifications', () => {
-    expect(content).toContain('// PWA Web Push decommissioned per user request: all notifications are now routed to Discord exclusively.');
+    expect(content).toContain(
+      '// PWA Web Push decommissioned per user request: all notifications are now routed to Discord exclusively.'
+    );
     expect(content).not.toContain('npm:web-push-neo');
   });
 });
@@ -41,7 +43,7 @@ describe('event-reminders: reminder locks are atomic (ON CONFLICT DO NOTHING)', 
     // real PK violation on every overlap. ignoreDuplicates maps to
     // ON CONFLICT DO NOTHING, so it never overwrites and returns no row when
     // the lock is already held.
-    expect(content).toContain("ignoreDuplicates: true");
+    expect(content).toContain('ignoreDuplicates: true');
     expect(content).toContain("onConflict: 'guild,key'");
     expect(content).not.toContain('.insert({ guild: guild, key: lockKey');
     expect(content).not.toMatch(/\.upsert\(\s*\{[^}]*guild[^}]*key: lockKey[^}]*\}\s*\)/);
@@ -59,15 +61,20 @@ describe('event-reminders: reminder locks are atomic (ON CONFLICT DO NOTHING)', 
   it('the GvG daily task lock treats an already-held lock as "already sent" and skips, rather than silently doing nothing', () => {
     const claim = edgeFunctionBody('event-reminders', 'claimSlot');
     // The formatter writes `!(await …)`; both read the same.
-    expect(squash(claim)).toMatch(/if \(!\(?await acquireReminderLock\(run, lockKey\)\)?\) \{ run\.logger\.info\(`\[\$\{run\.guild\}\] Lock already exists for \$\{what\}, skipping`\); return false;/);
+    expect(squash(claim)).toMatch(
+      /if \(!\(?await acquireReminderLock\(run, lockKey\)\)?\) \{ run\.logger\.info\(`\[\$\{run\.guild\}\] Lock already exists for \$\{what\}, skipping`\); return false;/
+    );
     // The formatter writes `!(await …)`; both read the same.
-    expect(edgeFunctionBody('event-reminders', 'runGvgDailyTasks')).toMatch(/if \(!\(?await claimSlot\(run, lockKey, what, forceGvg\)\)?\) return;/);
+    expect(edgeFunctionBody('event-reminders', 'runGvgDailyTasks')).toMatch(
+      /if \(!\(?await claimSlot\(run, lockKey, what, forceGvg\)\)?\) return;/
+    );
   });
 });
 
 describe('event-reminders: Discord webhook allowed_mentions and role handling', () => {
-  it('includes allowed_mentions: { parse: [\'roles\', \'users\', \'everyone\'] } on all webhook payloads in event-reminders', () => {
-    const everyone = /allowed_mentions:\s*\{\s*parse:\s*\[\s*['"]roles['"],\s*['"]users['"],\s*['"]everyone['"]\s*\]\s*\}/;
+  it("includes allowed_mentions: { parse: ['roles', 'users', 'everyone'] } on all webhook payloads in event-reminders", () => {
+    const everyone =
+      /allowed_mentions:\s*\{\s*parse:\s*\[\s*['"]roles['"],\s*['"]users['"],\s*['"]everyone['"]\s*\]\s*\}/;
     // M3: four blocks build their payload with reminderBody(); the GvG daily
     // task list spreads its own embed and adds the same allowed_mentions.
     expect(edgeFunctionBody('event-reminders', 'reminderBody')).toMatch(everyone);
@@ -76,20 +83,28 @@ describe('event-reminders: Discord webhook allowed_mentions and role handling', 
   });
 
   it('supports dedicated role IDs for Shadowfront Squad 1 and Squad 2 with fallback', () => {
-    expect(squash(content)).toContain(squash("normalizeEventName(event.event_name) === 'SHADOWFRONT SQUAD 1' && config['discord_role_id_shadowfront_squad1']?.trim()"));
-    expect(squash(content)).toContain(squash("normalizeEventName(event.event_name) === 'SHADOWFRONT SQUAD 2' && config['discord_role_id_shadowfront_squad2']?.trim()"));
-    expect(content).toContain("eventSpecificRoleId = config[`discord_role_id_${eventPrefix}`] || null;");
+    expect(squash(content)).toContain(
+      squash(
+        "normalizeEventName(event.event_name) === 'SHADOWFRONT SQUAD 1' && config['discord_role_id_shadowfront_squad1']?.trim()"
+      )
+    );
+    expect(squash(content)).toContain(
+      squash(
+        "normalizeEventName(event.event_name) === 'SHADOWFRONT SQUAD 2' && config['discord_role_id_shadowfront_squad2']?.trim()"
+      )
+    );
+    expect(content).toContain('eventSpecificRoleId = config[`discord_role_id_${eventPrefix}`] || null;');
   });
 
   it('uses svsGuildTag for SvS garrison reminder instead of hardcoded @everyone', () => {
-    expect(content).toContain('${svsGuildTag || \'@everyone\'}');
+    expect(content).toContain("${svsGuildTag || '@everyone'}");
     expect(content).not.toMatch(/content:\s*`🏰\s*\*\*SvS Battle Day - Base Defense Alert!\*\*\s*@everyone`/);
   });
 
   it('auto-expires stale events older than 24 hours in event-reminders', () => {
     expect(content).toContain('const DAY_MS = 24 * 60 * 60 * 1000;');
     expect(content).toMatch(/\(?now - startMs\)? > DAY_MS/);
-    expect(content).toContain("is_active: false");
+    expect(content).toContain('is_active: false');
   });
 });
 
@@ -130,11 +145,19 @@ describe('event-reminders: webhook category silencing (P0 RC3)', () => {
 describe('frontend: allowed_mentions and squad 2 role support', () => {
   const gmUtilsPath = path.resolve(__dirname, '../src/core/integrations/discord.ts');
   const gmUtilsContent = fs.readFileSync(gmUtilsPath, 'utf-8');
-  const shadowfrontViewContent = fs.readFileSync(path.resolve(__dirname, '../src/modules/shadowfront/views/ShadowfrontView.ts'), 'utf-8');
-  const shadowfrontServiceContent = fs.readFileSync(path.resolve(__dirname, '../src/modules/shadowfront/shadowfront.service.ts'), 'utf-8');
+  const shadowfrontViewContent = fs.readFileSync(
+    path.resolve(__dirname, '../src/modules/shadowfront/views/ShadowfrontView.ts'),
+    'utf-8'
+  );
+  const shadowfrontServiceContent = fs.readFileSync(
+    path.resolve(__dirname, '../src/modules/shadowfront/shadowfront.service.ts'),
+    'utf-8'
+  );
 
   it('gm-utils sendDiscordWebhookDetailed guarantees allowed_mentions', () => {
-    expect(gmUtilsContent).toContain("body.allowed_mentions = body.allowed_mentions || { parse: ['roles', 'users', 'everyone'] };");
+    expect(gmUtilsContent).toContain(
+      "body.allowed_mentions = body.allowed_mentions || { parse: ['roles', 'users', 'everyone'] };"
+    );
   });
 
   it('gm-utils notifyDiscordEvent handles Squad 1 and Squad 2 role configs', () => {
@@ -145,7 +168,9 @@ describe('frontend: allowed_mentions and squad 2 role support', () => {
   });
 
   it('the Shadowfront share uses squad 1 / squad 2 roles and allowed_mentions', () => {
-    expect(shadowfrontViewContent).toContain("squadKey === 'squad2' ? 'discord_role_id_shadowfront_squad2' : 'discord_role_id_shadowfront_squad1'");
+    expect(shadowfrontViewContent).toContain(
+      "squadKey === 'squad2' ? 'discord_role_id_shadowfront_squad2' : 'discord_role_id_shadowfront_squad1'"
+    );
     expect(shadowfrontServiceContent).toContain("allowed_mentions: { parse: ['roles', 'users', 'everyone'] }");
   });
 });

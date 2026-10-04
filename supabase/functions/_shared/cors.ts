@@ -41,8 +41,10 @@ export const ALLOWED_ORIGINS = [
 const VERCEL_TEAM_SCOPE = "mistersads-projects";
 const VERCEL_OFFICIAL_REGEX = new RegExp(
   "^https://(?:fgf-guild-management|guildmanagement)" +
-  "(?:(?:-git-[a-z0-9][a-z0-9-]*|-[a-z0-9]{6,})?-" + VERCEL_TEAM_SCOPE + ")?" +
-  "\\.vercel\\.app$",
+    "(?:(?:-git-[a-z0-9][a-z0-9-]*|-[a-z0-9]{6,})?-" +
+    VERCEL_TEAM_SCOPE +
+    ")?" +
+    "\\.vercel\\.app$",
   "i"
 );
 
@@ -75,7 +77,8 @@ export function getCorsHeaders(req?: Request): Record<string, string> {
 
   return {
     "Access-Control-Allow-Origin": origin,
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-correlation-id, x-cron-secret",
+    "Access-Control-Allow-Headers":
+      "authorization, x-client-info, apikey, content-type, x-correlation-id, x-cron-secret",
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
     // Content-Disposition isn't in the default CORS-safelisted response
     // headers, so a cross-origin fetch() can't read it (res.headers.get()

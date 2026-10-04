@@ -21,9 +21,17 @@ function makeFakeAdmin(pages) {
     from(table) {
       const filters = [];
       const chain = {
-        select() { return chain; },
-        eq(col, val) { filters.push([col, val]); return chain; },
-        or(expr) { filters.push(['or', expr]); return chain; },
+        select() {
+          return chain;
+        },
+        eq(col, val) {
+          filters.push([col, val]);
+          return chain;
+        },
+        or(expr) {
+          filters.push(['or', expr]);
+          return chain;
+        },
         range(from, to) {
           calls.push({ table, filters, from, to });
           const tablePages = pages[table] || [];
@@ -82,10 +90,7 @@ describe('fetchAllRows', () => {
 });
 
 describe('Regression: guild-data-export enforces guild scoping and stays paginated', () => {
-  const src = fs.readFileSync(
-    path.resolve(__dirname, '../supabase/functions/guild-data-export/index.ts'),
-    'utf-8'
-  );
+  const src = fs.readFileSync(path.resolve(__dirname, '../supabase/functions/guild-data-export/index.ts'), 'utf-8');
 
   it('forces guild_admin onto their own guild, never a client-supplied one', () => {
     const idx = src.indexOf('isGuildAdmin(caller.role) ? caller.guild');

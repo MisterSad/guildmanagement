@@ -47,7 +47,7 @@ describe('TICKET-08 [SEC-04]: CDN Packaging & CSP Hardening', () => {
     expect(mainTs).toContain("import '@phosphor-icons/web/regular';");
     // The duotone family was dropped: 231 KB of CSS and a 164 KB woff2 for the
     // 56 icons that used it, all of which exist in the regular set.
-    expect(mainTs).not.toContain("@phosphor-icons/web/duotone");
+    expect(mainTs).not.toContain('@phosphor-icons/web/duotone');
     // supabase-js comes from the local package, never a CDN global. The
     // `window.supabase` shim main.ts used to install went with the window
     // bridge (M4c): the client is built from the import and nothing else.

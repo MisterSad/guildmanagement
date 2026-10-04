@@ -24,8 +24,12 @@ let detachEarlyListeners: (() => void) | null = null;
 
 function holdEarlyErrors(): void {
   if (typeof window === 'undefined' || detachEarlyListeners) return;
-  const onError = (e: ErrorEvent) => { if (earlyErrors.length < MAX_EARLY_ERRORS) earlyErrors.push(e.error || e.message); };
-  const onRejection = (e: PromiseRejectionEvent) => { if (earlyErrors.length < MAX_EARLY_ERRORS) earlyErrors.push(e.reason); };
+  const onError = (e: ErrorEvent) => {
+    if (earlyErrors.length < MAX_EARLY_ERRORS) earlyErrors.push(e.error || e.message);
+  };
+  const onRejection = (e: PromiseRejectionEvent) => {
+    if (earlyErrors.length < MAX_EARLY_ERRORS) earlyErrors.push(e.reason);
+  };
   window.addEventListener('error', onError);
   window.addEventListener('unhandledrejection', onRejection);
   detachEarlyListeners = () => {
@@ -79,7 +83,12 @@ export function scrubData(data: unknown, depth = 0): unknown {
   const sanitized: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
     const lower = key.toLowerCase();
-    if (SENSITIVE_KEYS.has(lower) || lower.includes('password') || lower.includes('secret') || lower.includes('token')) {
+    if (
+      SENSITIVE_KEYS.has(lower) ||
+      lower.includes('password') ||
+      lower.includes('secret') ||
+      lower.includes('token')
+    ) {
       sanitized[key] = '[REDACTED]';
     } else if (typeof value === 'object' && value !== null) {
       sanitized[key] = scrubData(value, depth + 1);
@@ -161,35 +170,41 @@ export function initSentry(options?: SentryInitOptions): Promise<boolean> {
   }
 
   holdEarlyErrors();
-  loading = import('./sentry-sdk').then((Sentry) => {
-    Sentry.init({
-      dsn: dsn.trim(),
-      release: options?.release || APP_VERSION,
-      environment:
-        options?.environment ||
-        (typeof import.meta !== 'undefined' && (import.meta as any).env?.MODE) ||
-        'production',
-      sampleRate: options?.sampleRate ?? 1.0,
-      beforeSend: (event) => scrubSentryEvent(event as SentryNS.ErrorEvent),
-      sendDefaultPii: false,
+  loading = import('./sentry-sdk')
+    .then((Sentry) => {
+      Sentry.init({
+        dsn: dsn.trim(),
+        release: options?.release || APP_VERSION,
+        environment:
+          options?.environment ||
+          (typeof import.meta !== 'undefined' && (import.meta as any).env?.MODE) ||
+          'production',
+        sampleRate: options?.sampleRate ?? 1.0,
+        beforeSend: (event) => scrubSentryEvent(event as SentryNS.ErrorEvent),
+        sendDefaultPii: false,
+      });
+      sdk = Sentry;
+      isInitialized = true;
+      // Sentry's own global handlers take over from here; report what came first.
+      if (detachEarlyListeners) detachEarlyListeners();
+      const held = earlyErrors;
+      earlyErrors = [];
+      for (const err of held) {
+        try {
+          Sentry.captureException(err);
+        } catch (_) {
+          /* never let reporting throw */
+        }
+      }
+      return true;
+    })
+    .catch(() => {
+      // Silent fail: invalid DSN format, or the chunk could not be downloaded.
+      if (detachEarlyListeners) detachEarlyListeners();
+      earlyErrors = [];
+      loading = null;
+      return false;
     });
-    sdk = Sentry;
-    isInitialized = true;
-    // Sentry's own global handlers take over from here; report what came first.
-    if (detachEarlyListeners) detachEarlyListeners();
-    const held = earlyErrors;
-    earlyErrors = [];
-    for (const err of held) {
-      try { Sentry.captureException(err); } catch (_) { /* never let reporting throw */ }
-    }
-    return true;
-  }).catch(() => {
-    // Silent fail: invalid DSN format, or the chunk could not be downloaded.
-    if (detachEarlyListeners) detachEarlyListeners();
-    earlyErrors = [];
-    loading = null;
-    return false;
-  });
   return loading;
 }
 

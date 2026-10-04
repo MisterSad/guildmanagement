@@ -15,7 +15,10 @@ import type { DbClient } from '../../core/api/db-client';
  * inserts this replaces could leave an "open" group with no servers.
  * Throws GuildWriteError on refusal (`bad_request`, `forbidden`).
  */
-export async function createMigrationGroup(name: string, servers: string[]): Promise<{ ok: true; id: string; servers: number }> {
+export async function createMigrationGroup(
+  name: string,
+  servers: string[]
+): Promise<{ ok: true; id: string; servers: number }> {
   const client = getSupabaseClient();
   if (!client) throw new GuildWriteError('no_client', 'The database is not available.');
   const { data, error } = await client.rpc('gm_create_migration_group', { p_name: name, p_servers: servers });
@@ -46,7 +49,15 @@ export function queryWikiPages(db: DbClient, scope: string, currentG: string, se
 }
 
 /** Updates an existing wiki page's editable fields. */
-export function updateWikiPage(db: DbClient, pageId: any, title: any, category: any, content: any, isPinned: any, attachments: any) {
+export function updateWikiPage(
+  db: DbClient,
+  pageId: any,
+  title: any,
+  category: any,
+  content: any,
+  isPinned: any,
+  attachments: any
+) {
   return db
     .from('migration_wiki_pages')
     .update({
@@ -54,13 +65,24 @@ export function updateWikiPage(db: DbClient, pageId: any, title: any, category: 
       category,
       content,
       is_pinned: isPinned,
-      attachments
+      attachments,
     })
     .eq('id', pageId);
 }
 
 /** Creates a wiki page and returns its id. */
-export function insertWikiPage(db: DbClient, scope: string, serverNumber: any, currentG: string, category: any, title: any, content: any, isPinned: any, attachments: any, pseudo: string) {
+export function insertWikiPage(
+  db: DbClient,
+  scope: string,
+  serverNumber: any,
+  currentG: string,
+  category: any,
+  title: any,
+  content: any,
+  isPinned: any,
+  attachments: any,
+  pseudo: string
+) {
   return db
     .from('migration_wiki_pages')
     .insert({
@@ -75,7 +97,7 @@ export function insertWikiPage(db: DbClient, scope: string, serverNumber: any, c
       // Authorship and owner guild are stamped by the database from the
       // session; NOT NULL placeholders only (trg_migration_wiki_pages_stamp).
       created_by_pseudo: pseudo,
-      updated_by_pseudo: pseudo
+      updated_by_pseudo: pseudo,
     })
     .select('id')
     .single();
@@ -96,11 +118,7 @@ export function deleteWikiPage(db: DbClient, pageId: any) {
 
 /** A wiki page's comments, oldest first. */
 export function queryWikiComments(db: DbClient, pageId: string) {
-  return db
-    .from('migration_wiki_comments')
-    .select('*')
-    .eq('page_id', pageId)
-    .order('created_at', { ascending: true });
+  return db.from('migration_wiki_comments').select('*').eq('page_id', pageId).order('created_at', { ascending: true });
 }
 
 /** Posts a comment on a wiki page. */
@@ -110,7 +128,7 @@ export function insertWikiComment(db: DbClient, pageId: any, content: any, pseud
     content,
     // Author fields are stamped by the database from the session
     // (trg_migration_wiki_comments_stamp); NOT NULL placeholder only.
-    author_pseudo: pseudo
+    author_pseudo: pseudo,
   });
 }
 
@@ -127,8 +145,8 @@ export function requestPageSummary(db: DbClient, pageId: any, scope: any, guildI
       pageId,
       scope,
       guildId,
-      serverNumber
-    }
+      serverNumber,
+    },
   });
 }
 
@@ -139,8 +157,8 @@ export function requestScopeBriefing(db: DbClient, scope: string, currentG: any,
       mode: 'scope',
       scope,
       guildId: scope === 'guild' ? currentG : null,
-      serverNumber
-    }
+      serverNumber,
+    },
   });
 }
 

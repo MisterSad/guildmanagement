@@ -70,7 +70,7 @@ export function weightedRate(
   Object.keys(buckets || {}).forEach((label) => {
     const b = (buckets as Record<string, BucketCounts>)[label] || { att: 0, opp: 0 };
     const key = coeffBucketOf(label);
-    const coeff = (key && useCoeffs[key] != null) ? useCoeffs[key] : 1;
+    const coeff = key && useCoeffs[key] != null ? useCoeffs[key] : 1;
     attended += coeff * (Number(b.att) || 0);
     opportunities += coeff * (Number(b.opp) || 0);
   });
@@ -78,7 +78,7 @@ export function weightedRate(
   return {
     rate: opportunities > 0 ? (attended / opportunities) * 100 : null,
     attended,
-    opportunities
+    opportunities,
   };
 }
 

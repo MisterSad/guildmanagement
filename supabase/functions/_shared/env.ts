@@ -1,7 +1,10 @@
 import { z } from "https://esm.sh/zod@3.23.8";
 
 export class ConfigurationError extends Error {
-  constructor(message: string, public issues?: z.ZodIssue[]) {
+  constructor(
+    message: string,
+    public issues?: z.ZodIssue[]
+  ) {
     super(message);
     this.name = "ConfigurationError";
   }
@@ -9,9 +12,7 @@ export class ConfigurationError extends Error {
 
 // Base schema for standard Supabase Deno Edge Functions
 export const EnvSchema = z.object({
-  SUPABASE_URL: z
-    .string({ required_error: "SUPABASE_URL is required" })
-    .url("SUPABASE_URL must be a valid URL"),
+  SUPABASE_URL: z.string({ required_error: "SUPABASE_URL is required" }).url("SUPABASE_URL must be a valid URL"),
   SUPABASE_SERVICE_ROLE_KEY: z
     .string({ required_error: "SUPABASE_SERVICE_ROLE_KEY is required" })
     .min(1, "SUPABASE_SERVICE_ROLE_KEY must not be empty"),
@@ -106,13 +107,8 @@ export function getValidatedEnv(
 
   const parsed = schema.safeParse(raw);
   if (!parsed.success) {
-    const errorDetails = parsed.error.issues
-      .map((i) => `[${i.path.join(".")}] ${i.message}`)
-      .join("; ");
-    throw new ConfigurationError(
-      `Environment configuration error: ${errorDetails}`,
-      parsed.error.issues
-    );
+    const errorDetails = parsed.error.issues.map((i) => `[${i.path.join(".")}] ${i.message}`).join("; ");
+    throw new ConfigurationError(`Environment configuration error: ${errorDetails}`, parsed.error.issues);
   }
 
   return parsed.data;

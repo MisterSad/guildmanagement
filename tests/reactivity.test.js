@@ -20,8 +20,12 @@ describe('debounce / runInChunks / cache (core helpers, imported directly)', () 
 
   it('debounce collapses a burst of calls into one, after the delay', async () => {
     let calls = 0;
-    const fn = debounce(() => { calls++; }, 30);
-    fn(); fn(); fn();
+    const fn = debounce(() => {
+      calls++;
+    }, 30);
+    fn();
+    fn();
+    fn();
     expect(calls).toBe(0);
     await new Promise((r) => setTimeout(r, 60));
     expect(calls).toBe(1);
@@ -130,7 +134,9 @@ describe('Batched per-row Supabase calls (previously sequential for-loops)', () 
     expect(ocrJs).not.toMatch(/for \(const targetUid of Array\.from\(newUidSeen\)\)/);
     // The ban check is now one query for the whole batch...
     expect(ocrJs).toContain('await findBannedUids(client, targetUids)');
-    expect(read('src/modules/ocr/ocr.service.ts')).toMatch(/from\('banned_players'\)\.select\('uid'\)\.in\('uid', uids\)/);
+    expect(read('src/modules/ocr/ocr.service.ts')).toMatch(
+      /from\('banned_players'\)\.select\('uid'\)\.in\('uid', uids\)/
+    );
     // ...and the collision probes run 10 at a time.
     expect(ocrJs).toContain('runInChunks(targetUids, 10');
     // A single UID failing must still not fail the whole commit.
@@ -188,7 +194,10 @@ describe('Build pipeline: the root copy loop', () => {
   it('no longer claims to minify anything it copies', () => {
     expect(buildJs).not.toContain('minifyToDist');
     // The one real minification is index.html's (M5), in its own block.
-    const copyLoop = buildJs.slice(buildJs.indexOf('for (const file of files)'), buildJs.indexOf('fonts/ holds no woff2'));
+    const copyLoop = buildJs.slice(
+      buildJs.indexOf('for (const file of files)'),
+      buildJs.indexOf('fonts/ holds no woff2')
+    );
     expect(copyLoop.length).toBeGreaterThan(100);
     expect(copyLoop).not.toMatch(/minif/i);
   });

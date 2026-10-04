@@ -66,7 +66,11 @@ export function addSessionVerifiedListener(listener: SessionVerifiedListener): (
 
 export function notifySessionVerified(info: SessionInfo | null): void {
   for (const listener of sessionVerifiedListeners) {
-    try { listener(info); } catch (_) { /* defensive */ }
+    try {
+      listener(info);
+    } catch (_) {
+      /* defensive */
+    }
   }
 }
 
@@ -82,7 +86,9 @@ export async function parseFunctionsInvokeResult(result: any): Promise<any> {
     try {
       const body = await ctx.clone().json();
       if (body && typeof body === 'object') return body;
-    } catch { /* not JSON, or already consumed — fall through */ }
+    } catch {
+      /* not JSON, or already consumed — fall through */
+    }
   }
   return { ok: false, error: (result && result.error && result.error.message) || 'request_failed' };
 }
@@ -93,11 +99,11 @@ export async function ensureAuthSession(): Promise<any> {
   if (!c) return null;
   try {
     let s = await c.auth.getSession();
-    const session = (s && s.data) ? s.data.session : null;
+    const session = s && s.data ? s.data.session : null;
     if (session) {
       const exp = (session as any).expires_at;
       const now = Math.floor(Date.now() / 1000);
-      if (exp && (exp - now < 60)) {
+      if (exp && exp - now < 60) {
         const ref = await c.auth.refreshSession();
         if (ref && ref.data && ref.data.session) {
           resetSessionInvalidationFlag();
@@ -113,7 +119,7 @@ export async function ensureAuthSession(): Promise<any> {
     }
     await new Promise((resolve) => setTimeout(resolve, 300));
     s = await c.auth.getSession();
-    return (s && s.data) ? s.data.session : null;
+    return s && s.data ? s.data.session : null;
   } catch (e) {
     console.warn('ensureAuthSession error', e);
     return null;
@@ -151,7 +157,9 @@ export function purgeInvalidSessionStorage(): void {
       if (k && (k.startsWith('sb-') || k.startsWith('supabase.'))) doomed.push(k);
     }
     doomed.forEach((k) => localStorage.removeItem(k));
-  } catch { /* storage unavailable */ }
+  } catch {
+    /* storage unavailable */
+  }
 }
 
 /** Re-arms the invalidation guard after a successful session refresh. */
@@ -172,7 +180,9 @@ export function handleSessionInvalidation(): void {
   if (typeof window !== 'undefined') {
     try {
       window.dispatchEvent(new Event('gm:session-expired'));
-    } catch { /* noop */ }
+    } catch {
+      /* noop */
+    }
   }
 }
 
@@ -192,23 +202,30 @@ export async function forceRefreshPortalSession(): Promise<PortalSessionInfo | n
   if (!key) return null;
 
   let raw: string | null = null;
-  try { raw = localStorage.getItem(key); } catch (_) { return null; }
+  try {
+    raw = localStorage.getItem(key);
+  } catch (_) {
+    return null;
+  }
   if (!raw) return null;
 
   let stored: any = null;
   try {
     stored = typeof raw === 'string' && raw.charAt(0) === '{' ? JSON.parse(raw) : null;
     if (!stored && raw.charAt(0) !== '{') stored = JSON.parse(decodeURIComponent(raw));
-  } catch (_) { return null; }
+  } catch (_) {
+    return null;
+  }
 
-  const refreshToken = stored && (stored.refresh_token || (stored.currentSession && stored.currentSession.refresh_token));
+  const refreshToken =
+    stored && (stored.refresh_token || (stored.currentSession && stored.currentSession.refresh_token));
   if (!refreshToken) return null;
 
   try {
     const resp = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=refresh_token', {
       method: 'POST',
       headers: { apikey: SUPABASE_KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refresh_token: refreshToken })
+      body: JSON.stringify({ refresh_token: refreshToken }),
     });
     const data = await resp.json();
     if (!data || !data.access_token) {
@@ -219,8 +236,11 @@ export async function forceRefreshPortalSession(): Promise<PortalSessionInfo | n
     const s = await c.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token });
     if (s.error) return null;
     const p = data.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-    const padded = p + '='.repeat((4 - p.length % 4) % 4);
-    const jsonStr = atob(padded).split('').map((ch: string) => '%' + ('00' + ch.charCodeAt(0).toString(16)).slice(-2)).join('');
+    const padded = p + '='.repeat((4 - (p.length % 4)) % 4);
+    const jsonStr = atob(padded)
+      .split('')
+      .map((ch: string) => '%' + ('00' + ch.charCodeAt(0).toString(16)).slice(-2))
+      .join('');
     const claims = JSON.parse(decodeURIComponent(jsonStr));
     const am = claims.app_metadata || {};
     const res: PortalSessionInfo = { role: normalizeRole(am.app_role || 'member'), accountId: am.account_id || null };
@@ -236,7 +256,9 @@ export async function sessionInfo(): Promise<SessionInfo | null> {
   const c = getClient();
   if (!c) return null;
   let res: any;
-  try { res = await c.auth.getSession(); } catch (_) {
+  try {
+    res = await c.auth.getSession();
+  } catch (_) {
     notifySessionVerified(null);
     return null;
   }
@@ -247,8 +269,11 @@ export async function sessionInfo(): Promise<SessionInfo | null> {
   }
   try {
     const p = session.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-    const padded = p + '='.repeat((4 - p.length % 4) % 4);
-    const jsonStr = atob(padded).split('').map((ch: string) => '%' + ('00' + ch.charCodeAt(0).toString(16)).slice(-2)).join('');
+    const padded = p + '='.repeat((4 - (p.length % 4)) % 4);
+    const jsonStr = atob(padded)
+      .split('')
+      .map((ch: string) => '%' + ('00' + ch.charCodeAt(0).toString(16)).slice(-2))
+      .join('');
     const claims = JSON.parse(decodeURIComponent(jsonStr));
     const am = claims.app_metadata || {};
     if (!am.app_role) {

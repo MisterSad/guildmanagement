@@ -27,7 +27,6 @@ import { serveUnlessTest } from "../_shared/serve.ts";
 // already partly spent. That is the same cost player-register accepts, and a
 // shared budget that works beats a private one that does not.
 
-
 /**
  * FINDING B3, now closed: this limiter used to be a `Map` in module scope.
  * Edge isolates are ephemeral and scaled horizontally, so "5 per 5 minutes"
@@ -65,7 +64,11 @@ export async function handler(req: Request): Promise<Response> {
     return json({ ok: false, error: "too_many_attempts" }, 429);
   }
 
-  let guildTag = "", serverNumber = "", adminId = "", discordHandle = "", note = "";
+  let guildTag = "",
+    serverNumber = "",
+    adminId = "",
+    discordHandle = "",
+    note = "";
   try {
     const body = await req.json();
     guildTag = (body?.guildTag ?? "").toString().trim();
@@ -84,7 +87,8 @@ export async function handler(req: Request): Promise<Response> {
   if (!/^[A-Za-z0-9_]{2,12}$/.test(guildTag)) return json({ ok: false, error: "invalid_guild_tag" }, 200);
   if (!/^[0-9]{4}$/.test(serverNumber)) return json({ ok: false, error: "invalid_server_number" }, 200);
   if (adminId.length < 3 || adminId.length > 32) return json({ ok: false, error: "invalid_admin_id" }, 200);
-  if (discordHandle.length < 2 || discordHandle.length > 40) return json({ ok: false, error: "invalid_discord_handle" }, 200);
+  if (discordHandle.length < 2 || discordHandle.length > 40)
+    return json({ ok: false, error: "invalid_discord_handle" }, 200);
   if (note.length > 500) return json({ ok: false, error: "note_too_long" }, 200);
 
   logger.info("Processing guild creation request", { guildTag, serverNumber, adminId });

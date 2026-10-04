@@ -17,7 +17,9 @@ Deno.test("refuses a body without an action; an unknown action never runs", asyn
     // Without a session the caller is refused first (401); either way it does not run.
     const unknown = (await handler(post({ action: "drop-tables" }))).status;
     assertEquals(unknown === 400 || unknown === 401, true);
-  } finally { uninstallFake(); }
+  } finally {
+    uninstallFake();
+  }
 });
 
 Deno.test("refuses a caller without a session", async () => {
@@ -26,7 +28,9 @@ Deno.test("refuses a caller without a session", async () => {
   try {
     const res = await handler(post({ action: "get-absences", payload: {} }));
     assertEquals(res.status, 401);
-  } finally { uninstallFake(); }
+  } finally {
+    uninstallFake();
+  }
 });
 
 Deno.test("is rate-limited before the caller is even resolved", async () => {
@@ -35,6 +39,11 @@ Deno.test("is rate-limited before the caller is even resolved", async () => {
   fake.rpcs["gm_check_ip_throttle"] = () => ({ data: [{ allowed: false, remaining: 0 }], error: null });
   try {
     assertEquals((await handler(post({ action: "get-absences", payload: {} }, "jwt-anything"))).status, 429);
-    assertEquals(fake.calls.some((c) => c.kind === "auth"), false);
-  } finally { uninstallFake(); }
+    assertEquals(
+      fake.calls.some((c) => c.kind === "auth"),
+      false
+    );
+  } finally {
+    uninstallFake();
+  }
 });

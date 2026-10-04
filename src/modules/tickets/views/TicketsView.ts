@@ -9,7 +9,6 @@
  * (parity bridge is added at cutover in src/main.ts).
  */
 
-
 import { adoptDialog } from '../../../components/ui/Dialog';
 import { escapeHTML } from '../../../core/utils/text';
 import { t } from '../../../core/i18n/i18n';
@@ -19,21 +18,25 @@ import { showToast } from '../../../core/dom/toast';
 import { listTickets, updateTicketStatus } from '../tickets.service';
 
 const SEVERITY_COLOR: Record<string, string> = {
-  low:      'background:rgba(148,163,184,0.14); color:#94a3b8; border:1px solid rgba(148,163,184,0.3);',
-  medium:   'background:rgba(245,158,11,0.14); color:#fbbf24; border:1px solid rgba(245,158,11,0.3);',
-  high:     'background:rgba(249,115,22,0.14); color:#fb923c; border:1px solid rgba(249,115,22,0.3);',
-  critical: 'background:rgba(239,68,68,0.14); color:#f87171; border:1px solid rgba(239,68,68,0.3);'
+  low: 'background:rgba(148,163,184,0.14); color:#94a3b8; border:1px solid rgba(148,163,184,0.3);',
+  medium: 'background:rgba(245,158,11,0.14); color:#fbbf24; border:1px solid rgba(245,158,11,0.3);',
+  high: 'background:rgba(249,115,22,0.14); color:#fb923c; border:1px solid rgba(249,115,22,0.3);',
+  critical: 'background:rgba(239,68,68,0.14); color:#f87171; border:1px solid rgba(239,68,68,0.3);',
 };
 
 const STATUS_LABEL: Record<string, string> = {
-  waiting:     'tickets_status_waiting',
+  waiting: 'tickets_status_waiting',
   in_progress: 'tickets_status_in_progress',
-  open:        'tickets_status_waiting',
-  resolved:    'tickets_status_resolved',
-  closed:      'tickets_status_closed'
+  open: 'tickets_status_waiting',
+  resolved: 'tickets_status_resolved',
+  closed: 'tickets_status_closed',
 };
 
-const CATEGORY: Record<string, string> = { bug: 'ticket_cat_bug', feature: 'ticket_cat_feature', other: 'ticket_cat_other' };
+const CATEGORY: Record<string, string> = {
+  bug: 'ticket_cat_bug',
+  feature: 'ticket_cat_feature',
+  other: 'ticket_cat_other',
+};
 
 /** Skeleton markup while tickets are loading (module-level export = test invariant). */
 export function loadingHtml(): string {
@@ -41,20 +44,24 @@ export function loadingHtml(): string {
   for (let i = 0; i < 4; i++) {
     cards +=
       '<div class="gm-card gm-card-padded gm-skeleton-card" style="margin-bottom:0.75rem;">' +
-        '<div style="display:flex; justify-content:space-between; align-items:center; gap:0.75rem; margin-bottom:0.4rem;">' +
-          '<div style="display:flex; align-items:center; gap:0.5rem;">' +
-            '<div class="gm-skeleton gm-skeleton-text" style="width:85px; height:1rem;"></div>' +
-            '<div class="gm-skeleton gm-skeleton-badge" style="width:70px; height:1.25rem;"></div>' +
-            '<div class="gm-skeleton gm-skeleton-badge" style="width:65px; height:1.25rem;"></div>' +
-          '</div>' +
-          '<div class="gm-skeleton gm-skeleton-text" style="width:110px; height:0.8rem;"></div>' +
-        '</div>' +
-        '<div class="gm-skeleton gm-skeleton-title" style="width:' + (50 + (i % 3) * 18) + '%; height:1.25rem; margin-bottom:0.4rem;"></div>' +
-        '<div class="gm-skeleton gm-skeleton-text" style="width:' + (75 + (i % 2) * 20) + '%; height:0.85rem; margin-bottom:0.4rem;"></div>' +
-        '<div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.5rem; padding-top:0.4rem; border-top:1px solid var(--border-soft);">' +
-          '<div class="gm-skeleton gm-skeleton-text" style="width:130px; height:0.8rem;"></div>' +
-          '<div class="gm-skeleton gm-skeleton-btn" style="width:90px; height:1.85rem; border-radius:6px;"></div>' +
-        '</div>' +
+      '<div style="display:flex; justify-content:space-between; align-items:center; gap:0.75rem; margin-bottom:0.4rem;">' +
+      '<div style="display:flex; align-items:center; gap:0.5rem;">' +
+      '<div class="gm-skeleton gm-skeleton-text" style="width:85px; height:1rem;"></div>' +
+      '<div class="gm-skeleton gm-skeleton-badge" style="width:70px; height:1.25rem;"></div>' +
+      '<div class="gm-skeleton gm-skeleton-badge" style="width:65px; height:1.25rem;"></div>' +
+      '</div>' +
+      '<div class="gm-skeleton gm-skeleton-text" style="width:110px; height:0.8rem;"></div>' +
+      '</div>' +
+      '<div class="gm-skeleton gm-skeleton-title" style="width:' +
+      (50 + (i % 3) * 18) +
+      '%; height:1.25rem; margin-bottom:0.4rem;"></div>' +
+      '<div class="gm-skeleton gm-skeleton-text" style="width:' +
+      (75 + (i % 2) * 20) +
+      '%; height:0.85rem; margin-bottom:0.4rem;"></div>' +
+      '<div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.5rem; padding-top:0.4rem; border-top:1px solid var(--border-soft);">' +
+      '<div class="gm-skeleton gm-skeleton-text" style="width:130px; height:0.8rem;"></div>' +
+      '<div class="gm-skeleton gm-skeleton-btn" style="width:90px; height:1.85rem; border-radius:6px;"></div>' +
+      '</div>' +
       '</div>';
   }
   return '<div class="gm-tickets-skeleton-list" aria-busy="true" aria-label="Loading tickets">' + cards + '</div>';
@@ -65,22 +72,35 @@ function pad(n: number | string): string {
 }
 
 function statusChip(status: string): string {
-  const s = (status === 'open') ? 'waiting' : status;
+  const s = status === 'open' ? 'waiting' : status;
   const label = STATUS_LABEL[s] ? t(STATUS_LABEL[s]) : s;
-  const bg = (s === 'waiting')
-    ? 'background:rgba(245,158,11,0.14); color:#fbbf24; border:1px solid rgba(245,158,11,0.3);'
-    : (s === 'in_progress')
-      ? 'background:rgba(59,130,246,0.14); color:#60a5fa; border:1px solid rgba(59,130,246,0.3);'
-      : (s === 'resolved')
-        ? 'background:rgba(16,185,129,0.14); color:#34d399; border:1px solid rgba(16,185,129,0.3);'
-        : 'background:rgba(100,116,139,0.14); color:#94a3b8; border:1px solid rgba(100,116,139,0.3);';
-  return '<span class="gm-chip" style="font-size:0.72rem; font-weight:700; padding:2px 9px; border-radius:9999px; ' + bg + ';">' + escapeHTML(label) + '</span>';
+  const bg =
+    s === 'waiting'
+      ? 'background:rgba(245,158,11,0.14); color:#fbbf24; border:1px solid rgba(245,158,11,0.3);'
+      : s === 'in_progress'
+        ? 'background:rgba(59,130,246,0.14); color:#60a5fa; border:1px solid rgba(59,130,246,0.3);'
+        : s === 'resolved'
+          ? 'background:rgba(16,185,129,0.14); color:#34d399; border:1px solid rgba(16,185,129,0.3);'
+          : 'background:rgba(100,116,139,0.14); color:#94a3b8; border:1px solid rgba(100,116,139,0.3);';
+  return (
+    '<span class="gm-chip" style="font-size:0.72rem; font-weight:700; padding:2px 9px; border-radius:9999px; ' +
+    bg +
+    ';">' +
+    escapeHTML(label) +
+    '</span>'
+  );
 }
 
 function severityChip(sev: string): string {
   const label = sev.charAt(0).toUpperCase() + sev.slice(1);
   const bg = SEVERITY_COLOR[sev] || SEVERITY_COLOR.medium;
-  return '<span class="gm-chip" style="font-size:0.72rem; font-weight:700; padding:2px 9px; border-radius:9999px; ' + bg + ';">' + escapeHTML(label) + '</span>';
+  return (
+    '<span class="gm-chip" style="font-size:0.72rem; font-weight:700; padding:2px 9px; border-radius:9999px; ' +
+    bg +
+    ';">' +
+    escapeHTML(label) +
+    '</span>'
+  );
 }
 
 export class TicketsView {
@@ -94,7 +114,8 @@ export class TicketsView {
       return;
     }
     if (!isSuperAdmin()) {
-      container.innerHTML = '<div class="gm-empty"><i class="ph ph-shield-warning gm-icon"></i><div class="gm-empty-title">Super admin only</div></div>';
+      container.innerHTML =
+        '<div class="gm-empty"><i class="ph ph-shield-warning gm-icon"></i><div class="gm-empty-title">Super admin only</div></div>';
       return;
     }
 
@@ -108,12 +129,15 @@ export class TicketsView {
       console.error('tickets load error', err);
       container.innerHTML =
         '<div class="gm-empty">' +
-          '<i class="ph ph-warning-circle gm-icon"></i>' +
-          '<div class="gm-empty-title">Could not load tickets</div>' +
-          '<button class="gm-btn gm-btn-outline" data-tickets-retry><i class="ph ph-arrows-clockwise"></i> Retry</button>' +
+        '<i class="ph ph-warning-circle gm-icon"></i>' +
+        '<div class="gm-empty-title">Could not load tickets</div>' +
+        '<button class="gm-btn gm-btn-outline" data-tickets-retry><i class="ph ph-arrows-clockwise"></i> Retry</button>' +
         '</div>';
       const retryBtn = container.querySelector('[data-tickets-retry]');
-      if (retryBtn) retryBtn.addEventListener('click', () => { void this.load(); });
+      if (retryBtn)
+        retryBtn.addEventListener('click', () => {
+          void this.load();
+        });
     }
   }
 
@@ -123,65 +147,146 @@ export class TicketsView {
 
   private render(container: Element, tickets: any[]): void {
     if (!tickets || tickets.length === 0) {
-      container.innerHTML = '<div class="gm-empty"><i class="ph ph-ticket gm-icon"></i><div class="gm-empty-title">' + escapeHTML(t('tickets_empty')) + '</div></div>';
+      container.innerHTML =
+        '<div class="gm-empty"><i class="ph ph-ticket gm-icon"></i><div class="gm-empty-title">' +
+        escapeHTML(t('tickets_empty')) +
+        '</div></div>';
       return;
     }
 
     let html =
       '<div class="gm-table-wrap" style="background:var(--bg-1); border:1px solid var(--border-soft); border-radius:var(--radius-lg); overflow-x:auto;">' +
-        '<table class="gm-table gm-resp-table" style="width:100%; border-collapse:collapse; min-width:820px;">' +
-          '<thead><tr style="background:rgba(255,255,255,0.03); border-bottom:1px solid var(--border-soft); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted);">' +
-            '<th style="padding:0.65rem 0.75rem; text-align:left;">#</th>' +
-            '<th style="padding:0.65rem 0.5rem; text-align:left;">' + escapeHTML(t('tickets_reporter')) + '</th>' +
-            '<th style="padding:0.65rem 0.5rem; text-align:left;">' + escapeHTML(t('tickets_category')) + '</th>' +
-            '<th style="padding:0.65rem 0.5rem; text-align:center;">' + escapeHTML(t('tickets_severity')) + '</th>' +
-            '<th style="padding:0.65rem 0.5rem; text-align:center;">Status</th>' +
-            '<th style="padding:0.65rem 0.75rem; text-align:left;">Title</th>' +
-            '<th style="padding:0.65rem 0.5rem; text-align:left;">' + escapeHTML(t('tickets_date')) + '</th>' +
-            '<th style="padding:0.65rem 0.75rem; text-align:center;">Set status</th>' +
-          '</tr></thead><tbody>';
+      '<table class="gm-table gm-resp-table" style="width:100%; border-collapse:collapse; min-width:820px;">' +
+      '<thead><tr style="background:rgba(255,255,255,0.03); border-bottom:1px solid var(--border-soft); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted);">' +
+      '<th style="padding:0.65rem 0.75rem; text-align:left;">#</th>' +
+      '<th style="padding:0.65rem 0.5rem; text-align:left;">' +
+      escapeHTML(t('tickets_reporter')) +
+      '</th>' +
+      '<th style="padding:0.65rem 0.5rem; text-align:left;">' +
+      escapeHTML(t('tickets_category')) +
+      '</th>' +
+      '<th style="padding:0.65rem 0.5rem; text-align:center;">' +
+      escapeHTML(t('tickets_severity')) +
+      '</th>' +
+      '<th style="padding:0.65rem 0.5rem; text-align:center;">Status</th>' +
+      '<th style="padding:0.65rem 0.75rem; text-align:left;">Title</th>' +
+      '<th style="padding:0.65rem 0.5rem; text-align:left;">' +
+      escapeHTML(t('tickets_date')) +
+      '</th>' +
+      '<th style="padding:0.65rem 0.75rem; text-align:center;">Set status</th>' +
+      '</tr></thead><tbody>';
 
     tickets.forEach((tk) => {
-      const cat = CATEGORY[tk.category] ? t(CATEGORY[tk.category]) : (tk.category || '');
+      const cat = CATEGORY[tk.category] ? t(CATEGORY[tk.category]) : tk.category || '';
       const guildLabel = tk.guild ? escapeHTML(tk.guild) : 'Global';
-      const dateStr = tk.created_at ? new Date(tk.created_at).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+      const dateStr = tk.created_at
+        ? new Date(tk.created_at).toLocaleString('en-GB', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          })
+        : '-';
       const rawDesc = tk.description || '';
-      const desc = escapeHTML(rawDesc).replace(/\*\*(.*?)\*\*/g, '<strong style="color:var(--fg); font-weight:700; display:inline-block; margin-top:0.25rem;">$1</strong>');
+      const desc = escapeHTML(rawDesc).replace(
+        /\*\*(.*?)\*\*/g,
+        '<strong style="color:var(--fg); font-weight:700; display:inline-block; margin-top:0.25rem;">$1</strong>'
+      );
 
       let attachHtml = '';
       if (Array.isArray(tk.attachments) && tk.attachments.length > 0) {
         attachHtml = '<div style="display:flex; flex-wrap:wrap; gap:0.4rem; margin-top:0.45rem;">';
         tk.attachments.forEach((attUrl: string) => {
-          attachHtml += '<img src="' + escapeHTML(attUrl) + '" class="gm-ticket-thumb" data-full="' + escapeHTML(attUrl) + '" style="width:54px; height:42px; object-fit:cover; border-radius:4px; border:1px solid var(--border-soft); cursor:pointer; transition:transform 0.15s;" title="Click to view screenshot">';
+          attachHtml +=
+            '<img src="' +
+            escapeHTML(attUrl) +
+            '" class="gm-ticket-thumb" data-full="' +
+            escapeHTML(attUrl) +
+            '" style="width:54px; height:42px; object-fit:cover; border-radius:4px; border:1px solid var(--border-soft); cursor:pointer; transition:transform 0.15s;" title="Click to view screenshot">';
         });
         attachHtml += '</div>';
       }
-      const curStatus = (tk.status === 'open') ? 'waiting' : (tk.status || 'waiting');
+      const curStatus = tk.status === 'open' ? 'waiting' : tk.status || 'waiting';
 
       html +=
         '<tr style="border-bottom:1px solid var(--border-soft); vertical-align:top;">' +
-          '<td data-label="#" style="padding:0.65rem 0.75rem; font-weight:700; font-variant-numeric:tabular-nums;">#TICKET-' + escapeHTML(pad(tk.ticket_number)) + '</td>' +
-          '<td data-label="' + escapeHTML(t('tickets_reporter')) + '" style="padding:0.65rem 0.5rem;">' +
-            '<div style="font-weight:600; font-size:0.85rem;">' + escapeHTML(tk.reporter_account_id) + '</div>' +
-            '<div style="font-size:0.7rem; color:var(--text-muted);">' + escapeHTML(tk.reporter_role) + ' · ' + guildLabel + '</div>' +
-          '</td>' +
-          '<td data-label="' + escapeHTML(t('tickets_category')) + '" style="padding:0.65rem 0.5rem; font-size:0.82rem;">' + escapeHTML(cat) + '</td>' +
-          '<td data-label="' + escapeHTML(t('tickets_severity')) + '" style="padding:0.65rem 0.5rem; text-align:center;">' + severityChip(tk.severity) + '</td>' +
-          '<td data-label="Status" style="padding:0.65rem 0.5rem; text-align:center;">' + statusChip(tk.status) + '</td>' +
-          '<td data-label="Title" style="padding:0.65rem 0.5rem; min-width:260px;">' +
-            '<div style="font-weight:700; font-size:0.92rem; color:var(--fg);">' + escapeHTML(tk.title) + '</div>' +
-            (desc ? '<div style="font-size:0.8rem; color:var(--text-muted); margin-top:0.35rem; line-height:1.45; white-space:pre-wrap; background:rgba(0,0,0,0.18); padding:0.5rem 0.65rem; border-radius:6px; border:1px solid rgba(255,255,255,0.05);">' + desc + '</div>' : '') +
-            attachHtml +
-          '</td>' +
-          '<td data-label="' + escapeHTML(t('tickets_date')) + '" style="padding:0.65rem 0.5rem; font-size:0.78rem; color:var(--text-muted); white-space:nowrap;">' + escapeHTML(dateStr) + '</td>' +
-          '<td data-label="' + escapeHTML(t('tickets_set')) + '" style="padding:0.65rem 0.75rem; text-align:center;">' +
-            '<select class="gm-select gm-select-sm gm-ticket-status" data-id="' + escapeHTML(tk.id) + '" data-ticket-no="' + escapeHTML(tk.ticket_number) + '" aria-label="' + escapeHTML(t('tickets_set') + ', #' + tk.ticket_number) + '" style="font-size:0.75rem; padding:0.15rem 0.4rem; height:auto; width:auto; min-width:145px; border-radius:4px;">' +
-              '<option value="waiting"' + (curStatus === 'waiting' ? ' selected' : '') + '>⏳ ' + escapeHTML(t('tickets_status_waiting')) + '</option>' +
-              '<option value="in_progress"' + (curStatus === 'in_progress' ? ' selected' : '') + '>🔨 ' + escapeHTML(t('tickets_status_in_progress')) + '</option>' +
-              '<option value="resolved"' + (curStatus === 'resolved' ? ' selected' : '') + '>✅ ' + escapeHTML(t('tickets_status_resolved')) + '</option>' +
-              '<option value="closed"' + (curStatus === 'closed' ? ' selected' : '') + '>🔒 ' + escapeHTML(t('tickets_status_closed')) + '</option>' +
-            '</select>' +
-          '</td>' +
+        '<td data-label="#" style="padding:0.65rem 0.75rem; font-weight:700; font-variant-numeric:tabular-nums;">#TICKET-' +
+        escapeHTML(pad(tk.ticket_number)) +
+        '</td>' +
+        '<td data-label="' +
+        escapeHTML(t('tickets_reporter')) +
+        '" style="padding:0.65rem 0.5rem;">' +
+        '<div style="font-weight:600; font-size:0.85rem;">' +
+        escapeHTML(tk.reporter_account_id) +
+        '</div>' +
+        '<div style="font-size:0.7rem; color:var(--text-muted);">' +
+        escapeHTML(tk.reporter_role) +
+        ' · ' +
+        guildLabel +
+        '</div>' +
+        '</td>' +
+        '<td data-label="' +
+        escapeHTML(t('tickets_category')) +
+        '" style="padding:0.65rem 0.5rem; font-size:0.82rem;">' +
+        escapeHTML(cat) +
+        '</td>' +
+        '<td data-label="' +
+        escapeHTML(t('tickets_severity')) +
+        '" style="padding:0.65rem 0.5rem; text-align:center;">' +
+        severityChip(tk.severity) +
+        '</td>' +
+        '<td data-label="Status" style="padding:0.65rem 0.5rem; text-align:center;">' +
+        statusChip(tk.status) +
+        '</td>' +
+        '<td data-label="Title" style="padding:0.65rem 0.5rem; min-width:260px;">' +
+        '<div style="font-weight:700; font-size:0.92rem; color:var(--fg);">' +
+        escapeHTML(tk.title) +
+        '</div>' +
+        (desc
+          ? '<div style="font-size:0.8rem; color:var(--text-muted); margin-top:0.35rem; line-height:1.45; white-space:pre-wrap; background:rgba(0,0,0,0.18); padding:0.5rem 0.65rem; border-radius:6px; border:1px solid rgba(255,255,255,0.05);">' +
+            desc +
+            '</div>'
+          : '') +
+        attachHtml +
+        '</td>' +
+        '<td data-label="' +
+        escapeHTML(t('tickets_date')) +
+        '" style="padding:0.65rem 0.5rem; font-size:0.78rem; color:var(--text-muted); white-space:nowrap;">' +
+        escapeHTML(dateStr) +
+        '</td>' +
+        '<td data-label="' +
+        escapeHTML(t('tickets_set')) +
+        '" style="padding:0.65rem 0.75rem; text-align:center;">' +
+        '<select class="gm-select gm-select-sm gm-ticket-status" data-id="' +
+        escapeHTML(tk.id) +
+        '" data-ticket-no="' +
+        escapeHTML(tk.ticket_number) +
+        '" aria-label="' +
+        escapeHTML(t('tickets_set') + ', #' + tk.ticket_number) +
+        '" style="font-size:0.75rem; padding:0.15rem 0.4rem; height:auto; width:auto; min-width:145px; border-radius:4px;">' +
+        '<option value="waiting"' +
+        (curStatus === 'waiting' ? ' selected' : '') +
+        '>⏳ ' +
+        escapeHTML(t('tickets_status_waiting')) +
+        '</option>' +
+        '<option value="in_progress"' +
+        (curStatus === 'in_progress' ? ' selected' : '') +
+        '>🔨 ' +
+        escapeHTML(t('tickets_status_in_progress')) +
+        '</option>' +
+        '<option value="resolved"' +
+        (curStatus === 'resolved' ? ' selected' : '') +
+        '>✅ ' +
+        escapeHTML(t('tickets_status_resolved')) +
+        '</option>' +
+        '<option value="closed"' +
+        (curStatus === 'closed' ? ' selected' : '') +
+        '>🔒 ' +
+        escapeHTML(t('tickets_status_closed')) +
+        '</option>' +
+        '</select>' +
+        '</td>' +
         '</tr>';
     });
 
@@ -190,7 +295,11 @@ export class TicketsView {
 
     container.querySelectorAll('.gm-ticket-status').forEach((sel) => {
       sel.addEventListener('change', () => {
-        void this.updateStatus(sel.getAttribute('data-id') || '', (sel as HTMLSelectElement).value, sel as HTMLSelectElement);
+        void this.updateStatus(
+          sel.getAttribute('data-id') || '',
+          (sel as HTMLSelectElement).value,
+          sel as HTMLSelectElement
+        );
       });
     });
 
@@ -208,11 +317,15 @@ export class TicketsView {
     (modal as HTMLElement).style.zIndex = '9999';
     modal.innerHTML =
       '<div style="position:relative; max-width:92vw; max-height:92vh; display:flex; flex-direction:column; align-items:center;">' +
-        '<button type="button" class="gm-btn gm-btn-ghost gm-btn-icon" style="position:absolute; top:-38px; right:0; color:#fff; font-size:1.4rem;" title="Close" aria-label="Close">✕</button>' +
-        '<img src="' + escapeHTML(src) + '" alt="Ticket screenshot" style="max-width:100%; max-height:85vh; object-fit:contain; border-radius:8px; box-shadow:0 8px 30px rgba(0,0,0,0.8); border:1px solid rgba(255,255,255,0.1);">' +
+      '<button type="button" class="gm-btn gm-btn-ghost gm-btn-icon" style="position:absolute; top:-38px; right:0; color:#fff; font-size:1.4rem;" title="Close" aria-label="Close">✕</button>' +
+      '<img src="' +
+      escapeHTML(src) +
+      '" alt="Ticket screenshot" style="max-width:100%; max-height:85vh; object-fit:contain; border-radius:8px; box-shadow:0 8px 30px rgba(0,0,0,0.8); border:1px solid rgba(255,255,255,0.1);">' +
       '</div>';
     document.body.appendChild(modal);
-    const close = (): void => { if (modal && modal.parentNode) modal.parentNode.removeChild(modal); };
+    const close = (): void => {
+      if (modal && modal.parentNode) modal.parentNode.removeChild(modal);
+    };
     modal.addEventListener('click', close);
     adoptDialog(modal, { card: modal.firstElementChild as HTMLElement, label: 'Ticket screenshot', onEscape: close });
   }

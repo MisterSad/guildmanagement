@@ -19,7 +19,13 @@ type Who = "super" | "server" | "adminA" | "member" | "anonymous";
 function seed() {
   const fake = new FakeSupabase();
   fake.install();
-  fake.table("guilds").push({ id: "TA", server_number: "9001" }, { id: "TB", server_number: "9001" }, { id: "TC", server_number: "9002" });
+  fake
+    .table("guilds")
+    .push(
+      { id: "TA", server_number: "9001" },
+      { id: "TB", server_number: "9001" },
+      { id: "TC", server_number: "9002" }
+    );
   const jwt: Record<Exclude<Who, "anonymous">, string> = {
     super: seedAccount(fake, { id: "t_super", role: "super_admin" }),
     server: seedAccount(fake, { id: "t_server", role: "server_admin", server_number: "9001" }),
@@ -31,24 +37,44 @@ function seed() {
   fake.table("guild_config").push({ guild: "TA", key: "discord_audit_channel_id", value: "999000999000999000" });
 
   const ok = (data: unknown) => () => ({ data, error: null });
-  fake.rpcs["gm_admin_list"] = () => ({ data: fake.table("accounts").map((a) => ({ id: a.id, role: a.role, guild: a.guild, server_number: a.server_number })), error: null });
+  fake.rpcs["gm_admin_list"] = () => ({
+    data: fake
+      .table("accounts")
+      .map((a) => ({ id: a.id, role: a.role, guild: a.guild, server_number: a.server_number })),
+    error: null,
+  });
   fake.rpcs["gm_admin_upsert"] = (a) => {
-    if (fake.table("accounts").some((r) => r.id === a.p_id)) return { data: null, error: { message: "taken", code: "23505" } };
+    if (fake.table("accounts").some((r) => r.id === a.p_id))
+      return { data: null, error: { message: "taken", code: "23505" } };
     fake.table("accounts").push({ id: a.p_id, role: a.p_role, guild: a.p_guild, status: "active", session_version: 0 });
     return { data: null, error: null };
   };
   fake.rpcs["gm_reset_account_password"] = ok([{ ok: true }]);
-  fake.rpcs["gm_get_shadow"] = ok([{ auth_user_id: "00000000-0000-4000-8000-000000000001", gotrue_secret: "shadow-secret" }]);
+  fake.rpcs["gm_get_shadow"] = ok([
+    { auth_user_id: "00000000-0000-4000-8000-000000000001", gotrue_secret: "shadow-secret" },
+  ]);
   fake.rpcs["gm_discord_unlink"] = ok([{ ok: true, previous_discord_user_id: "123456789012345678", guild: "TA" }]);
   fake.rpcs["gm_issue_admin_invite"] = ok([{ ok: true, open_codes: 1 }]);
   fake.rpcs["gm_admin_delete"] = ok("00000000-0000-4000-8000-000000000002");
   fake.rpcs["gm_set_join_code"] = ok({ ok: true });
   fake.rpcs["gm_get_join_code"] = ok({ ok: true, code: "JOIN-1" });
-  fake.rpcs["gm_approve_guild_request"] = ok([{ ok: true, guild_tag: "NEW", admin_id: "new_admin", server_number: "9001" }]);
+  fake.rpcs["gm_approve_guild_request"] = ok([
+    { ok: true, guild_tag: "NEW", admin_id: "new_admin", server_number: "9001" },
+  ]);
   fake.rpcs["gm_reject_guild_request"] = ok({ ok: true });
   fake.table("guild_creation_requests").push(
-    { id: "11111111-1111-4111-8111-111111111111", guild_tag: "NEW", status: "pending", created_at: "2026-10-01T00:00:00Z" },
-    { id: "22222222-2222-4222-8222-222222222222", guild_tag: "OLD", status: "rejected", created_at: "2026-09-01T00:00:00Z" },
+    {
+      id: "11111111-1111-4111-8111-111111111111",
+      guild_tag: "NEW",
+      status: "pending",
+      created_at: "2026-10-01T00:00:00Z",
+    },
+    {
+      id: "22222222-2222-4222-8222-222222222222",
+      guild_tag: "OLD",
+      status: "rejected",
+      created_at: "2026-09-01T00:00:00Z",
+    }
   );
   return { fake, jwt };
 }
@@ -60,7 +86,11 @@ async function scenario(t: Deno.TestContext, body: unknown, who: Who) {
   const { fake, jwt } = seed();
   try {
     const res = await handler(post(body, who === "anonymous" ? undefined : jwt[who]));
-    await assertSnapshot(t, { response: await recordedResponse(res), calls: recordedCalls(fake), discord: discord.sent });
+    await assertSnapshot(t, {
+      response: await recordedResponse(res),
+      calls: recordedCalls(fake),
+      discord: discord.sent,
+    });
   } finally {
     uninstallFake();
     discord.restore();
@@ -85,12 +115,28 @@ const cases: Array<[string, unknown, Who]> = [
   ["reset-password of nobody", { action: "reset-password", id: "ghost" }, "adminA"],
   ["discord-unlink", { action: "discord-unlink", id: "t_member_a" }, "adminA"],
   ["issue-admin-invite", { action: "issue-admin-invite", guild: "TA", role: "guild_admin" }, "adminA"],
-  ["issue-admin-invite above the ceiling", { action: "issue-admin-invite", guild: "TA", role: "server_admin" }, "adminA"],
+  [
+    "issue-admin-invite above the ceiling",
+    { action: "issue-admin-invite", guild: "TA", role: "server_admin" },
+    "adminA",
+  ],
   ["issue-admin-invite out of scope", { action: "issue-admin-invite", guild: "TC", role: "guild_admin" }, "server"],
-  ["create as guild admin, asking for more", { action: "create", id: "new_officer", role: "super_admin", guild: "TB" }, "adminA"],
-  ["create as server admin, out of scope", { action: "create", id: "outsider", role: "guild_admin", guild: "TC" }, "server"],
+  [
+    "create as guild admin, asking for more",
+    { action: "create", id: "new_officer", role: "super_admin", guild: "TB" },
+    "adminA",
+  ],
+  [
+    "create as server admin, out of scope",
+    { action: "create", id: "outsider", role: "guild_admin", guild: "TC" },
+    "server",
+  ],
   ["create as server admin, a member", { action: "create", id: "recruit", role: "member", guild: "TB" }, "server"],
-  ["create a server admin as super admin", { action: "create", id: "srv2", role: "server_admin", guild: "TC" }, "super"],
+  [
+    "create a server admin as super admin",
+    { action: "create", id: "srv2", role: "server_admin", guild: "TC" },
+    "super",
+  ],
   ["create a taken id", { action: "create", id: "t_super" }, "adminA"],
   ["update-role", { action: "update-role", id: "t_admin_b", role: "server_admin" }, "super"],
   ["update-role refused to a guild admin", { action: "update-role", id: "t_member_a", role: "guild_admin" }, "adminA"],

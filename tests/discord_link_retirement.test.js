@@ -20,7 +20,10 @@ const help = read('src/modules/help/HelpView.ts');
 
 describe('the bot stops sending people to /link', () => {
   it('no reply in the worker or the Edge Function says to run /link', () => {
-    for (const [name, src] of [['worker', worker], ['interactions', interactions]]) {
+    for (const [name, src] of [
+      ['worker', worker],
+      ['interactions', interactions],
+    ]) {
       const replies = [...src.matchAll(/content:\s*([^\n]+)/g)].map((m) => m[1]).join('\n');
       expect(replies, name).not.toMatch(/Run `\/link`|run \\`\/link\\`/);
     }
@@ -29,16 +32,27 @@ describe('the bot stops sending people to /link', () => {
 
   it('every "not linked" answer points to Continue with Discord, with a button to the app', () => {
     expect(worker).toMatch(/const NOT_LINKED_TEXT =[\s\S]{0,200}Continue with Discord/);
-    expect(worker).toMatch(/function notLinkedReply\(\) \{\s*return \{ content: NOT_LINKED_TEXT, components: appLinkRow\("Continue with Discord"\), ephemeral: true \};/);
+    expect(worker).toMatch(
+      /function notLinkedReply\(\) \{\s*return \{ content: NOT_LINKED_TEXT, components: appLinkRow\("Continue with Discord"\), ephemeral: true \};/
+    );
     expect((worker.match(/await interaction\.reply\(notLinkedReply\(\)\)/g) || []).length).toBe(3);
     expect(interactions).toMatch(/const NOT_LINKED_MSG =[\s\S]{0,220}Continue with Discord/);
-    expect(interactions).toContain('return { ok: false, message: NOT_LINKED_MSG, components: appLinkRow("Continue with Discord") };');
-    expect((interactions.match(/ephemeral\(resolved\.message, undefined, resolved\.components\)/g) || []).length).toBe(4);
+    expect(interactions).toContain(
+      'return { ok: false, message: NOT_LINKED_MSG, components: appLinkRow("Continue with Discord") };'
+    );
+    expect((interactions.match(/ephemeral\(resolved\.message, undefined, resolved\.components\)/g) || []).length).toBe(
+      4
+    );
   });
 
   it('defaults the app URL without making it a required Render variable', () => {
-    expect(worker).toMatch(/const APP_URL = \(\(process\.env\.APP_URL \|\| ""\)\.trim\(\) \|\| "https:\/\/guildmanagement\.vercel\.app"\)/);
-    const required = worker.slice(worker.indexOf('const REQUIRED_ENV = {'), worker.indexOf('};', worker.indexOf('const REQUIRED_ENV = {')));
+    expect(worker).toMatch(
+      /const APP_URL = \(\(process\.env\.APP_URL \|\| ""\)\.trim\(\) \|\| "https:\/\/guildmanagement\.vercel\.app"\)/
+    );
+    const required = worker.slice(
+      worker.indexOf('const REQUIRED_ENV = {'),
+      worker.indexOf('};', worker.indexOf('const REQUIRED_ENV = {'))
+    );
     expect(required).not.toContain('APP_URL');
   });
 });
@@ -80,22 +94,36 @@ describe('the Portal card replaces the code box', () => {
 
 describe('buttons the bot sends (phase B)', () => {
   it('uses LINK buttons (style 5) to the app, never a button that calls back', () => {
-    const row = worker.slice(worker.indexOf('function appLinkRow('), worker.indexOf('\n}\n', worker.indexOf('function appLinkRow(')));
+    const row = worker.slice(
+      worker.indexOf('function appLinkRow('),
+      worker.indexOf('\n}\n', worker.indexOf('function appLinkRow('))
+    );
     expect(row).toContain('{ type: 2, style: 5, label, url }');
     expect(interactions).toContain('{ type: 2, style: 5, label, url: APP_URL }');
   });
 
   it('relays only https link buttons from the Edge Function', () => {
-    const relay = worker.slice(worker.indexOf('async function forwardInteraction'), worker.indexOf('// Slash commands'));
+    const relay = worker.slice(
+      worker.indexOf('async function forwardInteraction'),
+      worker.indexOf('// Slash commands')
+    );
     expect(relay).toContain('c.style === 5');
     expect(relay).toMatch(/\/\^https:\\\/\\\/\//);
     expect(relay).toContain('...(components.length ? { components } : {})');
   });
 
   it('offers the Player Portal after a roster-confirmed verification only', () => {
-    const dm = worker.slice(worker.indexOf('async function sendVerificationDm'), worker.indexOf('async function postVerificationAuditLog'));
-    expect(dm).toContain('const portal = isGuildMember ? await portalInvitation(author.id, fgfGuild, result.uid) : null;');
-    const inv = worker.slice(worker.indexOf('async function portalInvitation'), worker.indexOf('async function sendVerificationDm'));
+    const dm = worker.slice(
+      worker.indexOf('async function sendVerificationDm'),
+      worker.indexOf('async function postVerificationAuditLog')
+    );
+    expect(dm).toContain(
+      'const portal = isGuildMember ? await portalInvitation(author.id, fgfGuild, result.uid) : null;'
+    );
+    const inv = worker.slice(
+      worker.indexOf('async function portalInvitation'),
+      worker.indexOf('async function sendVerificationDm')
+    );
     // Linked already: open the Portal. Otherwise the guild invite link.
     expect(inv).toContain('.from("discord_account_links")');
     expect(inv).toContain('supabase.rpc("gm_get_join_code", { p_guild: fgfGuild })');

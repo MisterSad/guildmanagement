@@ -23,27 +23,27 @@ const SESSION = 'SVS-2026-W32';
 // source modules with the stubs the suite used to put on window.
 vi.mock('../src/core/i18n/i18n', async (importOriginal) => ({
   ...(await importOriginal()),
-  t: (k) => k
+  t: (k) => k,
 }));
 vi.mock('../src/core/config/events', async (importOriginal) => ({
   ...(await importOriginal()),
-  buildEventSessionId: () => SESSION
+  buildEventSessionId: () => SESSION,
 }));
 vi.mock('../src/core/utils/date', async (importOriginal) => ({
   ...(await importOriginal()),
-  getWeekStart: () => '2026-08-03'
+  getWeekStart: () => '2026-08-03',
 }));
 vi.mock('../src/core/dom/toast', async (importOriginal) => ({
   ...(await importOriginal()),
-  showToast: vi.fn()
+  showToast: vi.fn(),
 }));
 vi.mock('../src/core/integrations/discord', async (importOriginal) => ({
   ...(await importOriginal()),
-  notifyDiscordEvent: vi.fn()
+  notifyDiscordEvent: vi.fn(),
 }));
 vi.mock('../src/modules/app/dialogs/dialogs.service', async (importOriginal) => ({
   ...(await importOriginal()),
-  showConfirm: vi.fn()
+  showConfirm: vi.fn(),
 }));
 
 let rpcMock;
@@ -53,20 +53,30 @@ function chained(value) {
   const filters = [];
   const apply = () => {
     let res = (value || []).slice();
-    filters.forEach((f) => { res = res.filter(f); });
+    filters.forEach((f) => {
+      res = res.filter(f);
+    });
     return res;
   };
   const chain = {
     select: () => chain,
     order: () => chain,
     limit: () => chain,
-    eq: (field, val) => { filters.push((r) => r[field] === val); return chain; },
-    in: (field, list) => { filters.push((r) => list.indexOf(r[field]) !== -1); return chain; },
+    eq: (field, val) => {
+      filters.push((r) => r[field] === val);
+      return chain;
+    },
+    in: (field, list) => {
+      filters.push((r) => list.indexOf(r[field]) !== -1);
+      return chain;
+    },
     update: () => chain,
     delete: () => chain,
     upsert: () => chain,
-    maybeSingle: () => ({ then: (resolve) => Promise.resolve({ data: apply()[0] || null, error: null }).then(resolve) }),
-    then: (resolve) => Promise.resolve({ data: apply(), error: null }).then(resolve)
+    maybeSingle: () => ({
+      then: (resolve) => Promise.resolve({ data: apply()[0] || null, error: null }).then(resolve),
+    }),
+    then: (resolve) => Promise.resolve({ data: apply(), error: null }).then(resolve),
   };
   return chain;
 }
@@ -74,15 +84,37 @@ function chained(value) {
 function tables() {
   return {
     guild_config: [],
-    event_status: [{ event_name: 'SvS', guild: 'ALPHA', is_active: true, session_id: SESSION, stage: null, start_at: '2026-08-02' }],
+    event_status: [
+      { event_name: 'SvS', guild: 'ALPHA', is_active: true, session_id: SESSION, stage: null, start_at: '2026-08-02' },
+    ],
     event_participants: [
-      { pseudo: 'Alpha', guild: 'ALPHA', event_name: 'SvS', session_id: SESSION, participated: 1, score_prep: 0, score_pvp: 0, is_pending: false, appointed: false },
-      { pseudo: 'Bravo', guild: 'ALPHA', event_name: 'SvS', session_id: SESSION, participated: 0, score_prep: 0, score_pvp: 0, is_pending: false, appointed: false }
+      {
+        pseudo: 'Alpha',
+        guild: 'ALPHA',
+        event_name: 'SvS',
+        session_id: SESSION,
+        participated: 1,
+        score_prep: 0,
+        score_pvp: 0,
+        is_pending: false,
+        appointed: false,
+      },
+      {
+        pseudo: 'Bravo',
+        guild: 'ALPHA',
+        event_name: 'SvS',
+        session_id: SESSION,
+        participated: 0,
+        score_prep: 0,
+        score_pvp: 0,
+        is_pending: false,
+        appointed: false,
+      },
     ],
     guild_members: [
       { pseudo: 'Alpha', guild: 'ALPHA', uid: 'u1' },
-      { pseudo: 'Bravo', guild: 'ALPHA', uid: 'u2' }
-    ]
+      { pseudo: 'Bravo', guild: 'ALPHA', uid: 'u2' },
+    ],
   };
 }
 
@@ -111,15 +143,15 @@ function installGM() {
 function mount() {
   document.body.innerHTML =
     '<main id="event-svs">' +
-      '<div class="event-status-badge"></div>' +
-      '<div class="gm-event-actions"></div>' +
-      '<div class="gm-event-status-line"></div>' +
-      '<div class="gm-event-ocr-toolbar">' +
-        '<button type="button" class="btn-ocr-trigger" data-metric="svs_prep">svs_prep OCR</button>' +
-        '<button type="button" class="btn-ocr-trigger" data-metric="svs_pvp">svs_pvp OCR</button>' +
-      '</div>' +
-      '<div class="war-banner"></div>' +
-      '<div class="event-participants-area"></div>' +
+    '<div class="event-status-badge"></div>' +
+    '<div class="gm-event-actions"></div>' +
+    '<div class="gm-event-status-line"></div>' +
+    '<div class="gm-event-ocr-toolbar">' +
+    '<button type="button" class="btn-ocr-trigger" data-metric="svs_prep">svs_prep OCR</button>' +
+    '<button type="button" class="btn-ocr-trigger" data-metric="svs_pvp">svs_pvp OCR</button>' +
+    '</div>' +
+    '<div class="war-banner"></div>' +
+    '<div class="event-participants-area"></div>' +
     '</main>';
 }
 
@@ -195,7 +227,7 @@ describe('war aggregate grid computation', () => {
   it('renders chests from resolvePrepChests (day-0 slice) + Day 6 slice', async () => {
     dailyRows = [
       { day: 0, score: 1000000, chests_unlocked: 2, pseudo: 'Alpha' },
-      { day: 6, score: 750000, chests_unlocked: 3, pseudo: 'Alpha' }
+      { day: 6, score: 750000, chests_unlocked: 3, pseudo: 'Alpha' },
     ];
     const view = new EventsView();
     await view.loadEvent('SvS');
@@ -214,14 +246,15 @@ describe('war aggregate grid computation', () => {
   it('computes the banner total with prepTotal + Day 6 (no double counting)', async () => {
     dailyRows = [
       { day: 0, score: 10000, chests_unlocked: 2, pseudo: 'Alpha' },
-      { day: 0, score: 20000, chests_unlocked: 2, pseudo: 'Bravo' }
+      { day: 0, score: 20000, chests_unlocked: 2, pseudo: 'Bravo' },
     ];
     const view = new EventsView();
     await view.loadEvent('SvS');
 
     // 10000 + 20000 = 30000 (an aggregate score must NOT be counted per day).
-    const chip = Array.from(area().querySelectorAll('.event-stats .gm-chip'))
-      .find((c) => c.getAttribute('title') === '30 000');
+    const chip = Array.from(area().querySelectorAll('.event-stats .gm-chip')).find(
+      (c) => c.getAttribute('title') === '30 000'
+    );
     expect(chip).toBeTruthy();
     expect(chip.textContent).toContain('30K');
   });
@@ -239,14 +272,14 @@ describe('war aggregate grid computation', () => {
 
     const calls = rpcMock.mock.calls.filter((c) => c[0] === 'gm_upsert_daily_scores');
     expect(calls.length).toBe(1);
-    expect(calls[0][1]).toEqual(expect.objectContaining({
-      p_guild: 'ALPHA',
-      p_event_name: 'SvS',
-      p_session_id: SESSION,
-      p_rows: expect.arrayContaining([
-        expect.objectContaining({ pseudo: 'Alpha', day: 0, score: 5500 })
-      ])
-    }));
+    expect(calls[0][1]).toEqual(
+      expect.objectContaining({
+        p_guild: 'ALPHA',
+        p_event_name: 'SvS',
+        p_session_id: SESSION,
+        p_rows: expect.arrayContaining([expect.objectContaining({ pseudo: 'Alpha', day: 0, score: 5500 })]),
+      })
+    );
   });
 });
 
@@ -254,7 +287,7 @@ describe('destructive conversion guard (total over existing D1..D5)', () => {
   it('opens the confirmation dialog and reverts the input when cancelled', async () => {
     dailyRows = [
       { day: 1, score: 2500, chests_unlocked: 1, pseudo: 'Alpha' },
-      { day: 2, score: 3000, chests_unlocked: 1, pseudo: 'Alpha' }
+      { day: 2, score: 3000, chests_unlocked: 1, pseudo: 'Alpha' },
     ];
     const view = new EventsView();
     await view.loadEvent('SvS');
@@ -282,7 +315,7 @@ describe('destructive conversion guard (total over existing D1..D5)', () => {
   it('confirms and saves day 0 with the replacement toast', async () => {
     dailyRows = [
       { day: 1, score: 2500, chests_unlocked: 1, pseudo: 'Alpha' },
-      { day: 2, score: 3000, chests_unlocked: 1, pseudo: 'Alpha' }
+      { day: 2, score: 3000, chests_unlocked: 1, pseudo: 'Alpha' },
     ];
     const view = new EventsView();
     await view.loadEvent('SvS');
@@ -299,18 +332,16 @@ describe('destructive conversion guard (total over existing D1..D5)', () => {
 
     const calls = rpcMock.mock.calls.filter((c) => c[0] === 'gm_upsert_daily_scores');
     expect(calls.length).toBe(1);
-    expect(calls[0][1].p_rows).toEqual(expect.arrayContaining([
-      expect.objectContaining({ pseudo: 'Alpha', day: 0, score: 5500 })
-    ]));
+    expect(calls[0][1].p_rows).toEqual(
+      expect.arrayContaining([expect.objectContaining({ pseudo: 'Alpha', day: 0, score: 5500 })])
+    );
     expect(showToast).toHaveBeenCalledWith('war_toast_total_replaced_days', 'success');
   });
 });
 
 describe('reverse conversion (day D1..D5 over a total)', () => {
   it('saves directly without a dialog and shows the informative toast', async () => {
-    dailyRows = [
-      { day: 0, score: 5000, chests_unlocked: 2, pseudo: 'Alpha' }
-    ];
+    dailyRows = [{ day: 0, score: 5000, chests_unlocked: 2, pseudo: 'Alpha' }];
     const view = new EventsView();
     await view.loadEvent('SvS');
     // Stay in detailed mode: Alpha has an aggregate total, the grid still
@@ -323,9 +354,9 @@ describe('reverse conversion (day D1..D5 over a total)', () => {
     expect(document.querySelector('.gm-ui-dialog-wrap')).toBeNull();
     const calls = rpcMock.mock.calls.filter((c) => c[0] === 'gm_upsert_daily_scores');
     expect(calls.length).toBe(1);
-    expect(calls[0][1].p_rows).toEqual(expect.arrayContaining([
-      expect.objectContaining({ pseudo: 'Alpha', day: 1, score: 1000 })
-    ]));
+    expect(calls[0][1].p_rows).toEqual(
+      expect.arrayContaining([expect.objectContaining({ pseudo: 'Alpha', day: 1, score: 1000 })])
+    );
     expect(showToast).toHaveBeenCalledWith('war_toast_days_replaced_total', 'info');
   });
 });

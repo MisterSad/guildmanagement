@@ -36,7 +36,7 @@ import {
   handleDiscordCallback,
   applyLinkIntentAtBoot,
   doLogout,
-  initAuthForms
+  initAuthForms,
 } from './modules/app/auth/auth.controller';
 import { captureIntentFromHash } from './core/auth/pending-intent';
 import { initVersionCheck } from './modules/app/auth/version-check';
@@ -85,9 +85,13 @@ if (typeof window !== 'undefined') {
     // logout/re-login instead of per-view generic toasts.
     configureFetchErrorRuntime({
       showToast: showAppToast,
-      onSessionInvalid: () => { handleSessionInvalidation(); },
+      onSessionInvalid: () => {
+        handleSessionInvalidation();
+      },
     });
-    window.addEventListener('gm:session-expired', () => { void doLogout(); });
+    window.addEventListener('gm:session-expired', () => {
+      void doLogout();
+    });
     // Auth/session form wiring and stale-tab detection. The admin forms, tab
     // router, OCR triggers and shell are wired by startAdmin() when the admin
     // chunk loads (M5); the sign-in screen and the portal never download it.

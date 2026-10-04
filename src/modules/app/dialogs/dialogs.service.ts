@@ -13,7 +13,6 @@
  * This module never assigns any `window.GM_*` variable (bridge lives in main.ts).
  */
 
-
 import { renderToast } from '../../../core/dom/toast';
 import { drawScoreTrendChart } from '../../../core/dom/ui';
 import { escapeHTML } from '../../../core/utils/text';
@@ -49,12 +48,7 @@ export function showToast(message: unknown, type?: string): void {
  * legacy caller passes markup such as `'<strong>…</strong>'`); `title` is
  * always escaped. `onCancel` is invoked on cancel/Escape/overlay dismissal.
  */
-export function showConfirm(
-  title: string,
-  message: string,
-  onConfirm: () => void,
-  onCancel?: () => void
-): void {
+export function showConfirm(title: string, message: string, onConfirm: () => void, onCancel?: () => void): void {
   if (typeof document === 'undefined') return;
 
   // Single-modal invariant: a new confirmation replaces a pending one.
@@ -73,10 +67,18 @@ export function showConfirm(
     body: '<p class="gm-ui-dialog-message">' + message + '</p>',
     cancelLabel: t('confirm_cancel'),
     footer:
-      '<button type="button" id="confirm-cancel" class="gm-btn gm-btn-ghost" data-dialog-close>' + esc(t('confirm_cancel')) + '</button>' +
-      '<button type="button" id="confirm-ok" class="gm-btn gm-btn-danger" data-dialog-confirm>' + esc(t('confirm_ok')) + '</button>',
-    onConfirm: () => { onConfirm(); },
-    onCancel: () => { if (onCancel) onCancel(); },
+      '<button type="button" id="confirm-cancel" class="gm-btn gm-btn-ghost" data-dialog-close>' +
+      esc(t('confirm_cancel')) +
+      '</button>' +
+      '<button type="button" id="confirm-ok" class="gm-btn gm-btn-danger" data-dialog-confirm>' +
+      esc(t('confirm_ok')) +
+      '</button>',
+    onConfirm: () => {
+      onConfirm();
+    },
+    onCancel: () => {
+      if (onCancel) onCancel();
+    },
   });
 }
 
@@ -94,90 +96,121 @@ export async function showPlayerHistoryDialog(uid: string, pseudo: string): Prom
 
   const html =
     '<div id="player-history-overlay" class="gm-modal-overlay">' +
-      '<div class="gm-modal-card" style="max-width: 640px; width: 92%; position: relative;">' +
-        '<div class="gm-modal-header" style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 1rem;">' +
-          '<div style="display:flex; align-items:center; gap:0.5rem;">' +
-            '<i class="ph ph-chart-line-up" style="font-size: var(--fs-3xl); color: var(--accent);"></i>' +
-            '<h3 style="margin:0; font-size: var(--fs-xl);">' + esc(pseudo) + ' — Player History</h3>' +
-          '</div>' +
-          '<button type="button" class="gm-mini-btn gm-close-modal" aria-label="Close"><i class="ph ph-x" aria-hidden="true"></i></button>' +
-        '</div>' +
-        '<div class="gm-modal-body" id="player-history-body" style="display:flex; flex-direction:column; gap:1.25rem; max-height:70vh; overflow-y:auto;">' +
-          '<div class="gm-empty" style="padding:2rem;"><i class="ph ph-circle-notch ph-spin gm-icon"></i><div class="gm-empty-title">Loading history...</div></div>' +
-        '</div>' +
-        '<div class="gm-modal-footer" style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top: 1.5rem;">' +
-          '<button type="button" class="gm-btn gm-btn-ghost gm-close-modal">Close</button>' +
-        '</div>' +
-      '</div>' +
+    '<div class="gm-modal-card" style="max-width: 640px; width: 92%; position: relative;">' +
+    '<div class="gm-modal-header" style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 1rem;">' +
+    '<div style="display:flex; align-items:center; gap:0.5rem;">' +
+    '<i class="ph ph-chart-line-up" style="font-size: var(--fs-3xl); color: var(--accent);"></i>' +
+    '<h3 style="margin:0; font-size: var(--fs-xl);">' +
+    esc(pseudo) +
+    ' — Player History</h3>' +
+    '</div>' +
+    '<button type="button" class="gm-mini-btn gm-close-modal" aria-label="Close"><i class="ph ph-x" aria-hidden="true"></i></button>' +
+    '</div>' +
+    '<div class="gm-modal-body" id="player-history-body" style="display:flex; flex-direction:column; gap:1.25rem; max-height:70vh; overflow-y:auto;">' +
+    '<div class="gm-empty" style="padding:2rem;"><i class="ph ph-circle-notch ph-spin gm-icon"></i><div class="gm-empty-title">Loading history...</div></div>' +
+    '</div>' +
+    '<div class="gm-modal-footer" style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top: 1.5rem;">' +
+    '<button type="button" class="gm-btn gm-btn-ghost gm-close-modal">Close</button>' +
+    '</div>' +
+    '</div>' +
     '</div>';
 
   document.body.insertAdjacentHTML('beforeend', html);
   const overlay = document.getElementById('player-history-overlay');
   if (!overlay) return;
-  requestAnimationFrame(() => { overlay.classList.add('visible'); });
+  requestAnimationFrame(() => {
+    overlay.classList.add('visible');
+  });
 
   const closeModal = (): void => {
     overlay.classList.remove('visible');
-    setTimeout(() => { overlay.remove(); }, 200);
+    setTimeout(() => {
+      overlay.remove();
+    }, 200);
   };
-  overlay.querySelectorAll('.gm-close-modal').forEach((btn) => { btn.addEventListener('click', closeModal); });
-  overlay.addEventListener('click', (ev) => { if (ev.target === overlay) closeModal(); });
+  overlay.querySelectorAll('.gm-close-modal').forEach((btn) => {
+    btn.addEventListener('click', closeModal);
+  });
+  overlay.addEventListener('click', (ev) => {
+    if (ev.target === overlay) closeModal();
+  });
   adoptDialog(overlay, { onEscape: closeModal });
 
   const body = document.getElementById('player-history-body');
   if (!body) return;
   if (!uid) {
-    body.innerHTML = '<div class="gm-empty" style="padding:2rem;"><div class="gm-empty-title">No UID on file for this player.</div></div>';
+    body.innerHTML =
+      '<div class="gm-empty" style="padding:2rem;"><div class="gm-empty-title">No UID on file for this player.</div></div>';
     return;
   }
 
   const db: any = getClient();
   if (!db) {
-    body.innerHTML = '<div class="gm-empty" style="padding:2rem;"><div class="gm-empty-title">Failed to load player history.</div></div>';
+    body.innerHTML =
+      '<div class="gm-empty" style="padding:2rem;"><div class="gm-empty-title">Failed to load player history.</div></div>';
     return;
   }
 
   try {
     const [metricsRes, eventRes] = await Promise.all([
       db.rpc('gm_get_player_metrics_history', { p_uid: uid, p_limit: 12 }),
-      db.rpc('gm_get_player_event_history', { p_uid: uid, p_limit: 60 })
+      db.rpc('gm_get_player_event_history', { p_uid: uid, p_limit: 60 }),
     ]);
 
     const metrics = metricsRes && metricsRes.data && metricsRes.data.ok ? metricsRes.data : null;
     const eventData = eventRes && eventRes.data && eventRes.data.ok ? eventRes.data : null;
-    const powerHistory: PlayerMetricsRow[] =
-      metrics && Array.isArray(metrics.history) ? metrics.history : [];
+    const powerHistory: PlayerMetricsRow[] = metrics && Array.isArray(metrics.history) ? metrics.history : [];
 
     let sections = '';
 
     if (powerHistory.length > 0) {
-      sections += '<div>' +
-        '<h4 style="margin:0 0 .5rem; font-size: var(--fs-md); color:var(--fg-dim); font-weight:600;">Power trend (last ' + powerHistory.length + ' weeks)</h4>' +
+      sections +=
+        '<div>' +
+        '<h4 style="margin:0 0 .5rem; font-size: var(--fs-md); color:var(--fg-dim); font-weight:600;">Power trend (last ' +
+        powerHistory.length +
+        ' weeks)</h4>' +
         '<canvas id="player-history-power-canvas" style="width:100%; display:block;"></canvas>' +
-      '</div>';
+        '</div>';
     }
 
     const events: Record<string, any> =
       eventData && eventData.events && typeof eventData.events === 'object' ? eventData.events : {};
     const eventKeys = Object.keys(events);
     if (eventKeys.length > 0) {
-      sections += '<div>' +
+      sections +=
+        '<div>' +
         '<h4 style="margin:0 0 .5rem; font-size: var(--fs-md); color:var(--fg-dim); font-weight:600;">Event participation</h4>' +
         '<div style="display:flex; flex-direction:column; gap:.5rem;">' +
-          eventKeys.sort().map((evKey) => {
+        eventKeys
+          .sort()
+          .map((evKey) => {
             const ev = events[evKey] || {};
-            const rateColor = ev.rate >= 80 ? '#34d399' : (ev.rate >= 50 ? '#fbbf24' : 'var(--fg-dim)');
-            return '<div style="display:flex; align-items:center; justify-content:space-between; padding:.6rem .8rem; background:rgba(255,255,255,0.03); border-radius:8px; border:1px solid rgba(255,255,255,0.06);">' +
-              '<span style="font-weight:600;">' + esc(evKey) + '</span>' +
-              '<span style="font-size: var(--fs-base); color:' + rateColor + '; font-weight:700;">' + ev.attended + '/' + ev.count + ' attended (' + ev.rate + '%)</span>' +
-            '</div>';
-          }).join('') +
+            const rateColor = ev.rate >= 80 ? '#34d399' : ev.rate >= 50 ? '#fbbf24' : 'var(--fg-dim)';
+            return (
+              '<div style="display:flex; align-items:center; justify-content:space-between; padding:.6rem .8rem; background:rgba(255,255,255,0.03); border-radius:8px; border:1px solid rgba(255,255,255,0.06);">' +
+              '<span style="font-weight:600;">' +
+              esc(evKey) +
+              '</span>' +
+              '<span style="font-size: var(--fs-base); color:' +
+              rateColor +
+              '; font-weight:700;">' +
+              ev.attended +
+              '/' +
+              ev.count +
+              ' attended (' +
+              ev.rate +
+              '%)</span>' +
+              '</div>'
+            );
+          })
+          .join('') +
         '</div>' +
-      '</div>';
+        '</div>';
     }
 
     if (!sections) {
-      body.innerHTML = '<div class="gm-empty" style="padding:2rem;"><div class="gm-empty-title">No history available for this player.</div></div>';
+      body.innerHTML =
+        '<div class="gm-empty" style="padding:2rem;"><div class="gm-empty-title">No history available for this player.</div></div>';
       return;
     }
 
@@ -189,14 +222,15 @@ export async function showPlayerHistoryDialog(uid: string, pseudo: string): Prom
         const chartHistory = powerHistory.map((h) => ({
           score: h.total_power,
           guild_avg_score: 0,
-          week_start: h.week_start
+          week_start: h.week_start,
         }));
         drawScoreTrendChart(canvas, chartHistory);
       }
     }
   } catch (err) {
     console.error('Failed to load player history', err);
-    body.innerHTML = '<div class="gm-empty" style="padding:2rem;"><div class="gm-empty-title">Failed to load player history.</div></div>';
+    body.innerHTML =
+      '<div class="gm-empty" style="padding:2rem;"><div class="gm-empty-title">Failed to load player history.</div></div>';
   }
 }
 
@@ -209,24 +243,22 @@ const REMINDERS_BY_PREFIX: Record<string, ReminderDef[]> = {
   armsrace: [
     { key: 'reminder_30', label: '30 Minutes Reminder' },
     { key: 'reminder_5', label: '5 Minutes Reminder' },
-    { key: 'start', label: 'Event Start' }
+    { key: 'start', label: 'Event Start' },
   ],
   dtr: [
     { key: 'reminder_30', label: '30 Minutes Reminder' },
     { key: 'reminder_5', label: '5 Minutes Reminder' },
-    { key: 'start', label: 'Event Start' }
+    { key: 'start', label: 'Event Start' },
   ],
   shadowfront: [
     { key: 'reminder_30', label: '30 Minutes Reminder' },
     { key: 'reminder_5', label: '5 Minutes Reminder' },
-    { key: 'start', label: 'Event Start' }
+    { key: 'start', label: 'Event Start' },
   ],
-  calamity: [
-    { key: 'reminder_10', label: '10 Minutes Reminder' }
-  ],
+  calamity: [{ key: 'reminder_10', label: '10 Minutes Reminder' }],
   gvg: [
     { key: 'reminder', label: '5 Minutes Reminder' },
-    { key: 'start', label: 'Event Start' }
+    { key: 'start', label: 'Event Start' },
   ],
   svs: [
     { key: 'reminder_30_invasion', label: '30 Min Reminder (Invasion)' },
@@ -235,8 +267,8 @@ const REMINDERS_BY_PREFIX: Record<string, ReminderDef[]> = {
     { key: 'reminder_5_defense', label: '5 Min Reminder (Defense)' },
     { key: 'start_invasion', label: 'Event Start (Invasion)' },
     { key: 'start_defense', label: 'Event Start (Defense)' },
-    { key: 'garrison', label: 'Garrison Reminder' }
-  ]
+    { key: 'garrison', label: 'Garrison Reminder' },
+  ],
 };
 
 const TITLE_MAP: Record<string, string> = {
@@ -245,7 +277,7 @@ const TITLE_MAP: Record<string, string> = {
   shadowfront: 'Shadowfront',
   calamity: 'Calamity Befalls',
   gvg: 'GvG Saturday',
-  svs: 'SvS PvP'
+  svs: 'SvS PvP',
 };
 
 /** Default Discord templates, mirroring app.js#openCustomMsgModal. */
@@ -257,7 +289,8 @@ function getDefaultTpl(eventPrefix: string, key: string, field: string): string 
       if (field === 'title') return '⏰ Reminder: ' + namePlaceholder + ' starts in 30 minutes!';
       if (field === 'desc') return 'Get ready, soldiers! Please log in and prepare for the event.';
     } else if (key === 'reminder_5') {
-      if (field === 'content') return '🚨 **Immediate Reminder:** ' + namePlaceholder + ' starts in **5 minutes**! Get ready! {guild_tag}';
+      if (field === 'content')
+        return '🚨 **Immediate Reminder:** ' + namePlaceholder + ' starts in **5 minutes**! Get ready! {guild_tag}';
       if (field === 'title') return '🚨 Immediate Reminder: ' + namePlaceholder + ' starts in 5 minutes!';
       if (field === 'desc') return 'Action time! Join your squad now!';
     } else if (key === 'start') {
@@ -305,7 +338,8 @@ function getDefaultTpl(eventPrefix: string, key: string, field: string): string 
       if (field === 'title') return '⚔️ SvS: Defense has started!';
       if (field === 'desc') return 'Enemy forces are entering our server! Defend the Blackhole at all costs...';
     } else if (key === 'garrison') {
-      if (field === 'content') return '🛡️ **SvS: Garrison Reminder** - Don\'t forget to put your ships in garrison! @everyone';
+      if (field === 'content')
+        return "🛡️ **SvS: Garrison Reminder** - Don't forget to put your ships in garrison! @everyone";
       if (field === 'title') return '🛡️ SvS: Garrison Reminder';
       if (field === 'desc') return 'Put your ships in garrison to avoid being attacked while offline.';
     }
@@ -325,9 +359,10 @@ export async function openCustomMsgModal(eventPrefix: string): Promise<void> {
 
   const templates: Record<string, string> = {};
   for (const reminder of reminders) {
-    templates[reminder.key + '_content'] = await configGet('tpl_' + eventPrefix + '_' + reminder.key + '_content') || '';
-    templates[reminder.key + '_title'] = await configGet('tpl_' + eventPrefix + '_' + reminder.key + '_title') || '';
-    templates[reminder.key + '_desc'] = await configGet('tpl_' + eventPrefix + '_' + reminder.key + '_desc') || '';
+    templates[reminder.key + '_content'] =
+      (await configGet('tpl_' + eventPrefix + '_' + reminder.key + '_content')) || '';
+    templates[reminder.key + '_title'] = (await configGet('tpl_' + eventPrefix + '_' + reminder.key + '_title')) || '';
+    templates[reminder.key + '_desc'] = (await configGet('tpl_' + eventPrefix + '_' + reminder.key + '_desc')) || '';
   }
 
   const overlay = document.createElement('div');
@@ -347,8 +382,15 @@ export async function openCustomMsgModal(eventPrefix: string): Promise<void> {
     else if (reminder.key.includes('garrison')) icon = 'ph-anchor';
 
     tabsHtml +=
-      '<button type="button" class="discord-custom-tab-btn ' + (index === 0 ? 'active' : '') + '" data-tab="' + esc(reminder.key) + '" role="tab">' +
-        '<i class="ph ' + icon + '"></i> ' + esc(reminder.label) +
+      '<button type="button" class="discord-custom-tab-btn ' +
+      (index === 0 ? 'active' : '') +
+      '" data-tab="' +
+      esc(reminder.key) +
+      '" role="tab">' +
+      '<i class="ph ' +
+      icon +
+      '"></i> ' +
+      esc(reminder.label) +
       '</button>';
   });
   tabsHtml += '</div>';
@@ -364,68 +406,120 @@ export async function openCustomMsgModal(eventPrefix: string): Promise<void> {
     const valTitle = templates[reminder.key + '_title'] || '';
     const valDesc = templates[reminder.key + '_desc'] || '';
 
-    const roundPillContent = eventPrefix === 'calamity'
-      ? '<button type="button" class="discord-pill-btn" data-insert="{round}" data-target="tpl-' + reminder.key + '-content"><i class="ph ph-hash"></i> Round #</button>'
-      : '';
-    const roundPillTitle = eventPrefix === 'calamity'
-      ? '<button type="button" class="discord-pill-btn" data-insert="{round}" data-target="tpl-' + reminder.key + '-title"><i class="ph ph-hash"></i> Round #</button>'
-      : '';
-    const roundPillDesc = eventPrefix === 'calamity'
-      ? '<button type="button" class="discord-pill-btn" data-insert="{round}" data-target="tpl-' + reminder.key + '-desc"><i class="ph ph-hash"></i> Round #</button>'
-      : '';
+    const roundPillContent =
+      eventPrefix === 'calamity'
+        ? '<button type="button" class="discord-pill-btn" data-insert="{round}" data-target="tpl-' +
+          reminder.key +
+          '-content"><i class="ph ph-hash"></i> Round #</button>'
+        : '';
+    const roundPillTitle =
+      eventPrefix === 'calamity'
+        ? '<button type="button" class="discord-pill-btn" data-insert="{round}" data-target="tpl-' +
+          reminder.key +
+          '-title"><i class="ph ph-hash"></i> Round #</button>'
+        : '';
+    const roundPillDesc =
+      eventPrefix === 'calamity'
+        ? '<button type="button" class="discord-pill-btn" data-insert="{round}" data-target="tpl-' +
+          reminder.key +
+          '-desc"><i class="ph ph-hash"></i> Round #</button>'
+        : '';
 
     panesHtml +=
-      '<div class="discord-pane" id="pane-' + reminder.key + '" style="display: ' + (index === 0 ? 'flex' : 'none') + '; flex-direction: column; gap: 0.9rem;">' +
-        // Field 1: Ping / Notification Text
-        '<div class="gm-col" style="gap: 0.3rem;">' +
-          '<label for="tpl-' + reminder.key + '-content" style="font-size: var(--fs-sm); font-weight: 600; color: var(--fg); display: flex; justify-content: space-between; align-items: center;">' +
-            '<span>Notification Text (Ping)</span>' +
-            '<span style="font-size: var(--fs-xs); color: var(--fg-dim); font-weight: 400;">Triggers sound alert</span>' +
-          '</label>' +
-          '<div class="discord-pills-bar">' +
-            '<button type="button" class="discord-pill-btn" data-insert="{guild_tag}" data-target="tpl-' + reminder.key + '-content"><i class="ph ph-tag"></i> Guild Role</button>' +
-            '<button type="button" class="discord-pill-btn" data-insert="@everyone" data-target="tpl-' + reminder.key + '-content"><i class="ph ph-megaphone"></i> @everyone</button>' +
-            '<button type="button" class="discord-pill-btn" data-insert="{event_name}" data-target="tpl-' + reminder.key + '-content"><i class="ph ph-game-controller"></i> Event Name</button>' +
-            '<button type="button" class="discord-pill-btn" data-insert="{date}" data-target="tpl-' + reminder.key + '-content"><i class="ph ph-clock"></i> UTC Time</button>' +
-            roundPillContent +
-          '</div>' +
-          '<input type="text" id="tpl-' + reminder.key + '-content" class="gm-input gm-input-sm" style="font-size: var(--fs-sm);" placeholder="' + esc(defContent) + '" value="' + esc(valContent) + '">' +
-        '</div>' +
-
-        // Field 2: Embed Title
-        '<div class="gm-col" style="gap: 0.3rem;">' +
-          '<label for="tpl-' + reminder.key + '-title" style="font-size: var(--fs-sm); font-weight: 600; color: var(--fg); display: flex; justify-content: space-between; align-items: center;">' +
-            '<span>Embed Title</span>' +
-            '<span style="font-size: var(--fs-xs); color: var(--fg-dim); font-weight: 400;">Bold title</span>' +
-          '</label>' +
-          '<div class="discord-pills-bar">' +
-            '<button type="button" class="discord-pill-btn" data-insert="{event_name}" data-target="tpl-' + reminder.key + '-title"><i class="ph ph-game-controller"></i> Event Name</button>' +
-            '<button type="button" class="discord-pill-btn" data-insert="{date}" data-target="tpl-' + reminder.key + '-title"><i class="ph ph-clock"></i> UTC Time</button>' +
-            roundPillTitle +
-          '</div>' +
-          '<input type="text" id="tpl-' + reminder.key + '-title" class="gm-input gm-input-sm" style="font-size: var(--fs-sm);" placeholder="' + esc(defTitle) + '" value="' + esc(valTitle) + '">' +
-        '</div>' +
-
-        // Field 3: Embed Description
-        '<div class="gm-col" style="gap: 0.3rem;">' +
-          '<label for="tpl-' + reminder.key + '-desc" style="font-size: var(--fs-sm); font-weight: 600; color: var(--fg); display: flex; justify-content: space-between; align-items: center;">' +
-            '<span>Embed Description</span>' +
-            '<span style="font-size: var(--fs-xs); color: var(--fg-dim); font-weight: 400;">Main body</span>' +
-          '</label>' +
-          '<div class="discord-pills-bar">' +
-            '<button type="button" class="discord-pill-btn" data-insert="{event_name}" data-target="tpl-' + reminder.key + '-desc"><i class="ph ph-game-controller"></i> Event Name</button>' +
-            '<button type="button" class="discord-pill-btn" data-insert="{date}" data-target="tpl-' + reminder.key + '-desc"><i class="ph ph-clock"></i> UTC Time</button>' +
-            roundPillDesc +
-          '</div>' +
-          '<textarea id="tpl-' + reminder.key + '-desc" class="gm-input" style="font-size: var(--fs-sm); height: 65px; resize: vertical;" placeholder="' + esc(defDesc) + '">' + esc(valDesc) + '</textarea>' +
-        '</div>' +
-
-        // Reset to Default button
-        '<div style="display: flex; justify-content: flex-start; margin-top: 0.2rem;">' +
-          '<button type="button" class="gm-btn gm-btn-ghost gm-btn-sm discord-reset-btn" data-reset="' + esc(reminder.key) + '" style="gap: 0.35rem; font-size: var(--fs-xs); color: var(--fg-muted);">' +
-            '<i class="ph ph-arrow-counter-clockwise"></i> Reset to default template' +
-          '</button>' +
-        '</div>' +
+      '<div class="discord-pane" id="pane-' +
+      reminder.key +
+      '" style="display: ' +
+      (index === 0 ? 'flex' : 'none') +
+      '; flex-direction: column; gap: 0.9rem;">' +
+      // Field 1: Ping / Notification Text
+      '<div class="gm-col" style="gap: 0.3rem;">' +
+      '<label for="tpl-' +
+      reminder.key +
+      '-content" style="font-size: var(--fs-sm); font-weight: 600; color: var(--fg); display: flex; justify-content: space-between; align-items: center;">' +
+      '<span>Notification Text (Ping)</span>' +
+      '<span style="font-size: var(--fs-xs); color: var(--fg-dim); font-weight: 400;">Triggers sound alert</span>' +
+      '</label>' +
+      '<div class="discord-pills-bar">' +
+      '<button type="button" class="discord-pill-btn" data-insert="{guild_tag}" data-target="tpl-' +
+      reminder.key +
+      '-content"><i class="ph ph-tag"></i> Guild Role</button>' +
+      '<button type="button" class="discord-pill-btn" data-insert="@everyone" data-target="tpl-' +
+      reminder.key +
+      '-content"><i class="ph ph-megaphone"></i> @everyone</button>' +
+      '<button type="button" class="discord-pill-btn" data-insert="{event_name}" data-target="tpl-' +
+      reminder.key +
+      '-content"><i class="ph ph-game-controller"></i> Event Name</button>' +
+      '<button type="button" class="discord-pill-btn" data-insert="{date}" data-target="tpl-' +
+      reminder.key +
+      '-content"><i class="ph ph-clock"></i> UTC Time</button>' +
+      roundPillContent +
+      '</div>' +
+      '<input type="text" id="tpl-' +
+      reminder.key +
+      '-content" class="gm-input gm-input-sm" style="font-size: var(--fs-sm);" placeholder="' +
+      esc(defContent) +
+      '" value="' +
+      esc(valContent) +
+      '">' +
+      '</div>' +
+      // Field 2: Embed Title
+      '<div class="gm-col" style="gap: 0.3rem;">' +
+      '<label for="tpl-' +
+      reminder.key +
+      '-title" style="font-size: var(--fs-sm); font-weight: 600; color: var(--fg); display: flex; justify-content: space-between; align-items: center;">' +
+      '<span>Embed Title</span>' +
+      '<span style="font-size: var(--fs-xs); color: var(--fg-dim); font-weight: 400;">Bold title</span>' +
+      '</label>' +
+      '<div class="discord-pills-bar">' +
+      '<button type="button" class="discord-pill-btn" data-insert="{event_name}" data-target="tpl-' +
+      reminder.key +
+      '-title"><i class="ph ph-game-controller"></i> Event Name</button>' +
+      '<button type="button" class="discord-pill-btn" data-insert="{date}" data-target="tpl-' +
+      reminder.key +
+      '-title"><i class="ph ph-clock"></i> UTC Time</button>' +
+      roundPillTitle +
+      '</div>' +
+      '<input type="text" id="tpl-' +
+      reminder.key +
+      '-title" class="gm-input gm-input-sm" style="font-size: var(--fs-sm);" placeholder="' +
+      esc(defTitle) +
+      '" value="' +
+      esc(valTitle) +
+      '">' +
+      '</div>' +
+      // Field 3: Embed Description
+      '<div class="gm-col" style="gap: 0.3rem;">' +
+      '<label for="tpl-' +
+      reminder.key +
+      '-desc" style="font-size: var(--fs-sm); font-weight: 600; color: var(--fg); display: flex; justify-content: space-between; align-items: center;">' +
+      '<span>Embed Description</span>' +
+      '<span style="font-size: var(--fs-xs); color: var(--fg-dim); font-weight: 400;">Main body</span>' +
+      '</label>' +
+      '<div class="discord-pills-bar">' +
+      '<button type="button" class="discord-pill-btn" data-insert="{event_name}" data-target="tpl-' +
+      reminder.key +
+      '-desc"><i class="ph ph-game-controller"></i> Event Name</button>' +
+      '<button type="button" class="discord-pill-btn" data-insert="{date}" data-target="tpl-' +
+      reminder.key +
+      '-desc"><i class="ph ph-clock"></i> UTC Time</button>' +
+      roundPillDesc +
+      '</div>' +
+      '<textarea id="tpl-' +
+      reminder.key +
+      '-desc" class="gm-input" style="font-size: var(--fs-sm); height: 65px; resize: vertical;" placeholder="' +
+      esc(defDesc) +
+      '">' +
+      esc(valDesc) +
+      '</textarea>' +
+      '</div>' +
+      // Reset to Default button
+      '<div style="display: flex; justify-content: flex-start; margin-top: 0.2rem;">' +
+      '<button type="button" class="gm-btn gm-btn-ghost gm-btn-sm discord-reset-btn" data-reset="' +
+      esc(reminder.key) +
+      '" style="gap: 0.35rem; font-size: var(--fs-xs); color: var(--fg-muted);">' +
+      '<i class="ph ph-arrow-counter-clockwise"></i> Reset to default template' +
+      '</button>' +
+      '</div>' +
       '</div>';
   });
   panesHtml += '</div>';
@@ -433,74 +527,81 @@ export async function openCustomMsgModal(eventPrefix: string): Promise<void> {
   // Build Right Column (Discord Live Preview)
   const previewHtml =
     '<div class="discord-preview-column">' +
-      '<div class="discord-preview-wrap">' +
-        '<div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: #949ba4; font-weight: 700; border-bottom: 1px solid rgba(255, 255, 255, 0.06); padding-bottom: 0.4rem;">' +
-          '<span><i class="ph ph-discord-logo"></i> Discord Live Preview</span>' +
-          '<span style="font-size: 0.65rem; background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 4px;">Real-time</span>' +
-        '</div>' +
-        '<div class="discord-msg-header">' +
-          '<div class="discord-avatar">🤖</div>' +
-          '<div>' +
-            '<div class="discord-author">' +
-              '<span>FGF Bot</span>' +
-              '<span class="discord-bot-badge">BOT</span>' +
-              '<span class="discord-timestamp">Today at 14:00</span>' +
-            '</div>' +
-          '</div>' +
-        '</div>' +
-        '<div class="discord-content" id="discord-preview-content"></div>' +
-        '<div class="discord-embed-card" id="discord-preview-embed">' +
-          '<div class="discord-embed-title" id="discord-preview-title"></div>' +
-          '<div class="discord-embed-desc" id="discord-preview-desc"></div>' +
-          '<div class="discord-embed-fields">' +
-            '<div class="discord-embed-field">' +
-              '<div class="discord-field-name">Status</div>' +
-              '<div class="discord-field-value" id="discord-preview-status">📅 Scheduled</div>' +
-            '</div>' +
-            '<div class="discord-embed-field">' +
-              '<div class="discord-field-name">Start Time (UTC)</div>' +
-              '<div class="discord-field-value">Wed, 14:00 UTC</div>' +
-            '</div>' +
-          '</div>' +
-        '</div>' +
-      '</div>' +
+    '<div class="discord-preview-wrap">' +
+    '<div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: #949ba4; font-weight: 700; border-bottom: 1px solid rgba(255, 255, 255, 0.06); padding-bottom: 0.4rem;">' +
+    '<span><i class="ph ph-discord-logo"></i> Discord Live Preview</span>' +
+    '<span style="font-size: 0.65rem; background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 4px;">Real-time</span>' +
+    '</div>' +
+    '<div class="discord-msg-header">' +
+    '<div class="discord-avatar">🤖</div>' +
+    '<div>' +
+    '<div class="discord-author">' +
+    '<span>FGF Bot</span>' +
+    '<span class="discord-bot-badge">BOT</span>' +
+    '<span class="discord-timestamp">Today at 14:00</span>' +
+    '</div>' +
+    '</div>' +
+    '</div>' +
+    '<div class="discord-content" id="discord-preview-content"></div>' +
+    '<div class="discord-embed-card" id="discord-preview-embed">' +
+    '<div class="discord-embed-title" id="discord-preview-title"></div>' +
+    '<div class="discord-embed-desc" id="discord-preview-desc"></div>' +
+    '<div class="discord-embed-fields">' +
+    '<div class="discord-embed-field">' +
+    '<div class="discord-field-name">Status</div>' +
+    '<div class="discord-field-value" id="discord-preview-status">📅 Scheduled</div>' +
+    '</div>' +
+    '<div class="discord-embed-field">' +
+    '<div class="discord-field-name">Start Time (UTC)</div>' +
+    '<div class="discord-field-value">Wed, 14:00 UTC</div>' +
+    '</div>' +
+    '</div>' +
+    '</div>' +
+    '</div>' +
     '</div>';
 
   const html =
     '<div class="gm-modal-card discord-custom-modal" style="text-align: left;">' +
-      '<div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-soft); padding-bottom: 0.75rem;">' +
-        '<h3 style="font-family: var(--font-display); font-size: var(--fs-xl); margin: 0; display: flex; align-items: center; gap: 0.5rem; color: var(--fg);">' +
-          '<i class="ph ph-note-pencil" style="color: var(--accent);"></i> Personalization - ' + esc(eventTitle) +
-        '</h3>' +
-        '<button type="button" class="gm-btn gm-btn-ghost gm-btn-icon" id="custom-msg-modal-close" aria-label="Close" style="padding: 0.25rem;"><i class="ph ph-x" aria-hidden="true"></i></button>' +
-      '</div>' +
-      tabsHtml +
-      '<div class="discord-custom-body">' +
-        panesHtml +
-        previewHtml +
-      '</div>' +
-      '<div style="display: flex; gap: 0.75rem; justify-content: flex-end; border-top: 1px solid var(--border-soft); padding-top: 0.75rem;">' +
-        '<button type="button" class="gm-btn gm-btn-ghost" id="custom-msg-modal-cancel">Cancel</button>' +
-        '<button type="button" class="gm-btn gm-btn-primary" id="custom-msg-modal-save">' +
-          '<i class="ph ph-check"></i> Save' +
-        '</button>' +
-      '</div>' +
+    '<div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-soft); padding-bottom: 0.75rem;">' +
+    '<h3 style="font-family: var(--font-display); font-size: var(--fs-xl); margin: 0; display: flex; align-items: center; gap: 0.5rem; color: var(--fg);">' +
+    '<i class="ph ph-note-pencil" style="color: var(--accent);"></i> Personalization - ' +
+    esc(eventTitle) +
+    '</h3>' +
+    '<button type="button" class="gm-btn gm-btn-ghost gm-btn-icon" id="custom-msg-modal-close" aria-label="Close" style="padding: 0.25rem;"><i class="ph ph-x" aria-hidden="true"></i></button>' +
+    '</div>' +
+    tabsHtml +
+    '<div class="discord-custom-body">' +
+    panesHtml +
+    previewHtml +
+    '</div>' +
+    '<div style="display: flex; gap: 0.75rem; justify-content: flex-end; border-top: 1px solid var(--border-soft); padding-top: 0.75rem;">' +
+    '<button type="button" class="gm-btn gm-btn-ghost" id="custom-msg-modal-cancel">Cancel</button>' +
+    '<button type="button" class="gm-btn gm-btn-primary" id="custom-msg-modal-save">' +
+    '<i class="ph ph-check"></i> Save' +
+    '</button>' +
+    '</div>' +
     '</div>';
 
   overlay.innerHTML = html;
   document.body.appendChild(overlay);
-  requestAnimationFrame(() => { overlay.classList.add('visible'); });
+  requestAnimationFrame(() => {
+    overlay.classList.add('visible');
+  });
 
   function closeModal(): void {
     overlay.classList.remove('visible');
-    setTimeout(() => { overlay.remove(); }, 250);
+    setTimeout(() => {
+      overlay.remove();
+    }, 250);
   }
 
   const closeBtn = document.getElementById('custom-msg-modal-close');
   if (closeBtn) closeBtn.addEventListener('click', closeModal);
   const cancelBtn = document.getElementById('custom-msg-modal-cancel');
   if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
-  overlay.addEventListener('click', (ev) => { if (ev.target === overlay) closeModal(); });
+  overlay.addEventListener('click', (ev) => {
+    if (ev.target === overlay) closeModal();
+  });
   adoptDialog(overlay, { onEscape: closeModal });
 
   // Cursor insertion helper
@@ -654,9 +755,15 @@ export async function openCustomMsgModal(eventPrefix: string): Promise<void> {
           const titleEl = document.getElementById('tpl-' + reminder.key + '-title') as HTMLInputElement | null;
           const descEl = document.getElementById('tpl-' + reminder.key + '-desc') as HTMLTextAreaElement | null;
 
-          promises.push(configSet('tpl_' + eventPrefix + '_' + reminder.key + '_content', contentEl ? contentEl.value.trim() : ''));
-          promises.push(configSet('tpl_' + eventPrefix + '_' + reminder.key + '_title', titleEl ? titleEl.value.trim() : ''));
-          promises.push(configSet('tpl_' + eventPrefix + '_' + reminder.key + '_desc', descEl ? descEl.value.trim() : ''));
+          promises.push(
+            configSet('tpl_' + eventPrefix + '_' + reminder.key + '_content', contentEl ? contentEl.value.trim() : '')
+          );
+          promises.push(
+            configSet('tpl_' + eventPrefix + '_' + reminder.key + '_title', titleEl ? titleEl.value.trim() : '')
+          );
+          promises.push(
+            configSet('tpl_' + eventPrefix + '_' + reminder.key + '_desc', descEl ? descEl.value.trim() : '')
+          );
         }
         await Promise.all(promises);
         showToast(t('toast_config_updated'), 'success');

@@ -23,11 +23,16 @@ export async function setAbsence(ctx: PortalContext): Promise<Response> {
   const endDate = (payload?.end_date ?? "").toString().trim();
   const kind = (payload?.kind ?? "full").toString().trim();
   const note = (payload?.note ?? "").toString().trim();
-  const absenceId = payload?.id ? (payload.id).toString().trim() : null;
+  const absenceId = payload?.id ? payload.id.toString().trim() : null;
 
   const res = await setPlayerAbsence(admin, uid, identity.guild, { startDate, endDate, kind, note, id: absenceId });
   if (!res.ok) {
-    const status = (res.error === "missing_dates" || res.error === "invalid_kind") ? 400 : (res.error === "player_not_found" ? 400 : 200);
+    const status =
+      res.error === "missing_dates" || res.error === "invalid_kind"
+        ? 400
+        : res.error === "player_not_found"
+          ? 400
+          : 200;
     logger.error("Failed to set player absence", res.error, { uid });
     return json(res, status);
   }

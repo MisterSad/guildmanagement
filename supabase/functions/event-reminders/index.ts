@@ -14,17 +14,17 @@
  * scenarios.test.ts pins what the cron sends and writes, tick by tick.
  */
 
-import { EdgeLogger } from "../_shared/logger.ts";
-import { getCorsHeaders } from "../_shared/cors.ts";
-import { serviceClient } from "../_shared/clients.ts";
-import { serveUnlessTest } from "../_shared/serve.ts";
-import { STATIC_CONFIG_KEYS, type GuildRun } from "./shared.ts";
-import { runStandardEvents, type ActiveEvent } from "./standard.ts";
-import { runGvgDailyTasks, runGvgSaturday } from "./gvg.ts";
-import { runSvs } from "./svs.ts";
-import { runCalamity } from "./calamity.ts";
+import { EdgeLogger } from '../_shared/logger.ts';
+import { getCorsHeaders } from '../_shared/cors.ts';
+import { serviceClient } from '../_shared/clients.ts';
+import { serveUnlessTest } from '../_shared/serve.ts';
+import { STATIC_CONFIG_KEYS, type GuildRun } from './shared.ts';
+import { runStandardEvents, type ActiveEvent } from './standard.ts';
+import { runGvgDailyTasks, runGvgSaturday } from './gvg.ts';
+import { runSvs } from './svs.ts';
+import { runCalamity } from './calamity.ts';
 
-let logger = new EdgeLogger("event-reminders");
+let logger = new EdgeLogger('event-reminders');
 
 // PWA Web Push decommissioned per user request: all notifications are now routed to Discord exclusively.
 
@@ -43,15 +43,15 @@ function makeJson(req: Request) {
   return (body: unknown, status = 200): Response =>
     new Response(JSON.stringify(body), {
       status,
-      headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
     });
 }
 
 export async function handler(req: Request): Promise<Response> {
   const json = makeJson(req);
-  logger = new EdgeLogger("event-reminders", req);
+  logger = new EdgeLogger('event-reminders', req);
 
-  if (req.method === "OPTIONS") return new Response("ok", { headers: getCorsHeaders(req) });
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: getCorsHeaders(req) });
 
   const authHeader = req.headers.get('Authorization') || '';
   const xCronSecret = req.headers.get('x-cron-secret') || '';
@@ -80,9 +80,7 @@ export async function handler(req: Request): Promise<Response> {
 
   try {
     // 0. Fetch all active guilds dynamically (all guilds are Unlimited / free)
-    const { data: guildRows, error: guildError } = await supabase
-      .from('guilds')
-      .select('id');
+    const { data: guildRows, error: guildError } = await supabase.from('guilds').select('id');
     if (guildError) throw guildError;
     const rawGuilds = (guildRows || []).map((r: any) => r.id);
 
@@ -163,7 +161,12 @@ export async function handler(req: Request): Promise<Response> {
 
     for (const guild of GUILDS) {
       const run: GuildRun = {
-        supabase, logger, guild, now, forceGvg, results,
+        supabase,
+        logger,
+        guild,
+        now,
+        forceGvg,
+        results,
         config: configsByGuild[guild],
         lockTimes: lockTimes[guild],
       };
@@ -178,7 +181,6 @@ export async function handler(req: Request): Promise<Response> {
     }
 
     return json({ ok: true, processed: results }, 200);
-
   } catch (err: any) {
     logger.error('Event reminders execution error', err);
     return json({ error: err.message }, 500);

@@ -19,7 +19,6 @@ function body(name) {
 }
 
 describe('GDPR erasure', () => {
-
   it('neither erasure is executable by anon', () => {
     expect(sql).toContain('REVOKE ALL ON FUNCTION public.gm_erase_player(text, text) FROM PUBLIC, anon;');
     expect(sql).toContain('REVOKE ALL ON FUNCTION public.gm_erase_account(text) FROM PUBLIC, anon;');
@@ -36,14 +35,15 @@ describe('no reversible password copy is written any more (C0)', () => {
   });
 
   it('existing copies go only where the hash verifies the same password', () => {
-    expect(sql).toContain('extensions.crypt(extensions.pgp_sym_decrypt(v_row.password_enc, v_key), v_row.password_hash)');
+    expect(sql).toContain(
+      'extensions.crypt(extensions.pgp_sym_decrypt(v_row.password_enc, v_key), v_row.password_hash)'
+    );
     expect(sql).toContain('= v_row.password_hash;');
     expect(sql).toContain("RAISE EXCEPTION 'a function still writes a reversible password copy'");
   });
 });
 
 describe('no fallback to a real tenant (AGENTS.md)', () => {
-
   it('the end-state check refuses any ALPHA fallback left in the three functions', () => {
     expect(sql).toContain("RAISE EXCEPTION 'a function still falls back to the ALPHA tenant'");
   });
@@ -52,7 +52,7 @@ describe('no fallback to a real tenant (AGENTS.md)', () => {
 describe('privacy.html says what the system does', () => {
   const policy = read('privacy.html');
 
-  it('discloses the transient storage of screen recordings and Google\'s 48-hour limit', () => {
+  it("discloses the transient storage of screen recordings and Google's 48-hour limit", () => {
     expect(policy).toContain('3.2. Screenshots and screen recordings.');
     expect(policy).toContain('automatically within 48 hours');
     expect(policy).not.toContain('no disk persistence and no object storage');

@@ -128,7 +128,10 @@ describe('the claim is not a usable password oracle', () => {
     // Sharing discord_verification_throttle would let OCR scans throttle
     // sign-ins, and vice versa.
     expect(migration).toContain('CREATE TABLE IF NOT EXISTS public.discord_auth_throttle');
-    const throttleFn = migration.slice(migration.indexOf('FUNCTION public.gm_check_discord_throttle'), migration.indexOf('FUNCTION public.gm_claim_account_with_discord'));
+    const throttleFn = migration.slice(
+      migration.indexOf('FUNCTION public.gm_check_discord_throttle'),
+      migration.indexOf('FUNCTION public.gm_claim_account_with_discord')
+    );
     expect(throttleFn).toContain('public.discord_auth_throttle');
     expect(throttleFn).not.toContain('discord_verification_throttle');
   });
@@ -152,8 +155,13 @@ describe('bijection and idempotence', () => {
 describe('least privilege and retention', () => {
   it('keeps both new functions off anon and authenticated', () => {
     const esc = (x) => x.replace(/[.()]/g, '\\$&');
-    for (const f of ['gm_check_discord_throttle(text, integer, bigint, timestamptz)', 'gm_claim_account_with_discord(text, text, text)']) {
-      expect(migration).toMatch(new RegExp(`REVOKE ALL ON FUNCTION public\\.${esc(f)}\\s+FROM PUBLIC, anon, authenticated;`));
+    for (const f of [
+      'gm_check_discord_throttle(text, integer, bigint, timestamptz)',
+      'gm_claim_account_with_discord(text, text, text)',
+    ]) {
+      expect(migration).toMatch(
+        new RegExp(`REVOKE ALL ON FUNCTION public\\.${esc(f)}\\s+FROM PUBLIC, anon, authenticated;`)
+      );
       expect(migration).toMatch(new RegExp(`GRANT EXECUTE ON FUNCTION public\\.${esc(f)}\\s+TO service_role;`));
     }
   });
@@ -173,7 +181,10 @@ describe('least privilege and retention', () => {
 });
 
 describe('the dialog offers both ways in, and warns before the irreversible one', () => {
-  const dialog = controller.slice(controller.indexOf('export function openLinkAccountDialog'), controller.indexOf('function linkErrorMessage'));
+  const dialog = controller.slice(
+    controller.indexOf('export function openLinkAccountDialog'),
+    controller.indexOf('function linkErrorMessage')
+  );
 
   it('offers the claim alongside the other three ways in', () => {
     // Phase D4 turned this into a four-path chooser: claim, code, join a

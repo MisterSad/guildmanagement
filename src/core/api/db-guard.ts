@@ -29,7 +29,6 @@
  * and `invalidateGuildViews` calls that follow.
  */
 
-
 import { canWriteGuild, getActiveGuild } from '../auth/roles';
 import { invalidateGuildViews } from '../cache/cache';
 
@@ -47,7 +46,7 @@ export const TENANT_TABLES = [
   'guild_config',
   'shadowfront_signups',
   'shadowfront_squads',
-  'player_name_history'
+  'player_name_history',
 ];
 
 export const READ_ONLY_MESSAGE = "Read-only access: you do not have permission to modify this guild's data.";
@@ -56,7 +55,7 @@ function readOnlyResult(): any {
   return {
     // biome-ignore lint/suspicious/noThenProperty: a thenable, awaited like the query builder it replaces.
     then: (resolve: (value: any) => unknown) =>
-      Promise.resolve({ data: null, error: { message: READ_ONLY_MESSAGE } }).then(resolve)
+      Promise.resolve({ data: null, error: { message: READ_ONLY_MESSAGE } }).then(resolve),
   };
 }
 

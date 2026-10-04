@@ -22,7 +22,9 @@ Deno.test("refuses anyone who is not an administrator", async () => {
   try {
     assertEquals((await handler(post(valid))).status, 403);
     assertEquals((await handler(post(valid, member))).status, 403);
-  } finally { uninstallFake(); }
+  } finally {
+    uninstallFake();
+  }
 });
 
 Deno.test("refuses an oversized or malformed ticket before writing anything", async () => {
@@ -30,9 +32,14 @@ Deno.test("refuses an oversized or malformed ticket before writing anything", as
   try {
     assertEquals((await handler(post({ ...valid, title: "x".repeat(301) }, admin))).status, 400);
     assertEquals((await handler(post({ ...valid, description: "" }, admin))).status, 400);
-    assertEquals((await handler(post({ ...valid, attachments: Array(11).fill("data:image/png;base64,AA") }, admin))).status, 400);
+    assertEquals(
+      (await handler(post({ ...valid, attachments: Array(11).fill("data:image/png;base64,AA") }, admin))).status,
+      400
+    );
     assertEquals(fake.rpcCalls("gm_create_ticket").length, 0);
-  } finally { uninstallFake(); }
+  } finally {
+    uninstallFake();
+  }
 });
 
 Deno.test("creation is rate-limited", async () => {
@@ -41,7 +48,9 @@ Deno.test("creation is rate-limited", async () => {
   try {
     assertEquals((await handler(post(valid, admin))).status, 429);
     assertEquals(fake.rpcCalls("gm_create_ticket").length, 0);
-  } finally { uninstallFake(); }
+  } finally {
+    uninstallFake();
+  }
 });
 
 Deno.test("a ticket cannot name its own reporter: the schema is strict", async () => {
@@ -49,7 +58,9 @@ Deno.test("a ticket cannot name its own reporter: the schema is strict", async (
   try {
     assertEquals((await handler(post({ ...valid, reporter_account_id: "someone_else" }, admin))).status, 400);
     assertEquals(fake.rpcCalls("gm_create_ticket").length, 0);
-  } finally { uninstallFake(); }
+  } finally {
+    uninstallFake();
+  }
 });
 
 Deno.test("a valid ticket is created with the caller as reporter", async () => {
@@ -59,5 +70,7 @@ Deno.test("a valid ticket is created with the caller as reporter", async () => {
     assertEquals(res.status, 200);
     const args = fake.rpcCalls("gm_create_ticket")[0];
     assertEquals(args.p_reporter_account_id, "t_admin_a");
-  } finally { uninstallFake(); }
+  } finally {
+    uninstallFake();
+  }
 });

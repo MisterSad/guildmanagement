@@ -9,7 +9,6 @@
 import type { DbClient } from '../../core/api/db-client';
 import { weightedRate, type BucketCounts } from '../../core/scoring/reliability';
 
-
 // ParticipationRecord, PeriodFilter, filterRecordsByPeriod(),
 // calculateDistinctAttendanceRate(), calculateMemberAttendanceRate() and
 // generateCSVReport() were removed on 2026-09-27. All four methods had zero
@@ -22,7 +21,6 @@ import { weightedRate, type BucketCounts } from '../../core/scoring/reliability'
 // One idea, two languages, and the TypeScript copy was the dead one.
 
 export class StatsService {
-
   /**
    * Reliability: one rate per event bucket, then one weighted number.
    *
@@ -45,14 +43,11 @@ export class StatsService {
    * side and renders as an em dash: a guild that ran no Shadowfront must not
    * make its members look absent from one.
    */
-  public static computeReliabilityLeaderboard(
-    payload: StatsMembersPayload,
-    coeffs?: EventCoeffs
-  ): ReliabilityRow[] {
+  public static computeReliabilityLeaderboard(payload: StatsMembersPayload, coeffs?: EventCoeffs): ReliabilityRow[] {
     const useCoeffs: EventCoeffs = coeffs || DEFAULT_EVENT_COEFFS;
     const coeffOf = (bucket: string): number => {
       const key = resolveCoeffBucket(bucket);
-      return (key && useCoeffs[key] != null) ? useCoeffs[key] : 1;
+      return key && useCoeffs[key] != null ? useCoeffs[key] : 1;
     };
 
     // The weighting itself lives in core/scoring/reliability.ts, because the
@@ -65,19 +60,21 @@ export class StatsService {
 
     const rows: ReliabilityRow[] = (payload.members || []).map((m) => {
       const bucketMap = (m.buckets || {}) as Record<string, AggregateBucketCounts>;
-      const buckets: ReliabilityBucket[] = Object.keys(bucketMap).map((bucket) => {
-        const b = bucketMap[bucket] || ({} as AggregateBucketCounts);
-        const opp = Number(b.opp) || 0;
-        const att = Number(b.att) || 0;
-        return {
-          bucket,
-          att,
-          opp,
-          exc: Number(b.exc) || 0,
-          coeff: coeffOf(bucket),
-          rate: opp > 0 ? round1((att / opp) * 100) : null
-        };
-      }).sort((a, b) => (b.coeff - a.coeff) || a.bucket.localeCompare(b.bucket));
+      const buckets: ReliabilityBucket[] = Object.keys(bucketMap)
+        .map((bucket) => {
+          const b = bucketMap[bucket] || ({} as AggregateBucketCounts);
+          const opp = Number(b.opp) || 0;
+          const att = Number(b.att) || 0;
+          return {
+            bucket,
+            att,
+            opp,
+            exc: Number(b.exc) || 0,
+            coeff: coeffOf(bucket),
+            rate: opp > 0 ? round1((att / opp) * 100) : null,
+          };
+        })
+        .sort((a, b) => b.coeff - a.coeff || a.bucket.localeCompare(b.bucket));
 
       const overall = rateOf(bucketMap as Record<string, { att?: number; opp?: number }>);
 
@@ -86,8 +83,12 @@ export class StatsService {
       const prior = tr ? rateOf(tr.prior) : { rate: null, att: 0, opp: 0 };
       // A trend needs something on both sides. Without this guard a member who
       // simply was not there four weeks ago reads as a collapse.
-      const eligible = !!tr && recent.rate !== null && prior.rate !== null
-        && recent.opp >= MIN_TREND_OPPORTUNITIES && prior.opp >= MIN_TREND_OPPORTUNITIES;
+      const eligible =
+        !!tr &&
+        recent.rate !== null &&
+        prior.rate !== null &&
+        recent.opp >= MIN_TREND_OPPORTUNITIES &&
+        prior.opp >= MIN_TREND_OPPORTUNITIES;
 
       const unweightedOpp = buckets.reduce((acc, b) => acc + b.opp, 0);
 
@@ -104,7 +105,7 @@ export class StatsService {
           recent: recent.rate === null ? null : round1(recent.rate),
           prior: prior.rate === null ? null : round1(prior.rate),
           delta: eligible ? round1((recent.rate as number) - (prior.rate as number)) : null,
-          eligible
+          eligible,
         },
         weeks_active: Number(m.weeks_active) || 0,
         last_seen_week: m.last_seen_week,
@@ -114,7 +115,7 @@ export class StatsService {
         attendance_rate: overall.rate === null ? 0 : overall.rate / 100,
         glory_delta: 0,
         glory_bonus: 0,
-        consistency_bonus: 0
+        consistency_bonus: 0,
       };
     });
 
@@ -131,8 +132,6 @@ export class StatsService {
       return a.pseudo.localeCompare(b.pseudo);
     });
   }
-
-
 
   // computeWeightedLeaderboard(), computeWeightedLeaderboardFromAggregate(),
   // computeParticipationLeaderboard() and computeParticipationLeaderboardFromAggregate()
@@ -153,7 +152,6 @@ export class StatsService {
   //
   // The equivalence test that pinned the S2 port went with them; its subject
   // no longer exists. What replaced it is tests/stats_reliability.test.js.
-
 
   /**
    * The per-event board, from gm_stats_events.
@@ -195,7 +193,7 @@ export class StatsService {
         attendance_rate: opp > 0 ? att / opp : 0,
         glory_delta: 0,
         glory_bonus: 0,
-        consistency_bonus: 0
+        consistency_bonus: 0,
       } as EventScoreRow;
     });
 
@@ -214,18 +212,13 @@ export class StatsService {
   // Shadowfront by session_id where every other part of the page keys it by
   // week, so a member in both squads of one week counted twice here and once
   // everywhere else. computeEventLeaderboardFromPayload() replaces it.
-
 }
 
 // ── Shared types & pure helpers (Stats calculation core) ──────────────────────
 
 // B1: declared once in core/config/event-coeffs and re-exported here, so the
 // stats engine and the settings screen cannot weight events differently.
-import {
-  DEFAULT_EVENT_COEFFS,
-  type EventCoeffBucket,
-  type EventCoeffs
-} from '../../core/config/event-coeffs';
+import { DEFAULT_EVENT_COEFFS, type EventCoeffBucket, type EventCoeffs } from '../../core/config/event-coeffs';
 
 export { DEFAULT_EVENT_COEFFS };
 export type { EventCoeffBucket, EventCoeffs };
@@ -242,7 +235,7 @@ export const STATS_WEIGHTS = {
   performance: 4,
   gloryMax: 20,
   consistency: 15,
-  threshold: 0.8
+  threshold: 0.8,
 } as const;
 
 export interface ParticipantRow {
@@ -279,8 +272,12 @@ export interface SquadRow {
 /* ── gm_stats_events ──────────────────────────────────────────────────────── */
 
 export interface EventsSquad {
-  assigned: number; participant: number; reserve: number;
-  squad1: number; squad2: number; commander: number;
+  assigned: number;
+  participant: number;
+  reserve: number;
+  squad1: number;
+  squad2: number;
+  commander: number;
 }
 export interface EventsMemberRow {
   pseudo: string;
@@ -318,7 +315,11 @@ export interface StatsEventsPayload {
 
 /* ── gm_stats_health ──────────────────────────────────────────────────────── */
 
-export interface HealthWeek { week_start: string; opportunities: number; present_members: number; }
+export interface HealthWeek {
+  week_start: string;
+  opportunities: number;
+  present_members: number;
+}
 export interface HealthWar {
   event_name: string;
   sessions: number;
@@ -326,7 +327,12 @@ export interface HealthWar {
   day_losses: number;
   per_day: Record<string, { won: number; lost: number }>;
 }
-export interface HealthPowerPoint { week_start: string; players: number; median: number; avg: number; }
+export interface HealthPowerPoint {
+  week_start: string;
+  players: number;
+  median: number;
+  avg: number;
+}
 export interface StatsHealthPayload {
   ok: boolean;
   error?: string;
@@ -371,11 +377,11 @@ export function segmentOf(row: { reliability: number | null }): EngagementSegmen
   return 'dormant';
 }
 
-export function summariseEngagement(rows: Array<{ reliability: number | null }>):
-  Record<EngagementSegment, number> {
-  const out: Record<EngagementSegment, number> =
-    { core: 0, regular: 0, occasional: 0, dormant: 0, unmeasured: 0 };
-  rows.forEach((r) => { out[segmentOf(r)] += 1; });
+export function summariseEngagement(rows: Array<{ reliability: number | null }>): Record<EngagementSegment, number> {
+  const out: Record<EngagementSegment, number> = { core: 0, regular: 0, occasional: 0, dormant: 0, unmeasured: 0 };
+  rows.forEach((r) => {
+    out[segmentOf(r)] += 1;
+  });
   return out;
 }
 
@@ -552,8 +558,6 @@ export interface EventLeaderboardParams {
   shadowfrontRate: (eventsDone: number, assignedCount: number) => number;
 }
 
-
-
 export function normalizePseudo(p?: string | null): string {
   return p ? String(p).trim().toLowerCase() : '';
 }
@@ -610,7 +614,7 @@ export function queryStatsMembers(db: DbClient, guild: string | null, weeks: str
   return db.rpc('gm_stats_members', {
     p_guild: guild,
     p_weeks: weeks && weeks.length ? weeks : null,
-    p_trend: withTrend === true
+    p_trend: withTrend === true,
   });
 }
 
@@ -621,7 +625,11 @@ export function queryRosterPower(db: DbClient, guild: string | null) {
 
 /** Pending transfers into the guild. */
 export function queryPendingIncomingTransfers(db: DbClient, guild: string | null) {
-  return db.from('guild_transfers').select('pseudo, source_guild, status').eq('status', 'pending').eq('target_guild', guild);
+  return db
+    .from('guild_transfers')
+    .select('pseudo, source_guild, status')
+    .eq('status', 'pending')
+    .eq('target_guild', guild);
 }
 
 /** Per-event aggregates for one scoring bucket over the given weeks (gm_stats_events). */
@@ -629,6 +637,6 @@ export function queryStatsEvents(db: DbClient, guild: string | null, bucket: unk
   return db.rpc('gm_stats_events', {
     p_guild: guild,
     p_bucket: bucket,
-    p_weeks: requested && requested.length ? requested : null
+    p_weeks: requested && requested.length ? requested : null,
   });
 }

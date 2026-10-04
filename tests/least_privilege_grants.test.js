@@ -15,7 +15,10 @@ import fs from 'fs';
 import path from 'path';
 
 const root = path.resolve(__dirname, '..');
-const sql = fs.readFileSync(path.join(root, 'supabase/migrations/20260930185459_least_privilege_table_grants.sql'), 'utf-8');
+const sql = fs.readFileSync(
+  path.join(root, 'supabase/migrations/20260930185459_least_privilege_table_grants.sql'),
+  'utf-8'
+);
 
 function srcFiles(dir) {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -24,7 +27,9 @@ function srcFiles(dir) {
     return e.name.endsWith('.ts') && !e.name.includes('.test.') ? [p] : [];
   });
 }
-const clientSrc = srcFiles(path.join(root, 'src')).map((f) => fs.readFileSync(f, 'utf-8')).join('\n');
+const clientSrc = srcFiles(path.join(root, 'src'))
+  .map((f) => fs.readFileSync(f, 'utf-8'))
+  .join('\n');
 
 function browserOps(table) {
   const ops = new Set();
@@ -37,7 +42,9 @@ function browserOps(table) {
 describe('least-privilege table grants', () => {
   it('anon gets nothing, now or for future tables', () => {
     expect(sql).toContain('REVOKE ALL ON ALL TABLES IN SCHEMA public FROM anon;');
-    expect(sql).toContain('ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE ALL ON TABLES FROM anon;');
+    expect(sql).toContain(
+      'ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE ALL ON TABLES FROM anon;'
+    );
   });
 
   it('refuses to run if a policy ever names anon or PUBLIC', () => {
@@ -48,15 +55,32 @@ describe('least-privilege table grants', () => {
     expect(sql).toContain('REVOKE TRUNCATE, TRIGGER, REFERENCES ON ALL TABLES IN SCHEMA public FROM authenticated;');
   });
 
-  const noAccess = ['account_backup_codes', 'account_passkeys', 'discord_account_links', 'discord_link_codes',
-    'guild_creation_requests', 'login_throttle', 'tickets', 'webauthn_challenges'];
+  const noAccess = [
+    'account_backup_codes',
+    'account_passkeys',
+    'discord_account_links',
+    'discord_link_codes',
+    'guild_creation_requests',
+    'login_throttle',
+    'tickets',
+    'webauthn_challenges',
+  ];
   it.each(noAccess)('%s: no browser access at all, and the browser never asks', (t) => {
     expect(sql).toMatch(new RegExp(`REVOKE ALL ON public\\.${t}\\s+FROM authenticated;`));
     expect([...browserOps(t)]).toEqual([]);
   });
 
-  const rpcOnly = ['event_chest_tiers', 'event_daily_scores', 'player_metrics_history', 'war_opponents', 'war_sessions', 'weekly_scores',
-    'ocr_cache', 'player_absences', 'system_audit_logs'];
+  const rpcOnly = [
+    'event_chest_tiers',
+    'event_daily_scores',
+    'player_metrics_history',
+    'war_opponents',
+    'war_sessions',
+    'weekly_scores',
+    'ocr_cache',
+    'player_absences',
+    'system_audit_logs',
+  ];
   it.each(rpcOnly)('%s: read-only for the browser, which never writes it directly', (t) => {
     expect(sql).toMatch(new RegExp(`REVOKE INSERT, UPDATE, DELETE ON public\\.${t}\\s+FROM authenticated;`));
     const writes = [...browserOps(t)].filter((op) => op !== 'select');
@@ -71,14 +95,22 @@ describe('least-privilege table grants', () => {
 });
 
 describe('least-privilege function defaults (20260930190017)', () => {
-  const fsql = fs.readFileSync(path.join(root, 'supabase/migrations/20260930190017_least_privilege_function_defaults.sql'), 'utf-8');
+  const fsql = fs.readFileSync(
+    path.join(root, 'supabase/migrations/20260930190017_least_privilege_function_defaults.sql'),
+    'utf-8'
+  );
   it('new functions are born without PUBLIC or anon EXECUTE', () => {
     // PUBLIC's EXECUTE is a GLOBAL default: it cannot be revoked IN SCHEMA.
     expect(fsql).toContain('ALTER DEFAULT PRIVILEGES FOR ROLE postgres REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;');
-    expect(fsql).toContain('ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM anon;');
+    expect(fsql).toContain(
+      'ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM anon;'
+    );
   });
   it('leaves the deliberately anonymous crash reporter alone (ADR-011)', () => {
-    const code = fsql.split('\n').filter((l) => !l.trim().startsWith('--')).join('\n');
+    const code = fsql
+      .split('\n')
+      .filter((l) => !l.trim().startsWith('--'))
+      .join('\n');
     expect(code).not.toContain('gm_report_client_error');
   });
 });

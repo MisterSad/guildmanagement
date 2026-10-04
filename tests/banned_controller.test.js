@@ -10,27 +10,27 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 vi.mock('../src/modules/app/members/members.render', () => ({
   renderGuildMembers: vi.fn(),
-  membersSkeletonHtml: () => ''
+  membersSkeletonHtml: () => '',
 }));
 vi.mock('../src/modules/app/dialogs/dialogs.service', () => ({ showToast: vi.fn(), showConfirm: vi.fn() }));
 // The controller imports validateUid directly; the stub lets a test choose the
 // validator's verdict without depending on the real UID rules.
 vi.mock('../src/core/utils/text', async (importOriginal) => ({
   ...(await importOriginal()),
-  validateUid: vi.fn(() => '')
+  validateUid: vi.fn(() => ''),
 }));
 
 import {
   fetchBannedPlayers,
   renderBannedPlayers,
   handleAddBannedPlayer,
-  deleteBannedPlayer
+  deleteBannedPlayer,
 } from '../src/modules/app/members/banned.controller';
 import {
   getBannedPlayers,
   setBannedPlayers,
   setGuildMembers,
-  getGuildMembers
+  getGuildMembers,
 } from '../src/modules/app/members/members.store';
 import { showToast, showConfirm } from '../src/modules/app/dialogs/dialogs.service';
 import { validateUid } from '../src/core/utils/text';
@@ -44,13 +44,18 @@ function fakeDb(responses = {}) {
   const builderFor = (table, op) => {
     const filters = {};
     const chain = {
-      eq(col, val) { filters[col] = val; return chain; },
-      order() { return chain; },
+      eq(col, val) {
+        filters[col] = val;
+        return chain;
+      },
+      order() {
+        return chain;
+      },
       then(resolve) {
         calls.push({ table, op, filters });
         const key = `${table}.${op}`;
         return Promise.resolve(responses[key] ?? { data: [], error: null }).then(resolve);
-      }
+      },
     };
     return chain;
   };
@@ -63,10 +68,13 @@ function fakeDb(responses = {}) {
     from(table) {
       return {
         select: () => builderFor(table, 'select'),
-        insert: (rows) => { calls.push({ table, op: 'insert', rows }); return Promise.resolve(responses[`${table}.insert`] ?? { error: null }); },
-        delete: () => builderFor(table, 'delete')
+        insert: (rows) => {
+          calls.push({ table, op: 'insert', rows });
+          return Promise.resolve(responses[`${table}.insert`] ?? { error: null });
+        },
+        delete: () => builderFor(table, 'delete'),
       };
-    }
+    },
   };
 }
 
@@ -93,7 +101,9 @@ beforeEach(() => {
   // Banning a roster member now asks first (it erases their history); the
   // stub confirms and records what was shown.
   vi.clearAllMocks();
-  showConfirm.mockImplementation((_title, _body, onConfirm) => { window.__confirmRun = Promise.resolve(onConfirm()); });
+  showConfirm.mockImplementation((_title, _body, onConfirm) => {
+    window.__confirmRun = Promise.resolve(onConfirm());
+  });
 });
 
 afterEach(() => {
@@ -196,7 +206,10 @@ describe('handleAddBannedPlayer', () => {
   });
 
   it('kicks the player from the roster when they are a current member', async () => {
-    setGuildMembers([{ uid: '900', pseudo: 'Cheater' }, { uid: '901', pseudo: 'Innocent' }]);
+    setGuildMembers([
+      { uid: '900', pseudo: 'Cheater' },
+      { uid: '901', pseudo: 'Innocent' },
+    ]);
     const db = fakeDb({ 'rpc.gm_ban_member': { data: { ok: true, removed: 'Cheater' }, error: null } });
     setDbClient(db);
     document.getElementById('banned-uid').value = '900';
@@ -207,14 +220,19 @@ describe('handleAddBannedPlayer', () => {
     // It asked first, and said what the removal costs.
     expect(showConfirm).toHaveBeenCalledTimes(1);
     expect(showConfirm.mock.calls[0][1]).toContain('Cheater');
-    expect(db.calls.some((c) => c.rpc === 'gm_ban_member'), 'the ban and the removal are one call').toBe(true);
+    expect(
+      db.calls.some((c) => c.rpc === 'gm_ban_member'),
+      'the ban and the removal are one call'
+    ).toBe(true);
     expect(getGuildMembers().map((m) => m.uid)).toEqual(['901']);
     expect(renderGuildMembers).toHaveBeenCalled();
   });
 
   it('keeps the roster as it was when the ban is refused', async () => {
     setGuildMembers([{ uid: '900', pseudo: 'Cheater' }]);
-    const db = fakeDb({ 'rpc.gm_ban_member': { data: null, error: { message: 'cannot delete an R5', code: 'P0001' } } });
+    const db = fakeDb({
+      'rpc.gm_ban_member': { data: null, error: { message: 'cannot delete an R5', code: 'P0001' } },
+    });
     setDbClient(db);
     document.getElementById('banned-uid').value = '900';
 
@@ -318,11 +336,13 @@ describe('renderBannedPlayers', () => {
     // the parser decodes it into the ATTRIBUTE VALUE, and re-serialising prints
     // `<` raw again because `<` needs no escaping inside an attribute. The real
     // property is that nothing executable was constructed.
-    setBannedPlayers([{
-      uid: '<img src=x onerror=alert(1)>',
-      pseudo: '<script>bad()</script>',
-      reason: '"><b>owned</b>'
-    }]);
+    setBannedPlayers([
+      {
+        uid: '<img src=x onerror=alert(1)>',
+        pseudo: '<script>bad()</script>',
+        reason: '"><b>owned</b>',
+      },
+    ]);
     renderBannedPlayers();
 
     const c = document.getElementById('banned-list-container');

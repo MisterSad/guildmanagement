@@ -61,7 +61,7 @@ describe('Final cutover: src/main.ts bootstrap', () => {
       'wireSearchClearButtons()',
       'helpView.init()',
       'applyTranslations()',
-      'restoreSession()'
+      'restoreSession()',
     ];
     // The admin wiring (tab router, admin forms, OCR, shell) runs when the
     // admin chunk loads (M5); tests/admin_shell.test.js runs it.
@@ -130,7 +130,10 @@ describe('Final cutover: residual app.js wiring re-homed under /src', () => {
     // raw text reads correct documentation as a regression. This has now caught
     // seven separate suites in this repository; strip, then assert.
     const strip = (t) =>
-      t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '').replace(/<!--[\s\S]*?-->/g, '');
+      t
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/^\s*\/\/.*$/gm, '')
+        .replace(/<!--[\s\S]*?-->/g, '');
 
     const accountsCtrl = strip(read('src/modules/app/admin/accounts.controller.ts'));
     const router = strip(read('src/modules/app/router.ts'));
@@ -140,7 +143,8 @@ describe('Final cutover: residual app.js wiring re-homed under /src', () => {
     expect(router).not.toContain('loadMyPasskeysCard');
     expect(strip(read('index.html'))).not.toContain('id="my-passkeys-card"');
     // The portal carried an identical panel; it went too.
-    expect(strip(read('src/modules/portal/views/PortalView.ts')))
-      .not.toContain("document.getElementById('portal-passkeys-list')");
+    expect(strip(read('src/modules/portal/views/PortalView.ts'))).not.toContain(
+      "document.getElementById('portal-passkeys-list')"
+    );
   });
 });

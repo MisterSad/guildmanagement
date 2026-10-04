@@ -32,7 +32,10 @@ export function extractClientIp(headers: Headers | Record<string, string | null 
 
   // 2. Nearest proxy hop from X-Forwarded-For
   if (xff && typeof xff === "string") {
-    const parts = xff.split(",").map((p) => p.trim()).filter(Boolean);
+    const parts = xff
+      .split(",")
+      .map((p) => p.trim())
+      .filter(Boolean);
     if (parts.length > 0) {
       return parts[parts.length - 1];
     }
@@ -57,9 +60,7 @@ export function shouldThrottle(options: {
   const threshold = now - windowMs;
 
   for (const win of recentWindows) {
-    const startTime = typeof win.window_start === "number"
-      ? win.window_start
-      : new Date(win.window_start).getTime();
+    const startTime = typeof win.window_start === "number" ? win.window_start : new Date(win.window_start).getTime();
     if (startTime >= threshold) {
       totalAttempts += Number(win.attempts) || 0;
     }

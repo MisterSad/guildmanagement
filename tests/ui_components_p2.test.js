@@ -20,7 +20,7 @@ import { resetSupabaseClient, setDbClient } from '../src/core/api/supabase';
 // stub it so no confirm dialog is ever rendered by these layout tests.
 vi.mock('../src/modules/app/dialogs/dialogs.service', async (importOriginal) => ({
   ...(await importOriginal()),
-  showConfirm: vi.fn()
+  showConfirm: vi.fn(),
 }));
 
 import { renderBadge, createBadge, renderWarStatusBadge, badgeRecipe } from '../src/components/ui/Badge';
@@ -105,31 +105,67 @@ function chained(value) {
   const filters = [];
   const apply = () => {
     let res = (value || []).slice();
-    filters.forEach((f) => { res = res.filter(f); });
+    filters.forEach((f) => {
+      res = res.filter(f);
+    });
     return res;
   };
   const chain = {
-    select: () => chain, order: () => chain, limit: () => chain,
-    eq: (field, val) => { filters.push((r) => r[field] === val); return chain; },
-    in: (field, list) => { filters.push((r) => list.indexOf(r[field]) !== -1); return chain; },
-    update: () => chain, delete: () => chain, upsert: () => chain,
-    maybeSingle: () => ({ then: (resolve) => Promise.resolve({ data: apply()[0] || null, error: null }).then(resolve) }),
-    then: (resolve) => Promise.resolve({ data: apply(), error: null }).then(resolve)
+    select: () => chain,
+    order: () => chain,
+    limit: () => chain,
+    eq: (field, val) => {
+      filters.push((r) => r[field] === val);
+      return chain;
+    },
+    in: (field, list) => {
+      filters.push((r) => list.indexOf(r[field]) !== -1);
+      return chain;
+    },
+    update: () => chain,
+    delete: () => chain,
+    upsert: () => chain,
+    maybeSingle: () => ({
+      then: (resolve) => Promise.resolve({ data: apply()[0] || null, error: null }).then(resolve),
+    }),
+    then: (resolve) => Promise.resolve({ data: apply(), error: null }).then(resolve),
   };
   return chain;
 }
 
 function tables() {
   return {
-    event_status: [{ event_name: 'SvS', guild: 'ALPHA', is_active: true, session_id: SESSION, stage: null, start_at: '2026-08-02' }],
+    event_status: [
+      { event_name: 'SvS', guild: 'ALPHA', is_active: true, session_id: SESSION, stage: null, start_at: '2026-08-02' },
+    ],
     event_participants: [
-      { pseudo: 'Alpha', guild: 'ALPHA', event_name: 'SvS', session_id: SESSION, participated: 1, score_prep: 10, score_pvp: 5, is_pending: false, appointed: false },
-      { pseudo: 'Bravo', guild: 'ALPHA', event_name: 'SvS', session_id: SESSION, participated: 1, score_prep: 10, score_pvp: 5, is_pending: false, appointed: false }
+      {
+        pseudo: 'Alpha',
+        guild: 'ALPHA',
+        event_name: 'SvS',
+        session_id: SESSION,
+        participated: 1,
+        score_prep: 10,
+        score_pvp: 5,
+        is_pending: false,
+        appointed: false,
+      },
+      {
+        pseudo: 'Bravo',
+        guild: 'ALPHA',
+        event_name: 'SvS',
+        session_id: SESSION,
+        participated: 1,
+        score_prep: 10,
+        score_pvp: 5,
+        is_pending: false,
+        appointed: false,
+      },
     ],
     guild_members: [
       { pseudo: 'Alpha', guild: 'ALPHA', uid: 'u1' },
-      { pseudo: 'Bravo', guild: 'ALPHA', uid: 'u2' }
-    ]
+      { pseudo: 'Bravo', guild: 'ALPHA', uid: 'u2' },
+    ],
   };
 }
 
@@ -142,19 +178,34 @@ function installDb(overrides) {
     if (overrides && overrides[name]) return overrides[name](params);
     if (name === 'gm_approve_participant_submission') return { data: { ok: true }, error: null };
     if (name === 'gm_get_daily_scores') {
-      return { data: { ok: true, rows: [
-        { pseudo: 'Alpha', day: 1, score: 1500, chests_unlocked: 1 },
-        { pseudo: 'Alpha', day: 2, score: 2500, chests_unlocked: 2 },
-        { pseudo: 'Bravo', day: 1, score: 899_999_999, chests_unlocked: 3 }
-      ] }, error: null };
+      return {
+        data: {
+          ok: true,
+          rows: [
+            { pseudo: 'Alpha', day: 1, score: 1500, chests_unlocked: 1 },
+            { pseudo: 'Alpha', day: 2, score: 2500, chests_unlocked: 2 },
+            { pseudo: 'Bravo', day: 1, score: 899_999_999, chests_unlocked: 3 },
+          ],
+        },
+        error: null,
+      };
     }
     if (name === 'gm_get_war_session') {
-      return { data: { ok: true, session: {
-        guild: 'ALPHA', event_name: 'SvS', session_id: SESSION,
-        day1_result: 'won', day2_result: 'lost',
-        opponent_snapshot: { name: '412', kind: 'server' },
-        chest_tiers_snapshot: []
-      } }, error: null };
+      return {
+        data: {
+          ok: true,
+          session: {
+            guild: 'ALPHA',
+            event_name: 'SvS',
+            session_id: SESSION,
+            day1_result: 'won',
+            day2_result: 'lost',
+            opponent_snapshot: { name: '412', kind: 'server' },
+            chest_tiers_snapshot: [],
+          },
+        },
+        error: null,
+      };
     }
     return { data: 0, error: null };
   });
@@ -163,11 +214,17 @@ function installDb(overrides) {
 
 function mount() {
   const panel = (id, metric) =>
-    '<main id="' + id + '"><div class="event-status-badge"></div><div class="gm-event-actions"></div>' +
+    '<main id="' +
+    id +
+    '"><div class="event-status-badge"></div><div class="gm-event-actions"></div>' +
     '<div class="gm-event-status-line"></div>' +
     '<div class="gm-event-ocr-toolbar">' +
-      '<button type="button" class="btn-ocr-trigger" data-metric="' + metric + '_prep"></button>' +
-      '<button type="button" class="btn-ocr-trigger" data-metric="' + metric + '_pvp"></button>' +
+    '<button type="button" class="btn-ocr-trigger" data-metric="' +
+    metric +
+    '_prep"></button>' +
+    '<button type="button" class="btn-ocr-trigger" data-metric="' +
+    metric +
+    '_pvp"></button>' +
     '</div>' +
     '<div class="war-banner"></div><div class="event-participants-area"></div></main>';
   document.body.innerHTML = panel('event-svs', 'svs') + panel('event-gvg', 'gvg') + panel('event-dtr', '');
@@ -197,8 +254,12 @@ describe('EventsView — granular war retrofit (Badge + Table primitives)', () =
     await view.loadEvent('SvS');
     const states = document.querySelectorAll('#event-svs .war-day-toggle .war-day-state .gm-ui-badge');
     expect(states.length).toBe(6);
-    expect(document.querySelector('#event-svs .war-day-toggle[data-day="1"] .war-day-state .gm-ui-badge').className).toContain('gm-ui-badge-success');
-    expect(document.querySelector('#event-svs .war-day-toggle[data-day="2"] .war-day-state .gm-ui-badge').className).toContain('gm-ui-badge-danger');
+    expect(
+      document.querySelector('#event-svs .war-day-toggle[data-day="1"] .war-day-state .gm-ui-badge').className
+    ).toContain('gm-ui-badge-success');
+    expect(
+      document.querySelector('#event-svs .war-day-toggle[data-day="2"] .war-day-state .gm-ui-badge').className
+    ).toContain('gm-ui-badge-danger');
   });
 
   it('renders chest totals as glory badges with exact-value title', async () => {

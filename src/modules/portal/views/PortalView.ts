@@ -14,7 +14,6 @@
  * - This module never assigns any `window.GM_*` variable.
  */
 
-
 import { PortalService } from '../portal.service';
 import { escapeHTML, avatarInit, formatPower, formatNumber, parseNumber } from '../../../core/utils/text';
 import { logout, loginWithDiscord } from '../../../core/auth/session';
@@ -23,7 +22,11 @@ import { formatDateTimeUTC } from '../../../core/utils/date';
 import { attachNumberFormatter, drawScoreTrendChart } from '../../../core/dom/ui';
 import { showToast } from '../../../core/dom/toast';
 import {
-  calculateCombatDensity, calculateResidualPower, calculateCombativity, calculateRallyScore, calculateRallyGrade
+  calculateCombatDensity,
+  calculateResidualPower,
+  calculateCombativity,
+  calculateRallyScore,
+  calculateRallyGrade,
 } from '../../../core/scoring/combat';
 import { savePendingIntent } from '../../../core/auth/pending-intent';
 import { COMMON_TIMEZONES, detectUserTimezone, getTimezoneOffset } from '../../../utils/timezone';
@@ -32,13 +35,20 @@ import { weightedRate, round1 } from '../../../core/scoring/reliability';
 
 /** Signs out of the Player Portal and shows the login page. */
 function exitPortalToLogin(): void {
-  try { localStorage.removeItem('gm_portal_session'); } catch { /* storage blocked */ }
+  try {
+    localStorage.removeItem('gm_portal_session');
+  } catch {
+    /* storage blocked */
+  }
   const finish = (): void => {
     const portalView = document.getElementById('player-portal-view');
     const loginView = document.getElementById('login-view');
     if (portalView) portalView.classList.add('hidden');
     if (portalView) portalView.classList.remove('portal-connected');
-    if (loginView) { loginView.classList.remove('hidden'); loginView.classList.add('active'); }
+    if (loginView) {
+      loginView.classList.remove('hidden');
+      loginView.classList.add('active');
+    }
   };
   logout().then(finish).catch(finish);
 }
@@ -47,7 +57,7 @@ const PERIODS = [
   { key: 'all', label: 'All Time' },
   { key: '8w', label: '8 Weeks' },
   { key: '4w', label: '4 Weeks' },
-  { key: '1w', label: '1 Week' }
+  { key: '1w', label: '1 Week' },
 ];
 
 interface PortalState {
@@ -80,17 +90,21 @@ function createState(): PortalState {
     period: 'all',
     chartsDrawn: false,
     badgesLoaded: false,
-    chartRegistry: []
+    chartRegistry: [],
   };
 }
 
 /** Player-facing wording for a refused `submit-scores`. */
 export function submitErrorMessage(code: string | undefined): string {
   switch (code) {
-    case 'score_already_validated': return 'An officer has already recorded this event for you.';
-    case 'not_in_session': return 'You are not part of this event (for Shadowfront: not in this squad). Ask an officer.';
-    case 'session_inactive': return 'This event has ended. Ask an officer if something is missing.';
-    default: return 'Submission failed. Please try again.';
+    case 'score_already_validated':
+      return 'An officer has already recorded this event for you.';
+    case 'not_in_session':
+      return 'You are not part of this event (for Shadowfront: not in this squad). Ask an officer.';
+    case 'session_inactive':
+      return 'This event has ended. Ask an officer if something is missing.';
+    default:
+      return 'Submission failed. Please try again.';
   }
 }
 
@@ -139,7 +153,7 @@ export class PortalView {
         attended: attended,
         rate: list.length > 0 ? Math.round((attended / list.length) * 100) : 0,
         has_score: !!history[key].has_score,
-        history: list
+        history: list,
       };
     });
     return filtered;
@@ -149,36 +163,49 @@ export class PortalView {
   public async loadDashboard(): Promise<void> {
     const root = document.getElementById('portal-dashboard-root');
     if (!root) return;
-    root.innerHTML = '<div class="gm-empty" style="padding:2rem 0;"><i class="ph ph-circle-notch ph-spin gm-icon"></i><div class="gm-empty-title">Loading your portal...</div></div>';
+    root.innerHTML =
+      '<div class="gm-empty" style="padding:2rem 0;"><i class="ph ph-circle-notch ph-spin gm-icon"></i><div class="gm-empty-title">Loading your portal...</div></div>';
 
     const [profile, history, kpis] = await Promise.all([
       this.invoke('get-active-sessions', {}),
       this.invoke('get-history', {}),
-      this.invoke('get-personal-kpis', {})
+      this.invoke('get-personal-kpis', {}),
     ]);
 
     if (!profile.ok) {
       const rawErr = profile.error || 'unknown_error';
       let displayMsg = profile.message || rawErr;
-      if (rawErr === 'Edge Function returned a non-2xx status code' || rawErr === 'unauthorized' || rawErr === 'player_not_found') {
+      if (
+        rawErr === 'Edge Function returned a non-2xx status code' ||
+        rawErr === 'unauthorized' ||
+        rawErr === 'player_not_found'
+      ) {
         displayMsg = 'Session expired or player account not active. Please reconnect.';
       }
       root.innerHTML =
         '<div class="gm-empty" style="padding: 3rem 1.5rem; text-align: center; max-width: 480px; margin: 2rem auto; background: var(--bg-1); border-radius: var(--radius-xl); border: 1px solid var(--border-soft);">' +
-          '<i class="ph ph-warning-circle gm-icon" style="font-size: var(--fs-5xl); color: #ef4444; margin-bottom: 1rem; display: block;"></i>' +
-          '<div class="gm-empty-title" style="font-size: var(--fs-xl); font-weight: 700; color: var(--fg); margin-bottom: 0.5rem;">Unable to load your portal</div>' +
-          '<div class="gm-empty-sub" style="color: var(--fg-dim); font-size: var(--fs-md); margin: 0 auto 1.5rem auto;">' + escapeHTML(displayMsg) + '</div>' +
-          '<div style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;">' +
-            '<button class="gm-btn gm-btn-primary" data-portal-error-signout><i class="ph ph-sign-out"></i> Reconnect / Sign Out</button>' +
-            '<button class="gm-btn gm-btn-outline" data-portal-error-retry><i class="ph ph-arrows-clockwise"></i> Retry</button>' +
-          '</div>' +
+        '<i class="ph ph-warning-circle gm-icon" style="font-size: var(--fs-5xl); color: #ef4444; margin-bottom: 1rem; display: block;"></i>' +
+        '<div class="gm-empty-title" style="font-size: var(--fs-xl); font-weight: 700; color: var(--fg); margin-bottom: 0.5rem;">Unable to load your portal</div>' +
+        '<div class="gm-empty-sub" style="color: var(--fg-dim); font-size: var(--fs-md); margin: 0 auto 1.5rem auto;">' +
+        escapeHTML(displayMsg) +
+        '</div>' +
+        '<div style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;">' +
+        '<button class="gm-btn gm-btn-primary" data-portal-error-signout><i class="ph ph-sign-out"></i> Reconnect / Sign Out</button>' +
+        '<button class="gm-btn gm-btn-outline" data-portal-error-retry><i class="ph ph-arrows-clockwise"></i> Retry</button>' +
+        '</div>' +
         '</div>';
       const signOutBtn = root.querySelector('[data-portal-error-signout]');
       // Same exit as the sidebar's sign-out: before, this cleared the session
       // and left the error card on screen, so the person had to reload.
-      if (signOutBtn) signOutBtn.addEventListener('click', () => { exitPortalToLogin(); });
+      if (signOutBtn)
+        signOutBtn.addEventListener('click', () => {
+          exitPortalToLogin();
+        });
       const retryBtn = root.querySelector('[data-portal-error-retry]');
-      if (retryBtn) retryBtn.addEventListener('click', () => { location.reload(); });
+      if (retryBtn)
+        retryBtn.addEventListener('click', () => {
+          location.reload();
+        });
       return;
     }
 
@@ -196,11 +223,16 @@ export class PortalView {
       timezone_offset: profile.timezone_offset != null ? profile.timezone_offset : null,
       timezone: profile.timezone || null,
       glory: profile.glory != null ? profile.glory : null,
-      discord_linked: profile.discord_linked === true
+      discord_linked: profile.discord_linked === true,
     };
     this.state.sessions = profile.sessions || [];
-    this.state.history = history.ok ? (history.events || {}) : null;
-    this.state.guildAverages = Object.assign({}, (kpis && kpis.guild_averages) || {}, (profile && profile.guild_averages) || {}, (history && history.guild_averages) || {});
+    this.state.history = history.ok ? history.events || {} : null;
+    this.state.guildAverages = Object.assign(
+      {},
+      (kpis && kpis.guild_averages) || {},
+      (profile && profile.guild_averages) || {},
+      (history && history.guild_averages) || {}
+    );
     // `state.kpis` was declared, initialised to null and never assigned: the
     // response was destructured into a local and only `guild_averages` was
     // read from it. Every card guarded on `if (kpis && kpis.power)`, so the
@@ -227,103 +259,147 @@ export class PortalView {
       { id: 'challenges', icon: 'ph-target', label: 'Challenges' },
       { id: 'absence', icon: 'ph-user-minus', label: 'Absence' },
       { id: 'events', icon: 'ph-calendar-dots', label: 'Active Events' },
-      { id: 'badges', icon: 'ph-trophy', label: 'Badges' }
+      { id: 'badges', icon: 'ph-trophy', label: 'Badges' },
     ];
     const primaryNavIds = ['settings', 'dashboard', 'challenges', 'events'];
     const drawerNavIds = ['absence', 'badges'];
 
-    const navHtml = navItems.map((item) => {
-      const isActive = this.state.activeTab === item.id;
-      return '<button class="gm-nav-item' + (isActive ? ' gm-active' : '') + '" data-portal-nav="' + item.id + '">' +
-                  '<i class="ph ' + item.icon + '"></i>' +
-                  '<span>' + escapeHTML(item.label) + '</span>' +
-                '</button>';
-    }).join('');
+    const navHtml = navItems
+      .map((item) => {
+        const isActive = this.state.activeTab === item.id;
+        return (
+          '<button class="gm-nav-item' +
+          (isActive ? ' gm-active' : '') +
+          '" data-portal-nav="' +
+          item.id +
+          '">' +
+          '<i class="ph ' +
+          item.icon +
+          '"></i>' +
+          '<span>' +
+          escapeHTML(item.label) +
+          '</span>' +
+          '</button>'
+        );
+      })
+      .join('');
 
     const html =
       '<div class="gm-shell portal-shell">' +
-        '<aside class="gm-sidebar">' +
-          '<div class="gm-sidebar-header">' +
-            '<div class="gm-sidebar-user-row">' +
-              '<div class="gm-user-avatar-ring">' +
-                '<div class="gm-user-avatar">' + escapeHTML(initials) + '</div>' +
-              '</div>' +
-              '<div class="gm-sidebar-user-info">' +
-                '<div class="gm-sidebar-user-name">' + escapeHTML(p.pseudo) + '</div>' +
-                '<div class="gm-sidebar-user-role">' + escapeHTML(p.guild) + ' &middot; Player</div>' +
-              '</div>' +
-              '<button class="gm-sidebar-logout" data-portal-exit title="Sign out">' +
-                '<i class="ph ph-sign-out"></i>' +
-              '</button>' +
-            '</div>' +
-          '</div>' +
-          '<nav class="gm-sidebar-nav">' +
-            '<div class="gm-nav-section-label">Player Portal</div>' +
-            navHtml +
-          '</nav>' +
-          '<div class="gm-sidebar-sub-card">' +
-            '<div class="gm-sub-card-badge-avatar"><i class="ph ph-crosshair"></i></div>' +
-            '<div style="font-size: var(--fs-sm); font-weight:700; color:var(--fg);">' + escapeHTML(p.guild) + '</div>' +
-            '<div style="font-size: var(--fs-xs); color:var(--fg-dim); margin-top:.25rem;">Foundation Galactic Frontier</div>' +
-          '</div>' +
-        '</aside>' +
-
-        '<div class="gm-main">' +
-          '<header class="gm-topbar">' +
-            '<div class="gm-topbar-mobile-brand">' +
-              '<div class="gm-brand-mark">' + escapeHTML(initials) + '</div>' +
-              '<div class="gm-topbar-title">Player Portal</div>' +
-            '</div>' +
-            '<div class="gm-topbar-actions">' +
-              '<button class="gm-sidebar-logout" data-portal-exit title="Sign out"><i class="ph ph-sign-out"></i></button>' +
-            '</div>' +
-          '</header>' +
-
-          '<div class="gm-content">' +
-            '<div class="gm-page">' +
-              '<div id="portal-panel-dashboard" class="gm-page portal-panel"></div>' +
-              '<div id="portal-panel-challenges" class="gm-page portal-panel hidden"></div>' +
-              '<div id="portal-panel-badges" class="gm-page portal-panel hidden"></div>' +
-              '<div id="portal-panel-events" class="gm-page portal-panel hidden"></div>' +
-              '<div id="portal-panel-absence" class="gm-page portal-panel hidden"></div>' +
-              '<div id="portal-panel-settings" class="gm-page portal-panel hidden"></div>' +
-            '</div>' +
-          '</div>' +
-        '</div>' +
-
-        '<nav class="gm-bottom-nav">' +
-          '<div class="gm-bottom-nav-inner">' +
-            primaryNavIds.map((id) => {
-              const item = navItems.find((n) => n.id === id);
-              if (!item) return '';
-              const isActive = this.state.activeTab === item.id;
-              return '<button class="gm-bottom-nav-item' + (isActive ? ' gm-active' : '') + '" data-portal-nav="' + item.id + '">' +
-                        '<i class="ph ' + item.icon + ' gm-icon"></i>' +
-                        '<span>' + escapeHTML(item.label) + '</span>' +
-                      '</button>';
-            }).join('') +
-            '<button class="gm-bottom-nav-item' + (drawerNavIds.indexOf(this.state.activeTab) !== -1 ? ' gm-active' : '') + '" data-portal-more>' +
-              '<i class="ph ph-dots-three gm-icon"></i>' +
-              '<span>More</span>' +
-            '</button>' +
-          '</div>' +
-        '</nav>' +
-
-        '<div class="gm-drawer-backdrop" data-portal-drawer-backdrop></div>' +
-        '<div class="gm-drawer" data-portal-drawer>' +
-          '<div class="gm-drawer-handle"></div>' +
-          '<div class="gm-drawer-grid">' +
-            drawerNavIds.map((id) => {
-              const item = navItems.find((n) => n.id === id);
-              if (!item) return '';
-              const isActive = this.state.activeTab === item.id;
-              return '<button class="gm-drawer-item' + (isActive ? ' gm-active' : '') + '" data-portal-nav="' + item.id + '">' +
-                        '<i class="ph ' + item.icon + ' gm-icon"></i>' +
-                        '<span>' + escapeHTML(item.label) + '</span>' +
-                      '</button>';
-            }).join('') +
-          '</div>' +
-        '</div>' +
+      '<aside class="gm-sidebar">' +
+      '<div class="gm-sidebar-header">' +
+      '<div class="gm-sidebar-user-row">' +
+      '<div class="gm-user-avatar-ring">' +
+      '<div class="gm-user-avatar">' +
+      escapeHTML(initials) +
+      '</div>' +
+      '</div>' +
+      '<div class="gm-sidebar-user-info">' +
+      '<div class="gm-sidebar-user-name">' +
+      escapeHTML(p.pseudo) +
+      '</div>' +
+      '<div class="gm-sidebar-user-role">' +
+      escapeHTML(p.guild) +
+      ' &middot; Player</div>' +
+      '</div>' +
+      '<button class="gm-sidebar-logout" data-portal-exit title="Sign out">' +
+      '<i class="ph ph-sign-out"></i>' +
+      '</button>' +
+      '</div>' +
+      '</div>' +
+      '<nav class="gm-sidebar-nav">' +
+      '<div class="gm-nav-section-label">Player Portal</div>' +
+      navHtml +
+      '</nav>' +
+      '<div class="gm-sidebar-sub-card">' +
+      '<div class="gm-sub-card-badge-avatar"><i class="ph ph-crosshair"></i></div>' +
+      '<div style="font-size: var(--fs-sm); font-weight:700; color:var(--fg);">' +
+      escapeHTML(p.guild) +
+      '</div>' +
+      '<div style="font-size: var(--fs-xs); color:var(--fg-dim); margin-top:.25rem;">Foundation Galactic Frontier</div>' +
+      '</div>' +
+      '</aside>' +
+      '<div class="gm-main">' +
+      '<header class="gm-topbar">' +
+      '<div class="gm-topbar-mobile-brand">' +
+      '<div class="gm-brand-mark">' +
+      escapeHTML(initials) +
+      '</div>' +
+      '<div class="gm-topbar-title">Player Portal</div>' +
+      '</div>' +
+      '<div class="gm-topbar-actions">' +
+      '<button class="gm-sidebar-logout" data-portal-exit title="Sign out"><i class="ph ph-sign-out"></i></button>' +
+      '</div>' +
+      '</header>' +
+      '<div class="gm-content">' +
+      '<div class="gm-page">' +
+      '<div id="portal-panel-dashboard" class="gm-page portal-panel"></div>' +
+      '<div id="portal-panel-challenges" class="gm-page portal-panel hidden"></div>' +
+      '<div id="portal-panel-badges" class="gm-page portal-panel hidden"></div>' +
+      '<div id="portal-panel-events" class="gm-page portal-panel hidden"></div>' +
+      '<div id="portal-panel-absence" class="gm-page portal-panel hidden"></div>' +
+      '<div id="portal-panel-settings" class="gm-page portal-panel hidden"></div>' +
+      '</div>' +
+      '</div>' +
+      '</div>' +
+      '<nav class="gm-bottom-nav">' +
+      '<div class="gm-bottom-nav-inner">' +
+      primaryNavIds
+        .map((id) => {
+          const item = navItems.find((n) => n.id === id);
+          if (!item) return '';
+          const isActive = this.state.activeTab === item.id;
+          return (
+            '<button class="gm-bottom-nav-item' +
+            (isActive ? ' gm-active' : '') +
+            '" data-portal-nav="' +
+            item.id +
+            '">' +
+            '<i class="ph ' +
+            item.icon +
+            ' gm-icon"></i>' +
+            '<span>' +
+            escapeHTML(item.label) +
+            '</span>' +
+            '</button>'
+          );
+        })
+        .join('') +
+      '<button class="gm-bottom-nav-item' +
+      (drawerNavIds.indexOf(this.state.activeTab) !== -1 ? ' gm-active' : '') +
+      '" data-portal-more>' +
+      '<i class="ph ph-dots-three gm-icon"></i>' +
+      '<span>More</span>' +
+      '</button>' +
+      '</div>' +
+      '</nav>' +
+      '<div class="gm-drawer-backdrop" data-portal-drawer-backdrop></div>' +
+      '<div class="gm-drawer" data-portal-drawer>' +
+      '<div class="gm-drawer-handle"></div>' +
+      '<div class="gm-drawer-grid">' +
+      drawerNavIds
+        .map((id) => {
+          const item = navItems.find((n) => n.id === id);
+          if (!item) return '';
+          const isActive = this.state.activeTab === item.id;
+          return (
+            '<button class="gm-drawer-item' +
+            (isActive ? ' gm-active' : '') +
+            '" data-portal-nav="' +
+            item.id +
+            '">' +
+            '<i class="ph ' +
+            item.icon +
+            ' gm-icon"></i>' +
+            '<span>' +
+            escapeHTML(item.label) +
+            '</span>' +
+            '</button>'
+          );
+        })
+        .join('') +
+      '</div>' +
+      '</div>' +
       '</div>';
 
     root.innerHTML = html;
@@ -348,7 +424,9 @@ export class PortalView {
     if (drawerBackdrop) drawerBackdrop.addEventListener('click', () => this.closePortalDrawer());
 
     root.querySelectorAll('[data-portal-exit]').forEach((btn) => {
-      btn.addEventListener('click', () => { exitPortalToLogin(); });
+      btn.addEventListener('click', () => {
+        exitPortalToLogin();
+      });
     });
 
     this.renderDashboardPanel();
@@ -432,7 +510,7 @@ export class PortalView {
     // themselves, which no amount of progress could change. It is the guild's
     // real maximum now.
     const guildTotals = (this.state.reliability && this.state.reliability.guild_totals) || {};
-    const maxGuildPower = Number(guildTotals.max_power) || (player.overall_power * 1.25) || 100000000;
+    const maxGuildPower = Number(guildTotals.max_power) || player.overall_power * 1.25 || 100000000;
     const playerRallyScore = calculateRallyScore(player);
     const estimatedMaxRally = Math.max(playerRallyScore, Math.round(maxGuildPower * 5.2));
     const rallyGrade = calculateRallyGrade(player, estimatedMaxRally);
@@ -463,7 +541,7 @@ export class PortalView {
 
       const myPct = mine.rate === null ? null : round1(mine.rate);
       const guildPct = theirs.rate === null ? null : round1(theirs.rate);
-      const delta = (myPct !== null && guildPct !== null) ? round1(myPct - guildPct) : null;
+      const delta = myPct !== null && guildPct !== null ? round1(myPct - guildPct) : null;
 
       const breakdown = Object.keys(playerBuckets)
         .map((b) => ({ bucket: b, ...(playerBuckets[b] || {}) }))
@@ -473,80 +551,127 @@ export class PortalView {
         .join(' · ');
 
       const glory = this.state.gloryHistory || {};
-      const powerPct = maxGuildPower > 0
-        ? Math.min(100, Math.round(((player.overall_power || 0) / maxGuildPower) * 100)) : 0;
+      const powerPct =
+        maxGuildPower > 0 ? Math.min(100, Math.round(((player.overall_power || 0) / maxGuildPower) * 100)) : 0;
 
       kpiHtml =
         '<div class="portal-kpi-grid">' +
-          '<div class="portal-kpi-card portal-kpi-part">' +
-            '<div class="portal-kpi-icon"><i class="ph ph-calendar-check"></i></div>' +
-            '<div class="portal-kpi-value">' + escapeHTML(myPct === null ? '—' : myPct + '%') + '</div>' +
-            '<div class="portal-kpi-label">Your reliability</div>' +
-            '<div class="portal-kpi-rank">' + escapeHTML(breakdown || 'Nothing ran for you yet') + '</div>' +
-            '<div class="portal-kpi-bar"><div class="portal-kpi-bar-fill" style="width:' + (myPct || 0) + '%;"></div></div>' +
-            '<div class="portal-kpi-sub">' +
-              (delta === null
-                ? 'Over the last ' + escapeHTML(rel.weeks || 0) + ' weeks'
-                : escapeHTML((delta >= 0 ? '+' : '') + delta + '% vs your guild (' + guildPct + '%)')) +
-              '<br><span style="opacity:.7;">Weighted by event type, standard weights</span>' +
-            '</div>' +
-          '</div>' +
-          '<div class="portal-kpi-card portal-kpi-power">' +
-            '<div class="portal-kpi-icon"><i class="ph ph-sword"></i></div>' +
-            '<div class="portal-kpi-value">' + escapeHTML(formatPower(player.overall_power || 0)) + '</div>' +
-            '<div class="portal-kpi-label">Combat Power</div>' +
-            '<div class="portal-kpi-rank">' + escapeHTML(powerPct) + '% of the strongest in your guild</div>' +
-            '<div class="portal-kpi-bar"><div class="portal-kpi-bar-fill" style="width:' + powerPct + '%;"></div></div>' +
-            '<div class="portal-kpi-sub">Guild average: ' + escapeHTML(formatPower(guildAvg.overall_power || 0)) + '</div>' +
-          '</div>' +
-          '<div class="portal-kpi-card portal-kpi-glory">' +
-            '<div class="portal-kpi-icon"><i class="ph ph-trophy"></i></div>' +
-            '<div class="portal-kpi-value">' + escapeHTML(glory.best ? formatNumber(glory.best) : '—') + '</div>' +
-            '<div class="portal-kpi-label">Best Glory week</div>' +
-            '<div class="portal-kpi-rank">' + escapeHTML((glory.weeks_recorded || 0) + ' week' + ((glory.weeks_recorded || 0) === 1 ? '' : 's') + ' recorded') + '</div>' +
-            '<div class="portal-kpi-bar"><div class="portal-kpi-bar-fill" style="width:100%;"></div></div>' +
-            '<div class="portal-kpi-sub">Guild average: ' + escapeHTML(formatNumber(guildAvg.glory_score || 0)) + '</div>' +
-          '</div>' +
-          '<div class="portal-kpi-card portal-kpi-tenure">' +
-            '<div class="portal-kpi-icon"><i class="ph ph-lightning"></i></div>' +
-            '<div class="portal-kpi-value" style="color:#fbbf24;">⚡ ' + escapeHTML(rallyGrade) + '/100</div>' +
-            '<div class="portal-kpi-label">Rally Grade</div>' +
-            '<div class="portal-kpi-rank">Combat Density: ' + density + '%</div>' +
-            '<div class="portal-kpi-bar"><div class="portal-kpi-bar-fill" style="width:' + escapeHTML(rallyGrade) + '%; background:#fbbf24;"></div></div>' +
-            '<div class="portal-kpi-sub">Combativity: ' + combativity + 'x &middot; ' + escapeHTML(player.role || 'R1') + '</div>' +
-          '</div>' +
+        '<div class="portal-kpi-card portal-kpi-part">' +
+        '<div class="portal-kpi-icon"><i class="ph ph-calendar-check"></i></div>' +
+        '<div class="portal-kpi-value">' +
+        escapeHTML(myPct === null ? '—' : myPct + '%') +
+        '</div>' +
+        '<div class="portal-kpi-label">Your reliability</div>' +
+        '<div class="portal-kpi-rank">' +
+        escapeHTML(breakdown || 'Nothing ran for you yet') +
+        '</div>' +
+        '<div class="portal-kpi-bar"><div class="portal-kpi-bar-fill" style="width:' +
+        (myPct || 0) +
+        '%;"></div></div>' +
+        '<div class="portal-kpi-sub">' +
+        (delta === null
+          ? 'Over the last ' + escapeHTML(rel.weeks || 0) + ' weeks'
+          : escapeHTML((delta >= 0 ? '+' : '') + delta + '% vs your guild (' + guildPct + '%)')) +
+        '<br><span style="opacity:.7;">Weighted by event type, standard weights</span>' +
+        '</div>' +
+        '</div>' +
+        '<div class="portal-kpi-card portal-kpi-power">' +
+        '<div class="portal-kpi-icon"><i class="ph ph-sword"></i></div>' +
+        '<div class="portal-kpi-value">' +
+        escapeHTML(formatPower(player.overall_power || 0)) +
+        '</div>' +
+        '<div class="portal-kpi-label">Combat Power</div>' +
+        '<div class="portal-kpi-rank">' +
+        escapeHTML(powerPct) +
+        '% of the strongest in your guild</div>' +
+        '<div class="portal-kpi-bar"><div class="portal-kpi-bar-fill" style="width:' +
+        powerPct +
+        '%;"></div></div>' +
+        '<div class="portal-kpi-sub">Guild average: ' +
+        escapeHTML(formatPower(guildAvg.overall_power || 0)) +
+        '</div>' +
+        '</div>' +
+        '<div class="portal-kpi-card portal-kpi-glory">' +
+        '<div class="portal-kpi-icon"><i class="ph ph-trophy"></i></div>' +
+        '<div class="portal-kpi-value">' +
+        escapeHTML(glory.best ? formatNumber(glory.best) : '—') +
+        '</div>' +
+        '<div class="portal-kpi-label">Best Glory week</div>' +
+        '<div class="portal-kpi-rank">' +
+        escapeHTML(
+          (glory.weeks_recorded || 0) + ' week' + ((glory.weeks_recorded || 0) === 1 ? '' : 's') + ' recorded'
+        ) +
+        '</div>' +
+        '<div class="portal-kpi-bar"><div class="portal-kpi-bar-fill" style="width:100%;"></div></div>' +
+        '<div class="portal-kpi-sub">Guild average: ' +
+        escapeHTML(formatNumber(guildAvg.glory_score || 0)) +
+        '</div>' +
+        '</div>' +
+        '<div class="portal-kpi-card portal-kpi-tenure">' +
+        '<div class="portal-kpi-icon"><i class="ph ph-lightning"></i></div>' +
+        '<div class="portal-kpi-value" style="color:#fbbf24;">⚡ ' +
+        escapeHTML(rallyGrade) +
+        '/100</div>' +
+        '<div class="portal-kpi-label">Rally Grade</div>' +
+        '<div class="portal-kpi-rank">Combat Density: ' +
+        density +
+        '%</div>' +
+        '<div class="portal-kpi-bar"><div class="portal-kpi-bar-fill" style="width:' +
+        escapeHTML(rallyGrade) +
+        '%; background:#fbbf24;"></div></div>' +
+        '<div class="portal-kpi-sub">Combativity: ' +
+        combativity +
+        'x &middot; ' +
+        escapeHTML(player.role || 'R1') +
+        '</div>' +
+        '</div>' +
         '</div>';
     }
 
     const tilesHtml =
       '<div class="portal-stats">' +
-        '<div class="portal-stat"><div class="portal-stat-value">' + escapeHTML(totalCount) + '</div><div class="portal-stat-label">Events tracked</div></div>' +
-        '<div class="portal-stat"><div class="portal-stat-value">' + escapeHTML(totalAttended) + '</div><div class="portal-stat-label">Participated</div></div>' +
-        // This strip used to show a third figure, "Attendance rate", computed
-        // as totalAttended / totalCount: a rate pooled across event types, so
-        // a member's Arms Race days outweighed their wars. It sat a few
-        // centimetres from the reliability card, which answers the same
-        // question differently. Two rates on one screen is how a member loses
-        // confidence in both, so the counts stay and the rate is stated once.
-        '' +
-        '<div class="portal-stat"><div class="portal-stat-value">' + escapeHTML(formatPower(player.overall_power)) + '</div><div class="portal-stat-label">Current power</div></div>' +
+      '<div class="portal-stat"><div class="portal-stat-value">' +
+      escapeHTML(totalCount) +
+      '</div><div class="portal-stat-label">Events tracked</div></div>' +
+      '<div class="portal-stat"><div class="portal-stat-value">' +
+      escapeHTML(totalAttended) +
+      '</div><div class="portal-stat-label">Participated</div></div>' +
+      // This strip used to show a third figure, "Attendance rate", computed
+      // as totalAttended / totalCount: a rate pooled across event types, so
+      // a member's Arms Race days outweighed their wars. It sat a few
+      // centimetres from the reliability card, which answers the same
+      // question differently. Two rates on one screen is how a member loses
+      // confidence in both, so the counts stay and the rate is stated once.
+      '' +
+      '<div class="portal-stat"><div class="portal-stat-value">' +
+      escapeHTML(formatPower(player.overall_power)) +
+      '</div><div class="portal-stat-label">Current power</div></div>' +
       '</div>';
 
     const periodHtml =
       '<div class="portal-period">' +
-        '<span class="portal-period-label"><i class="ph ph-calendar"></i> Period</span>' +
-        '<div class="portal-period-btns">' +
-          PERIODS.map((per) => {
-            return '<button type="button" class="portal-period-btn' + (this.state.period === per.key ? ' active' : '') + '" data-period="' + per.key + '">' + escapeHTML(per.label) + '</button>';
-          }).join('') +
-        '</div>' +
+      '<span class="portal-period-label"><i class="ph ph-calendar"></i> Period</span>' +
+      '<div class="portal-period-btns">' +
+      PERIODS.map((per) => {
+        return (
+          '<button type="button" class="portal-period-btn' +
+          (this.state.period === per.key ? ' active' : '') +
+          '" data-period="' +
+          per.key +
+          '">' +
+          escapeHTML(per.label) +
+          '</button>'
+        );
+      }).join('') +
+      '</div>' +
       '</div>';
 
     let chartsHtml = '';
     const chartKeys = keys.filter((k) => hist[k].has_score);
 
     if (chartKeys.length === 0) {
-      chartsHtml = '<div class="gm-empty" style="padding:2rem 0;"><i class="ph ph-chart-bar gm-icon"></i><div class="gm-empty-title">No scored events for this period.</div><div class="gm-empty-sub">Progression charts appear for events with scores (SvS, GvG, Glory).</div></div>';
+      chartsHtml =
+        '<div class="gm-empty" style="padding:2rem 0;"><i class="ph ph-chart-bar gm-icon"></i><div class="gm-empty-title">No scored events for this period.</div><div class="gm-empty-sub">Progression charts appear for events with scores (SvS, GvG, Glory).</div></div>';
     } else {
       chartKeys.forEach((key, idx) => {
         chartsHtml += this.renderChartCard(key, hist[key], idx);
@@ -569,47 +694,61 @@ export class PortalView {
     if (orderedTiles.length > 0) {
       tilesHtml2 =
         '<div class="portal-participation-grid">' +
-          orderedTiles.map((key) => this.renderParticipationTile(key, hist[key])).join('') +
+        orderedTiles.map((key) => this.renderParticipationTile(key, hist[key])).join('') +
         '</div>';
     }
 
     const tacticalBreakdownHtml =
       '<div class="portal-card" style="margin-bottom: 1.25rem; background: var(--md-sys-color-surface-container, #1e1f20); border: 1px solid var(--md-sys-color-outline-variant, rgba(255, 255, 255, 0.08)); border-radius: var(--md-sys-shape-corner-large, 16px); padding: 1.35rem; box-shadow: var(--md-sys-elevation-level1, 0 1px 3px rgba(0,0,0,0.2));">' +
-        '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.15rem; flex-wrap:wrap; gap:0.6rem;">' +
-          '<div style="display:flex; align-items:center; gap:0.55rem;">' +
-            '<i class="ph ph-sword" style="color:var(--md-sys-color-primary, #a8c7fa); font-size: var(--fs-3xl);"></i>' +
-            '<span style="font-weight:800; font-size: var(--fs-xl); color:var(--md-sys-color-on-surface, #e3e3e3);">Military Force Breakdown &amp; Guild Benchmarks</span>' +
-          '</div>' +
-          '<div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">' +
-            '<span class="gm-chip" style="font-size: var(--fs-sm); font-weight:700; color:#a8c7fa; background:rgba(168,199,250,0.12); border:1px solid rgba(168,199,250,0.25); border-radius:var(--md-sys-shape-corner-full);"><i class="ph ph-shield-check"></i> Density: ' + Math.min(100, Math.round(density)) + '%</span>' +
-            '<span class="gm-chip" style="font-size: var(--fs-sm); font-weight:700; color:#6dd58c; background:rgba(109,213,140,0.12); border:1px solid rgba(109,213,140,0.25); border-radius:var(--md-sys-shape-corner-full);"><i class="ph ph-crosshair"></i> Combativity: ' + combativity + 'x</span>' +
-            '<span class="gm-chip" style="font-size: var(--fs-sm); font-weight:700; color:#ffe088; background:rgba(255,224,136,0.12); border:1px solid rgba(255,224,136,0.25); border-radius:var(--md-sys-shape-corner-full);"><i class="ph ph-barricade"></i> Volatile: ' + escapeHTML(formatPower(residual)) + '</span>' +
-          '</div>' +
-        '</div>' +
-        '<div class="portal-military-grid">' +
-          this.renderMilitaryTile('⚔️', 'Fleet Rating', player.fleet_rating, guildAvg.fleet_rating, '#a8c7fa') +
-          this.renderMilitaryTile('🔬', 'Tech Power', player.tech_power, guildAvg.tech_power, '#d0bcff') +
-          this.renderMilitaryTile('🚀', 'Flagship Power', player.flagship_power, guildAvg.flagship_power, '#ffe088') +
-          this.renderMilitaryTile('👑', 'Champions Power', player.champion_power, guildAvg.champion_power, '#f472b6') +
-          this.renderMilitaryTile('👥', 'Crew Power', player.crew_power, guildAvg.crew_power, '#70d7ff') +
-          this.renderMilitaryTile('🏆', 'Glory Score', (player.glory_score || player.glory), guildAvg.glory_score, '#6dd58c') +
-          this.renderMilitaryTile('🛡️', 'Total Power', player.overall_power, guildAvg.overall_power, '#e3e3e3') +
-        '</div>' +
+      '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.15rem; flex-wrap:wrap; gap:0.6rem;">' +
+      '<div style="display:flex; align-items:center; gap:0.55rem;">' +
+      '<i class="ph ph-sword" style="color:var(--md-sys-color-primary, #a8c7fa); font-size: var(--fs-3xl);"></i>' +
+      '<span style="font-weight:800; font-size: var(--fs-xl); color:var(--md-sys-color-on-surface, #e3e3e3);">Military Force Breakdown &amp; Guild Benchmarks</span>' +
+      '</div>' +
+      '<div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">' +
+      '<span class="gm-chip" style="font-size: var(--fs-sm); font-weight:700; color:#a8c7fa; background:rgba(168,199,250,0.12); border:1px solid rgba(168,199,250,0.25); border-radius:var(--md-sys-shape-corner-full);"><i class="ph ph-shield-check"></i> Density: ' +
+      Math.min(100, Math.round(density)) +
+      '%</span>' +
+      '<span class="gm-chip" style="font-size: var(--fs-sm); font-weight:700; color:#6dd58c; background:rgba(109,213,140,0.12); border:1px solid rgba(109,213,140,0.25); border-radius:var(--md-sys-shape-corner-full);"><i class="ph ph-crosshair"></i> Combativity: ' +
+      combativity +
+      'x</span>' +
+      '<span class="gm-chip" style="font-size: var(--fs-sm); font-weight:700; color:#ffe088; background:rgba(255,224,136,0.12); border:1px solid rgba(255,224,136,0.25); border-radius:var(--md-sys-shape-corner-full);"><i class="ph ph-barricade"></i> Volatile: ' +
+      escapeHTML(formatPower(residual)) +
+      '</span>' +
+      '</div>' +
+      '</div>' +
+      '<div class="portal-military-grid">' +
+      this.renderMilitaryTile('⚔️', 'Fleet Rating', player.fleet_rating, guildAvg.fleet_rating, '#a8c7fa') +
+      this.renderMilitaryTile('🔬', 'Tech Power', player.tech_power, guildAvg.tech_power, '#d0bcff') +
+      this.renderMilitaryTile('🚀', 'Flagship Power', player.flagship_power, guildAvg.flagship_power, '#ffe088') +
+      this.renderMilitaryTile('👑', 'Champions Power', player.champion_power, guildAvg.champion_power, '#f472b6') +
+      this.renderMilitaryTile('👥', 'Crew Power', player.crew_power, guildAvg.crew_power, '#70d7ff') +
+      this.renderMilitaryTile(
+        '🏆',
+        'Glory Score',
+        player.glory_score || player.glory,
+        guildAvg.glory_score,
+        '#6dd58c'
+      ) +
+      this.renderMilitaryTile('🛡️', 'Total Power', player.overall_power, guildAvg.overall_power, '#e3e3e3') +
+      '</div>' +
       '</div>';
 
     panel.innerHTML =
       '<header class="gm-page-header">' +
-        '<div>' +
-          '<h1 class="gm-page-title">My Progress</h1>' +
-          '<p class="gm-page-subtitle">Your score progression, event performance, and guild benchmark comparison</p>' +
-        '</div>' +
-        periodHtml +
+      '<div>' +
+      '<h1 class="gm-page-title">My Progress</h1>' +
+      '<p class="gm-page-subtitle">Your score progression, event performance, and guild benchmark comparison</p>' +
+      '</div>' +
+      periodHtml +
       '</header>' +
       kpiHtml +
       tilesHtml +
       tacticalBreakdownHtml +
       tilesHtml2 +
-      '<div class="portal-charts-grid">' + chartsHtml + '</div>';
+      '<div class="portal-charts-grid">' +
+      chartsHtml +
+      '</div>';
 
     panel.querySelectorAll('.portal-period-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -634,27 +773,47 @@ export class PortalView {
     if (aVal > 0 && pVal > 0) {
       const diffPct = Math.round(((pVal - aVal) / aVal) * 1000) / 10;
       if (diffPct >= 0) {
-        deltaHtml = '<span class="gm-chip" style="font-size: var(--fs-xs); padding:0.1rem 0.38rem; color:#6dd58c; background:rgba(109,213,140,0.14); border:1px solid rgba(109,213,140,0.25); border-radius:var(--md-sys-shape-corner-full, 9999px); white-space:nowrap;">+' + diffPct + '%</span>';
+        deltaHtml =
+          '<span class="gm-chip" style="font-size: var(--fs-xs); padding:0.1rem 0.38rem; color:#6dd58c; background:rgba(109,213,140,0.14); border:1px solid rgba(109,213,140,0.25); border-radius:var(--md-sys-shape-corner-full, 9999px); white-space:nowrap;">+' +
+          diffPct +
+          '%</span>';
       } else {
-        deltaHtml = '<span class="gm-chip" style="font-size: var(--fs-xs); padding:0.1rem 0.38rem; color:#ffe088; background:rgba(255,224,136,0.14); border:1px solid rgba(255,224,136,0.25); border-radius:var(--md-sys-shape-corner-full, 9999px); white-space:nowrap;">' + diffPct + '%</span>';
+        deltaHtml =
+          '<span class="gm-chip" style="font-size: var(--fs-xs); padding:0.1rem 0.38rem; color:#ffe088; background:rgba(255,224,136,0.14); border:1px solid rgba(255,224,136,0.25); border-radius:var(--md-sys-shape-corner-full, 9999px); white-space:nowrap;">' +
+          diffPct +
+          '%</span>';
       }
     }
-    const avgFormatted = aVal > 0 ? formatPower(aVal) : (pVal > 0 ? formatPower(pVal) : '0');
-    return '<div class="portal-military-tile">' +
-              '<div class="portal-military-tile-header">' +
-                '<div class="portal-military-tile-title">' +
-                  '<span class="portal-military-tile-icon">' + icon + '</span>' +
-                  '<span class="portal-military-tile-label">' + escapeHTML(label) + '</span>' +
-                '</div>' +
-                '<div class="portal-military-tile-delta">' + deltaHtml + '</div>' +
-              '</div>' +
-              '<div class="portal-military-tile-value" style="color:' + color + ';">' + escapeHTML(formatPower(pVal)) + '</div>' +
-              '<div class="portal-military-tile-footer">' +
-                '<i class="ph ph-users-three"></i>' +
-                '<span class="portal-military-tile-avg-label">Guild Avg:</span>' +
-                '<span class="portal-military-tile-avg-val">' + escapeHTML(avgFormatted) + '</span>' +
-              '</div>' +
-            '</div>';
+    const avgFormatted = aVal > 0 ? formatPower(aVal) : pVal > 0 ? formatPower(pVal) : '0';
+    return (
+      '<div class="portal-military-tile">' +
+      '<div class="portal-military-tile-header">' +
+      '<div class="portal-military-tile-title">' +
+      '<span class="portal-military-tile-icon">' +
+      icon +
+      '</span>' +
+      '<span class="portal-military-tile-label">' +
+      escapeHTML(label) +
+      '</span>' +
+      '</div>' +
+      '<div class="portal-military-tile-delta">' +
+      deltaHtml +
+      '</div>' +
+      '</div>' +
+      '<div class="portal-military-tile-value" style="color:' +
+      color +
+      ';">' +
+      escapeHTML(formatPower(pVal)) +
+      '</div>' +
+      '<div class="portal-military-tile-footer">' +
+      '<i class="ph ph-users-three"></i>' +
+      '<span class="portal-military-tile-avg-label">Guild Avg:</span>' +
+      '<span class="portal-military-tile-avg-val">' +
+      escapeHTML(avgFormatted) +
+      '</span>' +
+      '</div>' +
+      '</div>'
+    );
   }
 
   private eventAccent(eventKey: string): string {
@@ -671,17 +830,31 @@ export class PortalView {
   private renderChartCard(eventKey: string, _ev: any, idx: number): string {
     const icon = getEventIcon(eventKey);
     const accent = this.eventAccent(eventKey);
-    return '<div class="portal-chart-card">' +
-              '<div class="portal-chart-accent" style="background:' + accent + ';"></div>' +
-              '<div class="portal-chart-head">' +
-                '<div class="portal-chart-title"><i class="ph ' + icon + '" style="color:' + accent + ';"></i> ' + escapeHTML(eventKey) + '</div>' +
-                '<div class="portal-chart-legend">' +
-                  '<span style="display:inline-flex; align-items:center; gap:0.4rem; color:#6dd58c; font-weight:700;"><span style="width:12px; height:3px; background:#6dd58c; border-radius:2px; display:inline-block;"></span> You</span>' +
-                  '<span style="display:inline-flex; align-items:center; gap:0.4rem; color:#ffe088; font-weight:700;"><span style="width:14px; height:0; border-top:2.5px dashed #ffe088; display:inline-block;"></span> Guild Avg (dashed)</span>' +
-                '</div>' +
-              '</div>' +
-              '<canvas class="portal-chart-canvas" data-chart-key="' + escapeHTML(eventKey) + '" data-chart-idx="' + idx + '" width="1200" height="200"></canvas>' +
-            '</div>';
+    return (
+      '<div class="portal-chart-card">' +
+      '<div class="portal-chart-accent" style="background:' +
+      accent +
+      ';"></div>' +
+      '<div class="portal-chart-head">' +
+      '<div class="portal-chart-title"><i class="ph ' +
+      icon +
+      '" style="color:' +
+      accent +
+      ';"></i> ' +
+      escapeHTML(eventKey) +
+      '</div>' +
+      '<div class="portal-chart-legend">' +
+      '<span style="display:inline-flex; align-items:center; gap:0.4rem; color:#6dd58c; font-weight:700;"><span style="width:12px; height:3px; background:#6dd58c; border-radius:2px; display:inline-block;"></span> You</span>' +
+      '<span style="display:inline-flex; align-items:center; gap:0.4rem; color:#ffe088; font-weight:700;"><span style="width:14px; height:0; border-top:2.5px dashed #ffe088; display:inline-block;"></span> Guild Avg (dashed)</span>' +
+      '</div>' +
+      '</div>' +
+      '<canvas class="portal-chart-canvas" data-chart-key="' +
+      escapeHTML(eventKey) +
+      '" data-chart-idx="' +
+      idx +
+      '" width="1200" height="200"></canvas>' +
+      '</div>'
+    );
   }
 
   private renderParticipationTile(eventKey: string, ev: any): string {
@@ -691,21 +864,41 @@ export class PortalView {
 
     let recentBadges = '';
     (ev.history || []).slice(0, 4).forEach((h: any) => {
-      recentBadges += h.participated || h.sub_present
-        ? '<span class="portal-badge" style="background:rgba(109,213,140,0.18); color:#6dd58c; border-color:rgba(109,213,140,0.4);">P</span>'
-        : (h.excused ? '<span class="portal-badge" style="background:rgba(255,224,136,0.15); color:#ffe088; border-color:rgba(255,224,136,0.4);">E</span>'
-           : '<span class="portal-badge" style="background:rgba(248,113,113,0.15); color:#f87171; border-color:rgba(248,113,113,0.4);">A</span>');
+      recentBadges +=
+        h.participated || h.sub_present
+          ? '<span class="portal-badge" style="background:rgba(109,213,140,0.18); color:#6dd58c; border-color:rgba(109,213,140,0.4);">P</span>'
+          : h.excused
+            ? '<span class="portal-badge" style="background:rgba(255,224,136,0.15); color:#ffe088; border-color:rgba(255,224,136,0.4);">E</span>'
+            : '<span class="portal-badge" style="background:rgba(248,113,113,0.15); color:#f87171; border-color:rgba(248,113,113,0.4);">A</span>';
     });
 
-    return '<div class="portal-participation-tile">' +
-              '<div class="portal-chart-accent" style="background:' + accent + ';"></div>' +
-              '<div class="portal-participation-body">' +
-                '<div class="portal-participation-title"><i class="ph ' + icon + '" style="color:' + accent + ';"></i> ' + escapeHTML(eventKey) + '</div>' +
-                '<div class="portal-participation-rate">' + escapeHTML(ev.rate) + '%</div>' +
-                '<div class="portal-participation-sub">' + escapeHTML(attended) + '/' + escapeHTML(ev.count) + ' attended</div>' +
-                '<div class="portal-participation-badges">' + recentBadges + '</div>' +
-              '</div>' +
-            '</div>';
+    return (
+      '<div class="portal-participation-tile">' +
+      '<div class="portal-chart-accent" style="background:' +
+      accent +
+      ';"></div>' +
+      '<div class="portal-participation-body">' +
+      '<div class="portal-participation-title"><i class="ph ' +
+      icon +
+      '" style="color:' +
+      accent +
+      ';"></i> ' +
+      escapeHTML(eventKey) +
+      '</div>' +
+      '<div class="portal-participation-rate">' +
+      escapeHTML(ev.rate) +
+      '%</div>' +
+      '<div class="portal-participation-sub">' +
+      escapeHTML(attended) +
+      '/' +
+      escapeHTML(ev.count) +
+      ' attended</div>' +
+      '<div class="portal-participation-badges">' +
+      recentBadges +
+      '</div>' +
+      '</div>' +
+      '</div>'
+    );
   }
 
   private drawChart(_eventKey: string, ev: any, idx: number): void {
@@ -720,10 +913,10 @@ export class PortalView {
     if (!panel) return;
     panel.innerHTML =
       '<header class="gm-page-header">' +
-        '<div>' +
-          '<h1 class="gm-page-title">Challenges</h1>' +
-          '<p class="gm-page-subtitle">Weekly goals and your season progress</p>' +
-        '</div>' +
+      '<div>' +
+      '<h1 class="gm-page-title">Challenges</h1>' +
+      '<p class="gm-page-subtitle">Weekly goals and your season progress</p>' +
+      '</div>' +
       '</header>' +
       '<div id="portal-challenges-body"><div class="gm-empty" style="padding:2rem 0;"><i class="ph ph-circle-notch ph-spin gm-icon"></i><div class="gm-empty-title">Loading challenges...</div></div></div>';
     this.loadChallengesPanel();
@@ -731,17 +924,31 @@ export class PortalView {
 
   private renderChallengeCard(challenge: any): string {
     const cls = challenge.done ? 'portal-challenge done' : 'portal-challenge';
-    const pct = challenge.target > 0 ? Math.min(100, Math.round(challenge.progress / challenge.target * 100)) : 0;
-    return '<div class="' + cls + '">' +
-              '<div class="portal-challenge-icon"><i class="ph ' + challenge.icon + '"></i></div>' +
-              '<div class="portal-challenge-info">' +
-                '<div class="portal-challenge-name">' + escapeHTML(challenge.label) + '</div>' +
-                '<div class="portal-challenge-progress"><div class="portal-challenge-progress-fill" style="width:' + pct + '%; background:' + (challenge.done ? 'var(--success)' : 'var(--accent)') + ';"></div></div>' +
-              '</div>' +
-              '<div class="portal-challenge-state">' +
-                (challenge.done ? '<i class="ph ph-check-circle" style="color:var(--success);"></i>' : '<span class="portal-challenge-count">' + challenge.progress + '/' + challenge.target + '</span>') +
-              '</div>' +
-            '</div>';
+    const pct = challenge.target > 0 ? Math.min(100, Math.round((challenge.progress / challenge.target) * 100)) : 0;
+    return (
+      '<div class="' +
+      cls +
+      '">' +
+      '<div class="portal-challenge-icon"><i class="ph ' +
+      challenge.icon +
+      '"></i></div>' +
+      '<div class="portal-challenge-info">' +
+      '<div class="portal-challenge-name">' +
+      escapeHTML(challenge.label) +
+      '</div>' +
+      '<div class="portal-challenge-progress"><div class="portal-challenge-progress-fill" style="width:' +
+      pct +
+      '%; background:' +
+      (challenge.done ? 'var(--success)' : 'var(--accent)') +
+      ';"></div></div>' +
+      '</div>' +
+      '<div class="portal-challenge-state">' +
+      (challenge.done
+        ? '<i class="ph ph-check-circle" style="color:var(--success);"></i>'
+        : '<span class="portal-challenge-count">' + challenge.progress + '/' + challenge.target + '</span>') +
+      '</div>' +
+      '</div>'
+    );
   }
 
   private async loadChallengesPanel(): Promise<void> {
@@ -749,7 +956,10 @@ export class PortalView {
     if (!body) return;
     const res = await this.invoke('get-weekly-challenges', {});
     if (!res.ok) {
-      body.innerHTML = '<div class="gm-empty" style="padding:2rem 0;"><i class="ph ph-warning-circle gm-icon"></i><div class="gm-empty-title">Unable to load challenges.</div><div class="gm-empty-sub">' + escapeHTML(res.error || 'unknown error') + '</div></div>';
+      body.innerHTML =
+        '<div class="gm-empty" style="padding:2rem 0;"><i class="ph ph-warning-circle gm-icon"></i><div class="gm-empty-title">Unable to load challenges.</div><div class="gm-empty-sub">' +
+        escapeHTML(res.error || 'unknown error') +
+        '</div></div>';
       return;
     }
 
@@ -757,7 +967,7 @@ export class PortalView {
       'None': { label: 'No season rank yet', color: 'var(--fg-dim)' },
       'Bronze': { label: 'Bronze season', color: '#cd7f32' },
       'Silver': { label: 'Silver season', color: '#c0c0c0' },
-      'Gold': { label: 'Gold season', color: '#ffd700' }
+      'Gold': { label: 'Gold season', color: '#ffd700' },
     };
     const meta = levelMeta[res.season.level] || { label: res.season.level, color: 'var(--accent)' };
 
@@ -765,11 +975,25 @@ export class PortalView {
 
     body.innerHTML =
       '<div class="portal-challenges-summary">' +
-        '<div class="portal-challenges-summary-item"><span class="portal-challenges-summary-value">' + res.completed + '/' + res.total + '</span><span class="portal-challenges-summary-label">challenges done this week</span></div>' +
-        '<div class="portal-challenges-summary-item"><span class="portal-challenges-summary-value" style="color:' + meta.color + ';">' + res.season.events + '</span><span class="portal-challenges-summary-label">events over the season</span></div>' +
-        '<div class="portal-challenges-summary-item"><span class="portal-challenges-summary-value" style="color:' + meta.color + ';">' + meta.label + '</span><span class="portal-challenges-summary-label">season</span></div>' +
+      '<div class="portal-challenges-summary-item"><span class="portal-challenges-summary-value">' +
+      res.completed +
+      '/' +
+      res.total +
+      '</span><span class="portal-challenges-summary-label">challenges done this week</span></div>' +
+      '<div class="portal-challenges-summary-item"><span class="portal-challenges-summary-value" style="color:' +
+      meta.color +
+      ';">' +
+      res.season.events +
+      '</span><span class="portal-challenges-summary-label">events over the season</span></div>' +
+      '<div class="portal-challenges-summary-item"><span class="portal-challenges-summary-value" style="color:' +
+      meta.color +
+      ';">' +
+      meta.label +
+      '</span><span class="portal-challenges-summary-label">season</span></div>' +
       '</div>' +
-      '<div class="portal-challenge-list">' + cards + '</div>';
+      '<div class="portal-challenge-list">' +
+      cards +
+      '</div>';
   }
 
   // ── Panel: Badges ───────────────────────────────────────────────────────
@@ -778,10 +1002,10 @@ export class PortalView {
     if (!panel) return;
     panel.innerHTML =
       '<header class="gm-page-header">' +
-        '<div>' +
-          '<h1 class="gm-page-title">Badges</h1>' +
-          '<p class="gm-page-subtitle">Achievements that unlock as you grow in the guild</p>' +
-        '</div>' +
+      '<div>' +
+      '<h1 class="gm-page-title">Badges</h1>' +
+      '<p class="gm-page-subtitle">Achievements that unlock as you grow in the guild</p>' +
+      '</div>' +
       '</header>' +
       '<div id="portal-badges-body"><div class="gm-empty" style="padding:2rem 0;"><i class="ph ph-circle-notch ph-spin gm-icon"></i><div class="gm-empty-title">Loading badges...</div></div></div>';
     this.loadBadgesPanel();
@@ -811,22 +1035,49 @@ export class PortalView {
       : '<div class="portal-badge-state"><i class="ph ph-lock-key"></i> Locked</div>';
 
     const progressHtml = badge.earned
-      ? '<div class="portal-badge-progress"><div class="portal-badge-progress-fill" style="width:100%; background:' + badge.color + ';"></div></div>'
-      : '<div class="portal-badge-progress"><div class="portal-badge-progress-fill" style="width:' + badge.progress + '%; background:' + badge.color + ';"></div></div>';
+      ? '<div class="portal-badge-progress"><div class="portal-badge-progress-fill" style="width:100%; background:' +
+        badge.color +
+        ';"></div></div>'
+      : '<div class="portal-badge-progress"><div class="portal-badge-progress-fill" style="width:' +
+        badge.progress +
+        '%; background:' +
+        badge.color +
+        ';"></div></div>';
 
-    const metricHtml = badge.earned ? '' :
-      '<div class="portal-badge-metric"><span>' + escapeHTML(this.formatBadgeCurrent(badge)) + '</span><span class="portal-badge-metric-sep">/</span><span>' + escapeHTML(this.formatBadgeTarget(badge)) + '</span></div>';
+    const metricHtml = badge.earned
+      ? ''
+      : '<div class="portal-badge-metric"><span>' +
+        escapeHTML(this.formatBadgeCurrent(badge)) +
+        '</span><span class="portal-badge-metric-sep">/</span><span>' +
+        escapeHTML(this.formatBadgeTarget(badge)) +
+        '</span></div>';
 
-    return '<div class="' + cls + '">' +
-              '<div class="' + iconCls + '" style="color:' + badge.color + ';' + (badge.earned ? ' border-color:' + badge.color + '; box-shadow:0 0 18px ' + badge.color + '55;' : '') + '">' +
-                '<i class="ph ' + badge.icon + '"></i>' +
-              '</div>' +
-              '<div class="portal-badge-name">' + escapeHTML(badge.name) + '</div>' +
-              '<div class="portal-badge-desc">' + escapeHTML(badge.desc) + '</div>' +
-              progressHtml +
-              metricHtml +
-              stateHtml +
-            '</div>';
+    return (
+      '<div class="' +
+      cls +
+      '">' +
+      '<div class="' +
+      iconCls +
+      '" style="color:' +
+      badge.color +
+      ';' +
+      (badge.earned ? ' border-color:' + badge.color + '; box-shadow:0 0 18px ' + badge.color + '55;' : '') +
+      '">' +
+      '<i class="ph ' +
+      badge.icon +
+      '"></i>' +
+      '</div>' +
+      '<div class="portal-badge-name">' +
+      escapeHTML(badge.name) +
+      '</div>' +
+      '<div class="portal-badge-desc">' +
+      escapeHTML(badge.desc) +
+      '</div>' +
+      progressHtml +
+      metricHtml +
+      stateHtml +
+      '</div>'
+    );
   }
 
   private renderBadgesBody(data: any): void {
@@ -835,17 +1086,35 @@ export class PortalView {
 
     const summary =
       '<div class="portal-badges-summary">' +
-        '<div class="portal-badges-summary-item"><span class="portal-badges-summary-value">' + data.earned + '</span><span class="portal-badges-summary-label">of ' + data.total + ' badges earned</span></div>' +
-        '<div class="portal-badges-summary-item"><span class="portal-badges-summary-value">' + data.categories.length + '</span><span class="portal-badges-summary-label">achievement tracks</span></div>' +
+      '<div class="portal-badges-summary-item"><span class="portal-badges-summary-value">' +
+      data.earned +
+      '</span><span class="portal-badges-summary-label">of ' +
+      data.total +
+      ' badges earned</span></div>' +
+      '<div class="portal-badges-summary-item"><span class="portal-badges-summary-value">' +
+      data.categories.length +
+      '</span><span class="portal-badges-summary-label">achievement tracks</span></div>' +
       '</div>';
 
-    const sections = data.categories.map((cat: any) => {
-      const cards = cat.badges.map((b: any) => this.renderBadgeCard(b)).join('');
-      return '<div class="portal-badge-section">' +
-                '<div class="portal-badge-section-title"><i class="ph ' + cat.icon + '" style="color:' + cat.color + ';"></i> ' + escapeHTML(cat.label) + '</div>' +
-                '<div class="portal-badge-grid">' + cards + '</div>' +
-              '</div>';
-    }).join('');
+    const sections = data.categories
+      .map((cat: any) => {
+        const cards = cat.badges.map((b: any) => this.renderBadgeCard(b)).join('');
+        return (
+          '<div class="portal-badge-section">' +
+          '<div class="portal-badge-section-title"><i class="ph ' +
+          cat.icon +
+          '" style="color:' +
+          cat.color +
+          ';"></i> ' +
+          escapeHTML(cat.label) +
+          '</div>' +
+          '<div class="portal-badge-grid">' +
+          cards +
+          '</div>' +
+          '</div>'
+        );
+      })
+      .join('');
 
     body.innerHTML = summary + sections;
   }
@@ -856,7 +1125,10 @@ export class PortalView {
 
     const res = await this.invoke('get-badges', {});
     if (!res.ok) {
-      body.innerHTML = '<div class="gm-empty" style="padding:2rem 0;"><i class="ph ph-warning-circle gm-icon"></i><div class="gm-empty-title">Unable to load your badges.</div><div class="gm-empty-sub">' + escapeHTML(res.error || 'unknown error') + '</div></div>';
+      body.innerHTML =
+        '<div class="gm-empty" style="padding:2rem 0;"><i class="ph ph-warning-circle gm-icon"></i><div class="gm-empty-title">Unable to load your badges.</div><div class="gm-empty-sub">' +
+        escapeHTML(res.error || 'unknown error') +
+        '</div></div>';
       return;
     }
 
@@ -865,7 +1137,7 @@ export class PortalView {
       created_at: res.created_at,
       overall_power: res.overall_power,
       attended: res.attended,
-      glory_best: res.glory_best
+      glory_best: res.glory_best,
     });
     this.state.badgesLoaded = true;
     if (data) this.renderBadgesBody(data);
@@ -881,22 +1153,30 @@ export class PortalView {
 
     const headerHtml =
       '<header class="gm-page-header">' +
-        '<div>' +
-          '<h1 class="gm-page-title">Active Events</h1>' +
-          '<p class="gm-page-subtitle">Tell the officers you took part and submit your scores</p>' +
-        '</div>' +
+      '<div>' +
+      '<h1 class="gm-page-title">Active Events</h1>' +
+      '<p class="gm-page-subtitle">Tell the officers you took part and submit your scores</p>' +
+      '</div>' +
       '</header>';
 
     if (!sessions || sessions.length === 0) {
-      panel.innerHTML = headerHtml + '<div class="gm-empty" style="padding:2rem 0;"><i class="ph ph-calendar-blank gm-icon"></i><div class="gm-empty-title">No active events right now.</div><div class="gm-empty-sub">When your guild starts an event, it will show up here for you to fill in.</div></div>';
+      panel.innerHTML =
+        headerHtml +
+        '<div class="gm-empty" style="padding:2rem 0;"><i class="ph ph-calendar-blank gm-icon"></i><div class="gm-empty-title">No active events right now.</div><div class="gm-empty-sub">When your guild starts an event, it will show up here for you to fill in.</div></div>';
       return;
     }
 
     const summaryHtml =
       '<div class="portal-events-summary">' +
-        '<div class="portal-events-summary-item"><span class="portal-events-summary-value">' + sessions.length + '</span><span class="portal-events-summary-label">Active events</span></div>' +
-        '<div class="portal-events-summary-item"><span class="portal-events-summary-value">' + (sessions.length - submittedCount) + '</span><span class="portal-events-summary-label">To submit</span></div>' +
-        '<div class="portal-events-summary-item"><span class="portal-events-summary-value">' + submittedCount + '</span><span class="portal-events-summary-label">Submitted</span></div>' +
+      '<div class="portal-events-summary-item"><span class="portal-events-summary-value">' +
+      sessions.length +
+      '</span><span class="portal-events-summary-label">Active events</span></div>' +
+      '<div class="portal-events-summary-item"><span class="portal-events-summary-value">' +
+      (sessions.length - submittedCount) +
+      '</span><span class="portal-events-summary-label">To submit</span></div>' +
+      '<div class="portal-events-summary-item"><span class="portal-events-summary-value">' +
+      submittedCount +
+      '</span><span class="portal-events-summary-label">Submitted</span></div>' +
       '</div>';
 
     let html = '';
@@ -933,23 +1213,27 @@ export class PortalView {
       : isPending
         ? '<span class="portal-status portal-status-pending"><i class="ph ph-hourglass"></i> Awaiting approval</span>'
         : notInSession
-          ? '<span class="portal-status portal-status-todo"><i class="ph ph-info"></i> ' + (isShadowfront ? 'Not in this squad' : 'Not in this event') + '</span>'
+          ? '<span class="portal-status portal-status-todo"><i class="ph ph-info"></i> ' +
+            (isShadowfront ? 'Not in this squad' : 'Not in this event') +
+            '</span>'
           : '<span class="portal-status portal-status-todo"><i class="ph ph-pencil-line"></i> Not submitted yet</span>';
 
     const startLabel = sess.start_at ? formatDateTimeUTC(sess.start_at) : '';
 
     const fieldsHtml =
       '<div class="portal-participation-box">' +
-        '<label class="portal-participation-toggle">' +
-          '<div class="check-toggle">' +
-            '<input type="checkbox" class="participation-checkbox portal-check-participated" ' + (isChecked ? 'checked' : '') + '>' +
-            '<span class="check-slider"></span>' +
-          '</div>' +
-          '<div class="portal-participation-text">' +
-            '<span class="portal-participation-title">I participated in this event</span>' +
-            '<span class="portal-participation-hint">Mark this to tell the officers you were there</span>' +
-          '</div>' +
-        '</label>' +
+      '<label class="portal-participation-toggle">' +
+      '<div class="check-toggle">' +
+      '<input type="checkbox" class="participation-checkbox portal-check-participated" ' +
+      (isChecked ? 'checked' : '') +
+      '>' +
+      '<span class="check-slider"></span>' +
+      '</div>' +
+      '<div class="portal-participation-text">' +
+      '<span class="portal-participation-title">I participated in this event</span>' +
+      '<span class="portal-participation-hint">Mark this to tell the officers you were there</span>' +
+      '</div>' +
+      '</label>' +
       '</div>';
 
     // "I was appointed" (DTR) and "I was excused" (Shadowfront) are not
@@ -958,8 +1242,11 @@ export class PortalView {
     // toggles looked saved and wrote nothing. Officers set them.
     let detailsHtml = '';
     if (isShadowfront) {
-      detailsHtml = '<div class="portal-details-label">Details (optional)</div><div class="portal-details-row">' +
-        '<label class="portal-toggle-label"><div class="check-toggle"><input type="checkbox" class="participation-checkbox portal-check-late" ' + (isLateChecked ? 'checked' : '') + '><span class="check-slider"></span></div><span>I was late</span></label>' +
+      detailsHtml =
+        '<div class="portal-details-label">Details (optional)</div><div class="portal-details-row">' +
+        '<label class="portal-toggle-label"><div class="check-toggle"><input type="checkbox" class="participation-checkbox portal-check-late" ' +
+        (isLateChecked ? 'checked' : '') +
+        '><span class="check-slider"></span></div><span>I was late</span></label>' +
         '</div>';
     }
 
@@ -969,44 +1256,75 @@ export class PortalView {
       if (isSvsOrGvg) {
         scoreHtml +=
           '<div class="portal-score-fields">' +
-            '<div class="portal-field"><label class="portal-field-label">Days 1-5 score</label><input type="text" class="gm-input gm-input-sm portal-score-prep" aria-label="Days 1-5 score" value="' + escapeHTML(curr.score_prep != null ? curr.score_prep : '') + '" placeholder="e.g. 150000"></div>' +
-            '<div class="portal-field"><label class="portal-field-label">Day 6 score</label><input type="text" class="gm-input gm-input-sm portal-score-pvp" aria-label="Day 6 score" value="' + escapeHTML(curr.score_pvp != null ? curr.score_pvp : '') + '" placeholder="e.g. 50000"></div>' +
+          '<div class="portal-field"><label class="portal-field-label">Days 1-5 score</label><input type="text" class="gm-input gm-input-sm portal-score-prep" aria-label="Days 1-5 score" value="' +
+          escapeHTML(curr.score_prep != null ? curr.score_prep : '') +
+          '" placeholder="e.g. 150000"></div>' +
+          '<div class="portal-field"><label class="portal-field-label">Day 6 score</label><input type="text" class="gm-input gm-input-sm portal-score-pvp" aria-label="Day 6 score" value="' +
+          escapeHTML(curr.score_pvp != null ? curr.score_pvp : '') +
+          '" placeholder="e.g. 50000"></div>' +
           '</div>' +
           '<div class="portal-score-total"><span class="portal-score-total-label">Total</span><span class="portal-score-total-value" data-total>0</span></div>';
       } else {
         scoreHtml +=
           '<div class="portal-score-fields">' +
-            '<div class="portal-field"><label class="portal-field-label">Score</label><input type="text" class="gm-input gm-input-sm portal-score" aria-label="Score" value="' + escapeHTML(curr.score != null ? curr.score : '') + '" placeholder="e.g. 45000"></div>' +
+          '<div class="portal-field"><label class="portal-field-label">Score</label><input type="text" class="gm-input gm-input-sm portal-score" aria-label="Score" value="' +
+          escapeHTML(curr.score != null ? curr.score : '') +
+          '" placeholder="e.g. 45000"></div>' +
           '</div>' +
           '<div class="portal-score-total"><span class="portal-score-total-label">Score</span><span class="portal-score-total-value" data-total>0</span></div>';
       }
       scoreHtml += '</div>';
     }
 
-    const submitBtnHtml = (isValidated || notInSession)
-      ? ''
-      : isPending
-      ? '<button type="button" class="gm-btn gm-btn-success gm-btn-sm portal-submit-event-btn" disabled><i class="ph ph-check-circle"></i><span>Submitted</span></button>'
-      : '<button type="button" class="gm-btn gm-btn-primary gm-btn-sm portal-submit-event-btn"><i class="ph ph-paper-plane-right"></i><span>Submit</span></button>';
+    const submitBtnHtml =
+      isValidated || notInSession
+        ? ''
+        : isPending
+          ? '<button type="button" class="gm-btn gm-btn-success gm-btn-sm portal-submit-event-btn" disabled><i class="ph ph-check-circle"></i><span>Submitted</span></button>'
+          : '<button type="button" class="gm-btn gm-btn-primary gm-btn-sm portal-submit-event-btn"><i class="ph ph-paper-plane-right"></i><span>Submit</span></button>';
 
-    return '<div class="portal-event-card' + ((isPending || isValidated) ? ' portal-event-submitted' : '') + '" data-event="' + escapeHTML(eventName) + '" data-session="' + escapeHTML(sess.session_id) + '">' +
-              '<div class="portal-event-head">' +
-                '<div class="portal-event-icon" style="background:' + accent + '1f; color:' + accent + ';"><i class="ph ' + icon + '"></i></div>' +
-                '<div class="portal-event-head-info">' +
-                  '<div class="portal-event-title">' + escapeHTML(eventName) + '</div>' +
-                  (startLabel ? '<div class="portal-event-sub"><i class="ph ph-clock"></i> ' + escapeHTML(startLabel) + '</div>' : '') +
-                '</div>' +
-                statusHtml +
-              '</div>' +
-              '<div class="portal-event-fields">' + fieldsHtml + detailsHtml + scoreHtml + '</div>' +
-              submitBtnHtml +
-            '</div>';
+    return (
+      '<div class="portal-event-card' +
+      (isPending || isValidated ? ' portal-event-submitted' : '') +
+      '" data-event="' +
+      escapeHTML(eventName) +
+      '" data-session="' +
+      escapeHTML(sess.session_id) +
+      '">' +
+      '<div class="portal-event-head">' +
+      '<div class="portal-event-icon" style="background:' +
+      accent +
+      '1f; color:' +
+      accent +
+      ';"><i class="ph ' +
+      icon +
+      '"></i></div>' +
+      '<div class="portal-event-head-info">' +
+      '<div class="portal-event-title">' +
+      escapeHTML(eventName) +
+      '</div>' +
+      (startLabel
+        ? '<div class="portal-event-sub"><i class="ph ph-clock"></i> ' + escapeHTML(startLabel) + '</div>'
+        : '') +
+      '</div>' +
+      statusHtml +
+      '</div>' +
+      '<div class="portal-event-fields">' +
+      fieldsHtml +
+      detailsHtml +
+      scoreHtml +
+      '</div>' +
+      submitBtnHtml +
+      '</div>'
+    );
   }
 
   private async wireEventCards(panel: Element): Promise<void> {
     panel.querySelectorAll('.portal-score, .portal-score-prep, .portal-score-pvp').forEach((inp) => {
       attachNumberFormatter(inp as HTMLInputElement);
-      inp.addEventListener('input', () => { this.updateCardTotal(inp.closest('.portal-event-card')); });
+      inp.addEventListener('input', () => {
+        this.updateCardTotal(inp.closest('.portal-event-card'));
+      });
     });
 
     panel.querySelectorAll('.portal-event-card').forEach((card) => {
@@ -1018,7 +1336,7 @@ export class PortalView {
       cb.addEventListener('change', () => {
         if (cb.checked) {
           const card = cb.closest('.portal-event-card');
-          const partCb = card ? card.querySelector('.portal-check-participated') as HTMLInputElement | null : null;
+          const partCb = card ? (card.querySelector('.portal-check-participated') as HTMLInputElement | null) : null;
           if (partCb) partCb.checked = true;
         }
       });
@@ -1040,10 +1358,15 @@ export class PortalView {
         const scorePrepVal = (card.querySelector('.portal-score-prep') as HTMLInputElement | null)?.value;
         const scorePvpVal = (card.querySelector('.portal-score-pvp') as HTMLInputElement | null)?.value;
 
-        if (!participated && !appointed && !late && !excused &&
+        if (
+          !participated &&
+          !appointed &&
+          !late &&
+          !excused &&
           !(scoreVal && scoreVal.replace(/[^0-9]/g, '')) &&
           !(scorePrepVal && scorePrepVal.replace(/[^0-9]/g, '')) &&
-          !(scorePvpVal && scorePvpVal.replace(/[^0-9]/g, ''))) {
+          !(scorePvpVal && scorePvpVal.replace(/[^0-9]/g, ''))
+        ) {
           showToast('Nothing to submit. Check participation or enter a score.', 'warning');
           return;
         }
@@ -1057,7 +1380,7 @@ export class PortalView {
           excused: excused,
           score: scoreVal !== undefined ? parseNumber(scoreVal) : undefined,
           score_prep: scorePrepVal !== undefined ? parseNumber(scorePrepVal) : undefined,
-          score_pvp: scorePvpVal !== undefined ? parseNumber(scorePvpVal) : undefined
+          score_pvp: scorePvpVal !== undefined ? parseNumber(scorePvpVal) : undefined,
         };
 
         (btn as HTMLButtonElement).disabled = true;
@@ -1069,7 +1392,9 @@ export class PortalView {
           const res = await this.invoke('submit-scores', payload);
           if (!res.ok) throw new Error(res.error || 'submit_failed');
           showToast('Submitted! An officer will confirm it shortly.', 'success');
-          const sess = (this.state.sessions || []).find((x: any) => x.event_name === eventName && x.session_id === sessionId);
+          const sess = (this.state.sessions || []).find(
+            (x: any) => x.event_name === eventName && x.session_id === sessionId
+          );
           if (sess) {
             sess.is_pending = true;
             if (participated !== undefined) sess.participated = !!participated;
@@ -1106,18 +1431,24 @@ export class PortalView {
     const linked = !!(this.state.player && this.state.player.discord_linked);
     const title =
       '<div class="portal-card-title"><i class="ph ph-discord-logo"></i> Discord sign-in' +
-        '<button class="gm-help-btn" data-help-id="help-portal-discord-link" aria-label="Help: Discord sign-in"><i class="ph ph-info"></i></button>' +
+      '<button class="gm-help-btn" data-help-id="help-portal-discord-link" aria-label="Help: Discord sign-in"><i class="ph ph-info"></i></button>' +
       '</div>';
     if (linked) {
-      return '<div class="portal-card">' + title +
+      return (
+        '<div class="portal-card">' +
+        title +
         '<div class="portal-msg" style="display:block; color: var(--success);"><i class="ph ph-check-circle"></i> Linked to Discord.</div>' +
         '<div class="portal-timezone-hint"><i class="ph ph-info"></i> You sign in with <strong>Continue with Discord</strong>, and bot commands like <code>/myinfo</code> and <code>/mystats</code> know who you are.</div>' +
-      '</div>';
+        '</div>'
+      );
     }
-    return '<div class="portal-card">' + title +
+    return (
+      '<div class="portal-card">' +
+      title +
       '<div class="portal-row"><button type="button" id="portal-discord-switch-btn" class="gm-btn gm-btn-primary gm-btn-sm"><i class="ph ph-discord-logo"></i><span>Switch to Discord sign-in</span></button></div>' +
       '<div class="portal-timezone-hint"><i class="ph ph-info"></i> You will sign in with Discord once and confirm your current password. After that, Discord is your only way in, your password is retired, and bot commands like <code>/myinfo</code> work.</div>' +
-    '</div>';
+      '</div>'
+    );
   }
 
   private renderSettingsPanel(): void {
@@ -1126,54 +1457,68 @@ export class PortalView {
 
     panel.innerHTML =
       '<header class="gm-page-header">' +
-        '<div>' +
-          '<h1 class="gm-page-title">My Info</h1>' +
-          '<p class="gm-page-subtitle">Manage your power, military metrics, glory, timezone and guild transfer requests</p>' +
-        '</div>' +
+      '<div>' +
+      '<h1 class="gm-page-title">My Info</h1>' +
+      '<p class="gm-page-subtitle">Manage your power, military metrics, glory, timezone and guild transfer requests</p>' +
+      '</div>' +
       '</header>' +
       '<div class="portal-settings-grid">' +
-        '<div class="portal-card" style="grid-column: 1 / -1;">' +
-          '<div class="portal-card-title" style="display:flex; justify-content:space-between; align-items:center;">' +
-            '<span><i class="ph ph-shield-chevron"></i> My Military Force Metrics</span>' +
-            '<button class="gm-help-btn" data-help-id="help-portal-power" aria-label="Help: My Military Metrics"><i class="ph ph-info"></i></button>' +
-          '</div>' +
-          '<div class="portal-settings-sub" style="font-size: var(--fs-base); color:var(--text-muted); margin-bottom:1rem;">' +
-            'Keep your combat metrics up to date to help your officers build optimal squads for SvS, GvG, and Shadowfront.' +
-          '</div>' +
-          '<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.85rem; margin-bottom: 1rem;">' +
-            '<div class="portal-field"><label for="portal-user-power" style="font-size: var(--fs-sm); font-weight:600; color:var(--fg); margin-bottom:0.25rem; display:block;">Overall Total Power</label><input type="text" id="portal-user-power" class="gm-input" placeholder="e.g. 100000000" value="' + escapeHTML(this.state.player.overall_power || '') + '"></div>' +
-            '<div class="portal-field"><label for="portal-user-fleet" style="font-size: var(--fs-sm); font-weight:600; color:#60a5fa; margin-bottom:0.25rem; display:block;">⚔️ Fleet Rating (March 1)</label><input type="text" id="portal-user-fleet" class="gm-input" placeholder="e.g. 2000000" value="' + escapeHTML(this.state.player.fleet_rating || '') + '"></div>' +
-            '<div class="portal-field"><label for="portal-user-tech" style="font-size: var(--fs-sm); font-weight:600; color:#a78bfa; margin-bottom:0.25rem; display:block;">🔬 Technology Power</label><input type="text" id="portal-user-tech" class="gm-input" placeholder="e.g. 15000000" value="' + escapeHTML(this.state.player.tech_power || '') + '"></div>' +
-            '<div class="portal-field"><label for="portal-user-flagship" style="font-size: var(--fs-sm); font-weight:600; color:#fbbf24; margin-bottom:0.25rem; display:block;">🚀 Flagship Power</label><input type="text" id="portal-user-flagship" class="gm-input" placeholder="e.g. 10000000" value="' + escapeHTML(this.state.player.flagship_power || '') + '"></div>' +
-            '<div class="portal-field"><label for="portal-user-champion" style="font-size: var(--fs-sm); font-weight:600; color:#f472b6; margin-bottom:0.25rem; display:block;">👑 Champions Total Power</label><input type="text" id="portal-user-champion" class="gm-input" placeholder="e.g. 30000000" value="' + escapeHTML(this.state.player.champion_power || '') + '"></div>' +
-            '<div class="portal-field"><label for="portal-user-crew" style="font-size: var(--fs-sm); font-weight:600; color:#38bdf8; margin-bottom:0.25rem; display:block;">👥 Crew Total Power</label><input type="text" id="portal-user-crew" class="gm-input" placeholder="e.g. 5000000" value="' + escapeHTML(this.state.player.crew_power || '') + '"></div>' +
-            '<div class="portal-field"><label for="portal-user-glory" style="font-size: var(--fs-sm); font-weight:600; color:#34d399; margin-bottom:0.25rem; display:block;">🏆 Glory Score</label><input type="text" id="portal-user-glory" class="gm-input" placeholder="e.g. 50000000" value="' + escapeHTML(this.state.player.glory_score || this.state.player.glory || '') + '"></div>' +
-          '</div>' +
-          '<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">' +
-            '<div id="portal-metrics-summary" style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">' +
-              '<span class="gm-chip" id="portal-density-chip" style="color:#818cf8; background:rgba(99,102,241,0.12); border:1px solid rgba(99,102,241,0.3); font-size: var(--fs-sm);"><i class="ph ph-shield-check"></i> Density: ' + calculateCombatDensity(this.state.player) + '%</span>' +
-              '<span class="gm-chip" id="portal-combativity-chip" style="color:#34d399; background:rgba(52,211,153,0.12); border:1px solid rgba(52,211,153,0.3); font-size: var(--fs-sm);"><i class="ph ph-crosshair"></i> Combativity: ' + calculateCombativity(this.state.player) + 'x</span>' +
-            '</div>' +
-            '<button type="button" id="portal-update-metrics-btn" class="gm-btn gm-btn-primary"><i class="ph ph-floppy-disk"></i><span>Save Military Metrics</span></button>' +
-          '</div>' +
-          '<div class="portal-msg" id="portal-metrics-msg"></div>' +
-        '</div>' +
-
-        '<div class="portal-card">' +
-          '<div class="portal-card-title"><i class="ph ph-clock"></i> My Timezone<button class="gm-help-btn" data-help-id="help-portal-timezone" aria-label="Help: My Timezone"><i class="ph ph-info"></i></button></div>' +
-          '<div class="portal-row"><select id="portal-timezone-select" class="gm-input" aria-label="My timezone"></select><button type="button" id="portal-timezone-detect-btn" class="gm-btn gm-btn-ghost gm-btn-sm" title="Detect my timezone"><i class="ph ph-crosshair"></i><span>Auto</span></button><button type="button" id="portal-timezone-btn" class="gm-btn gm-btn-primary gm-btn-sm"><i class="ph ph-floppy-disk"></i><span>Save</span></button></div>' +
-          '<div class="portal-msg" id="portal-timezone-msg"></div>' +
-          '<div class="portal-timezone-hint"><i class="ph ph-info"></i> Helps officers plan events when most players are available.</div>' +
-        '</div>' +
-
-        this.renderDiscordCard() +
-
-        '<div class="portal-card">' +
-          '<div class="portal-card-title"><i class="ph ph-swap"></i> Request Guild Transfer<button class="gm-help-btn" data-help-id="help-portal-transfer" aria-label="Help: Guild Transfer"><i class="ph ph-info"></i></button></div>' +
-          '<div class="portal-row"><select id="portal-transfer-select" class="gm-input" aria-label="Target guild"><option value="">Select Target Guild...</option></select><button type="button" id="portal-transfer-btn" class="gm-btn gm-btn-primary gm-btn-sm" disabled><i class="ph ph-paper-plane-tilt"></i><span>Send</span></button></div>' +
-          '<div id="portal-transfer-msg" class="portal-msg"></div>' +
-        '</div>' +
-
+      '<div class="portal-card" style="grid-column: 1 / -1;">' +
+      '<div class="portal-card-title" style="display:flex; justify-content:space-between; align-items:center;">' +
+      '<span><i class="ph ph-shield-chevron"></i> My Military Force Metrics</span>' +
+      '<button class="gm-help-btn" data-help-id="help-portal-power" aria-label="Help: My Military Metrics"><i class="ph ph-info"></i></button>' +
+      '</div>' +
+      '<div class="portal-settings-sub" style="font-size: var(--fs-base); color:var(--text-muted); margin-bottom:1rem;">' +
+      'Keep your combat metrics up to date to help your officers build optimal squads for SvS, GvG, and Shadowfront.' +
+      '</div>' +
+      '<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.85rem; margin-bottom: 1rem;">' +
+      '<div class="portal-field"><label for="portal-user-power" style="font-size: var(--fs-sm); font-weight:600; color:var(--fg); margin-bottom:0.25rem; display:block;">Overall Total Power</label><input type="text" id="portal-user-power" class="gm-input" placeholder="e.g. 100000000" value="' +
+      escapeHTML(this.state.player.overall_power || '') +
+      '"></div>' +
+      '<div class="portal-field"><label for="portal-user-fleet" style="font-size: var(--fs-sm); font-weight:600; color:#60a5fa; margin-bottom:0.25rem; display:block;">⚔️ Fleet Rating (March 1)</label><input type="text" id="portal-user-fleet" class="gm-input" placeholder="e.g. 2000000" value="' +
+      escapeHTML(this.state.player.fleet_rating || '') +
+      '"></div>' +
+      '<div class="portal-field"><label for="portal-user-tech" style="font-size: var(--fs-sm); font-weight:600; color:#a78bfa; margin-bottom:0.25rem; display:block;">🔬 Technology Power</label><input type="text" id="portal-user-tech" class="gm-input" placeholder="e.g. 15000000" value="' +
+      escapeHTML(this.state.player.tech_power || '') +
+      '"></div>' +
+      '<div class="portal-field"><label for="portal-user-flagship" style="font-size: var(--fs-sm); font-weight:600; color:#fbbf24; margin-bottom:0.25rem; display:block;">🚀 Flagship Power</label><input type="text" id="portal-user-flagship" class="gm-input" placeholder="e.g. 10000000" value="' +
+      escapeHTML(this.state.player.flagship_power || '') +
+      '"></div>' +
+      '<div class="portal-field"><label for="portal-user-champion" style="font-size: var(--fs-sm); font-weight:600; color:#f472b6; margin-bottom:0.25rem; display:block;">👑 Champions Total Power</label><input type="text" id="portal-user-champion" class="gm-input" placeholder="e.g. 30000000" value="' +
+      escapeHTML(this.state.player.champion_power || '') +
+      '"></div>' +
+      '<div class="portal-field"><label for="portal-user-crew" style="font-size: var(--fs-sm); font-weight:600; color:#38bdf8; margin-bottom:0.25rem; display:block;">👥 Crew Total Power</label><input type="text" id="portal-user-crew" class="gm-input" placeholder="e.g. 5000000" value="' +
+      escapeHTML(this.state.player.crew_power || '') +
+      '"></div>' +
+      '<div class="portal-field"><label for="portal-user-glory" style="font-size: var(--fs-sm); font-weight:600; color:#34d399; margin-bottom:0.25rem; display:block;">🏆 Glory Score</label><input type="text" id="portal-user-glory" class="gm-input" placeholder="e.g. 50000000" value="' +
+      escapeHTML(this.state.player.glory_score || this.state.player.glory || '') +
+      '"></div>' +
+      '</div>' +
+      '<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">' +
+      '<div id="portal-metrics-summary" style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">' +
+      '<span class="gm-chip" id="portal-density-chip" style="color:#818cf8; background:rgba(99,102,241,0.12); border:1px solid rgba(99,102,241,0.3); font-size: var(--fs-sm);"><i class="ph ph-shield-check"></i> Density: ' +
+      calculateCombatDensity(this.state.player) +
+      '%</span>' +
+      '<span class="gm-chip" id="portal-combativity-chip" style="color:#34d399; background:rgba(52,211,153,0.12); border:1px solid rgba(52,211,153,0.3); font-size: var(--fs-sm);"><i class="ph ph-crosshair"></i> Combativity: ' +
+      calculateCombativity(this.state.player) +
+      'x</span>' +
+      '</div>' +
+      '<button type="button" id="portal-update-metrics-btn" class="gm-btn gm-btn-primary"><i class="ph ph-floppy-disk"></i><span>Save Military Metrics</span></button>' +
+      '</div>' +
+      '<div class="portal-msg" id="portal-metrics-msg"></div>' +
+      '</div>' +
+      '<div class="portal-card">' +
+      '<div class="portal-card-title"><i class="ph ph-clock"></i> My Timezone<button class="gm-help-btn" data-help-id="help-portal-timezone" aria-label="Help: My Timezone"><i class="ph ph-info"></i></button></div>' +
+      '<div class="portal-row"><select id="portal-timezone-select" class="gm-input" aria-label="My timezone"></select><button type="button" id="portal-timezone-detect-btn" class="gm-btn gm-btn-ghost gm-btn-sm" title="Detect my timezone"><i class="ph ph-crosshair"></i><span>Auto</span></button><button type="button" id="portal-timezone-btn" class="gm-btn gm-btn-primary gm-btn-sm"><i class="ph ph-floppy-disk"></i><span>Save</span></button></div>' +
+      '<div class="portal-msg" id="portal-timezone-msg"></div>' +
+      '<div class="portal-timezone-hint"><i class="ph ph-info"></i> Helps officers plan events when most players are available.</div>' +
+      '</div>' +
+      this.renderDiscordCard() +
+      '<div class="portal-card">' +
+      '<div class="portal-card-title"><i class="ph ph-swap"></i> Request Guild Transfer<button class="gm-help-btn" data-help-id="help-portal-transfer" aria-label="Help: Guild Transfer"><i class="ph ph-info"></i></button></div>' +
+      '<div class="portal-row"><select id="portal-transfer-select" class="gm-input" aria-label="Target guild"><option value="">Select Target Guild...</option></select><button type="button" id="portal-transfer-btn" class="gm-btn gm-btn-primary gm-btn-sm" disabled><i class="ph ph-paper-plane-tilt"></i><span>Send</span></button></div>' +
+      '<div id="portal-transfer-msg" class="portal-msg"></div>' +
+      '</div>' +
       '</div>';
 
     const powerInput = document.getElementById('portal-user-power') as HTMLInputElement | null;
@@ -1186,7 +1531,8 @@ export class PortalView {
     const metricsBtn = document.getElementById('portal-update-metrics-btn') as HTMLButtonElement | null;
     const metricsMsg = document.getElementById('portal-metrics-msg');
 
-    const parseIntVal = (el: HTMLInputElement | null): number => el ? (parseInt(String(el.value).replace(/[^0-9]/g, ''), 10) || 0) : 0;
+    const parseIntVal = (el: HTMLInputElement | null): number =>
+      el ? parseInt(String(el.value).replace(/[^0-9]/g, ''), 10) || 0 : 0;
 
     [powerInput, fleetInput, techInput, flagshipInput, champInput, crewInput, gloryInput].forEach((inp) => {
       if (inp) {
@@ -1199,7 +1545,7 @@ export class PortalView {
             flagship_power: parseIntVal(flagshipInput),
             champion_power: parseIntVal(champInput),
             crew_power: parseIntVal(crewInput),
-            glory_score: parseIntVal(gloryInput)
+            glory_score: parseIntVal(gloryInput),
           };
           const d = calculateCombatDensity(curObj);
           const c = calculateCombativity(curObj);
@@ -1211,62 +1557,68 @@ export class PortalView {
       }
     });
 
-    if (metricsBtn) metricsBtn.addEventListener('click', async () => {
-      const totalVal = parseIntVal(powerInput);
-      const fleetVal = parseIntVal(fleetInput);
-      const techVal = parseIntVal(techInput);
-      const flagshipVal = parseIntVal(flagshipInput);
-      const champVal = parseIntVal(champInput);
-      const crewVal = parseIntVal(crewInput);
-      const gloryVal = parseIntVal(gloryInput);
+    if (metricsBtn)
+      metricsBtn.addEventListener('click', async () => {
+        const totalVal = parseIntVal(powerInput);
+        const fleetVal = parseIntVal(fleetInput);
+        const techVal = parseIntVal(techInput);
+        const flagshipVal = parseIntVal(flagshipInput);
+        const champVal = parseIntVal(champInput);
+        const crewVal = parseIntVal(crewInput);
+        const gloryVal = parseIntVal(gloryInput);
 
-      if (totalVal < 0) {
-        showToast('Please enter a valid power number.', 'error');
-        return;
-      }
-
-      metricsBtn.disabled = true;
-      const span = metricsBtn.querySelector('span');
-      const origText = span ? span.textContent : '';
-      if (span) span.textContent = 'Saving...';
-
-      try {
-        const res = await this.invoke('update-metrics', {
-          total_power: totalVal, fleet_rating: fleetVal, tech_power: techVal,
-          flagship_power: flagshipVal, champion_power: champVal, crew_power: crewVal, glory_score: gloryVal
-        });
-        if (!res.ok) throw new Error(res.error || 'update_failed');
-
-        this.state.player.overall_power = totalVal;
-        this.state.player.fleet_rating = fleetVal;
-        this.state.player.tech_power = techVal;
-        this.state.player.flagship_power = flagshipVal;
-        this.state.player.champion_power = champVal;
-        this.state.player.crew_power = crewVal;
-        this.state.player.glory_score = gloryVal;
-        this.state.player.glory = gloryVal;
-
-        const headerPower = document.querySelector('.portal-header-power-value');
-        if (headerPower) headerPower.textContent = formatPower(totalVal);
-
-        if (metricsMsg) {
-          metricsMsg.textContent = 'Military force metrics saved successfully!';
-          (metricsMsg as HTMLElement).style.color = 'var(--success)';
-          (metricsMsg as HTMLElement).style.display = 'block';
+        if (totalVal < 0) {
+          showToast('Please enter a valid power number.', 'error');
+          return;
         }
-        showToast('Your military force metrics have been updated!', 'success');
-      } catch (err: any) {
-        if (metricsMsg) {
-          metricsMsg.textContent = 'Failed to save: ' + err.message;
-          (metricsMsg as HTMLElement).style.color = 'var(--danger)';
-          (metricsMsg as HTMLElement).style.display = 'block';
+
+        metricsBtn.disabled = true;
+        const span = metricsBtn.querySelector('span');
+        const origText = span ? span.textContent : '';
+        if (span) span.textContent = 'Saving...';
+
+        try {
+          const res = await this.invoke('update-metrics', {
+            total_power: totalVal,
+            fleet_rating: fleetVal,
+            tech_power: techVal,
+            flagship_power: flagshipVal,
+            champion_power: champVal,
+            crew_power: crewVal,
+            glory_score: gloryVal,
+          });
+          if (!res.ok) throw new Error(res.error || 'update_failed');
+
+          this.state.player.overall_power = totalVal;
+          this.state.player.fleet_rating = fleetVal;
+          this.state.player.tech_power = techVal;
+          this.state.player.flagship_power = flagshipVal;
+          this.state.player.champion_power = champVal;
+          this.state.player.crew_power = crewVal;
+          this.state.player.glory_score = gloryVal;
+          this.state.player.glory = gloryVal;
+
+          const headerPower = document.querySelector('.portal-header-power-value');
+          if (headerPower) headerPower.textContent = formatPower(totalVal);
+
+          if (metricsMsg) {
+            metricsMsg.textContent = 'Military force metrics saved successfully!';
+            (metricsMsg as HTMLElement).style.color = 'var(--success)';
+            (metricsMsg as HTMLElement).style.display = 'block';
+          }
+          showToast('Your military force metrics have been updated!', 'success');
+        } catch (err: any) {
+          if (metricsMsg) {
+            metricsMsg.textContent = 'Failed to save: ' + err.message;
+            (metricsMsg as HTMLElement).style.color = 'var(--danger)';
+            (metricsMsg as HTMLElement).style.display = 'block';
+          }
+          showToast('Failed to update metrics: ' + err.message, 'error');
+        } finally {
+          metricsBtn.disabled = false;
+          if (span) span.textContent = origText;
         }
-        showToast('Failed to update metrics: ' + err.message, 'error');
-      } finally {
-        metricsBtn.disabled = false;
-        if (span) span.textContent = origText;
-      }
-    });
+      });
 
     // Timezone
     const tzSelect = document.getElementById('portal-timezone-select') as HTMLSelectElement | null;
@@ -1282,12 +1634,18 @@ export class PortalView {
         tzOptions += '<optgroup label="' + escapeHTML(region) + '">';
         zones.forEach((z) => {
           const selected = currentTz === z.zone ? ' selected' : '';
-          tzOptions += '<option value="' + escapeHTML(z.zone) + '"' + selected + '>' + escapeHTML(z.label) + '</option>';
+          tzOptions +=
+            '<option value="' + escapeHTML(z.zone) + '"' + selected + '>' + escapeHTML(z.label) + '</option>';
         });
         tzOptions += '</optgroup>';
       });
       if (currentTz && !COMMON_TIMEZONES.some((z) => z.zone === currentTz)) {
-        tzOptions += '<optgroup label="Custom"><option value="' + escapeHTML(currentTz) + '" selected>' + escapeHTML(currentTz) + '</option></optgroup>';
+        tzOptions +=
+          '<optgroup label="Custom"><option value="' +
+          escapeHTML(currentTz) +
+          '" selected>' +
+          escapeHTML(currentTz) +
+          '</option></optgroup>';
       }
       tzSelect.innerHTML = tzOptions;
     }
@@ -1317,7 +1675,11 @@ export class PortalView {
     if (tzBtn && tzSelect) {
       tzBtn.addEventListener('click', async () => {
         const tzValue = tzSelect.value.trim();
-        const offset = tzValue ? getTimezoneOffset(tzValue) : (this.state.player && this.state.player.timezone_offset != null ? this.state.player.timezone_offset : 0);
+        const offset = tzValue
+          ? getTimezoneOffset(tzValue)
+          : this.state.player && this.state.player.timezone_offset != null
+            ? this.state.player.timezone_offset
+            : 0;
         tzBtn.disabled = true;
         const span = tzBtn.querySelector('span');
         const origText = span ? span.textContent : '';
@@ -1356,7 +1718,11 @@ export class PortalView {
       switchBtn.addEventListener('click', () => {
         switchBtn.disabled = true;
         let accountId = '';
-        try { accountId = localStorage.getItem('gm_user') || ''; } catch { /* storage blocked */ }
+        try {
+          accountId = localStorage.getItem('gm_user') || '';
+        } catch {
+          /* storage blocked */
+        }
         const go = (): void => {
           if (accountId) savePendingIntent({ kind: 'claim', accountId });
           loginWithDiscord();
@@ -1428,7 +1794,6 @@ export class PortalView {
         }
       });
     }
-
   }
 
   // ── Panel: Absence ──────────────────────────────────────────────────────
@@ -1438,10 +1803,10 @@ export class PortalView {
 
     panel.innerHTML =
       '<header class="gm-page-header">' +
-        '<div>' +
-          '<h1 class="gm-page-title">Absence</h1>' +
-          '<p class="gm-page-subtitle">Let your officers know you will be away or less active. This is visible to your guild admins.</p>' +
-        '</div>' +
+      '<div>' +
+      '<h1 class="gm-page-title">Absence</h1>' +
+      '<p class="gm-page-subtitle">Let your officers know you will be away or less active. This is visible to your guild admins.</p>' +
+      '</div>' +
       '</header>' +
       '<div id="portal-absence-body"><div class="gm-empty" style="padding:2rem 0;"><i class="ph ph-circle-notch ph-spin gm-icon"></i><div class="gm-empty-title">Loading...</div></div></div>';
 
@@ -1454,7 +1819,8 @@ export class PortalView {
 
     const res = await this.invoke('get-absences', {});
     if (!res.ok) {
-      body.innerHTML = '<div class="gm-empty" style="padding:2rem 0;"><i class="ph ph-warning-circle gm-icon"></i><div class="gm-empty-title">Unable to load your absences.</div></div>';
+      body.innerHTML =
+        '<div class="gm-empty" style="padding:2rem 0;"><i class="ph ph-warning-circle gm-icon"></i><div class="gm-empty-title">Unable to load your absences.</div></div>';
       return;
     }
 
@@ -1469,46 +1835,70 @@ export class PortalView {
 
     const formHtml =
       '<div class="portal-card portal-absence-form">' +
-        '<div class="portal-card-title"><i class="ph ph-calendar-plus"></i> Declare a period</div>' +
-        '<div class="portal-absence-fields">' +
-          '<div class="portal-field"><label class="portal-field-label" for="portal-absence-kind">Type</label><select id="portal-absence-kind" class="gm-input"><option value="full">Full absence</option><option value="reduced">Reduced activity</option></select></div>' +
-          '<div class="portal-field"><label class="portal-field-label" for="portal-absence-start">From</label><input type="date" id="portal-absence-start" class="gm-input"></div>' +
-          '<div class="portal-field"><label class="portal-field-label" for="portal-absence-end">To</label><input type="date" id="portal-absence-end" class="gm-input"></div>' +
-          '<div class="portal-field"><label class="portal-field-label" for="portal-absence-note">Note (optional)</label><input type="text" id="portal-absence-note" class="gm-input" placeholder="e.g. exams, work, holidays" maxlength="120"></div>' +
-        '</div>' +
-        '<div id="portal-absence-msg" class="portal-msg"></div>' +
-        '<button type="button" id="portal-absence-save-btn" class="gm-btn gm-btn-primary gm-btn-sm"><i class="ph ph-floppy-disk"></i><span>Save</span></button>' +
+      '<div class="portal-card-title"><i class="ph ph-calendar-plus"></i> Declare a period</div>' +
+      '<div class="portal-absence-fields">' +
+      '<div class="portal-field"><label class="portal-field-label" for="portal-absence-kind">Type</label><select id="portal-absence-kind" class="gm-input"><option value="full">Full absence</option><option value="reduced">Reduced activity</option></select></div>' +
+      '<div class="portal-field"><label class="portal-field-label" for="portal-absence-start">From</label><input type="date" id="portal-absence-start" class="gm-input"></div>' +
+      '<div class="portal-field"><label class="portal-field-label" for="portal-absence-end">To</label><input type="date" id="portal-absence-end" class="gm-input"></div>' +
+      '<div class="portal-field"><label class="portal-field-label" for="portal-absence-note">Note (optional)</label><input type="text" id="portal-absence-note" class="gm-input" placeholder="e.g. exams, work, holidays" maxlength="120"></div>' +
+      '</div>' +
+      '<div id="portal-absence-msg" class="portal-msg"></div>' +
+      '<button type="button" id="portal-absence-save-btn" class="gm-btn gm-btn-primary gm-btn-sm"><i class="ph ph-floppy-disk"></i><span>Save</span></button>' +
       '</div>';
 
     let listHtml = '';
     if (absences.length === 0) {
-      listHtml = '<div class="gm-empty" style="padding:1.5rem 0;"><i class="ph ph-calendar-blank gm-icon"></i><div class="gm-empty-title">No declared absences.</div></div>';
+      listHtml =
+        '<div class="gm-empty" style="padding:1.5rem 0;"><i class="ph ph-calendar-blank gm-icon"></i><div class="gm-empty-title">No declared absences.</div></div>';
     } else {
-      listHtml = '<div class="portal-absence-list">' + absences.map((a: any) => {
-        const start = new Date(a.start_date + 'T00:00:00');
-        const end = new Date(a.end_date + 'T23:59:59');
-        const status = end < now
-          ? '<span class="portal-absence-badge portal-absence-badge-past">Past</span>'
-          : (start > now ? '<span class="portal-absence-badge portal-absence-badge-upcoming">Upcoming</span>'
-             : '<span class="portal-absence-badge portal-absence-badge-active">Active</span>');
-        const kindLabel = a.kind === 'reduced' ? 'Reduced activity' : 'Full absence';
-        return '<div class="portal-absence-item" data-id="' + escapeHTML(a.id) + '">' +
-                  '<div class="portal-absence-item-head">' +
-                    '<div class="portal-absence-item-title"><i class="ph ' + (a.kind === 'reduced' ? 'ph-gauge' : 'ph-user-minus') + '"></i> ' + escapeHTML(kindLabel) + '</div>' +
-                    status +
-                  '</div>' +
-                  '<div class="portal-absence-item-dates">' + escapeHTML(a.start_date) + ' → ' + escapeHTML(a.end_date) + '</div>' +
-                  (a.note ? '<div class="portal-absence-item-note">' + escapeHTML(a.note) + '</div>' : '') +
-                  '<button type="button" class="gm-btn gm-btn-ghost gm-btn-sm portal-absence-delete-btn" data-id="' + escapeHTML(a.id) + '"><i class="ph ph-trash"></i><span>Remove</span></button>' +
-                '</div>';
-      }).join('') + '</div>';
+      listHtml =
+        '<div class="portal-absence-list">' +
+        absences
+          .map((a: any) => {
+            const start = new Date(a.start_date + 'T00:00:00');
+            const end = new Date(a.end_date + 'T23:59:59');
+            const status =
+              end < now
+                ? '<span class="portal-absence-badge portal-absence-badge-past">Past</span>'
+                : start > now
+                  ? '<span class="portal-absence-badge portal-absence-badge-upcoming">Upcoming</span>'
+                  : '<span class="portal-absence-badge portal-absence-badge-active">Active</span>';
+            const kindLabel = a.kind === 'reduced' ? 'Reduced activity' : 'Full absence';
+            return (
+              '<div class="portal-absence-item" data-id="' +
+              escapeHTML(a.id) +
+              '">' +
+              '<div class="portal-absence-item-head">' +
+              '<div class="portal-absence-item-title"><i class="ph ' +
+              (a.kind === 'reduced' ? 'ph-gauge' : 'ph-user-minus') +
+              '"></i> ' +
+              escapeHTML(kindLabel) +
+              '</div>' +
+              status +
+              '</div>' +
+              '<div class="portal-absence-item-dates">' +
+              escapeHTML(a.start_date) +
+              ' → ' +
+              escapeHTML(a.end_date) +
+              '</div>' +
+              (a.note ? '<div class="portal-absence-item-note">' + escapeHTML(a.note) + '</div>' : '') +
+              '<button type="button" class="gm-btn gm-btn-ghost gm-btn-sm portal-absence-delete-btn" data-id="' +
+              escapeHTML(a.id) +
+              '"><i class="ph ph-trash"></i><span>Remove</span></button>' +
+              '</div>'
+            );
+          })
+          .join('') +
+        '</div>';
     }
 
-    const noticeHtml = hasActive || hasUpcoming
-      ? '<div class="portal-absence-notice"><i class="ph ph-info"></i> Officers can see your declaration in the guild panel.</div>'
-      : '';
+    const noticeHtml =
+      hasActive || hasUpcoming
+        ? '<div class="portal-absence-notice"><i class="ph ph-info"></i> Officers can see your declaration in the guild panel.</div>'
+        : '';
 
-    body.innerHTML = formHtml + '<div class="portal-absence-section-title">Your declarations</div>' + listHtml + noticeHtml;
+    body.innerHTML =
+      formHtml + '<div class="portal-absence-section-title">Your declarations</div>' + listHtml + noticeHtml;
 
     const kindEl = document.getElementById('portal-absence-kind') as HTMLSelectElement | null;
     const startEl = document.getElementById('portal-absence-start') as HTMLInputElement | null;
@@ -1545,7 +1935,7 @@ export class PortalView {
             start_date: start,
             end_date: end,
             kind: kindEl ? kindEl.value : 'full',
-            note: noteEl ? noteEl.value.trim() : ''
+            note: noteEl ? noteEl.value.trim() : '',
           });
           if (!res.ok) throw new Error(res.error || 'save_failed');
           setMsg('Absence declared. Your officers can now see it.', 'success');

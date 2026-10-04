@@ -20,7 +20,6 @@ function makeJson(req: Request) {
     });
 }
 
-
 // SSRF-safe check mirroring discord-webhook-proxy: only real Discord webhook
 // URLs are accepted, and redirects are never followed.
 function isValidDiscordWebhook(url: string): boolean {
@@ -41,7 +40,9 @@ function isValidDiscordWebhook(url: string): boolean {
   }
 }
 
-function dataUrlToBytes(dataUrl: string): { bytes: Uint8Array<ArrayBuffer>; mimeType: string; extension: string } | null {
+function dataUrlToBytes(
+  dataUrl: string
+): { bytes: Uint8Array<ArrayBuffer>; mimeType: string; extension: string } | null {
   if (typeof dataUrl !== "string") return null;
   try {
     const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
@@ -64,18 +65,18 @@ function dataUrlToBytes(dataUrl: string): { bytes: Uint8Array<ArrayBuffer>; mime
 }
 
 const SEVERITY_META: Record<string, { label: string; color: number }> = {
-  low:     { label: "Low",     color: 5763719 }, // slate/grey
-  medium:  { label: "Medium",  color: 15105570 }, // amber
-  high:    { label: "High",    color: 16753920 }, // orange
-  critical:{ label: "Critical",color: 15158332 }, // red
+  low: { label: "Low", color: 5763719 }, // slate/grey
+  medium: { label: "Medium", color: 15105570 }, // amber
+  high: { label: "High", color: 16753920 }, // orange
+  critical: { label: "Critical", color: 15158332 }, // red
 };
 
 const STATUS_META: Record<string, { label: string; color: number }> = {
-  waiting:     { label: "⏳ Waiting for resolution", color: 15105570 }, // amber
+  waiting: { label: "⏳ Waiting for resolution", color: 15105570 }, // amber
   in_progress: { label: "🔨 In progress (Working on it)", color: 3447003 }, // blue
-  open:        { label: "⏳ Waiting for resolution", color: 15105570 },
-  resolved:    { label: "✅ Resolved", color: 3066993 }, // green
-  closed:      { label: "🔒 Closed", color: 9807270 }, // slate grey
+  open: { label: "⏳ Waiting for resolution", color: 15105570 },
+  resolved: { label: "✅ Resolved", color: 3066993 }, // green
+  closed: { label: "🔒 Closed", color: 9807270 }, // slate grey
 };
 
 const CATEGORY_LABEL: Record<string, string> = {
@@ -90,29 +91,36 @@ const CATEGORY_LABEL: Record<string, string> = {
 // Attachments keep their old lenient filter below: an oversized screenshot is
 // dropped, not a reason to lose the whole report.
 const longText = z.string().max(5_000).optional();
-const CreateTicketSchema = z.object({
-  action: z.literal("create"),
-  title: z.string().trim().min(1).max(300),
-  description: z.string().trim().min(1).max(20_000),
-  category: z.enum(["bug", "feature", "other"]).default("bug"),
-  severity: z.enum(["low", "medium", "high", "critical"]).default("medium"),
-  guild: z.string().trim().max(64).optional(),
-  current_behavior: longText,
-  expected_behavior: longText,
-  steps: longText,
-  additional_context: longText,
-  env: z.object({
-    appVersion: z.string().max(100).optional(),
-    os: z.string().max(200).optional(),
-    browser: z.string().max(200).optional(),
-  }).partial().nullish(),
-  attachments: z.array(z.unknown()).max(10).default([]),
-}).strict();
-const UpdateStatusSchema = z.object({
-  action: z.literal("update-status"),
-  id: z.coerce.number().int().positive(),
-  status: z.enum(["waiting", "in_progress", "resolved", "closed", "open"]),
-}).strict();
+const CreateTicketSchema = z
+  .object({
+    action: z.literal("create"),
+    title: z.string().trim().min(1).max(300),
+    description: z.string().trim().min(1).max(20_000),
+    category: z.enum(["bug", "feature", "other"]).default("bug"),
+    severity: z.enum(["low", "medium", "high", "critical"]).default("medium"),
+    guild: z.string().trim().max(64).optional(),
+    current_behavior: longText,
+    expected_behavior: longText,
+    steps: longText,
+    additional_context: longText,
+    env: z
+      .object({
+        appVersion: z.string().max(100).optional(),
+        os: z.string().max(200).optional(),
+        browser: z.string().max(200).optional(),
+      })
+      .partial()
+      .nullish(),
+    attachments: z.array(z.unknown()).max(10).default([]),
+  })
+  .strict();
+const UpdateStatusSchema = z
+  .object({
+    action: z.literal("update-status"),
+    id: z.coerce.number().int().positive(),
+    status: z.enum(["waiting", "in_progress", "resolved", "closed", "open"]),
+  })
+  .strict();
 
 // One report a minute on average is far above any real use.
 const CREATE_LIMIT = { limit: 10, windowMs: 10 * 60_000 };
@@ -155,9 +163,7 @@ export async function handler(req: Request): Promise<Response> {
     const description = input.description;
     const category = input.category;
     const severity = input.severity;
-    const guild = isSuperAdmin(caller.role) && input.guild
-      ? input.guild
-      : (caller.guild ?? "").trim();
+    const guild = isSuperAdmin(caller.role) && input.guild ? input.guild : (caller.guild ?? "").trim();
 
     const rawAttachments = input.attachments;
     const attachments = rawAttachments
@@ -209,19 +215,39 @@ export async function handler(req: Request): Promise<Response> {
     }
 
     if (currentBehavior) {
-      embedFields.push({ name: "Current Behavior / Issue", value: currentBehavior.length > 1020 ? currentBehavior.slice(0, 1017) + "…" : currentBehavior, inline: false });
+      embedFields.push({
+        name: "Current Behavior / Issue",
+        value: currentBehavior.length > 1020 ? currentBehavior.slice(0, 1017) + "…" : currentBehavior,
+        inline: false,
+      });
     }
     if (expectedBehavior) {
-      embedFields.push({ name: "Expected Behavior", value: expectedBehavior.length > 1020 ? expectedBehavior.slice(0, 1017) + "…" : expectedBehavior, inline: false });
+      embedFields.push({
+        name: "Expected Behavior",
+        value: expectedBehavior.length > 1020 ? expectedBehavior.slice(0, 1017) + "…" : expectedBehavior,
+        inline: false,
+      });
     }
     if (steps) {
-      embedFields.push({ name: "Steps to Reproduce", value: steps.length > 1020 ? steps.slice(0, 1017) + "…" : steps, inline: false });
+      embedFields.push({
+        name: "Steps to Reproduce",
+        value: steps.length > 1020 ? steps.slice(0, 1017) + "…" : steps,
+        inline: false,
+      });
     }
     if (additionalContext) {
-      embedFields.push({ name: "Additional Context", value: additionalContext.length > 1020 ? additionalContext.slice(0, 1017) + "…" : additionalContext, inline: false });
+      embedFields.push({
+        name: "Additional Context",
+        value: additionalContext.length > 1020 ? additionalContext.slice(0, 1017) + "…" : additionalContext,
+        inline: false,
+      });
     }
     if (!currentBehavior && !expectedBehavior) {
-      embedFields.push({ name: "Description", value: description.length > 1020 ? description.slice(0, 1017) + "…" : description, inline: false });
+      embedFields.push({
+        name: "Description",
+        value: description.length > 1020 ? description.slice(0, 1017) + "…" : description,
+        inline: false,
+      });
     }
 
     const embed: Record<string, unknown> = {
@@ -247,7 +273,11 @@ export async function handler(req: Request): Promise<Response> {
           for (let i = 1; i < attachments.length; i++) {
             const pi = dataUrlToBytes(attachments[i]);
             if (pi) {
-              form.append(`files[${i}]`, new Blob([pi.bytes], { type: pi.mimeType }), `screenshot_${i}.${pi.extension}`);
+              form.append(
+                `files[${i}]`,
+                new Blob([pi.bytes], { type: pi.mimeType }),
+                `screenshot_${i}.${pi.extension}`
+              );
             }
           }
           form.append("payload_json", JSON.stringify({ embeds: [embed] }));
@@ -345,7 +375,7 @@ export async function handler(req: Request): Promise<Response> {
             { name: "Updated By", value: `${caller.accountId || "Super Admin"} (${caller.role})`, inline: true },
             { name: "Guild", value: row.guild || "Global", inline: true },
             { name: "Category", value: CATEGORY_LABEL[row.category] || row.category || "Bug", inline: true },
-            { name: "Severity", value: (SEVERITY_META[row.severity]?.label) || row.severity || "Medium", inline: true },
+            { name: "Severity", value: SEVERITY_META[row.severity]?.label || row.severity || "Medium", inline: true },
           ],
           timestamp: new Date().toISOString(),
           footer: { text: "FGF Guild Management Tool — Ticket Status Update" },

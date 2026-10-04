@@ -33,7 +33,7 @@ import {
   getPrevWeekStart,
   formatWeek,
   newSessionId,
-  formatChartDate
+  formatChartDate,
 } from '../src/core/utils/date';
 
 import {
@@ -46,7 +46,7 @@ import {
   calculateStringSimilarity,
   findBestMatchingMember,
   parseGeminiJson,
-  MAX_NUMERIC
+  MAX_NUMERIC,
 } from '../src/core/utils/text';
 
 // 2. Initialize application bridge
@@ -61,7 +61,7 @@ describe('src/core/scoring/combat.ts', () => {
     crew_power: 5_000_000,
     tech_power: 15_000_000,
     champion_power: 30_000_000,
-    glory_score: 250_000_000
+    glory_score: 250_000_000,
   };
 
   describe('parseSafeMetric', () => {
@@ -151,7 +151,12 @@ describe('src/core/scoring/combat.ts', () => {
     });
 
     it('identifies Rally Joiner for rank > 16 or score <= 0', () => {
-      expect(getRallyRoleMeta(17, 500000)).toEqual({ isLeader: false, rank: 17, label: 'Rally Joiner', type: 'joiner' });
+      expect(getRallyRoleMeta(17, 500000)).toEqual({
+        isLeader: false,
+        rank: 17,
+        label: 'Rally Joiner',
+        type: 'joiner',
+      });
       expect(getRallyRoleMeta(1, 0)).toEqual({ isLeader: false, rank: 1, label: 'Rally Joiner', type: 'joiner' });
     });
   });
@@ -302,7 +307,7 @@ describe('src/core/utils/text.ts', () => {
     const roster = [
       { pseudo: 'Kelisco', role: 'R4' },
       { pseudo: 'Vanguard', role: 'R3' },
-      { pseudo: 'Shadow-Sniper', role: 'R2' }
+      { pseudo: 'Shadow-Sniper', role: 'R2' },
     ];
 
     it('matches exact pseudos with score 1.0', () => {

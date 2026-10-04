@@ -14,9 +14,14 @@ import {
   isInvalidOrTempUid,
   categorizeOcrDiff,
   computeOcrRosterDelta,
-  ocrDownsampleEvenly
+  ocrDownsampleEvenly,
 } from '../src/modules/ocr/ocr.service';
-import { filterBulkEligibleMembers, getAllowedBulkRoles, isRoleAllowedForBulk, formatTicketDescription } from '../src/modules/members/members.service';
+import {
+  filterBulkEligibleMembers,
+  getAllowedBulkRoles,
+  isRoleAllowedForBulk,
+  formatTicketDescription,
+} from '../src/modules/members/members.service';
 
 beforeEach(() => {
   document.body.innerHTML = '';
@@ -131,7 +136,11 @@ describe('members helpers', () => {
   });
 
   it('filterBulkEligibleMembers protects R5 and keeps real members', () => {
-    const members = [{ pseudo: 'Alpha', role: 'R1' }, { pseudo: 'Leader', role: 'R5' }, { pseudo: 'Ghost', role: 'R2' }];
+    const members = [
+      { pseudo: 'Alpha', role: 'R1' },
+      { pseudo: 'Leader', role: 'R5' },
+      { pseudo: 'Ghost', role: 'R2' },
+    ];
     const res = filterBulkEligibleMembers(members, ['Alpha', 'Leader', 'Nope']);
     expect(res.eligiblePseudos).toEqual(['Alpha']);
     expect(res.excludedR5Count).toBe(1);
@@ -147,7 +156,7 @@ describe('members helpers', () => {
     const out = formatTicketDescription({
       currentBehavior: 'it broke',
       expectedBehavior: 'it should work',
-      env: { appVersion: 'V9', os: 'macOS', browser: 'Safari 26' }
+      env: { appVersion: 'V9', os: 'macOS', browser: 'Safari 26' },
     });
     expect(out).toContain('**Current Behavior / Issue**\nit broke');
     expect(out).toContain('FGF Mgmt Tool Version: V9');

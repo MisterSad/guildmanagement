@@ -12,7 +12,6 @@
  * This module never assigns `window.GM_SANCTIONS` (bridge added at cutover).
  */
 
-
 import { escapeHTML, avatarInit } from '../../../core/utils/text';
 import { t } from '../../../core/i18n/i18n';
 import { getClient } from '../../../core/api/supabase';
@@ -46,7 +45,9 @@ export class SanctionsView {
 
     const datalist = document.getElementById('member-list-datalist');
     if (datalist && membersRes.data) {
-      datalist.innerHTML = (membersRes.data as any[]).map((m) => '<option value="' + escapeHTML(m.pseudo) + '">').join('');
+      datalist.innerHTML = (membersRes.data as any[])
+        .map((m) => '<option value="' + escapeHTML(m.pseudo) + '">')
+        .join('');
     }
 
     this.sanctions = (res.data || []) as SanctionRow[];
@@ -122,7 +123,10 @@ export class SanctionsView {
     if (count) count.textContent = String(this.sanctions.length);
 
     if (this.sanctions.length === 0) {
-      list.innerHTML = '<div class="gm-empty"><i class="ph ph-ghost gm-icon"></i><div class="gm-empty-title">' + t('empty_sanctions') + '</div></div>';
+      list.innerHTML =
+        '<div class="gm-empty"><i class="ph ph-ghost gm-icon"></i><div class="gm-empty-title">' +
+        t('empty_sanctions') +
+        '</div></div>';
       return;
     }
 
@@ -131,23 +135,41 @@ export class SanctionsView {
 
     this.sanctions.forEach((s) => {
       const dateStr = new Date(s.created_at as string).toLocaleDateString(locale, {
-        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
       } as any);
       const author = s.created_by || '-';
       const initial = avatarInit(s.pseudo);
       html +=
         '<div class="gm-sanction-row">' +
-          '<div class="gm-row" style="gap:.5rem;">' +
-            '<div class="gm-avatar">' + escapeHTML(initial) + '</div>' +
-            '<strong>' + escapeHTML(s.pseudo) + '</strong>' +
-          '</div>' +
-          '<div class="gm-sanction-comment">"' + escapeHTML(s.comment) + '"</div>' +
-          '<div class="gm-sanction-meta">' +
-            t('sanction_by') + ' <strong style="color: var(--accent);">' + escapeHTML(author) + '</strong> · ' + dateStr +
-          '</div>' +
-          '<button class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm sanction-delete-btn" data-id="' + s.id + '" title="' + t('delete_title') + '" style="color: var(--danger);">' +
-            '<i class="ph ph-trash"></i>' +
-          '</button>' +
+        '<div class="gm-row" style="gap:.5rem;">' +
+        '<div class="gm-avatar">' +
+        escapeHTML(initial) +
+        '</div>' +
+        '<strong>' +
+        escapeHTML(s.pseudo) +
+        '</strong>' +
+        '</div>' +
+        '<div class="gm-sanction-comment">"' +
+        escapeHTML(s.comment) +
+        '"</div>' +
+        '<div class="gm-sanction-meta">' +
+        t('sanction_by') +
+        ' <strong style="color: var(--accent);">' +
+        escapeHTML(author) +
+        '</strong> · ' +
+        dateStr +
+        '</div>' +
+        '<button class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm sanction-delete-btn" data-id="' +
+        s.id +
+        '" title="' +
+        t('delete_title') +
+        '" style="color: var(--danger);">' +
+        '<i class="ph ph-trash"></i>' +
+        '</button>' +
         '</div>';
     });
     html += '</div>';
@@ -156,11 +178,9 @@ export class SanctionsView {
     list.querySelectorAll('.sanction-delete-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
         const id = btn.getAttribute('data-id') || '';
-        showConfirm(
-          t('confirm_delete_sanction_title'),
-          t('confirm_delete_sanction_body'),
-          () => { void this.deleteSanction(id); }
-        );
+        showConfirm(t('confirm_delete_sanction_title'), t('confirm_delete_sanction_body'), () => {
+          void this.deleteSanction(id);
+        });
       });
     });
   }
@@ -172,7 +192,9 @@ export class SanctionsView {
         showConfirm(
           t('alert_recidivist'),
           '<strong>' + escapeHTML(pseudo) + '</strong> : ' + count + ' ' + t('nav_sanctions'),
-          () => { /* informational */ }
+          () => {
+            /* informational */
+          }
         );
       }, 500);
     }

@@ -13,14 +13,14 @@ describe('CORS Origin Matching & Security Caps (GAP 4)', () => {
     expect(isAllowedOrigin('https://fgf-guild-management.vercel.app')).toBe(true);
 
     // 2. Official project Vercel preview deployments
-      // FINDING M13, and these expectations are what locked it in.
-      //
-      // Vercel always ends a deployment host with the owning scope:
-      //   <project>-<hash>-<scope>        deployment
-      //   <project>-git-<branch>-<scope>  branch preview
-      //   <project>-<scope>               project alias
-      // The scope-less forms this file used to accept are precisely the ones
-      // ANYONE can register, which is what made the old pattern a bypass.
+    // FINDING M13, and these expectations are what locked it in.
+    //
+    // Vercel always ends a deployment host with the owning scope:
+    //   <project>-<hash>-<scope>        deployment
+    //   <project>-git-<branch>-<scope>  branch preview
+    //   <project>-<scope>               project alias
+    // The scope-less forms this file used to accept are precisely the ones
+    // ANYONE can register, which is what made the old pattern a bypass.
     expect(isAllowedOrigin('https://guildmanagement-mistersads-projects.vercel.app')).toBe(true);
     expect(isAllowedOrigin('https://guildmanagement-abc123def-mistersads-projects.vercel.app')).toBe(true);
     expect(isAllowedOrigin('https://guildmanagement-git-feature-branch-mistersads-projects.vercel.app')).toBe(true);
@@ -55,14 +55,16 @@ describe('CORS Origin Matching & Security Caps (GAP 4)', () => {
 
   it('getCorsHeaders returns Vary: Origin and appropriate Allow-Origin', () => {
     const validReq = new Request('https://api.test', {
-      headers: { Origin: 'https://guildmanagement-abc123def-mistersads-projects.vercel.app' }
+      headers: { Origin: 'https://guildmanagement-abc123def-mistersads-projects.vercel.app' },
     });
     const headers = getCorsHeaders(validReq);
-    expect(headers['Access-Control-Allow-Origin']).toBe('https://guildmanagement-abc123def-mistersads-projects.vercel.app');
+    expect(headers['Access-Control-Allow-Origin']).toBe(
+      'https://guildmanagement-abc123def-mistersads-projects.vercel.app'
+    );
     expect(headers['Vary']).toBe('Origin');
 
     const invalidReq = new Request('https://api.test', {
-      headers: { Origin: 'https://malicious-project.vercel.app' }
+      headers: { Origin: 'https://malicious-project.vercel.app' },
     });
     const invalidHeaders = getCorsHeaders(invalidReq);
     expect(invalidHeaders['Access-Control-Allow-Origin']).toBe('http://localhost:5173');
@@ -77,7 +79,10 @@ describe('CORS Origin Matching & Security Caps (GAP 4)', () => {
   });
 
   it('containment: ocr-guild-members enforces image count and payload size caps', () => {
-    const ocrContent = fs.readFileSync(path.resolve(__dirname, '../supabase/functions/ocr-guild-members/index.ts'), 'utf-8');
+    const ocrContent = fs.readFileSync(
+      path.resolve(__dirname, '../supabase/functions/ocr-guild-members/index.ts'),
+      'utf-8'
+    );
     expect(ocrContent).toContain('too_many_images');
     expect(ocrContent).toContain('payload_too_large');
     expect(ocrContent).toContain('body.images.length > 5');
@@ -85,7 +90,10 @@ describe('CORS Origin Matching & Security Caps (GAP 4)', () => {
   });
 
   it('containment: discord-webhook-proxy enforces redirect: error', () => {
-    const discordContent = fs.readFileSync(path.resolve(__dirname, '../supabase/functions/discord-webhook-proxy/index.ts'), 'utf-8');
+    const discordContent = fs.readFileSync(
+      path.resolve(__dirname, '../supabase/functions/discord-webhook-proxy/index.ts'),
+      'utf-8'
+    );
     expect(discordContent).toContain('redirect: "error"');
   });
 });

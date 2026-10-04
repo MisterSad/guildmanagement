@@ -7,7 +7,9 @@ const edgeFunctionContent = fs.readFileSync(edgeFunctionPath, 'utf-8');
 
 describe('Ticket 1.5: player-register - Persistent Rate Limiting & Safe IP Extraction', () => {
   it('imports extractClientIp and checkAndRecordIpAttempt from _shared/rate-limit.ts', () => {
-    expect(edgeFunctionContent).toContain('import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.ts";');
+    expect(edgeFunctionContent).toContain(
+      'import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.ts";'
+    );
   });
 
   it('eliminates volatile in-memory Map rate limiting (attemptLog / rateLimited)', () => {
@@ -17,7 +19,9 @@ describe('Ticket 1.5: player-register - Persistent Rate Limiting & Safe IP Extra
   });
 
   it('invokes checkAndRecordIpAttempt with admin client, extracted IP, 5 attempts per 60s window', () => {
-    expect(edgeFunctionContent).toMatch(/checkAndRecordIpAttempt\s*\(\s*admin\s*,\s*clientIp\s*,\s*\{\s*limit:\s*5\s*,\s*windowMs:\s*60_?000\s*\}\s*\)/);
+    expect(edgeFunctionContent).toMatch(
+      /checkAndRecordIpAttempt\s*\(\s*admin\s*,\s*clientIp\s*,\s*\{\s*limit:\s*5\s*,\s*windowMs:\s*60_?000\s*\}\s*\)/
+    );
   });
 
   it('extracts client IP safely and retains cf-connecting-ip and x-real-ip references', () => {
@@ -71,9 +75,15 @@ describe('Ticket 1.5: player-register - HTTP Status Normalization', () => {
   });
 
   it('enforces HTTP 422 on input validation failures instead of HTTP 200', () => {
-    expect(edgeFunctionContent).toContain('if (id.length < 3 || id.length > 32) return json({ ok: false, error: "invalid_identifier" }, 422);');
-    expect(edgeFunctionContent).toContain('if (password.length < 8) return json({ ok: false, error: "weak_password" }, 422);');
-    expect(edgeFunctionContent).toContain('if (!/^[0-9]{1,20}$/.test(uid)) return json({ ok: false, error: "invalid_uid" }, 422);');
+    expect(edgeFunctionContent).toContain(
+      'if (id.length < 3 || id.length > 32) return json({ ok: false, error: "invalid_identifier" }, 422);'
+    );
+    expect(edgeFunctionContent).toContain(
+      'if (password.length < 8) return json({ ok: false, error: "weak_password" }, 422);'
+    );
+    expect(edgeFunctionContent).toContain(
+      'if (!/^[0-9]{1,20}$/.test(uid)) return json({ ok: false, error: "invalid_uid" }, 422);'
+    );
   });
 
   it('enforces HTTP 400 on bad JSON or missing required fields', () => {

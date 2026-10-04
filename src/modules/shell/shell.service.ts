@@ -23,7 +23,18 @@ export interface NewTicketFields {
 
 /** Files a ticket through the `tickets` Edge Function. */
 export function createTicket(db: DbClient, f: NewTicketFields) {
-  const { title, description, category, severity, currentBehavior, expectedBehavior, steps, additionalContext, env, attachedScreenshots } = f;
+  const {
+    title,
+    description,
+    category,
+    severity,
+    currentBehavior,
+    expectedBehavior,
+    steps,
+    additionalContext,
+    env,
+    attachedScreenshots,
+  } = f;
   return db.functions.invoke('tickets', {
     body: {
       action: 'create',
@@ -36,7 +47,7 @@ export function createTicket(db: DbClient, f: NewTicketFields) {
       steps,
       additional_context: additionalContext,
       env,
-      attachments: attachedScreenshots
-    }
+      attachments: attachedScreenshots,
+    },
   });
 }

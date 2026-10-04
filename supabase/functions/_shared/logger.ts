@@ -79,7 +79,12 @@ export function sanitizeData(data: unknown, depth = 0): unknown {
   const sanitized: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
     const lowerKey = key.toLowerCase();
-    if (SENSITIVE_KEYS.has(lowerKey) || lowerKey.includes("password") || lowerKey.includes("secret") || lowerKey.includes("token")) {
+    if (
+      SENSITIVE_KEYS.has(lowerKey) ||
+      lowerKey.includes("password") ||
+      lowerKey.includes("secret") ||
+      lowerKey.includes("token")
+    ) {
       sanitized[key] = "[REDACTED]";
     } else if (typeof value === "object" && value !== null) {
       sanitized[key] = sanitizeData(value, depth + 1);
@@ -117,7 +122,8 @@ export class EdgeLogger {
 
   constructor(service: string, req?: Request) {
     this.service = service;
-    this.correlationId = req?.headers.get("x-correlation-id") || req?.headers.get("x-request-id") || `req_${crypto.randomUUID()}`;
+    this.correlationId =
+      req?.headers.get("x-correlation-id") || req?.headers.get("x-request-id") || `req_${crypto.randomUUID()}`;
     this.startTime = performance.now();
   }
 

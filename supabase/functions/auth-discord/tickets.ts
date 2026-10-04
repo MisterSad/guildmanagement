@@ -80,7 +80,7 @@ export async function failContinuation(
   logger: EdgeLogger,
   consumed: TicketIdentity,
   error: string,
-  status = 200,
+  status = 200
 ): Promise<Response> {
   if (RECOVERABLE_ERRORS.has(error) && consumed.attempts < MAX_TICKET_ATTEMPTS) {
     const ticket = await issueTicket(admin, { ...consumed, attempts: consumed.attempts + 1 }, logger);
@@ -110,7 +110,7 @@ export async function mintForAccount(
   admin: any,
   logger: EdgeLogger,
   accountId: string,
-  knownRole?: string,
+  knownRole?: string
 ): Promise<Response> {
   const json = makeJson(req);
   logger.setContext({ userId: accountId });

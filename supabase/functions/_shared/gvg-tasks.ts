@@ -40,7 +40,10 @@ export const GVG_DAILY_TASKS: Record<number, GvgDailyTaskDay> = {
         emoji: "🎯",
         tasks: [
           { label: "Launch a rally and defeat 1 Deliverer Ark", points: "+18,000 pts" },
-          { label: "Launch a rally and earn Tribute Vessel rewards 1 time(s) by defeating Lvl 1-60 Tribute Vessels", points: "+18,000 pts" },
+          {
+            label: "Launch a rally and earn Tribute Vessel rewards 1 time(s) by defeating Lvl 1-60 Tribute Vessels",
+            points: "+18,000 pts",
+          },
           { label: "Launch a rally and defeat the Sacred Tribute Vessel once", points: "+6,000 pts" },
         ],
       },
@@ -59,9 +62,7 @@ export const GVG_DAILY_TASKS: Record<number, GvgDailyTaskDay> = {
       {
         title: "Packs",
         emoji: "💎",
-        tasks: [
-          { label: "Earn 1 Credit(s) through packs", points: "+4 pts" },
-        ],
+        tasks: [{ label: "Earn 1 Credit(s) through packs", points: "+4 pts" }],
       },
     ],
   },
@@ -75,8 +76,16 @@ export const GVG_DAILY_TASKS: Record<number, GvgDailyTaskDay> = {
         title: "Champions & Power",
         emoji: "👑",
         tasks: [
-          { label: "Consume 1 Champion Fragments to unlock Champions, activate the Wall of Honor, or promote Legendary Champions", points: "+6,000 pts" },
-          { label: "Consume 1 Champion Fragments to unlock Champions, activate the Wall of Honor, or promote Epic Champions", points: "+300 pts" },
+          {
+            label:
+              "Consume 1 Champion Fragments to unlock Champions, activate the Wall of Honor, or promote Legendary Champions",
+            points: "+6,000 pts",
+          },
+          {
+            label:
+              "Consume 1 Champion Fragments to unlock Champions, activate the Wall of Honor, or promote Epic Champions",
+            points: "+300 pts",
+          },
           { label: "Increase Power by 1 through leveling up/unlocking/promoting Champions", points: "+3 pts" },
           { label: "Spend Legendary Training Manual × 1 during the event", points: "+600 pts" },
           { label: "Spend Venturous Memory × 1 during the event", points: "+2,400 pts" },
@@ -143,9 +152,7 @@ export const GVG_DAILY_TASKS: Record<number, GvgDailyTaskDay> = {
       {
         title: "Packs",
         emoji: "💎",
-        tasks: [
-          { label: "Earn 1 Credit(s) through packs", points: "+4 pts" },
-        ],
+        tasks: [{ label: "Earn 1 Credit(s) through packs", points: "+4 pts" }],
       },
     ],
   },
@@ -159,7 +166,11 @@ export const GVG_DAILY_TASKS: Record<number, GvgDailyTaskDay> = {
         title: "Flagship",
         emoji: "🛸",
         tasks: [
-          { label: "Boost Power by 1 through upgrading, unlocking, or advancing the flagship, or developing flagship components", points: "+3 pts" },
+          {
+            label:
+              "Boost Power by 1 through upgrading, unlocking, or advancing the flagship, or developing flagship components",
+            points: "+3 pts",
+          },
           { label: "Consume 1 Flagship Blueprints", points: "+6,000 pts" },
           { label: "Spend Prismatic Core × 1 during the event", points: "+2,400 pts" },
         ],
@@ -178,9 +189,7 @@ export const GVG_DAILY_TASKS: Record<number, GvgDailyTaskDay> = {
       {
         title: "Packs",
         emoji: "💎",
-        tasks: [
-          { label: "Earn 1 Credit(s) through packs", points: "+4 pts" },
-        ],
+        tasks: [{ label: "Earn 1 Credit(s) through packs", points: "+4 pts" }],
       },
     ],
   },
@@ -204,12 +213,24 @@ export const GVG_DAILY_TASKS: Record<number, GvgDailyTaskDay> = {
         title: "Champions & Flagship",
         emoji: "👑",
         tasks: [
-          { label: "Consume 1 Champion Fragments to unlock Champions, activate the Wall of Honor, or promote Legendary Champions", points: "+6,000 pts" },
-          { label: "Consume 1 Champion Fragments to unlock Champions, activate the Wall of Honor, or promote Epic Champions", points: "+300 pts" },
+          {
+            label:
+              "Consume 1 Champion Fragments to unlock Champions, activate the Wall of Honor, or promote Legendary Champions",
+            points: "+6,000 pts",
+          },
+          {
+            label:
+              "Consume 1 Champion Fragments to unlock Champions, activate the Wall of Honor, or promote Epic Champions",
+            points: "+300 pts",
+          },
           { label: "Increase Power by 1 through leveling up/unlocking/promoting Champions", points: "+3 pts" },
           { label: "Spend Legendary Training Manual × 1 during the event", points: "+600 pts" },
           { label: "Spend Venturous Memory × 1 during the event", points: "+2,400 pts" },
-          { label: "Boost Power by 1 through upgrading, unlocking, or advancing the flagship, or developing flagship components", points: "+3 pts" },
+          {
+            label:
+              "Boost Power by 1 through upgrading, unlocking, or advancing the flagship, or developing flagship components",
+            points: "+3 pts",
+          },
           { label: "Consume 1 Flagship Blueprints", points: "+6,000 pts" },
           { label: "Spend Prismatic Core × 1 during the event", points: "+2,400 pts" },
         ],
@@ -218,7 +239,10 @@ export const GVG_DAILY_TASKS: Record<number, GvgDailyTaskDay> = {
         title: "Rallies & Technology",
         emoji: "🎯",
         tasks: [
-          { label: "Launch a rally and earn Tribute Vessel rewards 1 time(s) by defeating Lvl 1-60 Tribute Vessels", points: "+18,000 pts" },
+          {
+            label: "Launch a rally and earn Tribute Vessel rewards 1 time(s) by defeating Lvl 1-60 Tribute Vessels",
+            points: "+18,000 pts",
+          },
           { label: "Spend Computational Component × 1 during the event", points: "+400 pts" },
           { label: "Spend Deep Space Beacon × 1 during the event", points: "+800 pts" },
           { label: "Spend Echo Module × 1 during the event", points: "+80 pts" },
@@ -242,7 +266,10 @@ export const GVG_DAILY_TASKS: Record<number, GvgDailyTaskDay> = {
         title: "Commissions & Packs",
         emoji: "📜",
         tasks: [
-          { label: "Complete 1 commission(s) (Common: +6k | Uncommon: +7.5k | Rare: +8.25k | Epic: +9k | Leg: +9.75k)", points: "+6k to +9.75k pts" },
+          {
+            label: "Complete 1 commission(s) (Common: +6k | Uncommon: +7.5k | Rare: +8.25k | Epic: +9k | Leg: +9.75k)",
+            points: "+6k to +9.75k pts",
+          },
           { label: "Earn 1 Credit(s) through packs", points: "+4 pts" },
         ],
       },
@@ -260,7 +287,10 @@ export const GVG_DAILY_TASKS: Record<number, GvgDailyTaskDay> = {
         tasks: [
           { label: "Every 100 damage dealt to the War Prism", points: "+10 pts" },
           { label: "Deliver the last hit to the War Prism", points: "+1,000,000 pts" },
-          { label: "Seize 1 Legendary quality Flagship Component Fragment(s) by defeating the Ascendancy Shrine", points: "+60,000 pts" },
+          {
+            label: "Seize 1 Legendary quality Flagship Component Fragment(s) by defeating the Ascendancy Shrine",
+            points: "+60,000 pts",
+          },
           { label: "Station 2 min in War Fortresses to earn points", points: "+50,000 pts" },
         ],
       },
@@ -292,7 +322,10 @@ export const GVG_DAILY_TASKS: Record<number, GvgDailyTaskDay> = {
   },
 };
 
-export function buildGvgDailyTaskEmbed(dayNumber: number, roleMention = "@everyone"): { content: string; embeds: any[] } {
+export function buildGvgDailyTaskEmbed(
+  dayNumber: number,
+  roleMention = "@everyone"
+): { content: string; embeds: any[] } {
   const day = GVG_DAILY_TASKS[dayNumber] || GVG_DAILY_TASKS[1];
 
   const fields = day.categories.map((cat) => {

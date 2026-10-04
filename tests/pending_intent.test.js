@@ -9,7 +9,9 @@ import {
   PENDING_INTENT_TTL_MS,
 } from '../src/core/auth/pending-intent';
 
-beforeEach(() => { sessionStorage.clear(); });
+beforeEach(() => {
+  sessionStorage.clear();
+});
 
 describe('pending intent', () => {
   it('round-trips a valid intent through sessionStorage', () => {
@@ -57,8 +59,9 @@ describe('pending intent', () => {
 describe('shared invite links', () => {
   it('builds fragment links, never query strings', async () => {
     const { buildInviteLink } = await import('../src/core/auth/pending-intent');
-    expect(buildInviteLink('https://guildmanagement.vercel.app/', 'join', 'FGF-7K2M-X9Q4'))
-      .toBe('https://guildmanagement.vercel.app/#join=FGF-7K2M-X9Q4');
+    expect(buildInviteLink('https://guildmanagement.vercel.app/', 'join', 'FGF-7K2M-X9Q4')).toBe(
+      'https://guildmanagement.vercel.app/#join=FGF-7K2M-X9Q4'
+    );
     expect(buildInviteLink('https://x.app', 'code', 'ABCDE-FGHIJ')).toBe('https://x.app/#code=ABCDE-FGHIJ');
   });
 

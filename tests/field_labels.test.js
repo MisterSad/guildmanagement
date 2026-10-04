@@ -14,18 +14,20 @@ import path from 'path';
 const html = fs.readFileSync(path.resolve(__dirname, '..', 'index.html'), 'utf8');
 
 function unnamedFields(doc) {
-  return [...doc.querySelectorAll('input, select, textarea')].filter((el) => {
-    const type = (el.getAttribute('type') || '').toLowerCase();
-    if (['hidden', 'submit', 'button', 'reset', 'image'].includes(type)) return false;
-    const labelledBy = (el.getAttribute('aria-labelledby') || '').split(/\s+/).filter(Boolean);
-    return !(
-      (el.getAttribute('aria-label') || '').trim() ||
-      (labelledBy.length && labelledBy.every((id) => doc.getElementById(id))) ||
-      (el.getAttribute('title') || '').trim() ||
-      el.closest('label') ||
-      (el.id && doc.querySelector(`label[for="${el.id}"]`))
-    );
-  }).map((el) => `${el.tagName.toLowerCase()}#${el.id || '(no id)'}`);
+  return [...doc.querySelectorAll('input, select, textarea')]
+    .filter((el) => {
+      const type = (el.getAttribute('type') || '').toLowerCase();
+      if (['hidden', 'submit', 'button', 'reset', 'image'].includes(type)) return false;
+      const labelledBy = (el.getAttribute('aria-labelledby') || '').split(/\s+/).filter(Boolean);
+      return !(
+        (el.getAttribute('aria-label') || '').trim() ||
+        (labelledBy.length && labelledBy.every((id) => doc.getElementById(id))) ||
+        (el.getAttribute('title') || '').trim() ||
+        el.closest('label') ||
+        (el.id && doc.querySelector(`label[for="${el.id}"]`))
+      );
+    })
+    .map((el) => `${el.tagName.toLowerCase()}#${el.id || '(no id)'}`);
 }
 
 describe('form field names in index.html', () => {

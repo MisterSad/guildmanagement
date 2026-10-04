@@ -49,10 +49,12 @@ describe('gm_get_player_event_history RPC', () => {
   const content = fs.readFileSync(migrationPath, 'utf-8');
 
   it('is defined with the self-OR-in-scope-admin authorization pattern already proven by gm_get_player_metrics_history', () => {
-    expect(content).toContain('CREATE OR REPLACE FUNCTION public.gm_get_player_event_history(p_uid text, p_limit int DEFAULT 60)');
+    expect(content).toContain(
+      'CREATE OR REPLACE FUNCTION public.gm_get_player_event_history(p_uid text, p_limit int DEFAULT 60)'
+    );
     expect(content).toContain('public.is_super_admin()');
     expect(content).toContain('public.check_user_guild_access(v_member.guild)');
-    expect(content).toContain("a.uid = p_uid OR a.id = p_uid");
+    expect(content).toContain('a.uid = p_uid OR a.id = p_uid');
   });
 
   it('returns per-session score, guild average/max, and the late/excused/sub_present/appointed flags', () => {
@@ -66,7 +68,9 @@ describe('gm_get_player_event_history RPC', () => {
 
   it('is scoped to authenticated only (not anon)', () => {
     expect(content).toContain('REVOKE ALL ON FUNCTION public.gm_get_player_event_history(text, int) FROM public, anon');
-    expect(content).toContain('GRANT EXECUTE ON FUNCTION public.gm_get_player_event_history(text, int) TO authenticated');
+    expect(content).toContain(
+      'GRANT EXECUTE ON FUNCTION public.gm_get_player_event_history(text, int) TO authenticated'
+    );
   });
 });
 
@@ -128,7 +132,9 @@ describe('Admin Player History modal (src/modules/app/dialogs/dialogs.service.ts
     // by typed import, and main.ts no longer publishes it on window.
     const statsViewTs = read('src/modules/stats/views/StatsView.ts');
     expect(appJs).toMatch(/export async function showPlayerHistoryDialog\(/);
-    expect(statsViewTs).toMatch(/import \{[^}]*\bshowPlayerHistoryDialog\b[^}]*\} from '\.\.\/\.\.\/app\/dialogs\/dialogs\.service'/);
+    expect(statsViewTs).toMatch(
+      /import \{[^}]*\bshowPlayerHistoryDialog\b[^}]*\} from '\.\.\/\.\.\/app\/dialogs\/dialogs\.service'/
+    );
     expect(mainTs).not.toMatch(/showPlayerHistory\s*=/);
   });
 

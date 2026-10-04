@@ -3,7 +3,7 @@ import {
   canManageAccount,
   maxAssignableRole,
   isGuildInScope,
-  normalizeRole
+  normalizeRole,
 } from '../supabase/functions/_shared/admin-authz';
 
 describe('admin-authz pure authorization matrix', () => {

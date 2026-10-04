@@ -17,7 +17,6 @@
  * for a write that did not happen.
  */
 
-
 import { getClient, getSupabaseClient } from './supabase';
 import { READ_ONLY_MESSAGE } from './db-guard';
 import { canWriteGuild, getActiveGuild } from '../auth/roles';

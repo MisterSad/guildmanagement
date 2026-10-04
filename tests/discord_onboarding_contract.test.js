@@ -16,10 +16,11 @@ const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$
 
 const migration = read('supabase/migrations/20260926182332_discord_onboarding.sql');
 const discordFn = stripComments(edgeSource('auth-discord'));
-const fnBody = (name, next) => migration.slice(
-  migration.indexOf(`FUNCTION public.${name}`),
-  next ? migration.indexOf(`FUNCTION public.${next}`) : undefined
-);
+const fnBody = (name, next) =>
+  migration.slice(
+    migration.indexOf(`FUNCTION public.${name}`),
+    next ? migration.indexOf(`FUNCTION public.${next}`) : undefined
+  );
 const joinFn = fnBody('gm_discord_join_guild', 'gm_discord_create_guild');
 const createFn = fnBody('gm_discord_create_guild', 'gm_expire_empty_guilds');
 const expireFn = migration.slice(
@@ -59,7 +60,10 @@ describe('guardrails are enforced in SQL, not in the Edge Function', () => {
 
 describe('neither onboarding path creates a password', () => {
   it('writes no password column at all', () => {
-    for (const [name, body] of [['join', joinFn], ['create', createFn]]) {
+    for (const [name, body] of [
+      ['join', joinFn],
+      ['create', createFn],
+    ]) {
       expect(body, `${name} must not write a password`).not.toMatch(/password_hash|password_enc/);
     }
   });
@@ -139,7 +143,14 @@ describe('the expiry deletes production data, so what it refuses matters most', 
   it('mirrors the deletion set gm_delete_guild already uses', () => {
     // A guild removed by the cron and one removed from the admin screen must
     // leave the database in the same state.
-    for (const t of ['event_status', 'shadowfront_squads', 'guild_transfers', 'guild_config', 'guild_members', 'accounts']) {
+    for (const t of [
+      'event_status',
+      'shadowfront_squads',
+      'guild_transfers',
+      'guild_config',
+      'guild_members',
+      'accounts',
+    ]) {
       expect(expireFn, `${t} must be cleaned up`).toContain(`DELETE FROM public.${t}`);
     }
   });
@@ -197,7 +208,9 @@ describe('least privilege', () => {
       'gm_discord_create_guild(text, text, text, text)',
       'gm_expire_empty_guilds()',
     ]) {
-      expect(migration).toMatch(new RegExp(`REVOKE ALL ON FUNCTION public\\.${esc(f)}\\s+FROM PUBLIC, anon, authenticated;`));
+      expect(migration).toMatch(
+        new RegExp(`REVOKE ALL ON FUNCTION public\\.${esc(f)}\\s+FROM PUBLIC, anon, authenticated;`)
+      );
       expect(migration).toMatch(new RegExp(`GRANT EXECUTE ON FUNCTION public\\.${esc(f)}\\s+TO service_role;`));
     }
   });

@@ -29,7 +29,10 @@ describe('password show/hide toggle', () => {
 });
 
 describe('search clear button', () => {
-  beforeAll(() => { wireSearchClearButtons(); wireSearchClearButtons(); });
+  beforeAll(() => {
+    wireSearchClearButtons();
+    wireSearchClearButtons();
+  });
 
   it('shows while the field has text and hides when it is emptied', () => {
     document.body.innerHTML = `

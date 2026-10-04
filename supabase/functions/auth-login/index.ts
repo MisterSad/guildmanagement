@@ -30,7 +30,8 @@ export async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response("ok", { headers: getCorsHeaders(req) });
   if (req.method !== "POST") return json({ ok: false, error: "method_not_allowed" }, 405);
 
-  let id = "", password = "";
+  let id = "",
+    password = "";
   try {
     const rawBody = await req.json();
     const parsed = LoginSchema.safeParse(rawBody);
@@ -58,7 +59,7 @@ export async function handler(req: Request): Promise<Response> {
     logger.error("Database check_login error", cErr, { id });
     return json({ ok: false, error: "server_error" }, 500);
   }
-  
+
   const loginRow = Array.isArray(loginRes) ? loginRes[0] : loginRes;
   if (loginRow?.is_locked || loginRow?.error === "account_locked") {
     logger.warn("Locked account attempted sign-in", { id });

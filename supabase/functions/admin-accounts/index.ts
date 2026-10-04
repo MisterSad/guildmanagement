@@ -28,7 +28,12 @@ import { list, create, updateRole, deleteAccount, updateGuild, resetPassword } f
 import { discordUnlink, issueAdminInvite } from "./actions/discord.ts";
 import { setJoinCode, getJoinCode } from "./actions/join-code.ts";
 import { decideRegistrationAction } from "./actions/registrations.ts";
-import { listGuildRequests, clearResolvedGuildRequests, approveGuildRequest, rejectGuildRequest } from "./actions/guild-requests.ts";
+import {
+  listGuildRequests,
+  clearResolvedGuildRequests,
+  approveGuildRequest,
+  rejectGuildRequest,
+} from "./actions/guild-requests.ts";
 
 const ACTIONS: Record<string, (ctx: AdminContext) => Promise<Response>> = {
   "backup-codes-status": backupCodes,
@@ -88,7 +93,9 @@ export async function handler(req: Request): Promise<Response> {
   const callerGuild = info.guild;
 
   let body: Record<string, unknown>;
-  try { body = await req.json(); } catch (err) {
+  try {
+    body = await req.json();
+  } catch (err) {
     logger.error("Failed to parse request JSON", err);
     return json({ ok: false, error: "bad_request" }, 400);
   }

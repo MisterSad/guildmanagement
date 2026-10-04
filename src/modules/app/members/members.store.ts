@@ -6,7 +6,6 @@
  * controller, renderer and banned modules.
  */
 
-
 export interface GuildMember {
   pseudo: string;
   uid?: string | null;

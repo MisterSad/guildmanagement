@@ -93,7 +93,12 @@ test('members panel renders a table or empty state without a DOM crash', async (
 test('global showConfirm modal closes via its Cancel button', async ({ page }) => {
   await openDashboard(page);
   await page.evaluate(() =>
-    window.GM_E2E.showConfirm('Delete member', 'This cannot be undone.', () => {}, () => {})
+    window.GM_E2E.showConfirm(
+      'Delete member',
+      'This cannot be undone.',
+      () => {},
+      () => {}
+    )
   );
 
   const overlay = page.locator('#confirm-overlay');
@@ -105,7 +110,12 @@ test('global showConfirm modal closes via its Cancel button', async ({ page }) =
 test('global showConfirm modal closes via the Escape key', async ({ page }) => {
   await openDashboard(page);
   await page.evaluate(() =>
-    window.GM_E2E.showConfirm('Delete member', 'This cannot be undone.', () => {}, () => {})
+    window.GM_E2E.showConfirm(
+      'Delete member',
+      'This cannot be undone.',
+      () => {},
+      () => {}
+    )
   );
 
   const overlay = page.locator('#confirm-overlay');

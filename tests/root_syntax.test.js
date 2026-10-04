@@ -18,25 +18,26 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 describe('Root Scripts Syntax Validation (node --check)', () => {
-    const rootDir = path.resolve(__dirname, '..');
-    const rootJsFiles = fs.readdirSync(rootDir)
-        .filter(f => f.endsWith('.js') && fs.statSync(path.join(rootDir, f)).isFile())
-        .sort();
+  const rootDir = path.resolve(__dirname, '..');
+  const rootJsFiles = fs
+    .readdirSync(rootDir)
+    .filter((f) => f.endsWith('.js') && fs.statSync(path.join(rootDir, f)).isFile())
+    .sort();
 
-    it('finds at least 2 root JavaScript config scripts', () => {
-        expect(rootJsFiles.length).toBeGreaterThanOrEqual(2);
-    });
+  it('finds at least 2 root JavaScript config scripts', () => {
+    expect(rootJsFiles.length).toBeGreaterThanOrEqual(2);
+  });
 
-    rootJsFiles.forEach((file) => {
-        it(`parses cleanly with node --check: ${file}`, () => {
-            const filePath = path.join(rootDir, file);
-            let checkError = null;
-            try {
-                execSync(`node --check "${filePath}"`, { stdio: 'pipe' });
-            } catch (err) {
-                checkError = err;
-            }
-            expect(checkError, `SyntaxError detected in root script: ${file}`).toBeNull();
-        });
+  rootJsFiles.forEach((file) => {
+    it(`parses cleanly with node --check: ${file}`, () => {
+      const filePath = path.join(rootDir, file);
+      let checkError = null;
+      try {
+        execSync(`node --check "${filePath}"`, { stdio: 'pipe' });
+      } catch (err) {
+        checkError = err;
+      }
+      expect(checkError, `SyntaxError detected in root script: ${file}`).toBeNull();
     });
+  });
 });

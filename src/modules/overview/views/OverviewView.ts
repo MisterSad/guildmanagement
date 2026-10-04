@@ -9,7 +9,6 @@
  * This module never assigns `window.GM_OVERVIEW` (bridge added at cutover).
  */
 
-
 import { adoptDialog } from '../../../components/ui/Dialog';
 import {
   ClockMember,
@@ -33,7 +32,7 @@ import {
   queryMemberPower,
   queryOfficerTimezones,
   queryGuildOfficerTimezones,
-  fetchConfiguredWebhooks
+  fetchConfiguredWebhooks,
 } from '../overview.service';
 import { escapeHTML, formatNumber, avatarInit } from '../../../core/utils/text';
 import { t } from '../../../core/i18n/i18n';
@@ -49,7 +48,7 @@ import {
   formatOffsetLabel,
   formatTimeInZone,
   isValidTimezone,
-  getTimezoneOffset
+  getTimezoneOffset,
 } from '../../../utils/timezone';
 
 export class OverviewView {
@@ -62,8 +61,14 @@ export class OverviewView {
   }
 
   public destroy(): void {
-    if (this.countdownTimer) { clearInterval(this.countdownTimer); this.countdownTimer = null; }
-    if (this.timezoneClockTimer) { clearInterval(this.timezoneClockTimer); this.timezoneClockTimer = null; }
+    if (this.countdownTimer) {
+      clearInterval(this.countdownTimer);
+      this.countdownTimer = null;
+    }
+    if (this.timezoneClockTimer) {
+      clearInterval(this.timezoneClockTimer);
+      this.timezoneClockTimer = null;
+    }
   }
 
   public async load(): Promise<void> {
@@ -109,8 +114,26 @@ export class OverviewView {
       powerQ = powerQ.eq('guild', currentG);
       officersQ = officersQ.eq('guild', currentG);
 
-      const [memCount, statusRows, gloryRows, gloryPrevRows, sanctionsRows, recentMembers, transfersRows, powerRows, officersRows] = await Promise.all([
-        memCountQ, statusQ, gloryQ, gloryPrevQ, sanctionsQ, recentMemQ, transfersQ, powerQ, officersQ
+      const [
+        memCount,
+        statusRows,
+        gloryRows,
+        gloryPrevRows,
+        sanctionsRows,
+        recentMembers,
+        transfersRows,
+        powerRows,
+        officersRows,
+      ] = await Promise.all([
+        memCountQ,
+        statusQ,
+        gloryQ,
+        gloryPrevQ,
+        sanctionsQ,
+        recentMemQ,
+        transfersQ,
+        powerQ,
+        officersQ,
       ]);
 
       if (this.clockMembers.length === 0 && officersRows && officersRows.data) {
@@ -143,7 +166,7 @@ export class OverviewView {
         liveEventNames: liveRows.map((s) => prettyEventName(s.event_name)),
         gloryTotal: gloryGained,
         sanctions: ((sanctionsRows.data || []) as any[]).length,
-        totalPower: ((powerRows.data || []) as any[]).reduce((a, m) => a + (parseInt(m.overall_power, 10) || 0), 0)
+        totalPower: ((powerRows.data || []) as any[]).reduce((a, m) => a + (parseInt(m.overall_power, 10) || 0), 0),
       };
 
       // Activity feed: merge events + sanctions + new members + transfers.
@@ -153,8 +176,9 @@ export class OverviewView {
         activity.push({
           icon: s.is_active ? 'ph-play' : 'ph-stop-circle',
           color: s.is_active ? 'success' : 'info',
-          text: prettyEventName(s.event_name) + ' ' + t(s.is_active ? 'overview_event_started' : 'overview_event_ended'),
-          when: s.updated_at
+          text:
+            prettyEventName(s.event_name) + ' ' + t(s.is_active ? 'overview_event_started' : 'overview_event_ended'),
+          when: s.updated_at,
         });
       });
       ((sanctionsRows.data || []) as any[]).forEach((s) => {
@@ -162,15 +186,22 @@ export class OverviewView {
           icon: 'ph-warning-octagon',
           color: 'danger',
           text: t('overview_sanction_for') + ' ' + s.pseudo + (s.created_by ? ' (' + s.created_by + ')' : ''),
-          when: s.created_at
+          when: s.created_at,
         });
       });
       ((recentMembers.data || []) as any[]).forEach((m) => {
-        activity.push({ icon: 'ph-user-plus', color: 'success', text: m.pseudo + ' ' + t('overview_member_added'), when: m.created_at });
+        activity.push({
+          icon: 'ph-user-plus',
+          color: 'success',
+          text: m.pseudo + ' ' + t('overview_member_added'),
+          when: m.created_at,
+        });
       });
       ((transfersRows.data || []) as any[]).forEach((t) => {
         const isIncoming = t.target_guild === currentG;
-        const text = isIncoming ? t.pseudo + ' transferred from ' + t.source_guild : t.pseudo + ' transferred to ' + t.target_guild;
+        const text = isIncoming
+          ? t.pseudo + ' transferred from ' + t.source_guild
+          : t.pseudo + ' transferred to ' + t.target_guild;
         activity.push({ icon: 'ph-swap', color: isIncoming ? 'success' : 'warning', text, when: t.resolved_at });
       });
       activity.sort((a, b) => new Date(b.when).getTime() - new Date(a.when).getTime());
@@ -207,45 +238,60 @@ export class OverviewView {
     }
     slot.innerHTML =
       '<div class="gm-card" role="status" style="display:flex; align-items:center; gap:0.85rem; flex-wrap:wrap; padding:0.85rem 1rem; margin-bottom:1.25rem; border-left:3px solid var(--warning);">' +
-        '<i class="ph ph-bell-slash" style="font-size: var(--fs-2xl); color: var(--warning);" aria-hidden="true"></i>' +
-        '<div style="flex:1; min-width: 200px;">' +
-          '<div style="font-weight:700;">Discord reminders are not set up</div>' +
-          '<div class="gm-dim" style="font-size: var(--fs-sm);">Add a Discord webhook so your players get event reminders, GvG daily tasks and SvS alerts automatically.</div>' +
-        '</div>' +
-        '<button type="button" class="gm-btn gm-btn-primary gm-btn-sm" data-gm-discord-setup-go><i class="ph ph-arrow-right"></i> <span>Set up</span></button>' +
+      '<i class="ph ph-bell-slash" style="font-size: var(--fs-2xl); color: var(--warning);" aria-hidden="true"></i>' +
+      '<div style="flex:1; min-width: 200px;">' +
+      '<div style="font-weight:700;">Discord reminders are not set up</div>' +
+      '<div class="gm-dim" style="font-size: var(--fs-sm);">Add a Discord webhook so your players get event reminders, GvG daily tasks and SvS alerts automatically.</div>' +
+      '</div>' +
+      '<button type="button" class="gm-btn gm-btn-primary gm-btn-sm" data-gm-discord-setup-go><i class="ph ph-arrow-right"></i> <span>Set up</span></button>' +
       '</div>';
     const go = slot.querySelector('[data-gm-discord-setup-go]');
-    if (go) go.addEventListener('click', () => {
-      // The shell owns navigation and already imports this view; going through
-      // its own nav entry avoids an import cycle.
-      const nav = document.querySelector('[data-gm-nav-item="discord"]') as HTMLElement | null;
-      if (nav) nav.click();
-    });
+    if (go)
+      go.addEventListener('click', () => {
+        // The shell owns navigation and already imports this view; going through
+        // its own nav entry avoids an import cycle.
+        const nav = document.querySelector('[data-gm-nav-item="discord"]') as HTMLElement | null;
+        if (nav) nav.click();
+      });
   }
 
   private renderShell(panel: HTMLElement): void {
     // Reset any previous tickers before re-rendering.
-    if (this.countdownTimer) { clearInterval(this.countdownTimer); this.countdownTimer = null; }
-    if (this.timezoneClockTimer) { clearInterval(this.timezoneClockTimer); this.timezoneClockTimer = null; }
+    if (this.countdownTimer) {
+      clearInterval(this.countdownTimer);
+      this.countdownTimer = null;
+    }
+    if (this.timezoneClockTimer) {
+      clearInterval(this.timezoneClockTimer);
+      this.timezoneClockTimer = null;
+    }
 
     panel.innerHTML =
       '<div class="gm-page">' +
-        '<header class="gm-page-header">' +
-          '<div>' +
-            '<h1 class="gm-page-title">' + t('gm_overview_title') + '</h1>' +
-            '<p class="gm-page-subtitle">' + t('gm_overview_sub_real') + '</p>' +
-          '</div>' +
-          '<button type="button" class="gm-btn gm-btn-ghost" id="gm-export-guild-data-btn">' +
-            '<i class="ph ph-download-simple"></i> <span>' + t('overview_export_guild_data') + '</span>' +
-          '</button>' +
-        '</header>' +
-        '<div data-gm-discord-setup></div>' +
-        '<div class="gm-section-head" style="margin-bottom: 0.75rem; align-items: center;">' +
-          '<h3 style="font-family: var(--font-display); font-size: var(--fs-xl); font-weight: 600; display: flex; align-items: center; gap: 0.5rem; margin: 0;"><i class="ph ph-clock"></i> Clocks</h3>' +
-          '<button class="gm-mini-btn" id="gm-manage-clocks-btn"><i class="ph ph-gear"></i> ' + t('manage_clocks') + '</button>' +
-        '</div>' +
-        '<div class="gm-overview-clocks" id="gm-overview-clocks" style="margin-bottom: 2rem;"></div>' +
-        '<div data-gm-overview-content></div>' +
+      '<header class="gm-page-header">' +
+      '<div>' +
+      '<h1 class="gm-page-title">' +
+      t('gm_overview_title') +
+      '</h1>' +
+      '<p class="gm-page-subtitle">' +
+      t('gm_overview_sub_real') +
+      '</p>' +
+      '</div>' +
+      '<button type="button" class="gm-btn gm-btn-ghost" id="gm-export-guild-data-btn">' +
+      '<i class="ph ph-download-simple"></i> <span>' +
+      t('overview_export_guild_data') +
+      '</span>' +
+      '</button>' +
+      '</header>' +
+      '<div data-gm-discord-setup></div>' +
+      '<div class="gm-section-head" style="margin-bottom: 0.75rem; align-items: center;">' +
+      '<h3 style="font-family: var(--font-display); font-size: var(--fs-xl); font-weight: 600; display: flex; align-items: center; gap: 0.5rem; margin: 0;"><i class="ph ph-clock"></i> Clocks</h3>' +
+      '<button class="gm-mini-btn" id="gm-manage-clocks-btn"><i class="ph ph-gear"></i> ' +
+      t('manage_clocks') +
+      '</button>' +
+      '</div>' +
+      '<div class="gm-overview-clocks" id="gm-overview-clocks" style="margin-bottom: 2rem;"></div>' +
+      '<div data-gm-overview-content></div>' +
       '</div>';
 
     this.renderTimezoneClocks(panel);
@@ -283,9 +329,11 @@ export class OverviewView {
     if (!this.clockMembers.length) {
       container.innerHTML =
         '<div class="gm-empty">' +
-          '<i class="ph ph-clock gm-icon"></i>' +
-          '<div class="gm-empty-title">No timezone clocks yet</div>' +
-          '<div class="gm-empty-hint">Add an officer\'s timezone with "' + escapeHTML(t('manage_clocks')) + '" above.</div>' +
+        '<i class="ph ph-clock gm-icon"></i>' +
+        '<div class="gm-empty-title">No timezone clocks yet</div>' +
+        '<div class="gm-empty-hint">Add an officer\'s timezone with "' +
+        escapeHTML(t('manage_clocks')) +
+        '" above.</div>' +
         '</div>';
       return;
     }
@@ -294,18 +342,33 @@ export class OverviewView {
     this.clockMembers.forEach((m) => {
       const initials = avatarInit(m.name);
       const offsetText = formatOffsetLabel(m.offset);
-      const roleBadge = m.role ? ' <span style="font-size: var(--fs-xs); opacity: 0.8;">(' + escapeHTML(m.role) + ')</span>' : '';
+      const roleBadge = m.role
+        ? ' <span style="font-size: var(--fs-xs); opacity: 0.8;">(' + escapeHTML(m.role) + ')</span>'
+        : '';
       html +=
-        '<div class="gm-clock-card" data-offset="' + m.offset + '" data-timezone="' + escapeHTML(m.timezone || '') + '">' +
-          '<div class="gm-avatar gm-avatar-sm gm-avatar-' + m.color + '">' + escapeHTML(initials) + '</div>' +
-          '<div class="gm-clock-info">' +
-            '<div class="gm-clock-name">' + escapeHTML(m.name) + roleBadge + '</div>' +
-            '<div class="gm-clock-meta">' +
-              '<span>' + offsetText + '</span>' +
-              '<span class="gm-clock-icon-slot"></span>' +
-            '</div>' +
-          '</div>' +
-          '<div class="gm-clock-time">--:--:--</div>' +
+        '<div class="gm-clock-card" data-offset="' +
+        m.offset +
+        '" data-timezone="' +
+        escapeHTML(m.timezone || '') +
+        '">' +
+        '<div class="gm-avatar gm-avatar-sm gm-avatar-' +
+        m.color +
+        '">' +
+        escapeHTML(initials) +
+        '</div>' +
+        '<div class="gm-clock-info">' +
+        '<div class="gm-clock-name">' +
+        escapeHTML(m.name) +
+        roleBadge +
+        '</div>' +
+        '<div class="gm-clock-meta">' +
+        '<span>' +
+        offsetText +
+        '</span>' +
+        '<span class="gm-clock-icon-slot"></span>' +
+        '</div>' +
+        '</div>' +
+        '<div class="gm-clock-time">--:--:--</div>' +
         '</div>';
     });
     container.innerHTML = html;
@@ -318,7 +381,7 @@ export class OverviewView {
 
     const cards = container.querySelectorAll('.gm-clock-card');
     const now = new Date();
-    const utcMs = now.getTime() + (now.getTimezoneOffset() * 60000);
+    const utcMs = now.getTime() + now.getTimezoneOffset() * 60000;
 
     cards.forEach((card) => {
       const tz = card.getAttribute('data-timezone');
@@ -331,8 +394,9 @@ export class OverviewView {
         const parts = timeStr.split(':');
         hour = parseInt(parts[0], 10) || 0;
       } else {
-        const targetDate = new Date(utcMs + (3600000 * offset));
-        timeStr = pad2(targetDate.getHours()) + ':' + pad2(targetDate.getMinutes()) + ':' + pad2(targetDate.getSeconds());
+        const targetDate = new Date(utcMs + 3600000 * offset);
+        timeStr =
+          pad2(targetDate.getHours()) + ':' + pad2(targetDate.getMinutes()) + ':' + pad2(targetDate.getSeconds());
         hour = targetDate.getHours();
       }
 
@@ -346,20 +410,28 @@ export class OverviewView {
         const iconClass = isDay ? 'ph-sun' : 'ph-moon';
         const currentIcon = iconSlot.querySelector('i');
         if (!currentIcon || !currentIcon.classList.contains(iconClass)) {
-          iconSlot.innerHTML = '<i class="ph ' + iconClass + '" style="color: ' + (isDay ? '#fbbf24' : '#a5b4fc') + ';"></i>';
+          iconSlot.innerHTML =
+            '<i class="ph ' + iconClass + '" style="color: ' + (isDay ? '#fbbf24' : '#a5b4fc') + ';"></i>';
         }
       }
     });
   }
 
   private startTimezoneClockTicker(): void {
-    if (this.timezoneClockTimer) { clearInterval(this.timezoneClockTimer); this.timezoneClockTimer = null; }
+    if (this.timezoneClockTimer) {
+      clearInterval(this.timezoneClockTimer);
+      this.timezoneClockTimer = null;
+    }
     const panel = document.getElementById('gm-overview');
     if (!panel || !panel.querySelector('#gm-overview-clocks')) return;
     this.timezoneClockTimer = setInterval(() => {
       if (document.hidden) return;
       const container = document.getElementById('gm-overview-clocks');
-      if (!container) { if (this.timezoneClockTimer) clearInterval(this.timezoneClockTimer); this.timezoneClockTimer = null; return; }
+      if (!container) {
+        if (this.timezoneClockTimer) clearInterval(this.timezoneClockTimer);
+        this.timezoneClockTimer = null;
+        return;
+      }
       if (panel.classList.contains('active')) this.updateClocksTime();
     }, 1000);
   }
@@ -372,37 +444,73 @@ export class OverviewView {
 
     const html =
       '<div class="gm-stat-grid">' +
-        this.statTile(t('overview_s_members'), formatNumber(stats.members), null, 'ph-users', false, 'Active Guild Members', 'stat-theme-lime') +
-        this.statTile('Guild Power', formatBigNumber(stats.totalPower, (v) => formatNumber(v)), null, 'ph-gauge', false, 'Total Power of All Members', 'stat-theme-cyan') +
-        this.statTile(t('overview_s_events'), String(stats.liveEvents), null, 'ph-clock', stats.liveEvents > 0, liveEventsMeta, 'stat-theme-coral') +
-        this.statTile(t('overview_s_glory'), formatBigNumber(stats.gloryTotal, (v) => formatNumber(v)), 'up', 'ph-trophy', false, t('overview_s_glory_meta'), 'stat-theme-mint') +
+      this.statTile(
+        t('overview_s_members'),
+        formatNumber(stats.members),
+        null,
+        'ph-users',
+        false,
+        'Active Guild Members',
+        'stat-theme-lime'
+      ) +
+      this.statTile(
+        'Guild Power',
+        formatBigNumber(stats.totalPower, (v) => formatNumber(v)),
+        null,
+        'ph-gauge',
+        false,
+        'Total Power of All Members',
+        'stat-theme-cyan'
+      ) +
+      this.statTile(
+        t('overview_s_events'),
+        String(stats.liveEvents),
+        null,
+        'ph-clock',
+        stats.liveEvents > 0,
+        liveEventsMeta,
+        'stat-theme-coral'
+      ) +
+      this.statTile(
+        t('overview_s_glory'),
+        formatBigNumber(stats.gloryTotal, (v) => formatNumber(v)),
+        'up',
+        'ph-trophy',
+        false,
+        t('overview_s_glory_meta'),
+        'stat-theme-mint'
+      ) +
       '</div>' +
       '<div class="gm-section" id="pending-accounts-card">' +
-        '<div class="gm-section-head">' +
-          '<div class="gm-section-title" style="color:var(--accent-amber); font-weight:700;">' +
-            '<i class="ph ph-user-plus"></i>' +
-            '<span>Pending Account Validations (Player Portal)</span>' +
-            '<span class="gm-count" id="pending-account-count">0</span>' +
-          '</div>' +
-        '</div>' +
-        '<div id="pending-account-list">' +
-          '<div class="gm-empty" style="padding:1.25rem;">' +
-            '<i class="ph ph-hourglass gm-icon"></i>' +
-            '<div class="gm-empty-title">No pending registrations</div>' +
-          '</div>' +
-        '</div>' +
+      '<div class="gm-section-head">' +
+      '<div class="gm-section-title" style="color:var(--accent-amber); font-weight:700;">' +
+      '<i class="ph ph-user-plus"></i>' +
+      '<span>Pending Account Validations (Player Portal)</span>' +
+      '<span class="gm-count" id="pending-account-count">0</span>' +
+      '</div>' +
+      '</div>' +
+      '<div id="pending-account-list">' +
+      '<div class="gm-empty" style="padding:1.25rem;">' +
+      '<i class="ph ph-hourglass gm-icon"></i>' +
+      '<div class="gm-empty-title">No pending registrations</div>' +
+      '</div>' +
+      '</div>' +
       '</div>' +
       '<div class="gm-section">' +
-        '<div class="gm-section-head">' +
-          '<div class="gm-section-title"><i class="ph ph-calendar-dots"></i> ' + t('overview_upcoming_title') + '</div>' +
-        '</div>' +
-        this.renderUpcomingCard(upcoming) +
+      '<div class="gm-section-head">' +
+      '<div class="gm-section-title"><i class="ph ph-calendar-dots"></i> ' +
+      t('overview_upcoming_title') +
+      '</div>' +
+      '</div>' +
+      this.renderUpcomingCard(upcoming) +
       '</div>' +
       '<div class="gm-section">' +
-        '<div class="gm-section-head">' +
-          '<div class="gm-section-title"><i class="ph ph-pulse"></i> ' + t('overview_recent_activity') + '</div>' +
-        '</div>' +
-        this.renderActivityCard(activity) +
+      '<div class="gm-section-head">' +
+      '<div class="gm-section-title"><i class="ph ph-pulse"></i> ' +
+      t('overview_recent_activity') +
+      '</div>' +
+      '</div>' +
+      this.renderActivityCard(activity) +
       '</div>';
 
     content.innerHTML = html;
@@ -419,11 +527,14 @@ export class OverviewView {
     return getEventIcon(name);
   }
 
-
   private renderUpcomingCard(upcoming: any[]): string {
     if (!upcoming || !upcoming.length) {
-      return '<div class="gm-empty"><i class="ph ph-calendar-x gm-icon"></i>' +
-        '<div class="gm-empty-title">' + t('overview_no_upcoming') + '</div></div>';
+      return (
+        '<div class="gm-empty"><i class="ph ph-calendar-x gm-icon"></i>' +
+        '<div class="gm-empty-title">' +
+        t('overview_no_upcoming') +
+        '</div></div>'
+      );
     }
 
     let html = '<div class="gm-timeline-container">';
@@ -435,29 +546,41 @@ export class OverviewView {
 
       html +=
         '<div class="gm-timeline-item">' +
-          '<div class="gm-timeline-time-col">' +
-            '<div>' + escapeHTML(timeStr) + '</div>' +
-            '<div style="font-size: var(--fs-xs); font-weight:500; opacity:0.7;">UTC</div>' +
-          '</div>' +
-          '<div class="gm-timeline-line-col"><div class="gm-timeline-dot"></div></div>' +
-          '<div>' +
-            '<div class="gm-task-card ' + themeClass + '">' +
-              '<div class="gm-task-card-top">' +
-                '<div class="gm-task-status-tag"><i class="ph ph-clock"></i><span>Upcoming</span></div>' +
-                '<span class="gm-task-countdown-badge gm-countdown" data-deadline="' + escapeHTML(u.when) + '">' +
-                  escapeHTML(formatCountdown(u.when, t('overview_time_now'))) +
-                '</span>' +
-              '</div>' +
-              '<div class="gm-task-card-body">' +
-                '<div class="gm-task-icon-squircle"><i class="ph ' + iconClass + '"></i></div>' +
-                '<div class="gm-task-info">' +
-                  '<div class="gm-task-title">' + escapeHTML(u.name) + '</div>' +
-                  '<div class="gm-task-sub">' + escapeHTML(formatDateTimeUTC(u.when)) + '</div>' +
-                '</div>' +
-                '<button class="gm-task-action-btn" title="Event Actions" aria-label="Event actions"><i class="ph ph-dots-three-vertical"></i></button>' +
-              '</div>' +
-            '</div>' +
-          '</div>' +
+        '<div class="gm-timeline-time-col">' +
+        '<div>' +
+        escapeHTML(timeStr) +
+        '</div>' +
+        '<div style="font-size: var(--fs-xs); font-weight:500; opacity:0.7;">UTC</div>' +
+        '</div>' +
+        '<div class="gm-timeline-line-col"><div class="gm-timeline-dot"></div></div>' +
+        '<div>' +
+        '<div class="gm-task-card ' +
+        themeClass +
+        '">' +
+        '<div class="gm-task-card-top">' +
+        '<div class="gm-task-status-tag"><i class="ph ph-clock"></i><span>Upcoming</span></div>' +
+        '<span class="gm-task-countdown-badge gm-countdown" data-deadline="' +
+        escapeHTML(u.when) +
+        '">' +
+        escapeHTML(formatCountdown(u.when, t('overview_time_now'))) +
+        '</span>' +
+        '</div>' +
+        '<div class="gm-task-card-body">' +
+        '<div class="gm-task-icon-squircle"><i class="ph ' +
+        iconClass +
+        '"></i></div>' +
+        '<div class="gm-task-info">' +
+        '<div class="gm-task-title">' +
+        escapeHTML(u.name) +
+        '</div>' +
+        '<div class="gm-task-sub">' +
+        escapeHTML(formatDateTimeUTC(u.when)) +
+        '</div>' +
+        '</div>' +
+        '<button class="gm-task-action-btn" title="Event Actions" aria-label="Event actions"><i class="ph ph-dots-three-vertical"></i></button>' +
+        '</div>' +
+        '</div>' +
+        '</div>' +
         '</div>';
     });
     html += '</div>';
@@ -465,49 +588,80 @@ export class OverviewView {
   }
 
   private startCountdownTicker(): void {
-    if (this.countdownTimer) { clearInterval(this.countdownTimer); this.countdownTimer = null; }
+    if (this.countdownTimer) {
+      clearInterval(this.countdownTimer);
+      this.countdownTimer = null;
+    }
     const panel = document.getElementById('gm-overview');
     if (!panel || !panel.querySelector('.gm-countdown')) return;
     this.countdownTimer = setInterval(() => {
       if (document.hidden) return;
       const els = document.querySelectorAll('#gm-overview .gm-countdown');
-      if (!els.length) { if (this.countdownTimer) clearInterval(this.countdownTimer); this.countdownTimer = null; return; }
+      if (!els.length) {
+        if (this.countdownTimer) clearInterval(this.countdownTimer);
+        this.countdownTimer = null;
+        return;
+      }
       els.forEach((el) => {
         el.textContent = formatCountdown(el.getAttribute('data-deadline'), t('overview_time_now'));
       });
     }, 1000);
   }
 
-  private statTile(label: string, value: string, trend: string | null, icon: string, _accent: boolean, meta: string | null, themeClass: string): string {
+  private statTile(
+    label: string,
+    value: string,
+    trend: string | null,
+    icon: string,
+    _accent: boolean,
+    meta: string | null,
+    themeClass: string
+  ): string {
     const themeCls = themeClass || 'stat-theme-lime';
-    return '<div class="gm-stat-tile ' + themeCls + '">' +
+    return (
+      '<div class="gm-stat-tile ' +
+      themeCls +
+      '">' +
       '<div class="gm-stat-tile-header">' +
-        '<div class="gm-stat-tile-label">' + escapeHTML(label) + '</div>' +
-        '<div class="gm-task-icon-squircle"><i class="ph ' + icon + '"></i></div>' +
+      '<div class="gm-stat-tile-label">' +
+      escapeHTML(label) +
       '</div>' +
-      '<div class="gm-stat-tile-value">' + escapeHTML(value) + '</div>' +
+      '<div class="gm-task-icon-squircle"><i class="ph ' +
+      icon +
+      '"></i></div>' +
+      '</div>' +
+      '<div class="gm-stat-tile-value">' +
+      escapeHTML(value) +
+      '</div>' +
       '<div class="gm-stat-tile-footer">' +
-        (meta || trend
-          ? '<div class="gm-stat-tile-meta' + (trend === 'up' ? ' gm-up' : trend === 'down' ? ' gm-down' : '') + '">' +
-            (trend === 'up' ? '<i class="ph ph-trend-up"></i> ' : '') +
-            (trend === 'down' ? '<i class="ph ph-trend-down"></i> ' : '') +
-            escapeHTML(meta || '') +
-            '</div>'
-          : '<div class="gm-stat-tile-meta">&nbsp;</div>') +
+      (meta || trend
+        ? '<div class="gm-stat-tile-meta' +
+          (trend === 'up' ? ' gm-up' : trend === 'down' ? ' gm-down' : '') +
+          '">' +
+          (trend === 'up' ? '<i class="ph ph-trend-up"></i> ' : '') +
+          (trend === 'down' ? '<i class="ph ph-trend-down"></i> ' : '') +
+          escapeHTML(meta || '') +
+          '</div>'
+        : '<div class="gm-stat-tile-meta">&nbsp;</div>') +
       '</div>' +
-    '</div>';
+      '</div>'
+    );
   }
 
   private renderActivityCard(activity: any[]): string {
     if (!activity || !activity.length) {
-      return '<div class="gm-empty"><i class="ph ph-clock-counter-clockwise gm-icon"></i>' +
-        '<div class="gm-empty-title">' + t('overview_no_activity') + '</div></div>';
+      return (
+        '<div class="gm-empty"><i class="ph ph-clock-counter-clockwise gm-icon"></i>' +
+        '<div class="gm-empty-title">' +
+        t('overview_no_activity') +
+        '</div></div>'
+      );
     }
 
     const themeMap: Record<string, string> = {
       'success': 'gm-task-card-lime',
       'info': 'gm-task-card-cyan',
-      'danger': 'gm-task-card-lilac'
+      'danger': 'gm-task-card-lilac',
     };
 
     let html = '<div class="gm-timeline-container">';
@@ -525,27 +679,43 @@ export class OverviewView {
 
       html +=
         '<div class="gm-timeline-item">' +
-          '<div class="gm-timeline-time-col">' +
-            '<div>' + escapeHTML(timeStr) + '</div>' +
-            '<div style="font-size: var(--fs-xs); font-weight:500; opacity:0.7;">UTC</div>' +
-          '</div>' +
-          '<div class="gm-timeline-line-col"><div class="gm-timeline-dot"></div></div>' +
-          '<div>' +
-            '<div class="gm-task-card ' + themeClass + '">' +
-              '<div class="gm-task-card-top">' +
-                '<div class="gm-task-status-tag"><i class="ph ' + escapeHTML(a.icon) + '"></i><span>' + escapeHTML(tagLabel) + '</span></div>' +
-                '<span class="gm-task-countdown-badge">' + escapeHTML(relativeTime(a.when, t('overview_time_now'))) + '</span>' +
-              '</div>' +
-              '<div class="gm-task-card-body">' +
-                '<div class="gm-task-icon-squircle"><i class="ph ' + escapeHTML(a.icon) + '"></i></div>' +
-                '<div class="gm-task-info">' +
-                  '<div class="gm-task-title">' + escapeHTML(a.text) + '</div>' +
-                  '<div class="gm-task-sub">' + escapeHTML(formatDateTimeUTC(a.when)) + '</div>' +
-                '</div>' +
-                '<button class="gm-task-action-btn" title="Activity Actions" aria-label="Activity actions"><i class="ph ph-dots-three-vertical"></i></button>' +
-              '</div>' +
-            '</div>' +
-          '</div>' +
+        '<div class="gm-timeline-time-col">' +
+        '<div>' +
+        escapeHTML(timeStr) +
+        '</div>' +
+        '<div style="font-size: var(--fs-xs); font-weight:500; opacity:0.7;">UTC</div>' +
+        '</div>' +
+        '<div class="gm-timeline-line-col"><div class="gm-timeline-dot"></div></div>' +
+        '<div>' +
+        '<div class="gm-task-card ' +
+        themeClass +
+        '">' +
+        '<div class="gm-task-card-top">' +
+        '<div class="gm-task-status-tag"><i class="ph ' +
+        escapeHTML(a.icon) +
+        '"></i><span>' +
+        escapeHTML(tagLabel) +
+        '</span></div>' +
+        '<span class="gm-task-countdown-badge">' +
+        escapeHTML(relativeTime(a.when, t('overview_time_now'))) +
+        '</span>' +
+        '</div>' +
+        '<div class="gm-task-card-body">' +
+        '<div class="gm-task-icon-squircle"><i class="ph ' +
+        escapeHTML(a.icon) +
+        '"></i></div>' +
+        '<div class="gm-task-info">' +
+        '<div class="gm-task-title">' +
+        escapeHTML(a.text) +
+        '</div>' +
+        '<div class="gm-task-sub">' +
+        escapeHTML(formatDateTimeUTC(a.when)) +
+        '</div>' +
+        '</div>' +
+        '<button class="gm-task-action-btn" title="Activity Actions" aria-label="Activity actions"><i class="ph ph-dots-three-vertical"></i></button>' +
+        '</div>' +
+        '</div>' +
+        '</div>' +
         '</div>';
     });
     html += '</div>';
@@ -579,38 +749,64 @@ export class OverviewView {
 
     overlay.innerHTML =
       '<div class="gm-modal-card" style="max-width: 450px; width: 95%; text-align: left; padding: 1.5rem;">' +
-        '<h3 style="font-family: var(--font-display); margin-bottom: 1rem; text-align: center; font-size: var(--fs-xl);">' + t('modal_manage_clocks_title') + '</h3>' +
-        '<div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">' +
-          '<button type="button" id="gm-sync-officers-clocks-btn" class="gm-btn gm-btn-ghost gm-btn-sm" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.4rem;">' +
-            '<i class="ph ph-arrows-clockwise"></i> Auto-sync with Officers (R4/R5)' +
-          '</button>' +
-        '</div>' +
-        '<div id="gm-clocks-list-container" class="gm-col" style="gap: .6rem; max-height: 220px; overflow-y: auto; margin-bottom: 1.5rem; padding-right: 4px;"></div>' +
-        '<div style="border-top: 1px solid var(--border-soft); padding-top: 1.2rem;">' +
-          '<h4 style="font-size: var(--fs-base); font-weight: 600; color: var(--fg-muted); margin-bottom: 0.6rem;">' + t('modal_add_clock_section') + '</h4>' +
-          '<div class="gm-col" style="gap: 0.6rem;">' +
-            '<input type="text" id="gm-new-clock-name" class="gm-input" placeholder="' + t('modal_add_clock_name_placeholder') + '" aria-label="' + escapeHTML(t('modal_add_clock_name_placeholder')) + '" maxlength="20">' +
-            '<select id="gm-new-clock-tz" class="gm-select" aria-label="' + escapeHTML(t('a11y_clock_timezone')) + '" style="padding: .55rem .75rem;">' + tzOptions + '</select>' +
-            '<div style="display: flex; gap: 0.5rem;">' +
-              '<select id="gm-new-clock-offset" class="gm-select" aria-label="' + escapeHTML(t('a11y_clock_offset')) + '" style="flex: 1; padding: .55rem .75rem;">' + offsetOptions + '</select>' +
-              '<button id="gm-add-clock-btn" class="gm-btn gm-btn-primary" style="flex-shrink: 0;"><i class="ph ph-plus"></i> ' + t('modal_add_clock_btn') + '</button>' +
-            '</div>' +
-          '</div>' +
-        '</div>' +
-        '<div class="confirm-actions" style="margin-top: 1.5rem; gap: 1rem; justify-content: flex-end;">' +
-          '<button id="gm-clocks-modal-close" class="gm-btn gm-btn-ghost">' + t('modal_clocks_close') + '</button>' +
-        '</div>' +
+      '<h3 style="font-family: var(--font-display); margin-bottom: 1rem; text-align: center; font-size: var(--fs-xl);">' +
+      t('modal_manage_clocks_title') +
+      '</h3>' +
+      '<div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">' +
+      '<button type="button" id="gm-sync-officers-clocks-btn" class="gm-btn gm-btn-ghost gm-btn-sm" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.4rem;">' +
+      '<i class="ph ph-arrows-clockwise"></i> Auto-sync with Officers (R4/R5)' +
+      '</button>' +
+      '</div>' +
+      '<div id="gm-clocks-list-container" class="gm-col" style="gap: .6rem; max-height: 220px; overflow-y: auto; margin-bottom: 1.5rem; padding-right: 4px;"></div>' +
+      '<div style="border-top: 1px solid var(--border-soft); padding-top: 1.2rem;">' +
+      '<h4 style="font-size: var(--fs-base); font-weight: 600; color: var(--fg-muted); margin-bottom: 0.6rem;">' +
+      t('modal_add_clock_section') +
+      '</h4>' +
+      '<div class="gm-col" style="gap: 0.6rem;">' +
+      '<input type="text" id="gm-new-clock-name" class="gm-input" placeholder="' +
+      t('modal_add_clock_name_placeholder') +
+      '" aria-label="' +
+      escapeHTML(t('modal_add_clock_name_placeholder')) +
+      '" maxlength="20">' +
+      '<select id="gm-new-clock-tz" class="gm-select" aria-label="' +
+      escapeHTML(t('a11y_clock_timezone')) +
+      '" style="padding: .55rem .75rem;">' +
+      tzOptions +
+      '</select>' +
+      '<div style="display: flex; gap: 0.5rem;">' +
+      '<select id="gm-new-clock-offset" class="gm-select" aria-label="' +
+      escapeHTML(t('a11y_clock_offset')) +
+      '" style="flex: 1; padding: .55rem .75rem;">' +
+      offsetOptions +
+      '</select>' +
+      '<button id="gm-add-clock-btn" class="gm-btn gm-btn-primary" style="flex-shrink: 0;"><i class="ph ph-plus"></i> ' +
+      t('modal_add_clock_btn') +
+      '</button>' +
+      '</div>' +
+      '</div>' +
+      '</div>' +
+      '<div class="confirm-actions" style="margin-top: 1.5rem; gap: 1rem; justify-content: flex-end;">' +
+      '<button id="gm-clocks-modal-close" class="gm-btn gm-btn-ghost">' +
+      t('modal_clocks_close') +
+      '</button>' +
+      '</div>' +
       '</div>';
 
     document.body.appendChild(overlay);
-    window.requestAnimationFrame(() => { overlay.classList.add('visible'); });
+    window.requestAnimationFrame(() => {
+      overlay.classList.add('visible');
+    });
 
     const modalClose = (): void => {
       overlay.classList.remove('visible');
-      setTimeout(() => { overlay.remove(); }, 250);
+      setTimeout(() => {
+        overlay.remove();
+      }, 250);
     };
 
-    overlay.addEventListener('click', (ev) => { if (ev.target === overlay) modalClose(); });
+    overlay.addEventListener('click', (ev) => {
+      if (ev.target === overlay) modalClose();
+    });
     const closeBtn = document.getElementById('gm-clocks-modal-close');
     if (closeBtn) closeBtn.addEventListener('click', modalClose);
     adoptDialog(overlay, { onEscape: modalClose });
@@ -620,7 +816,8 @@ export class OverviewView {
       if (!listContainer) return;
 
       if (this.clockMembers.length === 0) {
-        listContainer.innerHTML = '<div class="gm-empty" style="padding: 1.5rem 0;"><i class="ph ph-ghost gm-icon" style="font-size: var(--fs-3xl); margin-bottom: 0.4rem;"></i><div class="gm-empty-title" style="font-size: var(--fs-base);">No clocks configured</div></div>';
+        listContainer.innerHTML =
+          '<div class="gm-empty" style="padding: 1.5rem 0;"><i class="ph ph-ghost gm-icon" style="font-size: var(--fs-3xl); margin-bottom: 0.4rem;"></i><div class="gm-empty-title" style="font-size: var(--fs-base);">No clocks configured</div></div>';
         return;
       }
 
@@ -630,14 +827,24 @@ export class OverviewView {
         const offsetText = formatOffsetLabel(m.offset) + (m.timezone ? ' (' + m.timezone + ')' : '');
         html +=
           '<div style="display: flex; align-items: center; justify-content: space-between; background: var(--bg-1); border: 1px solid var(--border-soft); padding: 0.5rem 0.75rem; border-radius: 8px; gap: 0.5rem;">' +
-            '<div style="display: flex; align-items: center; gap: 0.6rem; min-width: 0;">' +
-              '<div class="gm-avatar gm-avatar-sm gm-avatar-' + m.color + '" style="flex-shrink:0;">' + escapeHTML(initials) + '</div>' +
-              '<div style="min-width: 0;">' +
-                '<div style="font-weight: 600; font-size: var(--fs-base); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">' + escapeHTML(m.name) + '</div>' +
-                '<div style="font-size: var(--fs-xs); color: var(--fg-dim);">' + escapeHTML(offsetText) + '</div>' +
-              '</div>' +
-            '</div>' +
-            '<button class="gm-mini-btn gm-danger delete-clock-btn" data-index="' + idx + '" title="Delete" style="flex-shrink:0;"><i class="ph ph-trash"></i></button>' +
+          '<div style="display: flex; align-items: center; gap: 0.6rem; min-width: 0;">' +
+          '<div class="gm-avatar gm-avatar-sm gm-avatar-' +
+          m.color +
+          '" style="flex-shrink:0;">' +
+          escapeHTML(initials) +
+          '</div>' +
+          '<div style="min-width: 0;">' +
+          '<div style="font-weight: 600; font-size: var(--fs-base); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">' +
+          escapeHTML(m.name) +
+          '</div>' +
+          '<div style="font-size: var(--fs-xs); color: var(--fg-dim);">' +
+          escapeHTML(offsetText) +
+          '</div>' +
+          '</div>' +
+          '</div>' +
+          '<button class="gm-mini-btn gm-danger delete-clock-btn" data-index="' +
+          idx +
+          '" title="Delete" style="flex-shrink:0;"><i class="ph ph-trash"></i></button>' +
           '</div>';
       });
       listContainer.innerHTML = html;

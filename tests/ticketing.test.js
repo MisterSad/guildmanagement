@@ -21,13 +21,17 @@ describe('Bug-report ticketing (V3.5.3)', () => {
     expect(migration).toContain('CREATE OR REPLACE FUNCTION public.gm_create_ticket');
     // The reporter must be resolved from auth.uid() on the browser path and the
     // gate must reject member + anonymous callers
-    expect(migration).toMatch(/IF auth\.uid\(\) IS NOT NULL THEN[\s\S]*?role NOT IN \('super_admin', 'server_admin', 'guild_admin'\)/);
+    expect(migration).toMatch(
+      /IF auth\.uid\(\) IS NOT NULL THEN[\s\S]*?role NOT IN \('super_admin', 'server_admin', 'guild_admin'\)/
+    );
     expect(migration).toContain("'forbidden'::text");
     // Service-role path trusts the explicit reporter (Edge already authorized)
     expect(migration).toMatch(/ELSE[\s\S]*?v_reporter_account := p_reporter_account_id/);
     // Grants hygiene + PostgREST reload
     expect(migration).toMatch(/REVOKE ALL ON FUNCTION public\.gm_create_ticket/);
-    expect(migration).toContain("GRANT EXECUTE ON FUNCTION public.gm_create_ticket(text, text, text, text, text, text, text) TO authenticated, service_role;");
+    expect(migration).toContain(
+      'GRANT EXECUTE ON FUNCTION public.gm_create_ticket(text, text, text, text, text, text, text) TO authenticated, service_role;'
+    );
     expect(migration).toContain("NOTIFY pgrst, 'reload schema'");
     expect(migration).toMatch(/ROLLBACK SQL/);
     // List + status RPCs exist (super admin)
@@ -38,8 +42,12 @@ describe('Bug-report ticketing (V3.5.3)', () => {
     const fixMigration = read('supabase/migrations/20260824122000_fix_tickets_service_role_rpc.sql');
     expect(fixMigration).toMatch(/WHERE \(auth\.uid\(\) IS NULL OR public\.is_super_admin\(\)\)/);
     expect(fixMigration).toMatch(/IF auth\.uid\(\) IS NOT NULL THEN[\s\S]*?IF NOT public\.is_super_admin\(\)/);
-    expect(fixMigration).toContain("GRANT EXECUTE ON FUNCTION public.gm_list_tickets() TO authenticated, service_role;");
-    expect(fixMigration).toContain("GRANT EXECUTE ON FUNCTION public.gm_update_ticket_status(bigint, text) TO authenticated, service_role;");
+    expect(fixMigration).toContain(
+      'GRANT EXECUTE ON FUNCTION public.gm_list_tickets() TO authenticated, service_role;'
+    );
+    expect(fixMigration).toContain(
+      'GRANT EXECUTE ON FUNCTION public.gm_update_ticket_status(bigint, text) TO authenticated, service_role;'
+    );
   });
 
   it('the tickets Edge Function enforces identity + the 3-role gate and is CORS-correct', () => {
@@ -71,9 +79,12 @@ describe('Bug-report ticketing (V3.5.3)', () => {
 
   it('the desktop sidebar also renders the Report-a-bug button (topbar is hidden >= 901px)', () => {
     const shell = read('src/modules/shell/views/ShellView.ts');
-    const sidebar = shell.slice(shell.indexOf('public renderSidebar(): void'), shell.indexOf('public renderTopbar(): void'));
+    const sidebar = shell.slice(
+      shell.indexOf('public renderSidebar(): void'),
+      shell.indexOf('public renderTopbar(): void')
+    );
     expect(sidebar).toContain('gm-sidebar-report-bug');
-    expect(sidebar).toContain("(canReportBug");
+    expect(sidebar).toContain('(canReportBug');
     expect(sidebar).toContain('openBugReportModal');
     const css = read('shell.css');
     // The topbar is hidden on desktop, confirming the sidebar button is required
@@ -104,7 +115,9 @@ describe('Bug-report ticketing (V3.5.3)', () => {
   });
 
   it('detectClientEnvironment and formatTicketDescription format the structured schema correctly', () => {
-    const env = detectClientEnvironment('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36');
+    const env = detectClientEnvironment(
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36'
+    );
     // macOS/iOS deliberately report just the platform name, no version: every
     // browser freezes the "Mac OS X 10_15_7" UA token at that exact value
     // regardless of the real installed macOS version (confirmed live on
@@ -114,11 +127,15 @@ describe('Bug-report ticketing (V3.5.3)', () => {
     expect(env.browser).toContain('Chrome 128');
     expect(env.appVersion).toBeDefined();
 
-    const winEnv = detectClientEnvironment('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36 Edg/127.0.0.0');
+    const winEnv = detectClientEnvironment(
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36 Edg/127.0.0.0'
+    );
     expect(winEnv.os).toBe('Windows 10/11');
     expect(winEnv.browser).toContain('Edge 127');
 
-    const iosEnv = detectClientEnvironment('Mozilla/5.0 (iPhone; CPU iPhone OS 17_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1');
+    const iosEnv = detectClientEnvironment(
+      'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1'
+    );
     // Same freeze applies to iOS's "OS X_Y" token (confirmed live: a real
     // iOS 26.6.1 device still reports 18_7 here) — no version shown.
     expect(iosEnv.os).toBe('iOS');
@@ -132,7 +149,7 @@ describe('Bug-report ticketing (V3.5.3)', () => {
       expectedBehavior: 'It should work',
       steps: '1. Click A\n2. Click B',
       additionalContext: 'Error 500 in console',
-      env: env
+      env: env,
     });
 
     expect(desc).toContain('**Current Behavior / Issue**\nSomething broke');
@@ -194,7 +211,7 @@ describe('Bug-report ticketing (V3.5.3)', () => {
     expect(tickets).toContain('tickets_status_in_progress');
     expect(tickets).toContain('tickets_status_resolved');
     expect(tickets).toContain('tickets_status_closed');
-    expect(tickets).toContain('curStatus === \'in_progress\'');
+    expect(tickets).toContain("curStatus === 'in_progress'");
 
     const edge = read('supabase/functions/tickets/index.ts');
     expect(edge).toContain('STATUS_META');
@@ -205,7 +222,7 @@ describe('Bug-report ticketing (V3.5.3)', () => {
   it('i18n exposes the ticket strings including screenshots and statuses', () => {
     const i18n = read('src/core/i18n/i18n.dictionary.ts');
     expect(i18n).toContain('gm_nav_tickets:');
-    expect(i18n).toContain("ticket_report_bug:");
+    expect(i18n).toContain('ticket_report_bug:');
     expect(i18n).toContain('ticket_submit:');
     expect(i18n).toContain('ticket_current_behavior:');
     expect(i18n).toContain('ticket_expected_behavior:');

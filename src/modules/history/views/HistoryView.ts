@@ -12,7 +12,6 @@
  * This module never assigns `window.GM_HISTORY` (bridge added at cutover).
  */
 
-
 import {
   EVENT_META,
   FILTERS,
@@ -33,7 +32,7 @@ import {
   fetchGloryParticipantRows,
   fetchSessionParticipants,
   updateSessionParticipantField,
-  type HistorySession
+  type HistorySession,
 } from '../history.service';
 import { EventsService, type WarEventName } from '../../events/events.service';
 import { resolveChestsForScore, resolvePrepChests, WAR_AGGREGATE_DAY } from '../../../core/scoring/chests';
@@ -105,7 +104,7 @@ export class HistoryView {
                 week_start: ws,
                 participants: 0,
                 participated_count: 0,
-                total_score: 0
+                total_score: 0,
               };
               seenPseudo[ws] = new Set<string>();
             }
@@ -137,27 +136,48 @@ export class HistoryView {
 
     const filtered = filterSessions(this.sessions, this.activeFilter);
 
-    const pillsHtml = '<div class="gm-tabs-pill-row" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:1.5rem;">' +
+    const pillsHtml =
+      '<div class="gm-tabs-pill-row" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:1.5rem;">' +
       '<div class="gm-tabs-pill" style="margin:0;">' +
-        FILTERS.map((f) => {
-          const isActive = (f === this.activeFilter);
-          const label = (f === 'All') ? t('history_filter_all') : f;
-          const iconClass = (f === 'All') ? 'ph-circles-four' : getEventIcon(f);
-          return '<button class="gm-tab-pill history-filter' + (isActive ? ' gm-active' : '') + '" data-filter="' + escapeHTML(f) + '">' +
-            '<i class="ph ' + iconClass + '"></i> ' + escapeHTML(label) +
-          '</button>';
-        }).join('') +
+      FILTERS.map((f) => {
+        const isActive = f === this.activeFilter;
+        const label = f === 'All' ? t('history_filter_all') : f;
+        const iconClass = f === 'All' ? 'ph-circles-four' : getEventIcon(f);
+        return (
+          '<button class="gm-tab-pill history-filter' +
+          (isActive ? ' gm-active' : '') +
+          '" data-filter="' +
+          escapeHTML(f) +
+          '">' +
+          '<i class="ph ' +
+          iconClass +
+          '"></i> ' +
+          escapeHTML(label) +
+          '</button>'
+        );
+      }).join('') +
       '</div>' +
-      (this.activeFilter !== 'All' && filtered.length > 0 ?
-        '<button class="gm-btn gm-btn-danger history-clear-category-btn" style="font-size:0.82rem; padding:0.4rem 0.85rem; display:inline-flex; align-items:center; gap:0.4rem;" data-filter="' + escapeHTML(this.activeFilter) + '" data-count="' + filtered.length + '">' +
-          '<i class="ph ph-trash"></i> <span>Delete ' + escapeHTML(this.activeFilter) + ' history (' + filtered.length + ')</span>' +
-        '</button>' : ''
-      ) +
-    '</div>';
+      (this.activeFilter !== 'All' && filtered.length > 0
+        ? '<button class="gm-btn gm-btn-danger history-clear-category-btn" style="font-size:0.82rem; padding:0.4rem 0.85rem; display:inline-flex; align-items:center; gap:0.4rem;" data-filter="' +
+          escapeHTML(this.activeFilter) +
+          '" data-count="' +
+          filtered.length +
+          '">' +
+          '<i class="ph ph-trash"></i> <span>Delete ' +
+          escapeHTML(this.activeFilter) +
+          ' history (' +
+          filtered.length +
+          ')</span>' +
+          '</button>'
+        : '') +
+      '</div>';
 
     if (filtered.length === 0) {
-      area.innerHTML = pillsHtml +
-        '<div class="gm-empty"><i class="ph ph-clock-counter-clockwise gm-icon"></i><div class="gm-empty-title">' + t('history_empty') + '</div></div>';
+      area.innerHTML =
+        pillsHtml +
+        '<div class="gm-empty"><i class="ph ph-clock-counter-clockwise gm-icon"></i><div class="gm-empty-title">' +
+        t('history_empty') +
+        '</div></div>';
       this.wirePills();
       return;
     }
@@ -168,27 +188,37 @@ export class HistoryView {
       if (displayName === 'Shadowfront Squad 1') displayName = 'Shadowfront Squad One';
       else if (displayName === 'Shadowfront Squad 2') displayName = 'Shadowfront Squad Two';
 
-      const meta: any = EVENT_META[s.event_name || ''] || { icon: 'ph-calendar-dot', label: displayName, hasScore: false, border: 'var(--border-soft)' };
+      const meta: any = EVENT_META[s.event_name || ''] || {
+        icon: 'ph-calendar-dot',
+        label: displayName,
+        hasScore: false,
+        border: 'var(--border-soft)',
+      };
       meta.label = displayName;
       const iconClass = getEventIcon(s.event_name || '');
-      const isWeekly = (s.event_name === 'SvS' || s.event_name === 'GvG' || s.event_name === 'Glory');
+      const isWeekly = s.event_name === 'SvS' || s.event_name === 'GvG' || s.event_name === 'Glory';
       const weekNum = getWeekNumber(s.week_start);
       const weekDisplay = 'Week ' + weekNum;
-      const ratio = (s.participants || 0) > 0 ? Math.round(((s.participated_count || 0) / (s.participants as number)) * 100) : 0;
+      const ratio =
+        (s.participants || 0) > 0 ? Math.round(((s.participated_count || 0) / (s.participants as number)) * 100) : 0;
       const themeClass = getEventTheme(s.event_name || '');
 
       // Opponent + Won/Lost summary for SvS/GvG sessions with war metadata.
       let warMetaHtml = '';
       if (s.event_name === 'SvS' || s.event_name === 'GvG') {
-        const war = this.warSessions[(s.event_name) + ':' + (s.session_id || '')];
+        const war = this.warSessions[s.event_name + ':' + (s.session_id || '')];
         if (war && war.opponent_snapshot && war.opponent_snapshot.name) {
           const won = [1, 2, 3, 4, 5, 6].filter((d) => war['day' + d + '_result'] === 'won').length;
           const lost = [1, 2, 3, 4, 5, 6].filter((d) => war['day' + d + '_result'] === 'lost').length;
           const opLabel = t('war_card_opponent').replace('{name}', String(war.opponent_snapshot.name));
           let recLabel = '';
-          if (won || lost) recLabel = ' · ' + t('war_card_record').replace('{w}', String(won)).replace('{l}', String(lost));
-          warMetaHtml = '<div class="war-card-meta"><i class="ph ph-crosshair"></i> ' +
-            escapeHTML(opLabel) + escapeHTML(recLabel) + '</div>';
+          if (won || lost)
+            recLabel = ' · ' + t('war_card_record').replace('{w}', String(won)).replace('{l}', String(lost));
+          warMetaHtml =
+            '<div class="war-card-meta"><i class="ph ph-crosshair"></i> ' +
+            escapeHTML(opLabel) +
+            escapeHTML(recLabel) +
+            '</div>';
         }
       }
 
@@ -203,13 +233,27 @@ export class HistoryView {
       } else {
         const dateObj = parseSessionDate(s);
         if (dateObj && !isNaN(dateObj.getTime())) {
-          leftTopStr = pad2(dateObj.getUTCDate()) + '/' + pad2(dateObj.getUTCMonth() + 1) + '/' + dateObj.getUTCFullYear();
+          leftTopStr =
+            pad2(dateObj.getUTCDate()) + '/' + pad2(dateObj.getUTCMonth() + 1) + '/' + dateObj.getUTCFullYear();
           if (s.start_at) {
             leftSubStr = pad2(dateObj.getUTCHours()) + ':' + pad2(dateObj.getUTCMinutes()) + ' UTC';
-            subtitleText = dateObj.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' }) + ', ' + leftSubStr;
+            subtitleText =
+              dateObj.toLocaleDateString('en-GB', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                timeZone: 'UTC',
+              }) +
+              ', ' +
+              leftSubStr;
           } else {
             leftSubStr = '';
-            subtitleText = dateObj.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' });
+            subtitleText = dateObj.toLocaleDateString('en-GB', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+              timeZone: 'UTC',
+            });
           }
         } else {
           leftTopStr = weekDisplay;
@@ -220,40 +264,78 @@ export class HistoryView {
 
       cardsHtml +=
         '<div class="gm-timeline-item">' +
-          '<div class="gm-timeline-time-col">' +
-            '<div style="font-size:0.85rem; font-weight:700;">' + escapeHTML(leftTopStr) + '</div>' +
-            (leftSubStr ? '<div style="font-size:0.7rem; font-weight:500; opacity:0.7; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + escapeHTML(leftSubStr) + '</div>' : '') +
-          '</div>' +
-          '<div class="gm-timeline-line-col">' +
-            '<div class="gm-timeline-dot"></div>' +
-          '</div>' +
-          '<div>' +
-            '<div class="gm-task-card gm-history-card ' + themeClass + '" data-event="' + escapeHTML(s.event_name) + '" data-display="' + escapeHTML(displayName) + '" data-session="' + escapeHTML(s.session_id || '') + '" data-week="' + escapeHTML(s.week_start) + '" data-granular="' + (s.granular ? '1' : '0') + '">' +
-              '<div class="gm-task-card-top">' +
-                '<div class="gm-task-status-tag">' +
-                  '<i class="ph ' + escapeHTML(iconClass) + '"></i>' +
-                  '<span>' + escapeHTML(meta.label) + '</span>' +
-                '</div>' +
-                '<div style="display:flex; gap:0.4rem; align-items:center;">' +
-                  ((s.total_score || 0) > 0 ? '<span class="gm-task-countdown-badge"><i class="ph ph-trophy"></i> ' + formatNumber(s.total_score) + '</span>' : '') +
-                  '<span class="gm-task-countdown-badge">' + (s.participated_count || 0) + '/' + (s.participants || 0) + ' (' + ratio + '%)</span>' +
-                '</div>' +
-              '</div>' +
-              '<div class="gm-task-card-body">' +
-                '<div class="gm-task-icon-squircle">' +
-                  '<i class="ph ' + escapeHTML(iconClass) + '"></i>' +
-                '</div>' +
-                '<div class="gm-task-info">' +
-                  '<div class="gm-task-title">' + escapeHTML(meta.label) + '</div>' +
-                  '<div class="gm-task-sub">' + escapeHTML(subtitleText) + '</div>' +
-                  warMetaHtml +
-                '</div>' +
-                '<button class="gm-task-action-btn" title="View Session Details" aria-label="View session details">' +
-                  '<i class="ph ph-caret-right" style="font-size:1.3rem;"></i>' +
-                '</button>' +
-              '</div>' +
-            '</div>' +
-          '</div>' +
+        '<div class="gm-timeline-time-col">' +
+        '<div style="font-size:0.85rem; font-weight:700;">' +
+        escapeHTML(leftTopStr) +
+        '</div>' +
+        (leftSubStr
+          ? '<div style="font-size:0.7rem; font-weight:500; opacity:0.7; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' +
+            escapeHTML(leftSubStr) +
+            '</div>'
+          : '') +
+        '</div>' +
+        '<div class="gm-timeline-line-col">' +
+        '<div class="gm-timeline-dot"></div>' +
+        '</div>' +
+        '<div>' +
+        '<div class="gm-task-card gm-history-card ' +
+        themeClass +
+        '" data-event="' +
+        escapeHTML(s.event_name) +
+        '" data-display="' +
+        escapeHTML(displayName) +
+        '" data-session="' +
+        escapeHTML(s.session_id || '') +
+        '" data-week="' +
+        escapeHTML(s.week_start) +
+        '" data-granular="' +
+        (s.granular ? '1' : '0') +
+        '">' +
+        '<div class="gm-task-card-top">' +
+        '<div class="gm-task-status-tag">' +
+        '<i class="ph ' +
+        escapeHTML(iconClass) +
+        '"></i>' +
+        '<span>' +
+        escapeHTML(meta.label) +
+        '</span>' +
+        '</div>' +
+        '<div style="display:flex; gap:0.4rem; align-items:center;">' +
+        ((s.total_score || 0) > 0
+          ? '<span class="gm-task-countdown-badge"><i class="ph ph-trophy"></i> ' +
+            formatNumber(s.total_score) +
+            '</span>'
+          : '') +
+        '<span class="gm-task-countdown-badge">' +
+        (s.participated_count || 0) +
+        '/' +
+        (s.participants || 0) +
+        ' (' +
+        ratio +
+        '%)</span>' +
+        '</div>' +
+        '</div>' +
+        '<div class="gm-task-card-body">' +
+        '<div class="gm-task-icon-squircle">' +
+        '<i class="ph ' +
+        escapeHTML(iconClass) +
+        '"></i>' +
+        '</div>' +
+        '<div class="gm-task-info">' +
+        '<div class="gm-task-title">' +
+        escapeHTML(meta.label) +
+        '</div>' +
+        '<div class="gm-task-sub">' +
+        escapeHTML(subtitleText) +
+        '</div>' +
+        warMetaHtml +
+        '</div>' +
+        '<button class="gm-task-action-btn" title="View Session Details" aria-label="View session details">' +
+        '<i class="ph ph-caret-right" style="font-size:1.3rem;"></i>' +
+        '</button>' +
+        '</div>' +
+        '</div>' +
+        '</div>' +
         '</div>';
     });
     cardsHtml += '</div>';
@@ -298,7 +380,11 @@ export class HistoryView {
 
     showConfirm(
       'Delete all ' + filterKey + ' history',
-      'Are you sure you want to delete the finished sessions among these <strong>' + count + '</strong> in category <strong>' + escapeHTML(filterKey) + '</strong>? A session still running is kept. This action cannot be undone.',
+      'Are you sure you want to delete the finished sessions among these <strong>' +
+        count +
+        '</strong> in category <strong>' +
+        escapeHTML(filterKey) +
+        '</strong>? A session still running is kept. This action cannot be undone.',
       async () => {
         try {
           // One transaction (M4a). Running sessions -- their participants,
@@ -315,10 +401,21 @@ export class HistoryView {
     );
   }
 
-  private async openSessionDetail(eventName: string, displayName: string | null, sessionId: string | null, weekStart: string, granular: boolean): Promise<void> {
+  private async openSessionDetail(
+    eventName: string,
+    displayName: string | null,
+    sessionId: string | null,
+    weekStart: string,
+    granular: boolean
+  ): Promise<void> {
     const db = getClient();
     if (!db) return;
-    const meta: any = EVENT_META[eventName] || { label: displayName || eventName, icon: 'ph-circle', hasScore: false, border: 'var(--border-soft)' };
+    const meta: any = EVENT_META[eventName] || {
+      label: displayName || eventName,
+      icon: 'ph-circle',
+      hasScore: false,
+      border: 'var(--border-soft)',
+    };
     if (displayName) meta.label = displayName;
 
     const query: any = fetchSessionParticipants(db, getActiveGuild(), eventName, weekStart, sessionId);
@@ -330,42 +427,67 @@ export class HistoryView {
     }
 
     const rows = (res.data || []) as any[];
-    const isDualScore = (eventName === 'SvS' || eventName === 'GvG');
+    const isDualScore = eventName === 'SvS' || eventName === 'GvG';
 
     // Granular mode: fetch the frozen grid + per-day scores and render the
     // 6-day columns instead of the legacy aggregated score_prep/score_pvp.
-    let warExtra: { grid: ChestTier[]; daily: Record<string, Array<{ day: number; score: number; chests_unlocked: number }>> } | null = null;
+    let warExtra: {
+      grid: ChestTier[];
+      daily: Record<string, Array<{ day: number; score: number; chests_unlocked: number }>>;
+    } | null = null;
     let granularActive = false;
     if (granular && sessionId && isDualScore) {
       const granularGuild = getActiveGuild();
       const [warRes, dayRes] = granularGuild
         ? await Promise.all([
             EventsService.getWarSession(granularGuild, eventName as WarEventName, sessionId),
-            EventsService.getDailyScores(granularGuild, eventName as WarEventName, sessionId)
+            EventsService.getDailyScores(granularGuild, eventName as WarEventName, sessionId),
           ])
-        // H2: without a tenant there is nothing to fetch; fall through to the
-        // aggregated view rather than reading ALPHA's session.
-        : [{ ok: false } as Awaited<ReturnType<typeof EventsService.getWarSession>>,
-           { ok: false } as Awaited<ReturnType<typeof EventsService.getDailyScores>>];
+        : // H2: without a tenant there is nothing to fetch; fall through to the
+          // aggregated view rather than reading ALPHA's session.
+          [
+            { ok: false } as Awaited<ReturnType<typeof EventsService.getWarSession>>,
+            { ok: false } as Awaited<ReturnType<typeof EventsService.getDailyScores>>,
+          ];
       if (warRes.ok && dayRes.ok) {
-        const snapshot = warRes.session
-          && Array.isArray(warRes.session.chest_tiers_snapshot)
-          && (warRes.session.chest_tiers_snapshot as unknown as unknown[]).length > 0
-          ? (warRes.session.chest_tiers_snapshot as unknown as ChestTier[])
-          : [];
+        const snapshot =
+          warRes.session &&
+          Array.isArray(warRes.session.chest_tiers_snapshot) &&
+          (warRes.session.chest_tiers_snapshot as unknown as unknown[]).length > 0
+            ? (warRes.session.chest_tiers_snapshot as unknown as ChestTier[])
+            : [];
         const daily: Record<string, Array<{ day: number; score: number; chests_unlocked: number }>> = {};
         dayRes.rows.forEach((r) => {
-          (daily[r.pseudo] = daily[r.pseudo] || []).push({ day: r.day, score: r.score ?? 0, chests_unlocked: r.chests_unlocked ?? 0 });
+          (daily[r.pseudo] = daily[r.pseudo] || []).push({
+            day: r.day,
+            score: r.score ?? 0,
+            chests_unlocked: r.chests_unlocked ?? 0,
+          });
         });
         warExtra = { grid: snapshot, daily };
         granularActive = true;
       }
     }
 
-    this.renderSessionModal(eventName, sessionId, weekStart, rows, meta, isDualScore && !granularActive, granularActive, warExtra);
+    this.renderSessionModal(
+      eventName,
+      sessionId,
+      weekStart,
+      rows,
+      meta,
+      isDualScore && !granularActive,
+      granularActive,
+      warExtra
+    );
   }
 
-  private async updateGranularDayField(eventName: string, sessionId: string, pseudo: string, day: number, score: number): Promise<void> {
+  private async updateGranularDayField(
+    eventName: string,
+    sessionId: string,
+    pseudo: string,
+    day: number,
+    score: number
+  ): Promise<void> {
     if (!(day >= 0 && day <= 6)) return;
     const dayGuild = getActiveGuild();
     if (!dayGuild) {
@@ -373,12 +495,9 @@ export class HistoryView {
       showToast(t('guild_unresolved'), 'error');
       return;
     }
-    const res = await EventsService.upsertDailyScores(
-      dayGuild,
-      eventName as WarEventName,
-      sessionId,
-      [{ pseudo, day, score }]
-    );
+    const res = await EventsService.upsertDailyScores(dayGuild, eventName as WarEventName, sessionId, [
+      { pseudo, day, score },
+    ]);
     if (res.ok) {
       showToast(t('war_save_daily_success'), 'success');
     } else {
@@ -386,7 +505,14 @@ export class HistoryView {
     }
   }
 
-  private async updateParticipantField(eventName: string, sessionId: string | null, weekStart: string, pseudo: string, field: string, value: unknown): Promise<void> {
+  private async updateParticipantField(
+    eventName: string,
+    sessionId: string | null,
+    weekStart: string,
+    pseudo: string,
+    field: string,
+    value: unknown
+  ): Promise<void> {
     // SECURITY: never allow arbitrary column writes from the History modal.
     if (ALLOWED_HISTORY_FIELDS.indexOf(field) === -1) {
       console.error('[SECURITY] Unauthorized field update attempt in history:', field);
@@ -396,7 +522,16 @@ export class HistoryView {
     const db = getClient();
     if (!db) return;
     const currentG = getActiveGuild();
-    const query: any = updateSessionParticipantField(db, currentG, eventName, weekStart, sessionId, pseudo, field, value);
+    const query: any = updateSessionParticipantField(
+      db,
+      currentG,
+      eventName,
+      weekStart,
+      sessionId,
+      pseudo,
+      field,
+      value
+    );
     const updateRes = await query;
     if (updateRes.error) {
       showToast('Error: ' + updateRes.error.message, 'error');
@@ -413,7 +548,10 @@ export class HistoryView {
     meta: any,
     isDualScore: boolean,
     granular = false,
-    warExtra: { grid: ChestTier[]; daily: Record<string, Array<{ day: number; score: number; chests_unlocked: number }>> } | null = null
+    warExtra: {
+      grid: ChestTier[];
+      daily: Record<string, Array<{ day: number; score: number; chests_unlocked: number }>>;
+    } | null = null
   ): void {
     const existing = document.getElementById('history-modal');
     if (existing) existing.remove();
@@ -421,7 +559,8 @@ export class HistoryView {
     const when = sessionId && hasSessionDate(sessionId) ? formatSessionDate(sessionId) : t('history_week_only');
 
     const sorted = rows.slice().sort((a, b) => {
-      const ap = a.participated || 0, bp = b.participated || 0;
+      const ap = a.participated || 0,
+        bp = b.participated || 0;
       if (bp !== ap) return bp - ap;
       const as = (a.score || 0) + (a.score_prep || 0) + (a.score_pvp || 0);
       const bs = (b.score || 0) + (b.score_prep || 0) + (b.score_pvp || 0);
@@ -429,15 +568,16 @@ export class HistoryView {
       return String(a.pseudo).localeCompare(String(b.pseudo));
     });
 
-    const isDtr = (eventName === 'Defend Trade Route');
-    const isAdmin = (roleFromStorage() !== 'member');
+    const isDtr = eventName === 'Defend Trade Route';
+    const isAdmin = roleFromStorage() !== 'member';
     const hasGrid = granular && !!(warExtra && warExtra.grid && warExtra.grid.length > 0);
 
     let headerCols = '<th>' + t('col_member') + '</th>';
-    const hasParticipated = (eventName !== 'Glory');
+    const hasParticipated = eventName !== 'Glory';
     if (hasParticipated) headerCols += '<th class="gm-center">' + t('col_participated') + '</th>';
     if (eventName === 'Shadowfront') {
-      headerCols += '<th class="gm-center">Late</th><th class="gm-center">Excused</th><th class="gm-center">Sub Present</th>';
+      headerCols +=
+        '<th class="gm-center">Late</th><th class="gm-center">Excused</th><th class="gm-center">Sub Present</th>';
     }
     if (isDtr) headerCols += '<th class="gm-center">Appointed</th>';
     if (granular) {
@@ -446,116 +586,285 @@ export class HistoryView {
       }
       if (hasGrid) headerCols += '<th class="gm-right">' + t('war_col_chests') + '</th>';
     } else if (isDualScore) {
-      headerCols += '<th class="gm-right">' + t('col_score_prep') + '</th><th class="gm-right">' + t('col_score_pvp') + '</th>';
+      headerCols +=
+        '<th class="gm-right">' + t('col_score_prep') + '</th><th class="gm-right">' + t('col_score_pvp') + '</th>';
     } else if (meta.hasScore) {
       headerCols += '<th class="gm-right">' + t('col_score') + '</th>';
     }
 
-    const rowsHtml = sorted.map((r) => {
-      const initial = avatarInit(r.pseudo);
-      let participatedCell = '', lateCell = '', excusedCell = '', subPresentCell = '', appointedCell = '', scoreCells = '';
+    const rowsHtml = sorted
+      .map((r) => {
+        const initial = avatarInit(r.pseudo);
+        let participatedCell = '',
+          lateCell = '',
+          excusedCell = '',
+          subPresentCell = '',
+          appointedCell = '',
+          scoreCells = '';
 
-      if (hasParticipated) {
-        if (isAdmin) {
-          participatedCell = '<td class="gm-center" data-label="' + t('col_participated') + '"><label class="check-toggle" style="margin: auto;"><input type="checkbox" class="hist-edit-check" data-field="participated" data-pseudo="' + escapeHTML(r.pseudo) + '"' + (r.participated > 0 ? ' checked' : '') + '><span class="check-slider"></span></label></td>';
-        } else {
-          participatedCell = '<td class="gm-center" data-label="' + t('col_participated') + '">' + (r.participated > 0 ? '<i class="ph ph-check-circle text-success"></i>' : '<i class="ph ph-x-circle gm-dim"></i>') + '</td>';
+        if (hasParticipated) {
+          if (isAdmin) {
+            participatedCell =
+              '<td class="gm-center" data-label="' +
+              t('col_participated') +
+              '"><label class="check-toggle" style="margin: auto;"><input type="checkbox" class="hist-edit-check" data-field="participated" data-pseudo="' +
+              escapeHTML(r.pseudo) +
+              '"' +
+              (r.participated > 0 ? ' checked' : '') +
+              '><span class="check-slider"></span></label></td>';
+          } else {
+            participatedCell =
+              '<td class="gm-center" data-label="' +
+              t('col_participated') +
+              '">' +
+              (r.participated > 0
+                ? '<i class="ph ph-check-circle text-success"></i>'
+                : '<i class="ph ph-x-circle gm-dim"></i>') +
+              '</td>';
+          }
         }
-      }
-      if (eventName === 'Shadowfront') {
-        if (isAdmin) {
-          lateCell = '<td class="gm-center" data-label="Late"><label class="check-toggle" style="margin: auto;"><input type="checkbox" class="hist-edit-check" data-field="late" data-pseudo="' + escapeHTML(r.pseudo) + '"' + (r.late ? ' checked' : '') + '><span class="check-slider"></span></label></td>';
-          excusedCell = '<td class="gm-center" data-label="Excused"><label class="check-toggle" style="margin: auto;"><input type="checkbox" class="hist-edit-check" data-field="excused" data-pseudo="' + escapeHTML(r.pseudo) + '"' + (r.excused ? ' checked' : '') + '><span class="check-slider"></span></label></td>';
-          subPresentCell = '<td class="gm-center" data-label="Sub Present"><label class="check-toggle" style="margin: auto;"><input type="checkbox" class="hist-edit-check" data-field="sub_present" data-pseudo="' + escapeHTML(r.pseudo) + '"' + (r.sub_present ? ' checked' : '') + '><span class="check-slider"></span></label></td>';
-        } else {
-          lateCell = '<td class="gm-center" data-label="Late">' + (r.late ? '<i class="ph ph-check-circle text-warning"></i>' : '<i class="ph ph-x-circle gm-dim"></i>') + '</td>';
-          excusedCell = '<td class="gm-center" data-label="Excused">' + (r.excused ? '<i class="ph ph-check-circle text-info"></i>' : '<i class="ph ph-x-circle gm-dim"></i>') + '</td>';
-          subPresentCell = '<td class="gm-center" data-label="Sub Present">' + (r.sub_present ? '<i class="ph ph-check-circle text-accent"></i>' : '<i class="ph ph-x-circle gm-dim"></i>') + '</td>';
+        if (eventName === 'Shadowfront') {
+          if (isAdmin) {
+            lateCell =
+              '<td class="gm-center" data-label="Late"><label class="check-toggle" style="margin: auto;"><input type="checkbox" class="hist-edit-check" data-field="late" data-pseudo="' +
+              escapeHTML(r.pseudo) +
+              '"' +
+              (r.late ? ' checked' : '') +
+              '><span class="check-slider"></span></label></td>';
+            excusedCell =
+              '<td class="gm-center" data-label="Excused"><label class="check-toggle" style="margin: auto;"><input type="checkbox" class="hist-edit-check" data-field="excused" data-pseudo="' +
+              escapeHTML(r.pseudo) +
+              '"' +
+              (r.excused ? ' checked' : '') +
+              '><span class="check-slider"></span></label></td>';
+            subPresentCell =
+              '<td class="gm-center" data-label="Sub Present"><label class="check-toggle" style="margin: auto;"><input type="checkbox" class="hist-edit-check" data-field="sub_present" data-pseudo="' +
+              escapeHTML(r.pseudo) +
+              '"' +
+              (r.sub_present ? ' checked' : '') +
+              '><span class="check-slider"></span></label></td>';
+          } else {
+            lateCell =
+              '<td class="gm-center" data-label="Late">' +
+              (r.late ? '<i class="ph ph-check-circle text-warning"></i>' : '<i class="ph ph-x-circle gm-dim"></i>') +
+              '</td>';
+            excusedCell =
+              '<td class="gm-center" data-label="Excused">' +
+              (r.excused ? '<i class="ph ph-check-circle text-info"></i>' : '<i class="ph ph-x-circle gm-dim"></i>') +
+              '</td>';
+            subPresentCell =
+              '<td class="gm-center" data-label="Sub Present">' +
+              (r.sub_present
+                ? '<i class="ph ph-check-circle text-accent"></i>'
+                : '<i class="ph ph-x-circle gm-dim"></i>') +
+              '</td>';
+          }
         }
-      }
-      if (isDtr) {
-        if (isAdmin) {
-          appointedCell = '<td class="gm-center" data-label="Appointed"><label class="check-toggle" style="margin: auto;"><input type="checkbox" class="hist-edit-check" data-field="appointed" data-pseudo="' + escapeHTML(r.pseudo) + '"' + (r.appointed ? ' checked' : '') + '><span class="check-slider"></span></label></td>';
-        } else {
-          appointedCell = '<td class="gm-center" data-label="Appointed">' + (r.appointed ? '<i class="ph ph-check-circle text-success"></i>' : '<i class="ph ph-x-circle gm-dim"></i>') + '</td>';
+        if (isDtr) {
+          if (isAdmin) {
+            appointedCell =
+              '<td class="gm-center" data-label="Appointed"><label class="check-toggle" style="margin: auto;"><input type="checkbox" class="hist-edit-check" data-field="appointed" data-pseudo="' +
+              escapeHTML(r.pseudo) +
+              '"' +
+              (r.appointed ? ' checked' : '') +
+              '><span class="check-slider"></span></label></td>';
+          } else {
+            appointedCell =
+              '<td class="gm-center" data-label="Appointed">' +
+              (r.appointed
+                ? '<i class="ph ph-check-circle text-success"></i>'
+                : '<i class="ph ph-x-circle gm-dim"></i>') +
+              '</td>';
+          }
         }
-      }
 
-      // Granular SvS/GvG: six per-day columns (+ chests) instead of the
-      // aggregated score_prep / score_pvp fields. A player in aggregate mode
-      // (day-0 row) renders a single cumulative "Total D1–D5" cell instead of
-      // the five empty per-day cells, with chests from resolvePrepChests.
-      if (granular) {
-        const dayOf: Record<number, number> = {};
-        if (warExtra) {
-          ((warExtra.daily[r.pseudo]) || []).forEach((e) => { dayOf[e.day] = e.score; });
-        }
-        const isAggregate = dayOf[WAR_AGGREGATE_DAY] !== undefined;
-        let dayCells = '';
-        if (isAggregate) {
-          const total = dayOf[WAR_AGGREGATE_DAY];
-          if (isAdmin) {
-            dayCells += '<td colspan="5" class="gm-right" data-label="' + t('war_col_total_d15') + '">' +
-              '<input type="text" inputmode="numeric" class="hist-edit-num hist-day-input gm-score-input" data-field="day_score" data-pseudo="' + escapeHTML(r.pseudo) + '" data-day="' + WAR_AGGREGATE_DAY + '" value="' + (total != null ? formatNumber(total) : '') + '" title="' + t('war_col_total_d15') + '"><span class="gm-dim" style="font-size:var(--fs-2xs);"> ' + t('war_col_total_d15') + '</span></td>';
-          } else {
-            dayCells += '<td colspan="5" class="gm-right" data-label="' + t('war_col_total_d15') + '">' + t('war_col_total_d15') + ': ' + (total != null ? formatNumber(total) : '-') + '</td>';
+        // Granular SvS/GvG: six per-day columns (+ chests) instead of the
+        // aggregated score_prep / score_pvp fields. A player in aggregate mode
+        // (day-0 row) renders a single cumulative "Total D1–D5" cell instead of
+        // the five empty per-day cells, with chests from resolvePrepChests.
+        if (granular) {
+          const dayOf: Record<number, number> = {};
+          if (warExtra) {
+            (warExtra.daily[r.pseudo] || []).forEach((e) => {
+              dayOf[e.day] = e.score;
+            });
           }
-          const d6 = dayOf[6];
-          if (isAdmin) {
-            dayCells += '<td class="gm-right" data-label="Day 6"><input type="text" inputmode="numeric" class="hist-edit-num hist-day-input gm-score-input" data-field="day_score" data-pseudo="' + escapeHTML(r.pseudo) + '" aria-label="' + escapeHTML('Day 6, ' + r.pseudo) + '" data-day="6" value="' + (d6 != null ? formatNumber(d6) : '') + '"></td>';
-          } else {
-            dayCells += '<td class="gm-right" data-label="Day 6">' + (d6 != null ? formatNumber(d6) : '-') + '</td>';
-          }
-          if (hasGrid && warExtra) {
-            const chestTotal = resolvePrepChests(warExtra.grid, dayOf, total) +
-              resolveChestsForScore(warExtra.grid.filter((g) => g.day === 6), dayOf[6]);
-            dayCells += '<td class="gm-right" data-label="' + t('war_col_chests') + '">' + (chestTotal ? formatNumber(chestTotal) : '-') + '</td>';
-          }
-        } else {
-          for (let d = 1; d <= 6; d++) {
-            const v = dayOf[d];
+          const isAggregate = dayOf[WAR_AGGREGATE_DAY] !== undefined;
+          let dayCells = '';
+          if (isAggregate) {
+            const total = dayOf[WAR_AGGREGATE_DAY];
             if (isAdmin) {
-              dayCells += '<td class="gm-right" data-label="Day ' + d + '"><input type="text" inputmode="numeric" class="hist-edit-num hist-day-input gm-score-input" data-field="day_score" data-pseudo="' + escapeHTML(r.pseudo) + '" aria-label="' + escapeHTML('Day ' + d + ', ' + r.pseudo) + '" data-day="' + d + '" value="' + (v != null ? formatNumber(v) : '') + '"></td>';
+              dayCells +=
+                '<td colspan="5" class="gm-right" data-label="' +
+                t('war_col_total_d15') +
+                '">' +
+                '<input type="text" inputmode="numeric" class="hist-edit-num hist-day-input gm-score-input" data-field="day_score" data-pseudo="' +
+                escapeHTML(r.pseudo) +
+                '" data-day="' +
+                WAR_AGGREGATE_DAY +
+                '" value="' +
+                (total != null ? formatNumber(total) : '') +
+                '" title="' +
+                t('war_col_total_d15') +
+                '"><span class="gm-dim" style="font-size:var(--fs-2xs);"> ' +
+                t('war_col_total_d15') +
+                '</span></td>';
             } else {
-              dayCells += '<td class="gm-right" data-label="Day ' + d + '">' + (v != null ? formatNumber(v) : '-') + '</td>';
+              dayCells +=
+                '<td colspan="5" class="gm-right" data-label="' +
+                t('war_col_total_d15') +
+                '">' +
+                t('war_col_total_d15') +
+                ': ' +
+                (total != null ? formatNumber(total) : '-') +
+                '</td>';
             }
-          }
-          if (hasGrid && warExtra) {
-            let chestTotal = 0;
+            const d6 = dayOf[6];
+            if (isAdmin) {
+              dayCells +=
+                '<td class="gm-right" data-label="Day 6"><input type="text" inputmode="numeric" class="hist-edit-num hist-day-input gm-score-input" data-field="day_score" data-pseudo="' +
+                escapeHTML(r.pseudo) +
+                '" aria-label="' +
+                escapeHTML('Day 6, ' + r.pseudo) +
+                '" data-day="6" value="' +
+                (d6 != null ? formatNumber(d6) : '') +
+                '"></td>';
+            } else {
+              dayCells += '<td class="gm-right" data-label="Day 6">' + (d6 != null ? formatNumber(d6) : '-') + '</td>';
+            }
+            if (hasGrid && warExtra) {
+              const chestTotal =
+                resolvePrepChests(warExtra.grid, dayOf, total) +
+                resolveChestsForScore(
+                  warExtra.grid.filter((g) => g.day === 6),
+                  dayOf[6]
+                );
+              dayCells +=
+                '<td class="gm-right" data-label="' +
+                t('war_col_chests') +
+                '">' +
+                (chestTotal ? formatNumber(chestTotal) : '-') +
+                '</td>';
+            }
+          } else {
             for (let d = 1; d <= 6; d++) {
-              chestTotal += resolveChestsForScore(warExtra.grid.filter((g) => g.day === d), dayOf[d]);
+              const v = dayOf[d];
+              if (isAdmin) {
+                dayCells +=
+                  '<td class="gm-right" data-label="Day ' +
+                  d +
+                  '"><input type="text" inputmode="numeric" class="hist-edit-num hist-day-input gm-score-input" data-field="day_score" data-pseudo="' +
+                  escapeHTML(r.pseudo) +
+                  '" aria-label="' +
+                  escapeHTML('Day ' + d + ', ' + r.pseudo) +
+                  '" data-day="' +
+                  d +
+                  '" value="' +
+                  (v != null ? formatNumber(v) : '') +
+                  '"></td>';
+              } else {
+                dayCells +=
+                  '<td class="gm-right" data-label="Day ' + d + '">' + (v != null ? formatNumber(v) : '-') + '</td>';
+              }
             }
-            dayCells += '<td class="gm-right" data-label="' + t('war_col_chests') + '">' + (chestTotal ? formatNumber(chestTotal) : '-') + '</td>';
+            if (hasGrid && warExtra) {
+              let chestTotal = 0;
+              for (let d = 1; d <= 6; d++) {
+                chestTotal += resolveChestsForScore(
+                  warExtra.grid.filter((g) => g.day === d),
+                  dayOf[d]
+                );
+              }
+              dayCells +=
+                '<td class="gm-right" data-label="' +
+                t('war_col_chests') +
+                '">' +
+                (chestTotal ? formatNumber(chestTotal) : '-') +
+                '</td>';
+            }
+          }
+          scoreCells = dayCells;
+        } else if (isAdmin) {
+          if (isDualScore) {
+            scoreCells =
+              '<td class="gm-right" data-label="' +
+              t('col_score_prep') +
+              '"><input type="text" inputmode="numeric" class="hist-edit-num gm-score-input" data-field="score_prep" data-pseudo="' +
+              escapeHTML(r.pseudo) +
+              '" aria-label="' +
+              escapeHTML(t('col_score_prep') + ', ' + r.pseudo) +
+              '" value="' +
+              (r.score_prep != null ? formatNumber(r.score_prep) : '') +
+              '"></td>' +
+              '<td class="gm-right" data-label="' +
+              t('col_score_pvp') +
+              '"><input type="text" inputmode="numeric" class="hist-edit-num gm-score-input" data-field="score_pvp" data-pseudo="' +
+              escapeHTML(r.pseudo) +
+              '" aria-label="' +
+              escapeHTML(t('col_score_pvp') + ', ' + r.pseudo) +
+              '" value="' +
+              (r.score_pvp != null ? formatNumber(r.score_pvp) : '') +
+              '"></td>';
+          } else if (meta.hasScore) {
+            scoreCells =
+              '<td class="gm-right" data-label="' +
+              t('col_score') +
+              '"><input type="text" inputmode="numeric" class="hist-edit-num gm-score-input" data-field="score" data-pseudo="' +
+              escapeHTML(r.pseudo) +
+              '" aria-label="' +
+              escapeHTML(t('col_score') + ', ' + r.pseudo) +
+              '" value="' +
+              (r.score != null ? formatNumber(r.score) : '') +
+              '"></td>';
+          }
+        } else {
+          if (isDualScore) {
+            scoreCells =
+              '<td class="gm-right" data-label="' +
+              t('col_score_prep') +
+              '">' +
+              (r.score_prep != null ? formatNumber(r.score_prep) : '-') +
+              '</td>' +
+              '<td class="gm-right" data-label="' +
+              t('col_score_pvp') +
+              '">' +
+              (r.score_pvp != null ? formatNumber(r.score_pvp) : '-') +
+              '</td>';
+          } else if (meta.hasScore) {
+            scoreCells =
+              '<td class="gm-right" data-label="' +
+              t('col_score') +
+              '">' +
+              (r.score != null ? formatNumber(r.score) : '-') +
+              '</td>';
           }
         }
-        scoreCells = dayCells;
-      } else if (isAdmin) {
-        if (isDualScore) {
-          scoreCells = '<td class="gm-right" data-label="' + t('col_score_prep') + '"><input type="text" inputmode="numeric" class="hist-edit-num gm-score-input" data-field="score_prep" data-pseudo="' + escapeHTML(r.pseudo) + '" aria-label="' + escapeHTML(t('col_score_prep') + ', ' + r.pseudo) + '" value="' + (r.score_prep != null ? formatNumber(r.score_prep) : '') + '"></td>' +
-            '<td class="gm-right" data-label="' + t('col_score_pvp') + '"><input type="text" inputmode="numeric" class="hist-edit-num gm-score-input" data-field="score_pvp" data-pseudo="' + escapeHTML(r.pseudo) + '" aria-label="' + escapeHTML(t('col_score_pvp') + ', ' + r.pseudo) + '" value="' + (r.score_pvp != null ? formatNumber(r.score_pvp) : '') + '"></td>';
-        } else if (meta.hasScore) {
-          scoreCells = '<td class="gm-right" data-label="' + t('col_score') + '"><input type="text" inputmode="numeric" class="hist-edit-num gm-score-input" data-field="score" data-pseudo="' + escapeHTML(r.pseudo) + '" aria-label="' + escapeHTML(t('col_score') + ', ' + r.pseudo) + '" value="' + (r.score != null ? formatNumber(r.score) : '') + '"></td>';
-        }
-      } else {
-        if (isDualScore) {
-          scoreCells = '<td class="gm-right" data-label="' + t('col_score_prep') + '">' + (r.score_prep != null ? formatNumber(r.score_prep) : '-') + '</td>' +
-            '<td class="gm-right" data-label="' + t('col_score_pvp') + '">' + (r.score_pvp != null ? formatNumber(r.score_pvp) : '-') + '</td>';
-        } else if (meta.hasScore) {
-          scoreCells = '<td class="gm-right" data-label="' + t('col_score') + '">' + (r.score != null ? formatNumber(r.score) : '-') + '</td>';
-        }
-      }
 
-      return '<tr>' +
-        '<td><div class="gm-row" style="gap:.5rem;"><div class="gm-avatar">' + escapeHTML(initial) + '</div><strong>' + escapeHTML(r.pseudo) + '</strong></div></td>' +
-        participatedCell + lateCell + excusedCell + subPresentCell + appointedCell + scoreCells +
-        '</tr>';
-    }).join('');
+        return (
+          '<tr>' +
+          '<td><div class="gm-row" style="gap:.5rem;"><div class="gm-avatar">' +
+          escapeHTML(initial) +
+          '</div><strong>' +
+          escapeHTML(r.pseudo) +
+          '</strong></div></td>' +
+          participatedCell +
+          lateCell +
+          excusedCell +
+          subPresentCell +
+          appointedCell +
+          scoreCells +
+          '</tr>'
+        );
+      })
+      .join('');
 
     const totalScore = sorted.reduce((s, r) => s + (r.score || 0) + (r.score_prep || 0) + (r.score_pvp || 0), 0);
     const doneCount = sorted.reduce((s, r) => s + (r.participated > 0 ? 1 : 0), 0);
 
     const deleteBtnHtml =
-      '<button class="gm-btn gm-btn-danger" id="history-modal-delete" style="background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.25); color: var(--error);"><i class="ph ph-trash"></i> <span>' + t('delete_title') + '</span></button>';
+      '<button class="gm-btn gm-btn-danger" id="history-modal-delete" style="background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.25); color: var(--error);"><i class="ph ph-trash"></i> <span>' +
+      t('delete_title') +
+      '</span></button>';
 
     const overlay = openDialog({
       id: 'history-modal',
@@ -566,27 +875,47 @@ export class HistoryView {
       scrollBody: true,
       body:
         '<div class="gm-row" style="gap:.5rem; flex-wrap:wrap; margin-bottom:1rem;">' +
-          '<span class="gm-chip"><i class="ph ph-users"></i> ' + sorted.length + '</span>' +
-          '<span class="gm-chip gm-chip-success"><i class="ph ph-check-circle"></i> ' + doneCount + ' ' + t('event_participated') + '</span>' +
-          (totalScore > 0 ? '<span class="gm-chip gm-chip-accent"><i class="ph ph-trophy"></i> ' + formatNumber(totalScore) + '</span>' : '') +
+        '<span class="gm-chip"><i class="ph ph-users"></i> ' +
+        sorted.length +
+        '</span>' +
+        '<span class="gm-chip gm-chip-success"><i class="ph ph-check-circle"></i> ' +
+        doneCount +
+        ' ' +
+        t('event_participated') +
+        '</span>' +
+        (totalScore > 0
+          ? '<span class="gm-chip gm-chip-accent"><i class="ph ph-trophy"></i> ' + formatNumber(totalScore) + '</span>'
+          : '') +
         '</div>' +
         (sorted.length === 0
-          ? '<div class="gm-empty"><i class="ph ph-ghost gm-icon"></i><div class="gm-empty-title">' + t('history_empty_session') + '</div></div>'
+          ? '<div class="gm-empty"><i class="ph ph-ghost gm-icon"></i><div class="gm-empty-title">' +
+            t('history_empty_session') +
+            '</div></div>'
           : '<div class="gm-table-wrap gm-ui-table-wrap"><div class="gm-table-scroll">' +
-              '<table class="gm-table gm-resp-table gm-ui-table-el gm-ui-table-sticky">' +
-                '<thead><tr>' + headerCols + '</tr></thead>' +
-                '<tbody>' + rowsHtml + '</tbody>' +
-              '</table>' +
+            '<table class="gm-table gm-resp-table gm-ui-table-el gm-ui-table-sticky">' +
+            '<thead><tr>' +
+            headerCols +
+            '</tr></thead>' +
+            '<tbody>' +
+            rowsHtml +
+            '</tbody>' +
+            '</table>' +
             '</div></div>'),
       footer:
         // gm-modal-footer contract: destructive delete sits in the dialog
         // footer-left, close action on the right, never next to the header X.
-        '<div id="history-modal-footer-left">' + (isAdmin ? deleteBtnHtml : '') + '</div>' +
+        '<div id="history-modal-footer-left">' +
+        (isAdmin ? deleteBtnHtml : '') +
+        '</div>' +
         '<div style="display:flex; gap:0.5rem; align-items:center;">' +
-          '<button type="button" class="gm-btn gm-btn-ghost" id="history-modal-footer-close" data-dialog-close>' + t('close_title') + '</button>' +
+        '<button type="button" class="gm-btn gm-btn-ghost" id="history-modal-footer-close" data-dialog-close>' +
+        t('close_title') +
+        '</button>' +
         '</div>',
       confirmLabel: undefined,
-      onConfirm: () => { /* Dialog closes itself after a resolved onConfirm. */ }
+      onConfirm: () => {
+        /* Dialog closes itself after a resolved onConfirm. */
+      },
     });
 
     if (isAdmin) {

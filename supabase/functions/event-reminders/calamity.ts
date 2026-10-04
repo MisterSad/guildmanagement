@@ -3,10 +3,29 @@
  * (Monday 23:50 to Wednesday 20:50 UTC).
  */
 
-import { isToggleEnabled, resolveGuildWebhook } from "../_shared/reminder-rules.ts";
-import { claimSlot, settleSlot, abandonSlot, postToDiscord, reminderBody, blockRoleTag, getSlotDateString, dueSlots, pad2, type GuildRun } from "./shared.ts";
+import { isToggleEnabled, resolveGuildWebhook } from '../_shared/reminder-rules.ts';
+import {
+  claimSlot,
+  settleSlot,
+  abandonSlot,
+  postToDiscord,
+  reminderBody,
+  blockRoleTag,
+  getSlotDateString,
+  dueSlots,
+  pad2,
+  type GuildRun,
+} from './shared.ts';
 
-interface CalamitySlot { day: number; hour: number; minute: number; round: number; targetHour: number; targetMinute: number; targetDay: string }
+interface CalamitySlot {
+  day: number;
+  hour: number;
+  minute: number;
+  round: number;
+  targetHour: number;
+  targetMinute: number;
+  targetDay: string;
+}
 
 const CALAMITY_SCHEDULE: CalamitySlot[] = [
   { day: 1, hour: 23, minute: 50, round: 1, targetHour: 0, targetMinute: 0, targetDay: 'Tuesday' },
@@ -24,7 +43,7 @@ const CALAMITY_SCHEDULE: CalamitySlot[] = [
   { day: 3, hour: 11, minute: 50, round: 13, targetHour: 12, targetMinute: 0, targetDay: 'Wednesday' },
   { day: 3, hour: 14, minute: 50, round: 14, targetHour: 15, targetMinute: 0, targetDay: 'Wednesday' },
   { day: 3, hour: 17, minute: 50, round: 15, targetHour: 18, targetMinute: 0, targetDay: 'Wednesday' },
-  { day: 3, hour: 20, minute: 50, round: 16, targetHour: 21, targetMinute: 0, targetDay: 'Wednesday' }
+  { day: 3, hour: 20, minute: 50, round: 16, targetHour: 21, targetMinute: 0, targetDay: 'Wednesday' },
 ];
 
 function buildMessage(run: GuildRun, slot: CalamitySlot, calamityGuildTag: string) {
@@ -59,7 +78,7 @@ function buildMessage(run: GuildRun, slot: CalamitySlot, calamityGuildTag: strin
 
   const fields = [
     { name: 'Round', value: `${slot.round} / 16`, inline: true },
-    { name: 'Start Time (UTC)', value: timeStr, inline: true }
+    { name: 'Start Time (UTC)', value: timeStr, inline: true },
   ];
   if (agenda) {
     fields.push({ name: 'Guild Agenda', value: agenda, inline: false });
@@ -78,12 +97,23 @@ export async function runCalamity(run: GuildRun): Promise<void> {
     }
 
     const lockKey = `sent_calamity_round_${slot.round}_${getSlotDateString(now, slot.day)}`;
-    if (!await claimSlot(run, lockKey, `Calamity Round ${slot.round}`)) continue;
+    if (!(await claimSlot(run, lockKey, `Calamity Round ${slot.round}`))) continue;
 
     try {
       const body = buildMessage(run, slot, calamityGuildTag);
-      const sent = await postToDiscord(run, resolveGuildWebhook(config, 'calamity'), body, `Calamity Round ${slot.round}`);
-      await settleSlot(run, lockKey, sent, { event: `Calamity Befalls - Round ${slot.round}`, type: 'calamity_befalls' }, 'Calamity Befalls reminder');
+      const sent = await postToDiscord(
+        run,
+        resolveGuildWebhook(config, 'calamity'),
+        body,
+        `Calamity Round ${slot.round}`
+      );
+      await settleSlot(
+        run,
+        lockKey,
+        sent,
+        { event: `Calamity Befalls - Round ${slot.round}`, type: 'calamity_befalls' },
+        'Calamity Befalls reminder'
+      );
     } catch (e) {
       await abandonSlot(run, lockKey, 'Calamity Befalls', e);
     }

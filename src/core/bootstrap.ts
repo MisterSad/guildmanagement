@@ -39,9 +39,11 @@ export function initCurrentGuild(): void {
     // lets getActiveGuild() report the truth.
     const seeded = localRestriction || current;
     patchAppState({
-      currentGuild: typeof seeded === 'string' && seeded.trim() !== '' ? seeded.trim() : null
+      currentGuild: typeof seeded === 'string' && seeded.trim() !== '' ? seeded.trim() : null,
     });
-  } catch (_) { /* ignored */ }
+  } catch (_) {
+    /* ignored */
+  }
 }
 
 /** Runs every gm-utils startup side-effect (idempotent enough for a single boot). */

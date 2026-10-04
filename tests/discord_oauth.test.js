@@ -77,12 +77,13 @@ describe('PKCE pair', () => {
 });
 
 describe('authorize URL', () => {
-  const url = () => buildAuthorizeUrl({
-    clientId: '123456789012345678',
-    redirectUri: 'https://ref.supabase.co/functions/v1/auth-discord/callback',
-    state: 'st-ate',
-    codeChallenge: 'chal-lenge',
-  });
+  const url = () =>
+    buildAuthorizeUrl({
+      clientId: '123456789012345678',
+      redirectUri: 'https://ref.supabase.co/functions/v1/auth-discord/callback',
+      state: 'st-ate',
+      codeChallenge: 'chal-lenge',
+    });
 
   it('requests identify and nothing else', () => {
     const p = new URL(url()).searchParams;
@@ -106,8 +107,7 @@ describe('authorize URL', () => {
     expect(u.origin).toBe('https://discord.com');
     expect(u.searchParams.get('response_type')).toBe('code');
     expect(u.searchParams.get('state')).toBe('st-ate');
-    expect(u.searchParams.get('redirect_uri'))
-      .toBe('https://ref.supabase.co/functions/v1/auth-discord/callback');
+    expect(u.searchParams.get('redirect_uri')).toBe('https://ref.supabase.co/functions/v1/auth-discord/callback');
   });
 });
 
@@ -122,7 +122,17 @@ describe('snowflake parsing', () => {
   it('rejects anything that is not a plausible snowflake', () => {
     // Returning epoch-0 for junk would let a malformed id sail through an
     // "older than N days" guardrail.
-    for (const bad of ['', 'abc', '123', '12345678901234567890123', '-12345678901234567', '1.5e19', null, undefined, {}]) {
+    for (const bad of [
+      '',
+      'abc',
+      '123',
+      '12345678901234567890123',
+      '-12345678901234567',
+      '1.5e19',
+      null,
+      undefined,
+      {},
+    ]) {
       expect(snowflakeToDate(bad), String(bad)).toBeNull();
       expect(snowflakeAgeDays(bad), String(bad)).toBeNull();
     }
@@ -142,15 +152,16 @@ describe('return URLs cannot become an open redirect', () => {
   it('drops any path, query or fragment carried on the origin', () => {
     // The origin is validated by isAllowedOrigin before it is ever stored, but
     // assembling must not preserve an attacker-chosen path even so.
-    expect(buildReturnUrl('https://app.example.com/evil/path?x=1#frag', 'TICK'))
-      .toBe('https://app.example.com/?gm_auth=TICK');
-    expect(buildErrorReturnUrl('https://app.example.com/evil?x=1', 'state_expired'))
-      .toBe('https://app.example.com/?gm_auth_error=state_expired');
+    expect(buildReturnUrl('https://app.example.com/evil/path?x=1#frag', 'TICK')).toBe(
+      'https://app.example.com/?gm_auth=TICK'
+    );
+    expect(buildErrorReturnUrl('https://app.example.com/evil?x=1', 'state_expired')).toBe(
+      'https://app.example.com/?gm_auth_error=state_expired'
+    );
   });
 
   it('percent-encodes the ticket', () => {
-    expect(buildReturnUrl('https://app.example.com', 'a+b/c=d'))
-      .toBe('https://app.example.com/?gm_auth=a%2Bb%2Fc%3Dd');
+    expect(buildReturnUrl('https://app.example.com', 'a+b/c=d')).toBe('https://app.example.com/?gm_auth=a%2Bb%2Fc%3Dd');
   });
 
   it('keeps a non-default port, which localhost development needs', () => {

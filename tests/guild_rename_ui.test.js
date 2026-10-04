@@ -17,7 +17,7 @@ import {
   fetchTagHistory,
   applyRenameToSession,
   openRenameGuildDialog,
-  loadGuildTagCard
+  loadGuildTagCard,
 } from '../src/modules/app/admin/guild-rename';
 import { getAppState, patchAppState, resetAppState } from '../src/core/state/app-state';
 import { setDbClient, resetSupabaseClient } from '../src/core/api/supabase';
@@ -39,7 +39,7 @@ function stubDb(handlers) {
       calls.push({ name, args });
       const h = handlers[name];
       return h ? h(args) : { data: null, error: { message: 'no_handler' } };
-    })
+    }),
   });
   return calls;
 }
@@ -77,7 +77,16 @@ describe('normalizeTag', () => {
 
 describe('renameErrorMessage', () => {
   it('has a message for every server error code', () => {
-    for (const code of ['invalid_tag', 'unchanged', 'tag_taken', 'tag_reserved', 'demo_protected', 'cooldown', 'unauthorized', 'guild_not_found']) {
+    for (const code of [
+      'invalid_tag',
+      'unchanged',
+      'tag_taken',
+      'tag_reserved',
+      'demo_protected',
+      'cooldown',
+      'unauthorized',
+      'guild_not_found',
+    ]) {
       expect(renameErrorMessage(code)).not.toMatch(/could not be changed/);
     }
     expect(renameErrorMessage('boom')).toMatch(/boom/);
@@ -129,7 +138,10 @@ describe('migrateLocalGuildKeys', () => {
 describe('RPC mapping', () => {
   it('renameGuild maps the jsonb answer', async () => {
     const calls = stubDb({
-      gm_rename_guild: () => ({ data: { ok: false, error: 'cooldown', next_allowed_at: '2026-10-10T00:00:00Z' }, error: null })
+      gm_rename_guild: () => ({
+        data: { ok: false, error: 'cooldown', next_allowed_at: '2026-10-10T00:00:00Z' },
+        error: null,
+      }),
     });
     const res = await renameGuild('AB', 'CD');
     expect(calls[0]).toEqual({ name: 'gm_rename_guild', args: { p_guild: 'AB', p_new_tag: 'CD' } });
@@ -143,7 +155,13 @@ describe('RPC mapping', () => {
 
   it('fetchTagHistory survives an error', async () => {
     stubDb({ gm_guild_tag_history: () => ({ data: null, error: { message: 'x' } }) });
-    expect(await fetchTagHistory('AB')).toEqual({ ok: false, history: [], nextAllowedAt: null, canRename: false, cooldownApplies: true });
+    expect(await fetchTagHistory('AB')).toEqual({
+      ok: false,
+      history: [],
+      nextAllowedAt: null,
+      canRename: false,
+      cooldownApplies: true,
+    });
   });
 });
 
@@ -208,7 +226,9 @@ describe('openRenameGuildDialog', () => {
   it('renaming another guild calls back without touching the session', async () => {
     patchAppState({ currentGuild: 'ZZ' });
     localStorage.setItem('gm_server_number_AB', '1058');
-    const calls = stubDb({ gm_rename_guild: () => ({ data: { ok: true, guild: 'CD', old_guild: 'AB' }, error: null }) });
+    const calls = stubDb({
+      gm_rename_guild: () => ({ data: { ok: true, guild: 'CD', old_guild: 'AB' }, error: null }),
+    });
     const onRenamed = vi.fn();
     openRenameGuildDialog('AB', onRenamed);
     type('cd');
@@ -241,9 +261,15 @@ describe('loadGuildTagCard', () => {
     const next = new Date(Date.now() + 3 * 86400000).toISOString();
     stubDb({
       gm_guild_tag_history: () => ({
-        data: { ok: true, can_rename: true, cooldown_applies: true, next_allowed_at: next, history: [{ old_tag: 'AB', new_tag: 'CD', changed_at: new Date().toISOString() }] },
-        error: null
-      })
+        data: {
+          ok: true,
+          can_rename: true,
+          cooldown_applies: true,
+          next_allowed_at: next,
+          history: [{ old_tag: 'AB', new_tag: 'CD', changed_at: new Date().toISOString() }],
+        },
+        error: null,
+      }),
     });
     await loadGuildTagCard();
     expect(document.getElementById('guild-tag-card').classList.contains('hidden')).toBe(false);
@@ -257,9 +283,15 @@ describe('loadGuildTagCard', () => {
     patchAppState({ currentGuild: 'CD' });
     stubDb({
       gm_guild_tag_history: () => ({
-        data: { ok: true, can_rename: true, cooldown_applies: false, next_allowed_at: new Date(Date.now() + 86400000).toISOString(), history: [] },
-        error: null
-      })
+        data: {
+          ok: true,
+          can_rename: true,
+          cooldown_applies: false,
+          next_allowed_at: new Date(Date.now() + 86400000).toISOString(),
+          history: [],
+        },
+        error: null,
+      }),
     });
     await loadGuildTagCard();
     expect(document.getElementById('guild-tag-rename-btn').disabled).toBe(false);

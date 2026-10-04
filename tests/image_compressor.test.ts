@@ -3,11 +3,11 @@
  *
  * Unit tests for client-side image compression utility.
  */
-import { describe, it, expect, } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   calculateTargetDimensions,
   extractImagesFromClipboard,
-  extractImagesFromDrop
+  extractImagesFromDrop,
 } from '../src/core/utils/image-compressor';
 
 describe('image-compressor', () => {
@@ -41,9 +41,9 @@ describe('image-compressor', () => {
         clipboardData: {
           items: [
             { type: 'text/plain', getAsFile: () => null },
-            { type: 'image/png', getAsFile: () => dummyFile }
-          ]
-        }
+            { type: 'image/png', getAsFile: () => dummyFile },
+          ],
+        },
       } as unknown as ClipboardEvent;
 
       const extracted = extractImagesFromClipboard(mockEvent);
@@ -63,8 +63,8 @@ describe('image-compressor', () => {
       const textFile = new File(['text'], 'doc.txt', { type: 'text/plain' });
       const mockEvent = {
         dataTransfer: {
-          files: [dummyFile, textFile]
-        }
+          files: [dummyFile, textFile],
+        },
       } as unknown as DragEvent;
 
       const extracted = extractImagesFromDrop(mockEvent);

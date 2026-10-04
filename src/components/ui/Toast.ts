@@ -42,7 +42,7 @@ export class ToastNotification {
       success: 'ph-check-circle text-success',
       error: 'ph-warning-circle text-danger',
       info: 'ph-info text-accent',
-      warning: 'ph-warning text-warning'
+      warning: 'ph-warning text-warning',
     };
 
     toast.innerHTML = `

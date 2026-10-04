@@ -34,11 +34,7 @@ export async function bumpSessionVersion(
   role: string,
   authUserId: string | null
 ): Promise<number> {
-  const { data: cur } = await admin
-    .from("accounts")
-    .select("session_version")
-    .eq("id", accountId)
-    .maybeSingle();
+  const { data: cur } = await admin.from("accounts").select("session_version").eq("id", accountId).maybeSingle();
   const next = (((cur as any)?.session_version ?? 0) | 0) + 1;
   await admin.from("accounts").update({ session_version: next }).eq("id", accountId);
   if (authUserId) {
@@ -60,11 +56,7 @@ export async function getTargetCtx(
 ): Promise<{ role: Role | null; guild: string | null; serverNumber: string | null }> {
   let sNum = targetAcc.server_number ?? null;
   if (!sNum && targetAcc.guild) {
-    const { data: g } = await admin
-      .from("guilds")
-      .select("server_number")
-      .eq("id", targetAcc.guild)
-      .maybeSingle();
+    const { data: g } = await admin.from("guilds").select("server_number").eq("id", targetAcc.guild).maybeSingle();
     if ((g as any)?.server_number) {
       sNum = (g as any).server_number;
     }
@@ -97,17 +89,18 @@ export async function notifyRegistrationOutcome(
   accountId: string,
   guild: string | null,
   outcome: "approved" | "rejected",
-  knownDiscordId?: string | null,
+  knownDiscordId?: string | null
 ): Promise<void> {
   try {
-    const discordId = knownDiscordId ?? await linkedDiscordUserId(admin, accountId);
+    const discordId = knownDiscordId ?? (await linkedDiscordUserId(admin, accountId));
     if (!discordId) return; // A password-era registration: nobody to message.
     const appUrl = Deno.env.get("APP_DEFAULT_ORIGIN") ?? "";
     const where = guild ? `**${guild}**` : "your guild";
-    const content = outcome === "approved"
-      ? `✅ Your request to join ${where} was approved. Sign in with Discord to open your Player Portal` +
-        (appUrl ? `: ${appUrl}` : ".")
-      : `Your request to join ${where} was not approved. If you think this is a mistake, ask an officer of your guild.`;
+    const content =
+      outcome === "approved"
+        ? `✅ Your request to join ${where} was approved. Sign in with Discord to open your Player Portal` +
+          (appUrl ? `: ${appUrl}` : ".")
+        : `Your request to join ${where} was not approved. If you think this is a mistake, ask an officer of your guild.`;
     const sent = await sendDirectMessage(discordId, content);
     logger.info("Registration outcome DM", { accountId, outcome, delivered: sent });
   } catch (err) {
@@ -135,7 +128,7 @@ export async function decideRegistration(
   logger: EdgeLogger,
   actor: DecisionActor,
   id: string,
-  decision: "approve" | "reject",
+  decision: "approve" | "reject"
 ): Promise<DecisionResult> {
   const { data: targetAcc } = await admin
     .from("accounts")
@@ -143,7 +136,13 @@ export async function decideRegistration(
     .eq("id", id)
     .maybeSingle();
   if (!targetAcc) return { ok: false, error: "not_found", status: 404 };
-  const target = targetAcc as { id: string; role: string | null; guild: string | null; server_number: string | null; status: string };
+  const target = targetAcc as {
+    id: string;
+    role: string | null;
+    guild: string | null;
+    server_number: string | null;
+    status: string;
+  };
   if (target.status !== "pending" || !isMember(target.role)) {
     return { ok: false, error: "not_pending", status: 200 };
   }
@@ -167,7 +166,10 @@ export async function decideRegistration(
     const secret = randomSecret();
     const meta = { app_role: "member", account_id: id };
     const { data: created, error: cuErr } = await admin.auth.admin.createUser({
-      email, password: secret, email_confirm: true, app_metadata: meta,
+      email,
+      password: secret,
+      email_confirm: true,
+      app_metadata: meta,
     });
     let uid = created?.user?.id;
     if (cuErr || !uid) {
@@ -216,7 +218,7 @@ async function auditDecision(
   admin: Admin,
   actor: DecisionActor,
   target: { id: string; guild: string | null },
-  outcome: "approved" | "rejected",
+  outcome: "approved" | "rejected"
 ): Promise<void> {
   try {
     await admin.from("system_audit_logs").insert({
@@ -228,5 +230,7 @@ async function auditDecision(
       message: `Registration of ${target.id} ${outcome}` + (actor.via === "discord" ? " from Discord" : ""),
       metadata: { target_account: target.id, actor_role: actor.role, via: actor.via },
     });
-  } catch { /* the decision has committed; the ledger row is best-effort */ }
+  } catch {
+    /* the decision has committed; the ledger row is best-effort */
+  }
 }

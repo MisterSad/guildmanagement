@@ -10,29 +10,25 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 // The members modules import showConfirm directly; the stub confirms at once.
 vi.mock('../src/modules/app/dialogs/dialogs.service', async (importOriginal) => ({
   ...(await importOriginal()),
-  showConfirm: vi.fn()
+  showConfirm: vi.fn(),
 }));
 import { showConfirm } from '../src/modules/app/dialogs/dialogs.service';
 
 import { getAppState, patchAppState, resetAppState } from '../src/core/state/app-state';
 import { setDbClient, resetSupabaseClient } from '../src/core/api/supabase';
-import {
-  setGuildMembers,
-  setPendingTransfers,
-  clearMembersStore
-} from '../src/modules/app/members/members.store';
+import { setGuildMembers, setPendingTransfers, clearMembersStore } from '../src/modules/app/members/members.store';
 import {
   renderGuildMembers,
   buildMilitaryMatrixHtml,
   bulkUpdateMemberRoles,
   renderAbsenceSummary,
-  renderTimezoneCoverage
+  renderTimezoneCoverage,
 } from '../src/modules/app/members/members.render';
 import {
   renderPendingTransfers,
   resolveTransfer,
   showUidTakenDialog,
-  showTransferMemberDialog
+  showTransferMemberDialog,
 } from '../src/modules/app/members/members.controller';
 
 const MEMBERS_DOM = `
@@ -57,15 +53,28 @@ function makeDb(opts = {}) {
   const calls = { rpc: [], update: [], insert: [], delete: [], in: [] };
   function chain(table, data) {
     const obj = {
-      select() { return obj; },
-      eq() { return obj; },
-      not() { return obj; },
-      order() { return obj; },
-      ilike() { return obj; },
+      select() {
+        return obj;
+      },
+      eq() {
+        return obj;
+      },
+      not() {
+        return obj;
+      },
+      order() {
+        return obj;
+      },
+      ilike() {
+        return obj;
+      },
       maybeSingle: async () => ({ data: opts.maybeSingle ? (opts.maybeSingle[table] ?? null) : null, error: null }),
       single: async () => ({ data: { id: 'x' }, error: null }),
-      in: async (_col, vals) => { calls.in.push({ table, vals }); return { data: null, error: null }; },
-      then: (resolve) => resolve({ data: data ?? [], error: null })
+      in: async (_col, vals) => {
+        calls.in.push({ table, vals });
+        return { data: null, error: null };
+      },
+      then: (resolve) => resolve({ data: data ?? [], error: null }),
     };
     return obj;
   }
@@ -78,19 +87,45 @@ function makeDb(opts = {}) {
     from(table) {
       return {
         select: () => chain(table, opts.tables ? opts.tables[table] : []),
-        update: (payload) => { calls.update.push({ table, payload }); return chain(table); },
-        insert: (payload) => { calls.insert.push({ table, payload }); return chain(table); },
-        delete: () => { calls.delete.push({ table }); return chain(table); }
+        update: (payload) => {
+          calls.update.push({ table, payload });
+          return chain(table);
+        },
+        insert: (payload) => {
+          calls.insert.push({ table, payload });
+          return chain(table);
+        },
+        delete: () => {
+          calls.delete.push({ table });
+          return chain(table);
+        },
       };
-    }
+    },
   };
 }
 
 const MEMBERS = [
   { pseudo: 'Leader', uid: '111111', role: 'R5', guild: 'ALPHA', overall_power: 100, created_at: '2026-01-01' },
-  { pseudo: 'Officer', uid: '222222', role: 'R4', guild: 'ALPHA', overall_power: 90, fleet_rating: 5, created_at: '2026-01-02' },
-  { pseudo: 'Bob', uid: '333333', role: 'R2', guild: 'ALPHA', overall_power: 80, tech_power: 7, timezone_offset: 2, created_at: '2026-01-03' },
-  { pseudo: 'Recruit', uid: '444444', role: 'R1', guild: 'ALPHA', overall_power: 70, created_at: '2026-01-04' }
+  {
+    pseudo: 'Officer',
+    uid: '222222',
+    role: 'R4',
+    guild: 'ALPHA',
+    overall_power: 90,
+    fleet_rating: 5,
+    created_at: '2026-01-02',
+  },
+  {
+    pseudo: 'Bob',
+    uid: '333333',
+    role: 'R2',
+    guild: 'ALPHA',
+    overall_power: 80,
+    tech_power: 7,
+    timezone_offset: 2,
+    created_at: '2026-01-03',
+  },
+  { pseudo: 'Recruit', uid: '444444', role: 'R1', guild: 'ALPHA', overall_power: 70, created_at: '2026-01-04' },
 ];
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
@@ -110,7 +145,9 @@ beforeEach(() => {
   setDbClient(db);
   patchAppState({ currentGuild: 'ALPHA' });
   showConfirm.mockReset();
-  showConfirm.mockImplementation((_title, _msg, onConfirm) => { if (onConfirm) void onConfirm(); });
+  showConfirm.mockImplementation((_title, _msg, onConfirm) => {
+    if (onConfirm) void onConfirm();
+  });
 });
 
 afterEach(() => {
@@ -128,7 +165,9 @@ describe('renderGuildMembers — cards vs matrix', () => {
 
     const container = document.getElementById('guild-member-list');
     expect(container.querySelectorAll('.gm-role-group-header').length).toBe(4);
-    const roles = Array.from(container.querySelectorAll('.gm-role-group-header')).map((h) => h.getAttribute('data-role'));
+    const roles = Array.from(container.querySelectorAll('.gm-role-group-header')).map((h) =>
+      h.getAttribute('data-role')
+    );
     expect(roles).toEqual(['R5', 'R4', 'R2', 'R1']);
     expect(container.textContent).toContain('Leader');
     expect(container.textContent).toContain('Bob');
@@ -143,7 +182,9 @@ describe('renderGuildMembers — cards vs matrix', () => {
     expect(container.querySelector('.gm-table-wrap')).toBeTruthy();
     expect(container.querySelectorAll('tbody tr').length).toBe(4);
     // Role column values survive the matrix computation.
-    const roleCells = Array.from(container.querySelectorAll('td[data-label="Role"]')).map((td) => td.textContent.trim());
+    const roleCells = Array.from(container.querySelectorAll('td[data-label="Role"]')).map((td) =>
+      td.textContent.trim()
+    );
     expect(roleCells).toEqual(expect.arrayContaining(['R5', 'R4', 'R2', 'R1']));
     // 4 rally leaders are auto-assigned when all have positive rally scores.
     expect(container.textContent).toContain('Tactical Force Matrix');
@@ -224,8 +265,10 @@ describe('pending transfers', () => {
     await tick();
     expect(showConfirm).toHaveBeenCalled();
     expect(db.__calls.rpc.map((c) => c.name)).toContain('resolve_guild_transfer');
-    expect(db.__calls.rpc.find((c) => c.name === 'resolve_guild_transfer').args)
-      .toEqual({ p_transfer_id: 't1', p_action: 'approve' });
+    expect(db.__calls.rpc.find((c) => c.name === 'resolve_guild_transfer').args).toEqual({
+      p_transfer_id: 't1',
+      p_action: 'approve',
+    });
   });
 });
 
@@ -235,7 +278,7 @@ describe('UID-taken dialog', () => {
       ok: true,
       found: true,
       player: { pseudo: 'OldGuy', uid: '666666', guild: 'BETA', role: 'R2' },
-      name_history: []
+      name_history: [],
     });
 
     const overlay = document.getElementById('uid-taken-overlay');
@@ -257,7 +300,7 @@ describe('UID-taken dialog', () => {
       ok: true,
       found: true,
       player: { pseudo: 'Leader', uid: '111111', guild: 'ALPHA', role: 'R5' },
-      name_history: [{ old_pseudo: 'Old', new_pseudo: 'Leader', changed_at: '2026-01-01' }]
+      name_history: [{ old_pseudo: 'Old', new_pseudo: 'Leader', changed_at: '2026-01-01' }],
     });
 
     const overlay = document.getElementById('uid-taken-overlay');
@@ -276,7 +319,7 @@ describe('transfer member dialog', () => {
           return { data: [{ id: 'BETA', server_number: '1088', is_same_server: true }], error: null };
         }
         return { data: { ok: true }, error: null };
-      }
+      },
     });
     setDbClient(db);
 
@@ -306,7 +349,9 @@ describe('transfer member dialog', () => {
 describe('absences & timezone panels', () => {
   it('renders the absence summary for upcoming/active declarations', () => {
     const future = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
-    patchAppState({ guildAbsences: [{ uid: '333333', start_date: '2026-01-01', end_date: future, kind: 'full', note: 'Vacation' }] });
+    patchAppState({
+      guildAbsences: [{ uid: '333333', start_date: '2026-01-01', end_date: future, kind: 'full', note: 'Vacation' }],
+    });
     renderAbsenceSummary();
     const list = document.getElementById('admin-absences-list');
     expect(document.getElementById('admin-absences-section').classList.contains('hidden')).toBe(false);

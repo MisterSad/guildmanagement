@@ -76,8 +76,13 @@ export async function handleOnboard(req: Request, body: unknown, admin: any, log
   // Report that plainly instead of minting a session that would be refused.
   if (row.status === "pending") {
     logger.info("Player registered through Discord, awaiting approval", { accountId, guild: row.guild });
-    await announceJoinRequest(admin, logger, row.guild as string, accountId,
-      parsed.data.mode === "join" ? parsed.data.uid : "");
+    await announceJoinRequest(
+      admin,
+      logger,
+      row.guild as string,
+      accountId,
+      parsed.data.mode === "join" ? parsed.data.uid : ""
+    );
     return json({
       ok: true,
       state: "pending_approval",
@@ -115,7 +120,7 @@ export async function announceJoinRequest(
   logger: EdgeLogger,
   guild: string,
   accountId: string,
-  uid: string,
+  uid: string
 ): Promise<void> {
   if (!guild) return;
   try {
@@ -131,13 +136,15 @@ export async function announceJoinRequest(
       content:
         `🆕 **Join request** — \`${accountId}\` (UID \`${uid}\`) asked to join **${guild}** with Discord.` +
         `\nApprove or reject it here, or in Guild Management → Accounts → Pending.`,
-      components: [{
-        type: 1,
-        components: [
-          { type: 2, style: 3, label: "Approve", custom_id: `gmjoin:approve:${accountId}` },
-          { type: 2, style: 4, label: "Reject", custom_id: `gmjoin:reject:${accountId}` },
-        ],
-      }],
+      components: [
+        {
+          type: 1,
+          components: [
+            { type: 2, style: 3, label: "Approve", custom_id: `gmjoin:approve:${accountId}` },
+            { type: 2, style: 4, label: "Reject", custom_id: `gmjoin:reject:${accountId}` },
+          ],
+        },
+      ],
     });
     if (!sent) logger.warn("Join request announcement was not delivered", { guild });
   } catch (err) {

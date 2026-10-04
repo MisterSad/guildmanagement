@@ -18,7 +18,10 @@
 
 import { eventScoringKey } from '../../src/core/config/events.ts';
 
-const norm = (p) => String(p || '').trim().toLowerCase();
+const norm = (p) =>
+  String(p || '')
+    .trim()
+    .toLowerCase();
 
 /**
  * @param {object} opts
@@ -29,9 +32,7 @@ const norm = (p) => String(p || '').trim().toLowerCase();
  */
 export function aggregateStatsMembers({ rows = [], glory = [], members = [], weeks = null }) {
   const nonGlory = rows.filter((r) => String(r.event_name || '').toLowerCase() !== 'glory');
-  const windowed = weeks && weeks.length
-    ? nonGlory.filter((r) => weeks.indexOf(r.week_start) !== -1)
-    : nonGlory;
+  const windowed = weeks && weeks.length ? nonGlory.filter((r) => weeks.indexOf(r.week_start) !== -1) : nonGlory;
 
   // The SQL drops pending rows before anything else.
   const valid = windowed.filter((r) => !r.is_pending);
@@ -43,11 +44,17 @@ export function aggregateStatsMembers({ rows = [], glory = [], members = [], wee
     const skey = eventScoringKey(r.event_name, r.session_id, r.week_start);
     const id = norm(r.pseudo) + '\u0000' + skey;
     const present = Number(r.participated) > 0 || r.sub_present === true;
-    const scored = (r.event_name === 'SvS' || r.event_name === 'GvG') &&
-      ((Number(r.score) || 0) + (Number(r.score_prep) || 0) + (Number(r.score_pvp) || 0)) > 0;
+    const scored =
+      (r.event_name === 'SvS' || r.event_name === 'GvG') &&
+      (Number(r.score) || 0) + (Number(r.score_prep) || 0) + (Number(r.score_pvp) || 0) > 0;
     const prev = perKey.get(id) || {
-      pseudo: r.pseudo, skey, bucket: skey.split('|')[0], week: r.week_start,
-      present: false, scored: false, excused: false
+      pseudo: r.pseudo,
+      skey,
+      bucket: skey.split('|')[0],
+      week: r.week_start,
+      present: false,
+      scored: false,
+      excused: false,
     };
     prev.present = prev.present || present;
     prev.scored = prev.scored || scored;
@@ -72,7 +79,7 @@ export function aggregateStatsMembers({ rows = [], glory = [], members = [], wee
   const joinedWeek = (m) => {
     if (!m.created_at) return '0000-01-01';
     const d = new Date(m.created_at);
-    const day = (d.getUTCDay() + 6) % 7;            // Monday = 0
+    const day = (d.getUTCDay() + 6) % 7; // Monday = 0
     d.setUTCDate(d.getUTCDate() - day);
     return d.toISOString().slice(0, 10);
   };
@@ -83,47 +90,54 @@ export function aggregateStatsMembers({ rows = [], glory = [], members = [], wee
     return {
       late_count: mine.filter((r) => r.late === true).length,
       excused_count: mine.filter((r) => r.excused === true).length,
-      sub_count: mine.filter((r) => r.sub_present === true).length
+      sub_count: mine.filter((r) => r.sub_present === true).length,
     };
   };
 
-  const memberRows = members.map((m) => {
-    const pseudo = m.pseudo;
-    const since = joinedWeek(m);
-    const mine = keys.filter((k) => norm(k.pseudo) === norm(pseudo));
-    const excusedKeys = new Set(mine.filter((k) => k.excused).map((k) => k.skey));
+  const memberRows = members
+    .map((m) => {
+      const pseudo = m.pseudo;
+      const since = joinedWeek(m);
+      const mine = keys.filter((k) => norm(k.pseudo) === norm(pseudo));
+      const excusedKeys = new Set(mine.filter((k) => k.excused).map((k) => k.skey));
 
-    // The denominator, per member: opportunities from their roster week
-    // onward, minus the ones they were excused from.
-    const buckets = {};
-    for (const o of opportunities) {
-      if (o.week < since) continue;
-      if (excusedKeys.has(o.skey)) continue;
-      buckets[o.bucket] = buckets[o.bucket] || { att: 0, opp: 0, exc: 0, att_scored: 0 };
-      buckets[o.bucket].opp += 1;
-    }
-    for (const bucket of new Set(mine.map((k) => k.bucket))) {
-      const slice = mine.filter((k) => k.bucket === bucket);
-      buckets[bucket] = buckets[bucket] || { att: 0, opp: 0, exc: 0, att_scored: 0 };
-      buckets[bucket].att = slice.filter((k) => k.present).length;
-      buckets[bucket].att_scored = slice.filter((k) => k.present && k.scored).length;
-      buckets[bucket].exc = slice.filter((k) => k.excused).length;
-    }
+      // The denominator, per member: opportunities from their roster week
+      // onward, minus the ones they were excused from.
+      const buckets = {};
+      for (const o of opportunities) {
+        if (o.week < since) continue;
+        if (excusedKeys.has(o.skey)) continue;
+        buckets[o.bucket] = buckets[o.bucket] || { att: 0, opp: 0, exc: 0, att_scored: 0 };
+        buckets[o.bucket].opp += 1;
+      }
+      for (const bucket of new Set(mine.map((k) => k.bucket))) {
+        const slice = mine.filter((k) => k.bucket === bucket);
+        buckets[bucket] = buckets[bucket] || { att: 0, opp: 0, exc: 0, att_scored: 0 };
+        buckets[bucket].att = slice.filter((k) => k.present).length;
+        buckets[bucket].att_scored = slice.filter((k) => k.present && k.scored).length;
+        buckets[bucket].exc = slice.filter((k) => k.excused).length;
+      }
 
-    return {
-      pseudo,
-      uid: m.uid || null,
-      role: m.role || null,
-      overall_power: m.overall_power || 0,
-      joined_week: since,
-      attended: mine.filter((k) => k.present).length,
-      weeks_active: new Set(mine.filter((k) => k.present).map((k) => k.week)).size,
-      last_seen_week: mine.filter((k) => k.present).map((k) => k.week).sort().pop() || null,
-      ...flagsFor(pseudo),
-      buckets,
-      trend: null
-    };
-  }).sort((a, b) => String(a.pseudo).localeCompare(String(b.pseudo)));
+      return {
+        pseudo,
+        uid: m.uid || null,
+        role: m.role || null,
+        overall_power: m.overall_power || 0,
+        joined_week: since,
+        attended: mine.filter((k) => k.present).length,
+        weeks_active: new Set(mine.filter((k) => k.present).map((k) => k.week)).size,
+        last_seen_week:
+          mine
+            .filter((k) => k.present)
+            .map((k) => k.week)
+            .sort()
+            .pop() || null,
+        ...flagsFor(pseudo),
+        buckets,
+        trend: null,
+      };
+    })
+    .sort((a, b) => String(a.pseudo).localeCompare(String(b.pseudo)));
 
   return {
     ok: true,
@@ -135,7 +149,7 @@ export function aggregateStatsMembers({ rows = [], glory = [], members = [], wee
     glory: glory
       .filter((g) => Number(g.score) > 0)
       .filter((g) => !weeks || !weeks.length || weeks.indexOf(g.week_start) !== -1)
-      .map((g) => [g.pseudo, g.week_start, Number(g.score) || 0])
+      .map((g) => [g.pseudo, g.week_start, Number(g.score) || 0]),
   };
 }
 
@@ -143,10 +157,12 @@ export function aggregateStatsMembers({ rows = [], glory = [], members = [], wee
 export function mockStatsMembers({ rows = [], glory = [], members = [] }) {
   return (params) => ({
     data: aggregateStatsMembers({
-      rows, glory, members,
-      weeks: params && params.p_weeks ? params.p_weeks : null
+      rows,
+      glory,
+      members,
+      weeks: params && params.p_weeks ? params.p_weeks : null,
     }),
-    error: null
+    error: null,
   });
 }
 
@@ -170,7 +186,7 @@ export function mockStatsHealth({ rows = [], members = [], war = [], power = [],
       opportunities: new Set(inWeek.map((r) => eventScoringKey(r.event_name, r.session_id, r.week_start))).size,
       present_members: new Set(
         inWeek.filter((r) => Number(r.participated) > 0 || r.sub_present === true).map((r) => r.pseudo)
-      ).size
+      ).size,
     };
   });
 
@@ -193,15 +209,15 @@ export function mockStatsHealth({ rows = [], members = [], war = [], power = [],
         crew_power: nonZero('crew_power'),
         flagship_power: nonZero('flagship_power'),
         fleet_rating: nonZero('fleet_rating'),
-        glory_score: nonZero('glory_score')
+        glory_score: nonZero('glory_score'),
       },
       quality: {
         pending_rows: rows.filter((r) => r.is_pending).length,
         weeks_with_data: weeks.length,
-        last_week: weeks.length ? weeks[weeks.length - 1] : null
-      }
+        last_week: weeks.length ? weeks[weeks.length - 1] : null,
+      },
     },
-    error: null
+    error: null,
   });
 }
 
@@ -226,9 +242,18 @@ export function mockStatsEvents({ rows = [], members = [], squads = [], war = []
       const skey = eventScoringKey(r.event_name, r.session_id, r.week_start);
       const id = norm(r.pseudo) + '\u0000' + skey;
       const prev = perKey.get(id) || {
-        pseudo: r.pseudo, skey, week: r.week_start,
-        present: false, excused: false, late: false, sub: false,
-        score: 0, score_prep: 0, score_pvp: 0, stage_a: false, stage_b: false
+        pseudo: r.pseudo,
+        skey,
+        week: r.week_start,
+        present: false,
+        excused: false,
+        late: false,
+        sub: false,
+        score: 0,
+        score_prep: 0,
+        score_pvp: 0,
+        stage_a: false,
+        stage_b: false,
       };
       prev.present = prev.present || Number(r.participated) > 0 || r.sub_present === true;
       prev.excused = prev.excused || r.excused === true;
@@ -259,38 +284,43 @@ export function mockStatsEvents({ rows = [], members = [], squads = [], war = []
       return d.toISOString().slice(0, 10);
     };
 
-    const memberRows = members.map((m) => {
-      const mine = keys.filter((k) => norm(k.pseudo) === norm(m.pseudo));
-      const excusedKeys = new Set(mine.filter((k) => k.excused).map((k) => k.skey));
-      const since = joinedWeek(m);
-      const opp = opportunities.filter((o) => o.week >= since && !excusedKeys.has(o.skey)).length;
-      const sq = squads.filter((x) => norm(x.pseudo) === norm(m.pseudo));
-      const sum = (f) => mine.reduce((a, k) => a + (k[f] || 0), 0);
-      return {
-        pseudo: m.pseudo,
-        uid: m.uid || null,
-        role: m.role || null,
-        overall_power: m.overall_power || 0,
-        att: mine.filter((k) => k.present).length,
-        opp,
-        score: sum('score'),
-        score_prep: sum('score_prep'),
-        score_pvp: sum('score_pvp'),
-        late_count: mine.filter((k) => k.late).length,
-        excused_count: mine.filter((k) => k.excused).length,
-        sub_count: mine.filter((k) => k.sub).length,
-        stage_a: mine.filter((k) => k.present && k.stage_a).length,
-        stage_b: mine.filter((k) => k.present && k.stage_b).length,
-        squad: bucket !== 'Shadowfront' ? null : {
-          assigned: sq.length,
-          reserve: sq.filter((x) => String(x.role || '').toLowerCase() === 'reserve').length,
-          participant: sq.filter((x) => String(x.role || '').toLowerCase() !== 'reserve').length,
-          squad1: sq.filter((x) => x.squad === 'squad1').length,
-          squad2: sq.filter((x) => x.squad === 'squad2').length,
-          commander: sq.filter((x) => x.is_commander).length
-        }
-      };
-    }).sort((a, b) => String(a.pseudo).localeCompare(String(b.pseudo)));
+    const memberRows = members
+      .map((m) => {
+        const mine = keys.filter((k) => norm(k.pseudo) === norm(m.pseudo));
+        const excusedKeys = new Set(mine.filter((k) => k.excused).map((k) => k.skey));
+        const since = joinedWeek(m);
+        const opp = opportunities.filter((o) => o.week >= since && !excusedKeys.has(o.skey)).length;
+        const sq = squads.filter((x) => norm(x.pseudo) === norm(m.pseudo));
+        const sum = (f) => mine.reduce((a, k) => a + (k[f] || 0), 0);
+        return {
+          pseudo: m.pseudo,
+          uid: m.uid || null,
+          role: m.role || null,
+          overall_power: m.overall_power || 0,
+          att: mine.filter((k) => k.present).length,
+          opp,
+          score: sum('score'),
+          score_prep: sum('score_prep'),
+          score_pvp: sum('score_pvp'),
+          late_count: mine.filter((k) => k.late).length,
+          excused_count: mine.filter((k) => k.excused).length,
+          sub_count: mine.filter((k) => k.sub).length,
+          stage_a: mine.filter((k) => k.present && k.stage_a).length,
+          stage_b: mine.filter((k) => k.present && k.stage_b).length,
+          squad:
+            bucket !== 'Shadowfront'
+              ? null
+              : {
+                  assigned: sq.length,
+                  reserve: sq.filter((x) => String(x.role || '').toLowerCase() === 'reserve').length,
+                  participant: sq.filter((x) => String(x.role || '').toLowerCase() !== 'reserve').length,
+                  squad1: sq.filter((x) => x.squad === 'squad1').length,
+                  squad2: sq.filter((x) => x.squad === 'squad2').length,
+                  commander: sq.filter((x) => x.is_commander).length,
+                },
+        };
+      })
+      .sort((a, b) => String(a.pseudo).localeCompare(String(b.pseudo)));
 
     return {
       data: {
@@ -299,13 +329,14 @@ export function mockStatsEvents({ rows = [], members = [], squads = [], war = []
         bucket,
         weeks: weeks && weeks.length ? weeks.slice() : [...new Set(valid.map((r) => r.week_start))].sort().reverse(),
         sessions: opportunities.map((o) => ({
-          key: o.skey, week_start: o.week,
-          present: keys.filter((k) => k.skey === o.skey && k.present).length
+          key: o.skey,
+          week_start: o.week,
+          present: keys.filter((k) => k.skey === o.skey && k.present).length,
         })),
-        war: (bucket === 'SvS' || bucket === 'GvG') ? war : [],
-        members: memberRows
+        war: bucket === 'SvS' || bucket === 'GvG' ? war : [],
+        members: memberRows,
       },
-      error: null
+      error: null,
     };
   };
 }

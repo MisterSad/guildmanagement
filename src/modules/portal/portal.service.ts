@@ -26,7 +26,7 @@ export class PortalService {
 
     try {
       const res = await supabase.functions.invoke('member-portal', {
-        body: { action, payload }
+        body: { action, payload },
       });
 
       // Recover the real {ok, error} body even when the platform gateway
@@ -98,16 +98,12 @@ export class PortalService {
     return this.invokeAction('submit-scores', payload);
   }
 
-  public static async submitEventScore(
-    eventName: string,
-    sessionId: string,
-    score: number
-  ): Promise<PortalResponse> {
+  public static async submitEventScore(eventName: string, sessionId: string, score: number): Promise<PortalResponse> {
     return this.invokeAction('submit-scores', {
       event_name: eventName,
       session_id: sessionId,
       score,
-      participated: true
+      participated: true,
     });
   }
 
@@ -131,16 +127,12 @@ export class PortalService {
     return this.invokeAction('get-metrics-history', { limit });
   }
 
-  public static async declareAbsence(
-    startDate: string,
-    endDate: string,
-    reason: string
-  ): Promise<PortalResponse> {
+  public static async declareAbsence(startDate: string, endDate: string, reason: string): Promise<PortalResponse> {
     return this.invokeAction('set-absence', {
       start_date: startDate,
       end_date: endDate,
       kind: 'full',
-      note: reason
+      note: reason,
     });
   }
 }

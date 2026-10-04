@@ -68,13 +68,20 @@ async function handlePost(req: Request, admin: any, logger: EdgeLogger): Promise
     return json({ ok: false, error: "bad_request" }, 400);
   }
   switch (body?.action) {
-    case "redeem":       return handleRedeem(req, body, admin, logger);
-    case "choose":       return handleChoose(req, body, admin, logger);
-    case "claim":        return handleClaim(req, body, admin, logger);
-    case "onboard":      return handleOnboard(req, body, admin, logger);
-    case "redeem-code": return handleRedeemCode(req, body, admin, logger);
-    case "backup-login": return handleBackupLogin(req, body, admin, logger);
-    default:             return json({ ok: false, error: "bad_request" }, 400);
+    case "redeem":
+      return handleRedeem(req, body, admin, logger);
+    case "choose":
+      return handleChoose(req, body, admin, logger);
+    case "claim":
+      return handleClaim(req, body, admin, logger);
+    case "onboard":
+      return handleOnboard(req, body, admin, logger);
+    case "redeem-code":
+      return handleRedeemCode(req, body, admin, logger);
+    case "backup-login":
+      return handleBackupLogin(req, body, admin, logger);
+    default:
+      return json({ ok: false, error: "bad_request" }, 400);
   }
 }
 

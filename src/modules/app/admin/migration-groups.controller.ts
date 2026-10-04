@@ -5,10 +5,14 @@
  * app.js#renderMigrationGroupsList (super-admin create/open/close/reopen).
  */
 
-
 import { esc, byId, getDb } from './utils';
 import { showToast, showConfirm } from '../dialogs/dialogs.service';
-import { createMigrationGroup, queryMigrationGroups, queryMigrationGroupServers, updateMigrationGroup } from '../../migration/migration.service';
+import {
+  createMigrationGroup,
+  queryMigrationGroups,
+  queryMigrationGroupServers,
+  updateMigrationGroup,
+} from '../../migration/migration.service';
 
 let migrationGroupsFormWired = false;
 
@@ -26,7 +30,12 @@ export async function renderMigrationGroupsList(): Promise<void> {
         const nameInput = byId<HTMLInputElement>('migration-group-name');
         const serversInput = byId<HTMLInputElement>('migration-group-servers');
         const name = nameInput ? nameInput.value.trim() : '';
-        const serverNumbers = serversInput ? serversInput.value.split(',').map((s) => s.trim()).filter(Boolean) : [];
+        const serverNumbers = serversInput
+          ? serversInput.value
+              .split(',')
+              .map((s) => s.trim())
+              .filter(Boolean)
+          : [];
         const uniqueServers = Array.from(new Set(serverNumbers));
 
         if (!name || uniqueServers.length < 2) {
@@ -54,15 +63,13 @@ export async function renderMigrationGroupsList(): Promise<void> {
   }
 
   try {
-    const [groupsRes, serversRes] = await Promise.all([
-      queryMigrationGroups(db),
-      queryMigrationGroupServers(db)
-    ]);
+    const [groupsRes, serversRes] = await Promise.all([queryMigrationGroups(db), queryMigrationGroupServers(db)]);
     if (groupsRes.error) throw groupsRes.error;
 
     const groups = groupsRes.data || [];
     if (groups.length === 0) {
-      container.innerHTML = '<div class="gm-empty"><i class="ph ph-ghost gm-icon"></i><div class="gm-empty-title">No migration groups yet</div></div>';
+      container.innerHTML =
+        '<div class="gm-empty"><i class="ph ph-ghost gm-icon"></i><div class="gm-empty-title">No migration groups yet</div></div>';
       return;
     }
 
@@ -76,25 +83,44 @@ export async function renderMigrationGroupsList(): Promise<void> {
     groups.forEach((g: any) => {
       const isOpen = g.status === 'open';
       const servers = (serversByGroup[g.id] || []).slice().sort();
-      const serversHtml = servers.map((s) =>
-        '<span class="gm-chip" style="font-size: var(--fs-sm); margin-right:4px;"><i class="ph ph-hard-drives"></i> #' + esc(s) + '</span>'
-      ).join('');
+      const serversHtml = servers
+        .map(
+          (s) =>
+            '<span class="gm-chip" style="font-size: var(--fs-sm); margin-right:4px;"><i class="ph ph-hard-drives"></i> #' +
+            esc(s) +
+            '</span>'
+        )
+        .join('');
       const statusBadge = isOpen
         ? '<span class="gm-chip gm-chip-success" style="font-weight:700;"><i class="ph ph-lock-open"></i> Open</span>'
         : '<span class="gm-chip" style="background:rgba(100,116,139,0.15); color:#94a3b8; border:1px solid rgba(100,116,139,0.3); font-weight:700;"><i class="ph ph-lock"></i> Closed</span>';
 
       html +=
         '<div class="gm-card glass-card" style="margin-bottom:0.75rem; padding:0.9rem 1.1rem;">' +
-          '<div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem;">' +
-            '<div style="display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap;">' +
-              '<strong style="font-size: var(--fs-md);">' + esc(g.name) + '</strong>' +
-              statusBadge +
-            '</div>' +
-            '<button type="button" class="gm-btn gm-btn-sm ' + (isOpen ? 'gm-btn-danger' : 'gm-btn-success') + '" data-migration-group-id="' + esc(g.id) + '" data-migration-group-action="' + (isOpen ? 'close' : 'reopen') + '">' +
-              '<i class="ph ' + (isOpen ? 'ph-lock' : 'ph-lock-open') + '"></i> <span>' + (isOpen ? 'Close' : 'Reopen') + '</span>' +
-            '</button>' +
-          '</div>' +
-          '<div style="margin-top:0.5rem;">' + (serversHtml || '<span style="font-size: var(--fs-sm); color:var(--text-dim);">No servers linked</span>') + '</div>' +
+        '<div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem;">' +
+        '<div style="display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap;">' +
+        '<strong style="font-size: var(--fs-md);">' +
+        esc(g.name) +
+        '</strong>' +
+        statusBadge +
+        '</div>' +
+        '<button type="button" class="gm-btn gm-btn-sm ' +
+        (isOpen ? 'gm-btn-danger' : 'gm-btn-success') +
+        '" data-migration-group-id="' +
+        esc(g.id) +
+        '" data-migration-group-action="' +
+        (isOpen ? 'close' : 'reopen') +
+        '">' +
+        '<i class="ph ' +
+        (isOpen ? 'ph-lock' : 'ph-lock-open') +
+        '"></i> <span>' +
+        (isOpen ? 'Close' : 'Reopen') +
+        '</span>' +
+        '</button>' +
+        '</div>' +
+        '<div style="margin-top:0.5rem;">' +
+        (serversHtml || '<span style="font-size: var(--fs-sm); color:var(--text-dim);">No servers linked</span>') +
+        '</div>' +
         '</div>';
     });
     container.innerHTML = html;
@@ -104,13 +130,17 @@ export async function renderMigrationGroupsList(): Promise<void> {
         const groupId = btn.getAttribute('data-migration-group-id') || '';
         const action = btn.getAttribute('data-migration-group-action');
         const newStatus = action === 'close' ? 'closed' : 'open';
-        const confirmMsg = action === 'close'
-          ? 'Close this migration group? Admins will no longer be able to transfer players between these servers, and any pending request made under it can no longer be approved.'
-          : 'Reopen this migration group? Admins on these servers will be able to transfer players between them again.';
+        const confirmMsg =
+          action === 'close'
+            ? 'Close this migration group? Admins will no longer be able to transfer players between these servers, and any pending request made under it can no longer be approved.'
+            : 'Reopen this migration group? Admins on these servers will be able to transfer players between them again.';
         showConfirm(action === 'close' ? 'Close Migration Group' : 'Reopen Migration Group', confirmMsg, async () => {
           (btn as HTMLButtonElement).disabled = true;
           try {
-            const updatePayload = { status: newStatus, closed_at: newStatus === 'closed' ? new Date().toISOString() : null };
+            const updatePayload = {
+              status: newStatus,
+              closed_at: newStatus === 'closed' ? new Date().toISOString() : null,
+            };
             const res = await updateMigrationGroup(db, groupId, updatePayload);
             if (res.error) throw new Error(res.error.message);
             showToast('Migration group ' + (newStatus === 'closed' ? 'closed' : 'reopened') + '.', 'success');
@@ -123,6 +153,9 @@ export async function renderMigrationGroupsList(): Promise<void> {
       });
     });
   } catch (err: any) {
-    container.innerHTML = '<div class="gm-empty"><i class="ph ph-warning-octagon gm-icon" style="color:var(--danger);"></i><div class="gm-empty-title">Error: ' + esc(err.message) + '</div></div>';
+    container.innerHTML =
+      '<div class="gm-empty"><i class="ph ph-warning-octagon gm-icon" style="color:var(--danger);"></i><div class="gm-empty-title">Error: ' +
+      esc(err.message) +
+      '</div></div>';
   }
 }

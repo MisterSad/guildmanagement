@@ -11,15 +11,15 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 // reading `window.showConfirm` / `window.GM.getGuildTag`.
 const mocks = vi.hoisted(() => ({
   showConfirm: vi.fn(),
-  getGuildTag: vi.fn()
+  getGuildTag: vi.fn(),
 }));
 vi.mock('../src/modules/app/dialogs/dialogs.service', async (importOriginal) => ({
   ...(await importOriginal()),
-  showConfirm: mocks.showConfirm
+  showConfirm: mocks.showConfirm,
 }));
 vi.mock('../src/core/config/guild-config', async (importOriginal) => ({
   ...(await importOriginal()),
-  getGuildTag: mocks.getGuildTag
+  getGuildTag: mocks.getGuildTag,
 }));
 
 import {
@@ -27,14 +27,10 @@ import {
   closeOcrModal,
   setOcrMetric,
   handleOcrFiles,
-  commitOcrUpdates
+  commitOcrUpdates,
 } from '../src/modules/app/ocr/ocr.controller';
 import { renderOcrResults, updateCommitButtonCount, toggleAllCheckboxes } from '../src/modules/app/ocr/ocr.render';
-import {
-  setOcrExtractedPlayers,
-  getOcrExtractedPlayers,
-  getCurrentOcrMetric
-} from '../src/modules/app/ocr/ocr.meta';
+import { setOcrExtractedPlayers, getOcrExtractedPlayers, getCurrentOcrMetric } from '../src/modules/app/ocr/ocr.meta';
 import { setGuildMembers, clearMembersStore } from '../src/modules/app/members/members.store';
 import { setVerifiedRole } from '../src/core/auth/roles';
 import { patchAppState, resetAppState } from '../src/core/state/app-state';
@@ -78,33 +74,58 @@ function makeDb() {
   const calls = { rpc: [], update: [], insert: [], delete: [] };
   function chain(table) {
     const obj = {
-      select() { return obj; }, eq() { return obj; }, order() { return obj; },
-      not() { return obj; }, ilike() { return obj; },
+      select() {
+        return obj;
+      },
+      eq() {
+        return obj;
+      },
+      order() {
+        return obj;
+      },
+      not() {
+        return obj;
+      },
+      ilike() {
+        return obj;
+      },
       maybeSingle: async () => ({ data: null, error: null }),
       single: async () => ({ data: null, error: null }),
       in: async () => ({ data: null, error: null }),
-      then: (resolve) => resolve({ data: [], error: null })
+      then: (resolve) => resolve({ data: [], error: null }),
     };
     void table;
     return obj;
   }
   return {
     __calls: calls,
-    rpc: async (name, args) => { calls.rpc.push({ name, args }); return { data: { ok: true }, error: null }; },
+    rpc: async (name, args) => {
+      calls.rpc.push({ name, args });
+      return { data: { ok: true }, error: null };
+    },
     from(table) {
       return {
         select: () => chain(table),
-        update: (payload) => { calls.update.push({ table, payload }); return chain(table); },
-        insert: (payload) => { calls.insert.push({ table, payload }); return chain(table); },
-        delete: () => { calls.delete.push({ table }); return chain(table); }
+        update: (payload) => {
+          calls.update.push({ table, payload });
+          return chain(table);
+        },
+        insert: (payload) => {
+          calls.insert.push({ table, payload });
+          return chain(table);
+        },
+        delete: () => {
+          calls.delete.push({ table });
+          return chain(table);
+        },
       };
-    }
+    },
   };
 }
 
 const MEMBERS = [
   { pseudo: 'Bob', uid: '111111', role: 'R1', guild: 'ALPHA', overall_power: 100 },
-  { pseudo: 'Ghost', uid: '222222', role: 'R2', guild: 'ALPHA', overall_power: 80 }
+  { pseudo: 'Ghost', uid: '222222', role: 'R2', guild: 'ALPHA', overall_power: 80 },
 ];
 
 beforeEach(async () => {
@@ -119,7 +140,9 @@ beforeEach(async () => {
   setVerifiedRole('super_admin', 't_super');
   patchAppState({ currentGuild: 'ALPHA' });
   mocks.getGuildTag.mockReset().mockImplementation(async () => '[FGF]');
-  mocks.showConfirm.mockReset().mockImplementation((_t, _m, onConfirm) => { void onConfirm(); });
+  mocks.showConfirm.mockReset().mockImplementation((_t, _m, onConfirm) => {
+    void onConfirm();
+  });
   await setOcrMetric('members');
 });
 
@@ -178,7 +201,10 @@ describe('modal lifecycle', () => {
 
 describe('renderOcrResults — roster diff', () => {
   it('renders existing (update), new and removed sections for members mode', async () => {
-    setOcrExtractedPlayers([{ pseudo: 'Bob', score: 150 }, { pseudo: 'Newbie', score: 50 }]);
+    setOcrExtractedPlayers([
+      { pseudo: 'Bob', score: 150 },
+      { pseudo: 'Newbie', score: 50 },
+    ]);
     renderOcrResults(getOcrExtractedPlayers());
 
     const existing = document.getElementById('ocr-results-tbody');
@@ -196,7 +222,10 @@ describe('renderOcrResults — roster diff', () => {
   });
 
   it('updates the commit button count and toggles all checkboxes', () => {
-    setOcrExtractedPlayers([{ pseudo: 'Bob', score: 150 }, { pseudo: 'Newbie', score: 50 }]);
+    setOcrExtractedPlayers([
+      { pseudo: 'Bob', score: 150 },
+      { pseudo: 'Newbie', score: 50 },
+    ]);
     renderOcrResults(getOcrExtractedPlayers());
 
     const btn = document.getElementById('ocr-commit-btn');
@@ -223,13 +252,13 @@ describe('renderOcrResults — roster diff', () => {
       { pseudo: 'P3', uid: '1003', role: 'R1', guild: 'ALPHA', overall_power: 100 },
       { pseudo: 'P4', uid: '1004', role: 'R1', guild: 'ALPHA', overall_power: 100 },
       { pseudo: 'P5', uid: '1005', role: 'R1', guild: 'ALPHA', overall_power: 100 },
-      { pseudo: 'P6', uid: '1006', role: 'R1', guild: 'ALPHA', overall_power: 100 }
+      { pseudo: 'P6', uid: '1006', role: 'R1', guild: 'ALPHA', overall_power: 100 },
     ]);
 
     // Partial OCR scan: only 2 of 6 members found (33% coverage)
     setOcrExtractedPlayers([
       { pseudo: 'P1', score: 120 },
-      { pseudo: 'P2', score: 110 }
+      { pseudo: 'P2', score: 110 },
     ]);
 
     renderOcrResults(getOcrExtractedPlayers());
@@ -256,7 +285,7 @@ describe('commitOcrUpdates — roster flow', () => {
   it('updates existing, inserts new and deletes removals, then refreshes', async () => {
     setOcrExtractedPlayers([
       { pseudo: 'Bob', score: 150 },
-      { pseudo: 'Newbie', score: 50 }
+      { pseudo: 'Newbie', score: 50 },
     ]);
     renderOcrResults(getOcrExtractedPlayers());
 

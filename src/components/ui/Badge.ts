@@ -42,20 +42,20 @@ export const badgeRecipe = cva('gm-ui-badge', {
       danger: 'gm-ui-badge-danger',
       default: 'gm-ui-badge-default',
       warning: 'gm-ui-badge-warning',
-      success: 'gm-ui-badge-success'
+      success: 'gm-ui-badge-success',
     },
     style: {
       soft: 'gm-ui-badge-soft',
       solid: 'gm-ui-badge-solid',
       outline: 'gm-ui-badge-outline',
-      pill: 'gm-ui-badge-pill'
+      pill: 'gm-ui-badge-pill',
     },
     size: {
       sm: 'gm-ui-badge-sm',
-      md: 'gm-ui-badge-md'
-    }
+      md: 'gm-ui-badge-md',
+    },
   },
-  defaultVariants: { tone: 'default', style: 'soft', size: 'md' }
+  defaultVariants: { tone: 'default', style: 'soft', size: 'md' },
 });
 
 export function badgeClassList(props: BadgeProps): string {
@@ -82,27 +82,42 @@ export function createBadge(props: BadgeProps): HTMLSpanElement {
  */
 export function renderWarStatusBadge(outcome: WarStatus, labels?: WarStatusLabels): string {
   const hasLabels = labels && (labels.won || labels.lost || labels.tie || labels.pending);
-  const text = outcome === 'W'
-    ? (labels?.won ?? 'W')
-    : outcome === 'L'
-      ? (labels?.lost ?? 'L')
-      : outcome === 'tie'
-        ? (labels?.tie ?? 'Tie')
-        : (labels?.pending ?? '—');
-  const tone: BadgeTone = outcome === 'W'
-    ? 'success'
-    : outcome === 'L'
-      ? 'danger'
-      : outcome === 'tie'
-        ? 'default'
-        : outcome === 'neutral'
+  const text =
+    outcome === 'W'
+      ? (labels?.won ?? 'W')
+      : outcome === 'L'
+        ? (labels?.lost ?? 'L')
+        : outcome === 'tie'
+          ? (labels?.tie ?? 'Tie')
+          : (labels?.pending ?? '—');
+  const tone: BadgeTone =
+    outcome === 'W'
+      ? 'success'
+      : outcome === 'L'
+        ? 'danger'
+        : outcome === 'tie'
           ? 'default'
-          : 'warning';
+          : outcome === 'neutral'
+            ? 'default'
+            : 'warning';
   return renderBadge({
     text,
     tone,
     style: 'soft',
     size: 'sm',
-    ...(hasLabels ? {} : { title: outcome === 'W' ? 'Won' : outcome === 'L' ? 'Lost' : outcome === 'tie' ? 'Tie' : outcome === 'neutral' ? 'Neutral' : 'Pending' })
+    ...(hasLabels
+      ? {}
+      : {
+          title:
+            outcome === 'W'
+              ? 'Won'
+              : outcome === 'L'
+                ? 'Lost'
+                : outcome === 'tie'
+                  ? 'Tie'
+                  : outcome === 'neutral'
+                    ? 'Neutral'
+                    : 'Pending',
+        }),
   });
 }

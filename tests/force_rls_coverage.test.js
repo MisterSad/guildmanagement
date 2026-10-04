@@ -8,7 +8,10 @@ import path from 'path';
 
 describe('FORCE ROW LEVEL SECURITY coverage', () => {
   const migDir = path.resolve(__dirname, '../supabase/migrations');
-  const migFiles = fs.readdirSync(migDir).filter((f) => f.endsWith('.sql')).sort();
+  const migFiles = fs
+    .readdirSync(migDir)
+    .filter((f) => f.endsWith('.sql'))
+    .sort();
 
   const createdTables = new Set();
   const droppedTables = new Set();

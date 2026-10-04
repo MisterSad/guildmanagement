@@ -9,11 +9,7 @@
  * request at a time). Batches keep concurrency bounded for per-row Supabase
  * calls. Returns the flattened results.
  */
-export async function runInChunks<T, R>(
-  items: T[],
-  chunkSize: number,
-  worker: (item: T) => Promise<R>
-): Promise<R[]> {
+export async function runInChunks<T, R>(items: T[], chunkSize: number, worker: (item: T) => Promise<R>): Promise<R[]> {
   let results: R[] = [];
   for (let i = 0; i < items.length; i += chunkSize) {
     const chunk = items.slice(i, i + chunkSize);
@@ -31,6 +27,8 @@ export function debounce<F extends (...args: any[]) => void>(fn: F, wait: number
   let timer: ReturnType<typeof setTimeout> | null = null;
   return function (this: unknown, ...args: Parameters<F>): void {
     if (timer) clearTimeout(timer);
-    timer = setTimeout(() => { fn.apply(this, args); }, wait);
+    timer = setTimeout(() => {
+      fn.apply(this, args);
+    }, wait);
   };
 }

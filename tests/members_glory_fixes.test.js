@@ -39,7 +39,9 @@ describe('Glory OCR weekly routing (v128.1)', () => {
     expect(fn).toContain('public.gm_upsert_player_glory(v_guild, v_pseudo, v_week, v_score)');
     // Non-glory metrics keep the direct guild_members update
     expect(fn).toContain("'UPDATE public.guild_members SET %I = $1");
-    expect(read('src/modules/app/ocr/ocr.controller.ts')).toContain('await commitOcrRoster(targetField, existingRows, newRows, checkedRemovalPseudos)');
+    expect(read('src/modules/app/ocr/ocr.controller.ts')).toContain(
+      'await commitOcrRoster(targetField, existingRows, newRows, checkedRemovalPseudos)'
+    );
   });
 
   it('new-member glory inserts also record the weekly event_participants row', () => {

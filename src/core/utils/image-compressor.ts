@@ -25,7 +25,7 @@ const DEFAULT_OPTIONS: Required<CompressionOptions> = {
   maxWidth: 1440,
   maxHeight: 1440,
   quality: 0.78,
-  preferredMimeType: 'image/webp'
+  preferredMimeType: 'image/webp',
 };
 
 /**
@@ -126,7 +126,7 @@ export async function compressImage(
     sizeBytes,
     width: targetWidth,
     height: targetHeight,
-    mimeType: mime
+    mimeType: mime,
   };
 }
 

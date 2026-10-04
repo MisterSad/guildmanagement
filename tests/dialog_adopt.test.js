@@ -13,8 +13,14 @@ function overlay(id, { heading = 'Edit member' } = {}) {
   el.id = id;
   el.className = 'gm-modal-overlay';
   el.setAttribute('role', 'dialog');
-  el.innerHTML = '<div class="gm-modal-card">' + (heading ? '<h3>' + heading + '</h3>' : '') +
-    '<input id="' + id + '-a"><button id="' + id + '-b">OK</button></div>';
+  el.innerHTML =
+    '<div class="gm-modal-card">' +
+    (heading ? '<h3>' + heading + '</h3>' : '') +
+    '<input id="' +
+    id +
+    '-a"><button id="' +
+    id +
+    '-b">OK</button></div>';
   document.body.appendChild(el);
   return el;
 }
@@ -112,7 +118,8 @@ describe('every hand-built overlay is adopted', () => {
     const walk = (d, o = []) => {
       for (const e of fs.readdirSync(d)) {
         const p = path.join(d, e);
-        if (fs.statSync(p).isDirectory()) walk(p, o); else if (p.endsWith('.ts')) o.push(p);
+        if (fs.statSync(p).isDirectory()) walk(p, o);
+        else if (p.endsWith('.ts')) o.push(p);
       }
       return o;
     };

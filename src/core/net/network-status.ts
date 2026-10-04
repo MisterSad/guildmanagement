@@ -34,11 +34,7 @@ export function initNetworkStatusMonitoring(): void {
   });
 
   window.addEventListener('offline', () => {
-    ToastNotification.show(
-      'You are offline. Changes will not be saved until the connection is back.',
-      'warning',
-      5000
-    );
+    ToastNotification.show('You are offline. Changes will not be saved until the connection is back.', 'warning', 5000);
   });
 }
 

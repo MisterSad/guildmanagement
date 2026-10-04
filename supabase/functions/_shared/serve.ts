@@ -9,7 +9,11 @@
 
 export function serveUnlessTest(handler: (req: Request) => Response | Promise<Response>): void {
   let underTest = false;
-  try { underTest = Boolean(Deno.env.get("GM_EDGE_TEST")); } catch { /* no env permission: production */ }
+  try {
+    underTest = Boolean(Deno.env.get("GM_EDGE_TEST"));
+  } catch {
+    /* no env permission: production */
+  }
   if (underTest) return;
   Deno.serve(handler);
 }

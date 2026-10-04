@@ -178,10 +178,7 @@ export function levenshteinDistance(a?: string | null, b?: string | null): numbe
       if (b.charAt(i - 1) === a.charAt(j - 1)) {
         matrix[i][j] = matrix[i - 1][j - 1];
       } else {
-        matrix[i][j] = Math.min(
-          matrix[i - 1][j - 1] + 1,
-          Math.min(matrix[i][j - 1] + 1, matrix[i - 1][j] + 1)
-        );
+        matrix[i][j] = Math.min(matrix[i - 1][j - 1] + 1, Math.min(matrix[i][j - 1] + 1, matrix[i - 1][j] + 1));
       }
     }
   }
@@ -251,7 +248,11 @@ export function findBestMatchingMember<T extends { pseudo?: string | null }>(
   const targetClean = (cleanTarget || target).replace(/\[[^\]]*\]|\([^)]*\)/g, '').replace(/[^a-z0-9]/gi, '');
   if (targetClean.length >= 3) {
     const normMatch = members.find((m) => {
-      const mClean = (m.pseudo || '').trim().toLowerCase().replace(/\[[^\]]*\]|\([^)]*\)/g, '').replace(/[^a-z0-9]/gi, '');
+      const mClean = (m.pseudo || '')
+        .trim()
+        .toLowerCase()
+        .replace(/\[[^\]]*\]|\([^)]*\)/g, '')
+        .replace(/[^a-z0-9]/gi, '');
       return mClean === targetClean;
     });
     if (normMatch) return { member: normMatch, matchType: 'normalized', score: 0.95 };
@@ -281,7 +282,10 @@ export function findBestMatchingMember<T extends { pseudo?: string | null }>(
  */
 export function parseGeminiJson<T = unknown>(jsonText?: string | null): T | null {
   if (!jsonText) return null;
-  const cleaned = String(jsonText).replace(/```(?:json)?/gi, '').replace(/```/g, '').trim();
+  const cleaned = String(jsonText)
+    .replace(/```(?:json)?/gi, '')
+    .replace(/```/g, '')
+    .trim();
   try {
     return JSON.parse(cleaned) as T;
   } catch (e) {

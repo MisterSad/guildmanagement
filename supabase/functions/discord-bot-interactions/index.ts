@@ -34,7 +34,7 @@
  * reimplementation.
  */
 import { EdgeLogger } from "../_shared/logger.ts";
-import { canManageAccount, isGuildInScope, } from "../_shared/admin-authz.ts";
+import { canManageAccount, isGuildInScope } from "../_shared/admin-authz.ts";
 import { editChannelMessage, postChannelMessage } from "../_shared/discord-verification.ts";
 import { decideRegistration, getTargetCtx } from "../_shared/registration-decision.ts";
 import {
@@ -111,10 +111,14 @@ async function resolveLinkedAccount(
   const { data: accounts } = await admin
     .from("accounts")
     .select("id, uid, guild, role, status")
-    .in("id", (links as { account_id: string }[]).map((l) => l.account_id));
+    .in(
+      "id",
+      (links as { account_id: string }[]).map((l) => l.account_id)
+    );
 
-  const usable = ((accounts as { id: string; uid?: string; guild?: string; role?: string; status?: string }[]) || [])
-    .filter((a) => a.status === "active" && a.uid && a.guild);
+  const usable = (
+    (accounts as { id: string; uid?: string; guild?: string; role?: string; status?: string }[]) || []
+  ).filter((a) => a.status === "active" && a.uid && a.guild);
 
   if (usable.length === 0) return { ok: false, message: NO_UID_MSG };
   if (usable.length > 1) {
@@ -178,9 +182,12 @@ async function handleJoinRequestButton(interaction: any, logger: EdgeLogger): Pr
     .maybeSingle();
   // The message the buttons sit on: the clicked one, or for a confirmation the
   // one whose id the confirmation carries.
-  const requestMessageId: string | null = action === "rejectok"
-    ? (confirmedMessageId || null)
-    : (interaction.message?.id ? String(interaction.message.id) : null);
+  const requestMessageId: string | null =
+    action === "rejectok"
+      ? confirmedMessageId || null
+      : interaction.message?.id
+        ? String(interaction.message.id)
+        : null;
 
   if (!targetAcc || (targetAcc as any).status !== "pending") {
     if (requestMessageId) {
@@ -203,22 +210,29 @@ async function handleJoinRequestButton(interaction: any, logger: EdgeLogger): Pr
   // ephemeral: only the officer who clicked sees it.
   if (action === "reject") {
     if (!requestMessageId) return ephemeral("This button is no longer active.");
-    return ephemeral(
-      `Reject \`${targetId}\`? They will be told by DM.`,
-      undefined,
-      [{ type: 1, components: [
-        { type: 2, style: 4, label: "Yes, reject", custom_id: `gmjoin:rejectok:${targetId}:${requestMessageId}` },
-      ] }],
-    );
+    return ephemeral(`Reject \`${targetId}\`? They will be told by DM.`, undefined, [
+      {
+        type: 1,
+        components: [
+          { type: 2, style: 4, label: "Yes, reject", custom_id: `gmjoin:rejectok:${targetId}:${requestMessageId}` },
+        ],
+      },
+    ]);
   }
 
   const decision = action === "approve" ? "approve" : "reject";
   const res = await decideRegistration(
     admin,
     logger,
-    { role: officer.role, guild: officer.guild, serverNumber: officer.serverNumber, accountId: officer.id, via: "discord" },
+    {
+      role: officer.role,
+      guild: officer.guild,
+      serverNumber: officer.serverNumber,
+      accountId: officer.id,
+      via: "discord",
+    },
     targetId,
-    decision,
+    decision
   );
   if (!res.ok) {
     if (res.error === "not_pending") return ephemeral("This request was already handled.");
@@ -228,15 +242,18 @@ async function handleJoinRequestButton(interaction: any, logger: EdgeLogger): Pr
 
   if (requestMessageId) {
     await editChannelMessage(channelId, requestMessageId, {
-      content: decision === "approve"
-        ? `✅ \`${targetId}\` joined **${res.guild ?? ""}** — approved by \`${officer.id}\`.`
-        : `🚫 \`${targetId}\` was not approved for **${res.guild ?? ""}** — rejected by \`${officer.id}\`.`,
+      content:
+        decision === "approve"
+          ? `✅ \`${targetId}\` joined **${res.guild ?? ""}** — approved by \`${officer.id}\`.`
+          : `🚫 \`${targetId}\` was not approved for **${res.guild ?? ""}** — rejected by \`${officer.id}\`.`,
       components: [],
     });
   }
-  return ephemeral(decision === "approve"
-    ? `Approved \`${targetId}\`. They have been told by DM.`
-    : `Rejected \`${targetId}\`. They have been told by DM.`);
+  return ephemeral(
+    decision === "approve"
+      ? `Approved \`${targetId}\`. They have been told by DM.`
+      : `Rejected \`${targetId}\`. They have been told by DM.`
+  );
 }
 
 export async function handler(req: Request): Promise<Response> {
@@ -337,7 +354,9 @@ export async function handler(req: Request): Promise<Response> {
       return ephemeral(NOT_AN_OFFICER_MSG, undefined, appLinkRow("Continue with Discord"));
     }
 
-    const requested = String(getOptionValue(interaction.data?.options, "guild") ?? "").trim().toUpperCase();
+    const requested = String(getOptionValue(interaction.data?.options, "guild") ?? "")
+      .trim()
+      .toUpperCase();
     const ownGuilds = [...new Set(officers.map((o) => o.guild).filter(Boolean))] as string[];
     const target = requested || (ownGuilds.length === 1 ? ownGuilds[0] : "");
     if (!target) {
@@ -359,23 +378,25 @@ export async function handler(req: Request): Promise<Response> {
       return ephemeral(
         `**${target}** has no join code yet. Open **Accounts & Access** in the app once and it is created.`,
         undefined,
-        appLinkRow("Open FGF Guild Management"),
+        appLinkRow("Open FGF Guild Management")
       );
     }
 
     const link = `${APP_URL}/#join=${encodeURIComponent(code)}`;
     const posted = await postChannelMessage(channelId, {
-      embeds: [{
-        color: 0x5865f2,
-        title: `⚔️ Join ${target} on FGF Guild Management`,
-        description:
-          "Your events, scores and stats, in one place.\n\n" +
-          `**1.** Press **Join ${target}** below.\n` +
-          "**2.** Choose **Continue with Discord**.\n" +
-          "**3.** Pick **I'm a player — join my guild**: the join code is already filled in, just type your in-game UID.\n" +
-          "**4.** An officer approves you, and the bot DMs you when it's done.",
-        footer: { text: "FGF Guild Management • Player Portal" },
-      }],
+      embeds: [
+        {
+          color: 0x5865f2,
+          title: `⚔️ Join ${target} on FGF Guild Management`,
+          description:
+            "Your events, scores and stats, in one place.\n\n" +
+            `**1.** Press **Join ${target}** below.\n` +
+            "**2.** Choose **Continue with Discord**.\n" +
+            "**3.** Pick **I'm a player — join my guild**: the join code is already filled in, just type your in-game UID.\n" +
+            "**4.** An officer approves you, and the bot DMs you when it's done.",
+          footer: { text: "FGF Guild Management • Player Portal" },
+        },
+      ],
       components: [{ type: 1, components: [{ type: 2, style: 5, label: `Join ${target}`, url: link }] }],
     });
     if (!posted) {
@@ -383,7 +404,7 @@ export async function handler(req: Request): Promise<Response> {
     }
     logger.info("Invite posted", { target });
     return ephemeral(
-      `Posted. Anyone who can read this channel can use the button; an officer still approves each request.`,
+      `Posted. Anyone who can read this channel can use the button; an officer still approves each request.`
     );
   }
 
@@ -424,9 +445,10 @@ export async function handler(req: Request): Promise<Response> {
         // nothing happened.
         const prefix = lines.length ? "Power was updated, but " : "";
         return ephemeral(
-          prefix + (res.error === "invalid_glory"
-            ? "that doesn't look like a valid Glory value."
-            : `couldn't submit your Glory score (${res.error || "unknown error"}).`)
+          prefix +
+            (res.error === "invalid_glory"
+              ? "that doesn't look like a valid Glory value."
+              : `couldn't submit your Glory score (${res.error || "unknown error"}).`)
         );
       }
       logger.info("Player updated glory via Discord", { week: res.week, glory: res.glory });
@@ -480,7 +502,9 @@ export async function handler(req: Request): Promise<Response> {
     // nothing else offers them -- /absences lists the GUILD's absences, not
     // the caller's own.
     if (subName === "set") {
-      return ephemeral("Use `/absent <start_date> <end_date> [reason]` to declare an absence — it also notifies your officers.");
+      return ephemeral(
+        "Use `/absent <start_date> <end_date> [reason]` to declare an absence — it also notifies your officers."
+      );
     }
 
     if (subName === "list") {
@@ -498,9 +522,10 @@ export async function handler(req: Request): Promise<Response> {
       const id = getOptionValue(subOptions, "id");
       const res = await deletePlayerAbsence(admin, resolved.uid, resolved.guild, id);
       if (!res.ok) {
-        const msg = res.error === "missing_id"
-          ? "You need to provide the absence ID (see `/absence list`)."
-          : "Couldn't cancel that absence. Check the ID and try again.";
+        const msg =
+          res.error === "missing_id"
+            ? "You need to provide the absence ID (see `/absence list`)."
+            : "Couldn't cancel that absence. Check the ID and try again.";
         return ephemeral(msg);
       }
       return ephemeral("Absence cancelled.");

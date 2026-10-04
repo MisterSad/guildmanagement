@@ -111,7 +111,10 @@ export async function resolveCaller(req: Request, admin: AdminClient = serviceCl
   if (!match) return denied({});
 
   const jwt = match[1].trim();
-  const { data: { user }, error: authErr } = await anonClient().auth.getUser(jwt);
+  const {
+    data: { user },
+    error: authErr,
+  } = await anonClient().auth.getUser(jwt);
   if (authErr || !user) return denied({});
 
   const { data: acc } = await admin
@@ -132,7 +135,13 @@ export async function resolveCaller(req: Request, admin: AdminClient = serviceCl
   // gm_session_is_valid() exactly: the two must not disagree, or an account
   // would be refused by RLS while the Edge Functions still served it.
   if (isSessionRevoked(jwt, row.session_version ?? null)) {
-    return denied({ authenticated: true, userId: user.id, accountId: row.id, status: row.status, sessionRevoked: true });
+    return denied({
+      authenticated: true,
+      userId: user.id,
+      accountId: row.id,
+      status: row.status,
+      sessionRevoked: true,
+    });
   }
 
   const ctx = await accountContext(admin, row);

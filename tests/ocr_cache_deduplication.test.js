@@ -18,11 +18,11 @@ function computeTestOcrHash(images, metadata) {
 describe('OCR Cache Deduplication & SHA-256 Hashing (TICKET-10 / PERF-03)', () => {
   const sampleImage1 = {
     base64Data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
-    mimeType: 'image/png'
+    mimeType: 'image/png',
   };
   const sampleImage2 = {
     base64Data: 'iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAEklEQVR42mNk+M9Qz8DAwMAAAAwBAe5/g0QAAAAASUVORK5CYII=',
-    mimeType: 'image/png'
+    mimeType: 'image/png',
   };
 
   describe('Deterministic SHA-256 Hash Computation', () => {
@@ -110,7 +110,9 @@ describe('OCR Cache Deduplication & SHA-256 Hashing (TICKET-10 / PERF-03)', () =
 
     it('creates indexes for fast hash lookup and expiration cleanup', () => {
       const sql = fs.readFileSync(migPath, 'utf-8');
-      expect(sql).toContain('CREATE INDEX IF NOT EXISTS idx_ocr_cache_hash_expires ON public.ocr_cache(hash, expires_at)');
+      expect(sql).toContain(
+        'CREATE INDEX IF NOT EXISTS idx_ocr_cache_hash_expires ON public.ocr_cache(hash, expires_at)'
+      );
       expect(sql).toContain('CREATE INDEX IF NOT EXISTS idx_ocr_cache_expires_at ON public.ocr_cache(expires_at)');
     });
 

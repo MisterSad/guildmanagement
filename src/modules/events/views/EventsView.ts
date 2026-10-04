@@ -9,7 +9,6 @@
  * This module never assigns `window.GM_EVENTS` (bridge added at cutover).
  */
 
-
 import {
   TAB_TO_DB_EVENTS,
   PANEL_MAP,
@@ -29,10 +28,18 @@ import {
   fetchEventStartAt,
   approveParticipantSubmission,
   type WarEventName,
-  type OpponentCandidate
+  type OpponentCandidate,
 } from '../events.service';
 import type { WarSession, ChestTier } from '../../../types/database';
-import { resolveChestsForScore, resolvePrepChests, prepTotal, aggregateTierSlice, defaultChestGrid, WAR_AGGREGATE_DAY, PREP_DAYS } from '../../../core/scoring/chests';
+import {
+  resolveChestsForScore,
+  resolvePrepChests,
+  prepTotal,
+  aggregateTierSlice,
+  defaultChestGrid,
+  WAR_AGGREGATE_DAY,
+  PREP_DAYS,
+} from '../../../core/scoring/chests';
 import { renderBadge, renderWarStatusBadge } from '../../../components/ui/Badge';
 import { formatCompactNumber, formatNumber } from '../../../core/utils/numbers';
 import { openDialog } from '../../../components/ui/Dialog';
@@ -79,7 +86,9 @@ export class EventsView {
   private warSaveTimers: Record<string, ReturnType<typeof setTimeout>> = {};
 
   constructor() {
-    Object.keys(TAB_TO_DB_EVENTS).forEach((k) => { this.state[k] = createTabState(); });
+    Object.keys(TAB_TO_DB_EVENTS).forEach((k) => {
+      this.state[k] = createTabState();
+    });
   }
 
   public getState(): Record<string, EventTabState> {
@@ -127,11 +136,18 @@ export class EventsView {
         this.renderStatus(tabKey);
         this.renderInactive(tabKey);
       }
-    } catch (err) { console.error('loadEvent', err); }
+    } catch (err) {
+      console.error('loadEvent', err);
+    }
   }
 
   // ── Start a new session ───────────────────────────────────────────────────
-  private async startEvent(tabKey: string, dbEventName: string, stage: string | null, startAt?: string | null): Promise<void> {
+  private async startEvent(
+    tabKey: string,
+    dbEventName: string,
+    stage: string | null,
+    startAt?: string | null
+  ): Promise<void> {
     const db = getClient();
     if (!db) return;
     const currentG = this.currentGuild();
@@ -149,17 +165,15 @@ export class EventsView {
     }
     const sessionId = buildEventSessionId(dbEventName, ref, taken.ids);
     try {
-      const statusRes = await upsertEventStatus(db,
-        {
-          guild: currentG,
-          event_name: dbEventName,
-          is_active: true,
-          session_id: sessionId,
-          stage: stage || null,
-          start_at: startAt || null,
-          updated_at: new Date().toISOString()
-        }
-      );
+      const statusRes = await upsertEventStatus(db, {
+        guild: currentG,
+        event_name: dbEventName,
+        is_active: true,
+        session_id: sessionId,
+        stage: stage || null,
+        start_at: startAt || null,
+        updated_at: new Date().toISOString(),
+      });
       if (statusRes.error) throw statusRes.error;
       showToast(t('event_session_started'), 'success');
       notifyDiscordEvent(dbEventName, startAt || sessionId, 'start');
@@ -178,16 +192,14 @@ export class EventsView {
     if (!s.activeEventName) return;
     const currentG = this.currentGuild();
     try {
-      const statusRes = await upsertEventStatus(db,
-        {
-          guild: currentG,
-          event_name: s.activeEventName,
-          is_active: false,
-          session_id: s.sessionId,
-          stage: s.stage,
-          updated_at: new Date().toISOString()
-        }
-      );
+      const statusRes = await upsertEventStatus(db, {
+        guild: currentG,
+        event_name: s.activeEventName,
+        is_active: false,
+        session_id: s.sessionId,
+        stage: s.stage,
+        updated_at: new Date().toISOString(),
+      });
       if (statusRes.error) throw statusRes.error;
       s.activeEventName = null;
       s.sessionId = null;
@@ -219,7 +231,7 @@ export class EventsView {
       return;
     }
 
-    const inserted = (typeof rpcRes.data === 'number') ? rpcRes.data : 0;
+    const inserted = typeof rpcRes.data === 'number' ? rpcRes.data : 0;
     if (inserted > 0) showToast(inserted + ' ' + t('toast_members_imported'), 'success');
     await this.fetchParticipants(tabKey);
   }
@@ -230,7 +242,9 @@ export class EventsView {
     if (!db || !pseudo) return 0;
 
     const dbEventNames: string[] = [];
-    Object.keys(TAB_TO_DB_EVENTS).forEach((k) => { TAB_TO_DB_EVENTS[k].forEach((n) => dbEventNames.push(n)); });
+    Object.keys(TAB_TO_DB_EVENTS).forEach((k) => {
+      TAB_TO_DB_EVENTS[k].forEach((n) => dbEventNames.push(n));
+    });
 
     try {
       const currentG = this.currentGuild();
@@ -252,7 +266,7 @@ export class EventsView {
           week_start: getWeekStart(matched.start_at || new Date()),
           pseudo,
           participated: 0,
-          score: null
+          score: null,
         });
         s.participants.sort((a, b) => String(a.pseudo).localeCompare(String(b.pseudo)));
         this.renderParticipants(tabKey);
@@ -290,14 +304,18 @@ export class EventsView {
     // Auto-sync missing/transferred guild members before fetching.
     try {
       await populateEventParticipants(db, s.activeEventName, s.sessionId, week, currentG);
-    } catch (_) { /* best-effort sync */ }
+    } catch (_) {
+      /* best-effort sync */
+    }
 
     const [partRes, memRes] = await Promise.all([
       fetchEventSessionParticipants(db, currentG, s.activeEventName, s.sessionId),
-      fetchGuildMemberUids(db, currentG)
+      fetchGuildMemberUids(db, currentG),
     ]);
     if (partRes.error) return;
-    ((memRes.data || []) as any[]).forEach((m) => { this.uidMap[m.pseudo] = m.uid; });
+    ((memRes.data || []) as any[]).forEach((m) => {
+      this.uidMap[m.pseudo] = m.uid;
+    });
     s.participants = (partRes.data || []) as any[];
     this.renderParticipants(tabKey);
   }
@@ -349,11 +367,12 @@ export class EventsView {
     if (sessRes.ok) war.session = sessRes.session ?? null;
     else war.session = null;
 
-    const snapshot = war.session
-      && Array.isArray(war.session.chest_tiers_snapshot)
-      && (war.session.chest_tiers_snapshot as unknown as unknown[]).length > 0
-      ? (war.session.chest_tiers_snapshot as unknown as ChestTier[])
-      : null;
+    const snapshot =
+      war.session &&
+      Array.isArray(war.session.chest_tiers_snapshot) &&
+      (war.session.chest_tiers_snapshot as unknown as unknown[]).length > 0
+        ? (war.session.chest_tiers_snapshot as unknown as ChestTier[])
+        : null;
     if (snapshot) {
       war.grid = snapshot;
     } else {
@@ -365,7 +384,7 @@ export class EventsView {
 
     const [candRes, dailyRes] = await Promise.all([
       EventsService.listOpponentCandidates(guild, ev === 'SvS' ? 'server' : 'guild'),
-      EventsService.getDailyScores(guild, ev, s.sessionId)
+      EventsService.getDailyScores(guild, ev, s.sessionId),
     ]);
     war.opponents = candRes.ok ? candRes.items : [];
     war.daily = {};
@@ -390,7 +409,7 @@ export class EventsView {
     const res = await EventsService.upsertWarSession({
       guild,
       eventName: s.activeEventName as WarEventName,
-      sessionId: s.sessionId
+      sessionId: s.sessionId,
     });
     return res.ok && res.session ? res.session : null;
   }
@@ -429,60 +448,115 @@ export class EventsView {
     const isSvs = s.activeEventName === 'SvS';
     const datalistId = 'war-opponents-' + tabKey;
 
-    const anySession = war.session
-      && (war.session as any).opponent_snapshot
-      && typeof (war.session as any).opponent_snapshot === 'object';
-    const current = anySession ? String(((war.session as any).opponent_snapshot.name) || '') : '';
+    const anySession =
+      war.session &&
+      (war.session as any).opponent_snapshot &&
+      typeof (war.session as any).opponent_snapshot === 'object';
+    const current = anySession ? String((war.session as any).opponent_snapshot.name || '') : '';
 
-    const dayChips = [1, 2, 3, 4, 5, 6].map((d) => {
-      const result: 'won' | 'lost' | null = war.session ? (war.session as any)['day' + d + '_result'] || null : null;
-      const statusBadge = renderWarStatusBadge(
-        result === 'won' ? 'W' : result === 'lost' ? 'L' : 'neutral',
-        { won: t('war_day_won'), lost: t('war_day_lost'), pending: t('war_day_pending') }
-      );
-      const cls = result === 'won' ? 'war-day-won' : result === 'lost' ? 'war-day-lost' : 'war-day-neutral';
-      const tooltip = this.warDayTooltip(d, result);
-      return '<button type="button" class="war-day-toggle ' + cls + '" data-day="' + d + '" data-result="' + (result || 'neutral') + '" title="' + escapeHTML(tooltip) + '" aria-label="' + escapeHTML(tooltip) + '">' +
-        '<span class="war-day-num">D' + d + '</span>' +
-        '<span class="war-day-state">' + statusBadge + '</span>' +
-      '</button>';
-    }).join('');
+    const dayChips = [1, 2, 3, 4, 5, 6]
+      .map((d) => {
+        const result: 'won' | 'lost' | null = war.session ? (war.session as any)['day' + d + '_result'] || null : null;
+        const statusBadge = renderWarStatusBadge(result === 'won' ? 'W' : result === 'lost' ? 'L' : 'neutral', {
+          won: t('war_day_won'),
+          lost: t('war_day_lost'),
+          pending: t('war_day_pending'),
+        });
+        const cls = result === 'won' ? 'war-day-won' : result === 'lost' ? 'war-day-lost' : 'war-day-neutral';
+        const tooltip = this.warDayTooltip(d, result);
+        return (
+          '<button type="button" class="war-day-toggle ' +
+          cls +
+          '" data-day="' +
+          d +
+          '" data-result="' +
+          (result || 'neutral') +
+          '" title="' +
+          escapeHTML(tooltip) +
+          '" aria-label="' +
+          escapeHTML(tooltip) +
+          '">' +
+          '<span class="war-day-num">D' +
+          d +
+          '</span>' +
+          '<span class="war-day-state">' +
+          statusBadge +
+          '</span>' +
+          '</button>'
+        );
+      })
+      .join('');
 
-    const options = war.opponents.map((o) =>
-      '<option value="' + escapeHTML(o.name) + '"></option>'
-    ).join('');
+    const options = war.opponents.map((o) => '<option value="' + escapeHTML(o.name) + '"></option>').join('');
 
     const mode = this.warMode(tabKey);
     const modeSwitch =
-      '<div class="gm-row war-mode-switch" role="group" aria-label="' + escapeHTML(t('war_mode_detailed')) + '/' + escapeHTML(t('war_mode_aggregate')) + '" style="gap:.5rem; flex-wrap:wrap; align-items:center; justify-content:flex-end;">' +
-        '<span class="gm-chip" style="white-space:nowrap;">' + t('war_day_total_prep') + '</span>' +
-        '<button type="button" class="war-mode-btn gm-btn gm-btn-sm' + (mode === 'detailed' ? ' gm-active' : '') + '" data-war-mode="detailed" style="padding:0.3rem 0.6rem;"><i class="ph ph-list-numbers"></i> ' + escapeHTML(t('war_mode_detailed')) + '</button>' +
-        '<button type="button" class="war-mode-btn gm-btn gm-btn-sm' + (mode === 'aggregate' ? ' gm-active' : '') + '" data-war-mode="aggregate" style="padding:0.3rem 0.6rem;"><i class="ph ph-plus-minus"></i> ' + escapeHTML(t('war_mode_aggregate')) + '</button>' +
+      '<div class="gm-row war-mode-switch" role="group" aria-label="' +
+      escapeHTML(t('war_mode_detailed')) +
+      '/' +
+      escapeHTML(t('war_mode_aggregate')) +
+      '" style="gap:.5rem; flex-wrap:wrap; align-items:center; justify-content:flex-end;">' +
+      '<span class="gm-chip" style="white-space:nowrap;">' +
+      t('war_day_total_prep') +
+      '</span>' +
+      '<button type="button" class="war-mode-btn gm-btn gm-btn-sm' +
+      (mode === 'detailed' ? ' gm-active' : '') +
+      '" data-war-mode="detailed" style="padding:0.3rem 0.6rem;"><i class="ph ph-list-numbers"></i> ' +
+      escapeHTML(t('war_mode_detailed')) +
+      '</button>' +
+      '<button type="button" class="war-mode-btn gm-btn gm-btn-sm' +
+      (mode === 'aggregate' ? ' gm-active' : '') +
+      '" data-war-mode="aggregate" style="padding:0.3rem 0.6rem;"><i class="ph ph-plus-minus"></i> ' +
+      escapeHTML(t('war_mode_aggregate')) +
+      '</button>' +
       '</div>';
 
     host.innerHTML =
       '<div class="gm-card gm-card-padded" style="margin-bottom:1rem;">' +
-        '<div class="gm-row" style="gap:1rem; flex-wrap:wrap; align-items:center; justify-content:space-between;">' +
-          '<div class="gm-row" style="gap:.5rem; align-items:center; flex:1 1 260px; min-width:220px;">' +
-            '<span class="gm-chip" style="white-space:nowrap;">' + t('war_opponent_label') + '</span>' +
-            '<input type="text" class="gm-input war-opponent-input" aria-label="' + escapeHTML(t('war_opponent_label')) + '" list="' + datalistId + '" placeholder="' +
-              escapeHTML(isSvs ? t('war_opponent_placeholder_svs') : t('war_opponent_placeholder_gvg')) + '" value="' + escapeHTML(current) + '">' +
-            '<datalist id="' + datalistId + '">' + options + '</datalist>' +
-          '</div>' +
-          '<div class="gm-row war-day-results" style="gap:.45rem; flex-wrap:wrap;" data-event="' + escapeHTML(s.activeEventName || '') + '">' + dayChips + '</div>' +
-        '</div>' +
-        '<div class="gm-row" style="gap:.5rem; flex-wrap:wrap; align-items:center; justify-content:space-between; margin-top:.6rem;">' +
-          '<span class="gm-dim" style="font-size:var(--fs-2xs);">' + escapeHTML(t(mode === 'aggregate' ? 'war_col_total_d15' : 'war_ocr_granular_hint')) + '</span>' +
-          modeSwitch +
-        '</div>' +
+      '<div class="gm-row" style="gap:1rem; flex-wrap:wrap; align-items:center; justify-content:space-between;">' +
+      '<div class="gm-row" style="gap:.5rem; align-items:center; flex:1 1 260px; min-width:220px;">' +
+      '<span class="gm-chip" style="white-space:nowrap;">' +
+      t('war_opponent_label') +
+      '</span>' +
+      '<input type="text" class="gm-input war-opponent-input" aria-label="' +
+      escapeHTML(t('war_opponent_label')) +
+      '" list="' +
+      datalistId +
+      '" placeholder="' +
+      escapeHTML(isSvs ? t('war_opponent_placeholder_svs') : t('war_opponent_placeholder_gvg')) +
+      '" value="' +
+      escapeHTML(current) +
+      '">' +
+      '<datalist id="' +
+      datalistId +
+      '">' +
+      options +
+      '</datalist>' +
+      '</div>' +
+      '<div class="gm-row war-day-results" style="gap:.45rem; flex-wrap:wrap;" data-event="' +
+      escapeHTML(s.activeEventName || '') +
+      '">' +
+      dayChips +
+      '</div>' +
+      '</div>' +
+      '<div class="gm-row" style="gap:.5rem; flex-wrap:wrap; align-items:center; justify-content:space-between; margin-top:.6rem;">' +
+      '<span class="gm-dim" style="font-size:var(--fs-2xs);">' +
+      escapeHTML(t(mode === 'aggregate' ? 'war_col_total_d15' : 'war_ocr_granular_hint')) +
+      '</span>' +
+      modeSwitch +
+      '</div>' +
       '</div>';
 
     const input = host.querySelector<HTMLInputElement>('.war-opponent-input');
     if (input) {
-      input.addEventListener('change', () => { void this.saveWarOpponent(tabKey, input.value); });
+      input.addEventListener('change', () => {
+        void this.saveWarOpponent(tabKey, input.value);
+      });
     }
     host.querySelectorAll('.war-day-toggle').forEach((btn) => {
-      btn.addEventListener('click', () => { this.cycleWarDay(tabKey, btn as HTMLElement); });
+      btn.addEventListener('click', () => {
+        this.cycleWarDay(tabKey, btn as HTMLElement);
+      });
     });
     host.querySelectorAll('.war-mode-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -523,8 +597,8 @@ export class EventsView {
         kind: isSvs ? 'server' : 'guild',
         name,
         server_number: known && known.server_number ? known.server_number : undefined,
-        guild_ref: known && (known as any).guild_ref ? (known as any).guild_ref : undefined
-      }
+        guild_ref: known && (known as any).guild_ref ? (known as any).guild_ref : undefined,
+      },
     });
     if (res.ok) {
       if (res.session) war.session = res.session;
@@ -564,10 +638,14 @@ export class EventsView {
         guild: this.currentGuild(),
         event_name: s.activeEventName as WarEventName,
         session_id: s.sessionId,
-        day1_result: null, day2_result: null, day3_result: null,
-        day4_result: null, day5_result: null, day6_result: null,
+        day1_result: null,
+        day2_result: null,
+        day3_result: null,
+        day4_result: null,
+        day5_result: null,
+        day6_result: null,
         opponent_snapshot: null,
-        chest_tiers_snapshot: []
+        chest_tiers_snapshot: [],
       } as any;
     }
     (war.session as any)[key] = next;
@@ -584,17 +662,18 @@ export class EventsView {
 
     const stateSpan = btn.querySelector('.war-day-state');
     if (stateSpan) {
-      stateSpan.innerHTML = renderWarStatusBadge(
-        next === 'won' ? 'W' : next === 'lost' ? 'L' : 'neutral',
-        { won: t('war_day_won'), lost: t('war_day_lost'), pending: t('war_day_pending') }
-      );
+      stateSpan.innerHTML = renderWarStatusBadge(next === 'won' ? 'W' : next === 'lost' ? 'L' : 'neutral', {
+        won: t('war_day_won'),
+        lost: t('war_day_lost'),
+        pending: t('war_day_pending'),
+      });
     }
 
     void EventsService.upsertWarSession({
       guild,
       eventName: s.activeEventName as WarEventName,
       sessionId: s.sessionId,
-      dailyResults: { ['day' + day]: next }
+      dailyResults: { ['day' + day]: next },
     }).then((res) => {
       if (res.ok && res.session) {
         war.session = { ...war.session, ...res.session, [key]: next };
@@ -644,19 +723,32 @@ export class EventsView {
       const d6Inp = row.querySelector<HTMLInputElement>('.day-score-input[data-day="6"]');
       const agg = aggInp ? (parseNumber(aggInp.value) ?? 0) : 0;
       const d6 = d6Inp ? (parseNumber(d6Inp.value) ?? 0) : 0;
-      total = resolvePrepChests(grid, null, agg) +
-        resolveChestsForScore(grid.filter((g) => g.day === 6), d6);
+      total =
+        resolvePrepChests(grid, null, agg) +
+        resolveChestsForScore(
+          grid.filter((g) => g.day === 6),
+          d6
+        );
     } else {
       for (let d = 1; d <= 6; d++) {
         const inp = row.querySelector<HTMLInputElement>('.day-score-input[data-day="' + d + '"]');
         const score = inp ? (parseNumber(inp.value) ?? 0) : 0;
-        total += resolveChestsForScore(grid.filter((g) => g.day === d), score);
+        total += resolveChestsForScore(
+          grid.filter((g) => g.day === d),
+          score
+        );
       }
     }
     const cell = row.querySelector('.player-chests-cell');
     if (cell) {
       cell.innerHTML = total
-        ? renderBadge({ text: formatNumber(total), tone: 'glory', style: 'soft', size: 'sm', title: formatNumber(total) })
+        ? renderBadge({
+            text: formatNumber(total),
+            tone: 'glory',
+            style: 'soft',
+            size: 'sm',
+            title: formatNumber(total),
+          })
         : '-';
     }
   }
@@ -674,7 +766,7 @@ export class EventsView {
         onConfirm: () => resolve(true),
         onCancel: () => resolve(false),
         onClose: () => resolve(false),
-        initialFocus: null
+        initialFocus: null,
       });
     });
   }
@@ -746,12 +838,7 @@ export class EventsView {
       showToast(t('guild_unresolved'), 'error');
       return;
     }
-    const res = await EventsService.upsertDailyScores(
-      rowGuild,
-      s.activeEventName as WarEventName,
-      s.sessionId,
-      rows
-    );
+    const res = await EventsService.upsertDailyScores(rowGuild, s.activeEventName as WarEventName, s.sessionId, rows);
     if (!res.ok) {
       showToast(t('war_save_tiers_error') + (res.error && res.error !== 'rpc_failed' ? ' ' + res.error : ''), 'error');
       return;
@@ -769,9 +856,13 @@ export class EventsView {
       nextDaily = [...existing];
     }
     rows.forEach((r) => {
-      const chests = r.day === WAR_AGGREGATE_DAY
-        ? resolveChestsForScore(aggregateTierSlice(war.grid), r.score)
-        : resolveChestsForScore(war.grid.filter((g) => g.day === r.day), r.score);
+      const chests =
+        r.day === WAR_AGGREGATE_DAY
+          ? resolveChestsForScore(aggregateTierSlice(war.grid), r.score)
+          : resolveChestsForScore(
+              war.grid.filter((g) => g.day === r.day),
+              r.score
+            );
       const idx = nextDaily.findIndex((d) => d.day === r.day);
       if (idx >= 0) {
         nextDaily[idx] = { day: r.day, score: r.score, chests_unlocked: chests };
@@ -870,27 +961,35 @@ export class EventsView {
 
       const currentStartAt = res.data ? res.data.start_at : null;
 
-      pickEventStart({
-        eventLabel: s.activeEventName + ' - ' + t('edit_title'),
-        defaultVal: currentStartAt
-      }, async (startAt: string | null) => {
-        if (!startAt) return;
-        try {
-          // One transaction (M4a): status and participants move together, and
-          // an SvS/GvG war session with its daily scores follows a change of
-          // week (they used to stay behind on the old session id).
-          const newSessionId = buildEventSessionId(s.activeEventName as string, new Date(startAt), []);
-          const moved = await EventsService.rescheduleSession(s.activeEventName as string, s.sessionId, newSessionId, startAt);
-          s.sessionId = moved.session_id;
+      pickEventStart(
+        {
+          eventLabel: s.activeEventName + ' - ' + t('edit_title'),
+          defaultVal: currentStartAt,
+        },
+        async (startAt: string | null) => {
+          if (!startAt) return;
+          try {
+            // One transaction (M4a): status and participants move together, and
+            // an SvS/GvG war session with its daily scores follows a change of
+            // week (they used to stay behind on the old session id).
+            const newSessionId = buildEventSessionId(s.activeEventName as string, new Date(startAt), []);
+            const moved = await EventsService.rescheduleSession(
+              s.activeEventName as string,
+              s.sessionId,
+              newSessionId,
+              startAt
+            );
+            s.sessionId = moved.session_id;
 
-          showToast(t('toast_member_updated'), 'success');
-          notifyDiscordEvent(s.activeEventName as string, startAt, 'edit');
-          await this.loadEvent(tabKey);
-        } catch (err: any) {
-          console.error('editEventSchedule update', err);
-          showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+            showToast(t('toast_member_updated'), 'success');
+            notifyDiscordEvent(s.activeEventName as string, startAt, 'edit');
+            await this.loadEvent(tabKey);
+          } catch (err: any) {
+            console.error('editEventSchedule update', err);
+            showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+          }
         }
-      });
+      );
     } catch (err: any) {
       console.error('editEventSchedule fetch', err);
       showToast(t('toast_err_generic') + ' ' + err.message, 'error');
@@ -950,27 +1049,58 @@ export class EventsView {
         dimSpan.style.marginLeft = '0.5rem';
         statusLine.appendChild(dimSpan);
       }
-      dimSpan.textContent = (s.isActive && s.startAt) ? ' · ' + formatDateTimeUTC(s.startAt) : '';
+      dimSpan.textContent = s.isActive && s.startAt ? ' · ' + formatDateTimeUTC(s.startAt) : '';
     }
 
     if (actionsDiv) {
       const eventNameAttr = tabKey;
       if (s.isActive) {
         actionsDiv.innerHTML =
-          '<button class="gm-btn gm-btn-danger event-end-btn" data-event="' + escapeHTML(eventNameAttr) + '" style="margin-right: 0.25rem;"><i class="ph ph-stop-circle"></i> <span>' + t('event_end') + '</span></button>' +
-          '<button class="gm-btn event-edit-sched-btn" style="background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.3); color: #a5b4fc; margin-right: 0.25rem;" data-event="' + escapeHTML(eventNameAttr) + '" title="' + t('edit_title') + '"><i class="ph ph-calendar"></i> <span>' + t('edit_title') + '</span></button>' +
-          '<button class="gm-btn event-delete-session-btn" style="background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.25); color: var(--error);" data-event="' + escapeHTML(eventNameAttr) + '" title="' + t('delete_title') + '"><i class="ph ph-trash"></i></button>';
+          '<button class="gm-btn gm-btn-danger event-end-btn" data-event="' +
+          escapeHTML(eventNameAttr) +
+          '" style="margin-right: 0.25rem;"><i class="ph ph-stop-circle"></i> <span>' +
+          t('event_end') +
+          '</span></button>' +
+          '<button class="gm-btn event-edit-sched-btn" style="background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.3); color: #a5b4fc; margin-right: 0.25rem;" data-event="' +
+          escapeHTML(eventNameAttr) +
+          '" title="' +
+          t('edit_title') +
+          '"><i class="ph ph-calendar"></i> <span>' +
+          t('edit_title') +
+          '</span></button>' +
+          '<button class="gm-btn event-delete-session-btn" style="background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.25); color: var(--error);" data-event="' +
+          escapeHTML(eventNameAttr) +
+          '" title="' +
+          t('delete_title') +
+          '"><i class="ph ph-trash"></i></button>';
 
         const endBtnDyn = actionsDiv.querySelector('.event-end-btn');
-        if (endBtnDyn) endBtnDyn.addEventListener('click', () => { void this.endEvent(tabKey); });
+        if (endBtnDyn)
+          endBtnDyn.addEventListener('click', () => {
+            void this.endEvent(tabKey);
+          });
         const editBtnDyn = actionsDiv.querySelector('.event-edit-sched-btn');
-        if (editBtnDyn) editBtnDyn.addEventListener('click', () => { void this.editEventSchedule(tabKey); });
+        if (editBtnDyn)
+          editBtnDyn.addEventListener('click', () => {
+            void this.editEventSchedule(tabKey);
+          });
         const deleteBtnDyn = actionsDiv.querySelector('.event-delete-session-btn');
-        if (deleteBtnDyn) deleteBtnDyn.addEventListener('click', () => { this.deleteEventSession(tabKey); });
+        if (deleteBtnDyn)
+          deleteBtnDyn.addEventListener('click', () => {
+            this.deleteEventSession(tabKey);
+          });
       } else {
         actionsDiv.innerHTML =
-          '<button class="gm-btn gm-btn-success event-start-btn" data-event="' + escapeHTML(eventNameAttr) + '" style="margin-right: 0.25rem;"><i class="ph ph-play"></i> <span>' + t('event_start') + '</span></button>' +
-          '<button class="gm-btn gm-btn-danger event-end-btn" data-event="' + escapeHTML(eventNameAttr) + '" disabled><i class="ph ph-stop-circle"></i> <span>' + t('event_end') + '</span></button>';
+          '<button class="gm-btn gm-btn-success event-start-btn" data-event="' +
+          escapeHTML(eventNameAttr) +
+          '" style="margin-right: 0.25rem;"><i class="ph ph-play"></i> <span>' +
+          t('event_start') +
+          '</span></button>' +
+          '<button class="gm-btn gm-btn-danger event-end-btn" data-event="' +
+          escapeHTML(eventNameAttr) +
+          '" disabled><i class="ph ph-stop-circle"></i> <span>' +
+          t('event_end') +
+          '</span></button>';
 
         const startBtnDyn = actionsDiv.querySelector('.event-start-btn');
         if (startBtnDyn) {
@@ -999,9 +1129,13 @@ export class EventsView {
     if (!el) return;
     el.innerHTML =
       '<div class="gm-empty">' +
-        '<i class="ph ph-rocket-launch gm-icon"></i>' +
-        '<div class="gm-empty-title">' + t('event_not_active') + '</div>' +
-        '<div class="gm-empty-hint">' + t('event_not_active_hint') + '</div>' +
+      '<i class="ph ph-rocket-launch gm-icon"></i>' +
+      '<div class="gm-empty-title">' +
+      t('event_not_active') +
+      '</div>' +
+      '<div class="gm-empty-hint">' +
+      t('event_not_active_hint') +
+      '</div>' +
       '</div>';
   }
 
@@ -1013,7 +1147,10 @@ export class EventsView {
     const dbEventName = s.activeEventName;
 
     if (!participants.length) {
-      el.innerHTML = '<div class="gm-empty"><i class="ph ph-ghost gm-icon"></i><div class="gm-empty-title">' + t('empty_members') + '</div></div>';
+      el.innerHTML =
+        '<div class="gm-empty"><i class="ph ph-ghost gm-icon"></i><div class="gm-empty-title">' +
+        t('empty_members') +
+        '</div></div>';
       return;
     }
 
@@ -1031,44 +1168,87 @@ export class EventsView {
         : participants.reduce((a, p) => a + (p.score || 0), 0);
 
     const pendingCount = participants.reduce((a, p) => a + (p.is_pending ? 1 : 0), 0);
-    const approveAllBtn = pendingCount > 0
-      ? '<button type="button" class="gm-btn gm-btn-sm gm-btn-success approve-all-btn" style="margin-left: auto; font-size: var(--fs-sm); padding: 0.25rem 0.5rem;"><i class="ph ph-check-square"></i> Approve All (' + pendingCount + ')</button>'
-      : '';
+    const approveAllBtn =
+      pendingCount > 0
+        ? '<button type="button" class="gm-btn gm-btn-sm gm-btn-success approve-all-btn" style="margin-left: auto; font-size: var(--fs-sm); padding: 0.25rem 0.5rem;"><i class="ph ph-check-square"></i> Approve All (' +
+          pendingCount +
+          ')</button>'
+        : '';
 
     let html =
       '<div class="gm-row" style="gap:.5rem; margin-bottom:1rem; flex-wrap:wrap; justify-content:space-between; align-items: center;">' +
-        '<div class="gm-row event-stats" style="gap:.5rem; flex-wrap:wrap; align-items: center; flex: 1;">' +
-          '<span class="gm-chip"><i class="ph ph-users"></i> ' + participants.length + ' ' + t('event_total') + '</span>' +
-          '<span class="gm-chip gm-chip-success"><i class="ph ph-check-circle"></i> ' + done + ' ' + t('event_participated') + '</span>' +
-          '<span class="gm-chip"><i class="ph ph-x-circle"></i> ' + (participants.length - done) + ' ' + t('event_absent') + '</span>' +
-          (isDtr ? '<span class="gm-chip gm-chip-accent"><i class="ph ph-check-square"></i> ' + appointedCount + ' Appointed</span>' : '') +
-          (hasScore ? '<span class="gm-chip gm-chip-accent" title="' + escapeHTML(formatNumber(totalScore)) + '"><i class="ph ph-trophy"></i> ' + t('event_total_score') + ' ' + formatCompactNumber(totalScore) + '</span>' : '') +
-          approveAllBtn +
-        '</div>' +
-        '<div class="gm-input-with-icon" style="min-width: 220px; max-width: 320px;">' +
-          '<i class="ph ph-magnifying-glass gm-icon"></i>' +
-          '<input type="text" class="gm-input event-search-input" aria-label="' + escapeHTML(t('search_placeholder')) + '" placeholder="' + t('search_placeholder') + '">' +
-          '<button type="button" class="gm-search-clear-btn" data-gm-search-clear aria-label="Clear search" tabindex="-1"><i class="ph ph-x-circle"></i></button>' +
-        '</div>' +
-        '</div>' +
+      '<div class="gm-row event-stats" style="gap:.5rem; flex-wrap:wrap; align-items: center; flex: 1;">' +
+      '<span class="gm-chip"><i class="ph ph-users"></i> ' +
+      participants.length +
+      ' ' +
+      t('event_total') +
+      '</span>' +
+      '<span class="gm-chip gm-chip-success"><i class="ph ph-check-circle"></i> ' +
+      done +
+      ' ' +
+      t('event_participated') +
+      '</span>' +
+      '<span class="gm-chip"><i class="ph ph-x-circle"></i> ' +
+      (participants.length - done) +
+      ' ' +
+      t('event_absent') +
+      '</span>' +
+      (isDtr
+        ? '<span class="gm-chip gm-chip-accent"><i class="ph ph-check-square"></i> ' +
+          appointedCount +
+          ' Appointed</span>'
+        : '') +
+      (hasScore
+        ? '<span class="gm-chip gm-chip-accent" title="' +
+          escapeHTML(formatNumber(totalScore)) +
+          '"><i class="ph ph-trophy"></i> ' +
+          t('event_total_score') +
+          ' ' +
+          formatCompactNumber(totalScore) +
+          '</span>'
+        : '') +
+      approveAllBtn +
+      '</div>' +
+      '<div class="gm-input-with-icon" style="min-width: 220px; max-width: 320px;">' +
+      '<i class="ph ph-magnifying-glass gm-icon"></i>' +
+      '<input type="text" class="gm-input event-search-input" aria-label="' +
+      escapeHTML(t('search_placeholder')) +
+      '" placeholder="' +
+      t('search_placeholder') +
+      '">' +
+      '<button type="button" class="gm-search-clear-btn" data-gm-search-clear aria-label="Clear search" tabindex="-1"><i class="ph ph-x-circle"></i></button>' +
+      '</div>' +
+      '</div>' +
       '<div class="gm-table-wrap gm-ui-table-wrap"><div class="gm-table-scroll">' +
       '<table class="gm-table gm-resp-table gm-ui-table-el gm-ui-table-sticky">' +
-        '<thead><tr>' +
-          '<th>' + t('col_member') + '</th>' +
-          '<th class="gm-center">' + t('col_participated') + '</th>' +
-          (isDtr ? '<th class="gm-center">Appointed</th>' : '') +
-          (granular
-            ? (prepMode === 'aggregate'
-                ? '<th class="gm-right">' + t('war_col_total_d15') + '</th><th class="gm-right">' + t('war_day_n').replace('{day}', '6') + '</th>'
-                : [1, 2, 3, 4, 5, 6].map((d) =>
-                    '<th class="gm-right">' + t('war_day_n').replace('{day}', String(d)) + '</th>'
-                  ).join('')) +
-              '<th class="gm-right">' + t('war_col_chests') + '</th>'
-            : (isSvsOrGvg
-              ? '<th class="gm-right">' + t('col_score_prep') + '</th><th class="gm-right">' + t('col_score_pvp') + '</th>'
-              : (hasScore ? '<th class="gm-right">' + t('col_score') + '</th>' : ''))) +
-          (pendingCount > 0 ? '<th class="gm-center">Actions</th>' : '') +
-        '</tr></thead><tbody>';
+      '<thead><tr>' +
+      '<th>' +
+      t('col_member') +
+      '</th>' +
+      '<th class="gm-center">' +
+      t('col_participated') +
+      '</th>' +
+      (isDtr ? '<th class="gm-center">Appointed</th>' : '') +
+      (granular
+        ? (prepMode === 'aggregate'
+            ? '<th class="gm-right">' +
+              t('war_col_total_d15') +
+              '</th><th class="gm-right">' +
+              t('war_day_n').replace('{day}', '6') +
+              '</th>'
+            : [1, 2, 3, 4, 5, 6]
+                .map((d) => '<th class="gm-right">' + t('war_day_n').replace('{day}', String(d)) + '</th>')
+                .join('')) +
+          '<th class="gm-right">' +
+          t('war_col_chests') +
+          '</th>'
+        : isSvsOrGvg
+          ? '<th class="gm-right">' + t('col_score_prep') + '</th><th class="gm-right">' + t('col_score_pvp') + '</th>'
+          : hasScore
+            ? '<th class="gm-right">' + t('col_score') + '</th>'
+            : '') +
+      (pendingCount > 0 ? '<th class="gm-center">Actions</th>' : '') +
+      '</tr></thead><tbody>';
 
     participants.forEach((p) => {
       const isChecked = p.participated > 0;
@@ -1085,77 +1265,173 @@ export class EventsView {
         if (prepMode === 'aggregate') {
           const agg = dayScores[WAR_AGGREGATE_DAY];
           const d6 = dayScores[6];
-          granularCells += '<td class="gm-right" data-label="' + t('war_col_total_d15') + '">' +
-            '<input type="text" inputmode="numeric" class="gm-score-input day-score-input" data-pseudo="' + escapeHTML(p.pseudo) + '" aria-label="' + escapeHTML(t('war_col_total_d15') + ', ' + p.pseudo) + '" data-day="0" value="' + (agg != null ? formatNumber(agg) : '') + '" placeholder="-">' +
-          '</td>';
-          granularCells += '<td class="gm-right" data-label="Day 6">' +
-            '<input type="text" inputmode="numeric" class="gm-score-input day-score-input" data-pseudo="' + escapeHTML(p.pseudo) + '" aria-label="' + escapeHTML('Day 6, ' + p.pseudo) + '" data-day="6" value="' + (d6 != null ? formatNumber(d6) : '') + '" placeholder="-">' +
-          '</td>';
-          chestTotal = resolvePrepChests(grid, dayScores, agg) +
-            resolveChestsForScore(grid.filter((g) => g.day === 6), d6);
+          granularCells +=
+            '<td class="gm-right" data-label="' +
+            t('war_col_total_d15') +
+            '">' +
+            '<input type="text" inputmode="numeric" class="gm-score-input day-score-input" data-pseudo="' +
+            escapeHTML(p.pseudo) +
+            '" aria-label="' +
+            escapeHTML(t('war_col_total_d15') + ', ' + p.pseudo) +
+            '" data-day="0" value="' +
+            (agg != null ? formatNumber(agg) : '') +
+            '" placeholder="-">' +
+            '</td>';
+          granularCells +=
+            '<td class="gm-right" data-label="Day 6">' +
+            '<input type="text" inputmode="numeric" class="gm-score-input day-score-input" data-pseudo="' +
+            escapeHTML(p.pseudo) +
+            '" aria-label="' +
+            escapeHTML('Day 6, ' + p.pseudo) +
+            '" data-day="6" value="' +
+            (d6 != null ? formatNumber(d6) : '') +
+            '" placeholder="-">' +
+            '</td>';
+          chestTotal =
+            resolvePrepChests(grid, dayScores, agg) +
+            resolveChestsForScore(
+              grid.filter((g) => g.day === 6),
+              d6
+            );
         } else {
           for (let d = 1; d <= 6; d++) {
             const v = dayScores[d];
-            granularCells += '<td class="gm-right" data-label="Day ' + d + '">' +
-              '<input type="text" inputmode="numeric" class="gm-score-input day-score-input" data-pseudo="' + escapeHTML(p.pseudo) + '" aria-label="' + escapeHTML('Day ' + d + ', ' + p.pseudo) + '" data-day="' + d + '" value="' + (v != null ? formatNumber(v) : '') + '" placeholder="-">' +
-            '</td>';
+            granularCells +=
+              '<td class="gm-right" data-label="Day ' +
+              d +
+              '">' +
+              '<input type="text" inputmode="numeric" class="gm-score-input day-score-input" data-pseudo="' +
+              escapeHTML(p.pseudo) +
+              '" aria-label="' +
+              escapeHTML('Day ' + d + ', ' + p.pseudo) +
+              '" data-day="' +
+              d +
+              '" value="' +
+              (v != null ? formatNumber(v) : '') +
+              '" placeholder="-">' +
+              '</td>';
           }
           for (let d = 1; d <= 6; d++) {
-            chestTotal += resolveChestsForScore(grid.filter((g) => g.day === d), dayScores[d]);
+            chestTotal += resolveChestsForScore(
+              grid.filter((g) => g.day === d),
+              dayScores[d]
+            );
           }
         }
-        granularCells += '<td class="gm-right player-chests-cell" title="' + escapeHTML(formatNumber(chestTotal || 0)) + '">' +
+        granularCells +=
+          '<td class="gm-right player-chests-cell" title="' +
+          escapeHTML(formatNumber(chestTotal || 0)) +
+          '">' +
           (chestTotal
-            ? renderBadge({ text: formatNumber(chestTotal), tone: 'glory', style: 'soft', size: 'sm', title: formatNumber(chestTotal) })
+            ? renderBadge({
+                text: formatNumber(chestTotal),
+                tone: 'glory',
+                style: 'soft',
+                size: 'sm',
+                title: formatNumber(chestTotal),
+              })
             : '-') +
-        '</td>';
+          '</td>';
       }
 
-      const rowClass = 'participant-row' + (isChecked ? ' participated' : '') + (p.is_pending ? ' pending-approval-row' : '');
-      const rowStyle = p.is_pending ? 'background: rgba(245, 158, 11, 0.05); border-left: 3px solid var(--warning);' : '';
+      const rowClass =
+        'participant-row' + (isChecked ? ' participated' : '') + (p.is_pending ? ' pending-approval-row' : '');
+      const rowStyle = p.is_pending
+        ? 'background: rgba(245, 158, 11, 0.05); border-left: 3px solid var(--warning);'
+        : '';
 
       const actionBtn = p.is_pending
-        ? '<button type="button" class="gm-btn gm-btn-success approve-single-btn" data-pseudo="' + escapeHTML(p.pseudo) + '" style="font-size: var(--fs-sm); padding:0.2rem 0.4rem; display:inline-flex; align-items:center; gap:0.25rem;"><i class="ph ph-check"></i> Approve</button>'
+        ? '<button type="button" class="gm-btn gm-btn-success approve-single-btn" data-pseudo="' +
+          escapeHTML(p.pseudo) +
+          '" style="font-size: var(--fs-sm); padding:0.2rem 0.4rem; display:inline-flex; align-items:center; gap:0.25rem;"><i class="ph ph-check"></i> Approve</button>'
         : '';
 
       html +=
-        '<tr class="' + rowClass + '" style="' + rowStyle + '" data-pseudo="' + escapeHTML(p.pseudo) + '">' +
-          '<td data-label="' + t('col_member') + '">' +
-            '<div class="gm-row" style="gap:.6rem;">' +
-              '<div class="gm-avatar">' + escapeHTML(initial) + '</div>' +
-              '<strong style="display:inline-flex; align-items:center; gap:0.4rem;">' +
-                escapeHTML(p.pseudo) +
-                (p.is_pending ? '<span class="gm-chip" style="font-size: var(--fs-2xs); padding:0.05rem 0.25rem; background:rgba(245,158,11,0.1); color:var(--warning); border:1px solid rgba(245,158,11,0.25);">Pending</span>' : '') +
-              '</strong>' +
-            '</div>' +
-          '</td>' +
-          '<td class="gm-center" data-label="' + t('col_participated') + '">' +
+        '<tr class="' +
+        rowClass +
+        '" style="' +
+        rowStyle +
+        '" data-pseudo="' +
+        escapeHTML(p.pseudo) +
+        '">' +
+        '<td data-label="' +
+        t('col_member') +
+        '">' +
+        '<div class="gm-row" style="gap:.6rem;">' +
+        '<div class="gm-avatar">' +
+        escapeHTML(initial) +
+        '</div>' +
+        '<strong style="display:inline-flex; align-items:center; gap:0.4rem;">' +
+        escapeHTML(p.pseudo) +
+        (p.is_pending
+          ? '<span class="gm-chip" style="font-size: var(--fs-2xs); padding:0.05rem 0.25rem; background:rgba(245,158,11,0.1); color:var(--warning); border:1px solid rgba(245,158,11,0.25);">Pending</span>'
+          : '') +
+        '</strong>' +
+        '</div>' +
+        '</td>' +
+        '<td class="gm-center" data-label="' +
+        t('col_participated') +
+        '">' +
+        '<label class="check-toggle">' +
+        '<input type="checkbox" class="participation-checkbox" data-pseudo="' +
+        escapeHTML(p.pseudo) +
+        '"' +
+        (isChecked ? ' checked' : '') +
+        '>' +
+        '<span class="check-slider"></span>' +
+        '</label>' +
+        '</td>' +
+        (isDtr
+          ? '<td class="gm-center" data-label="Appointed">' +
             '<label class="check-toggle">' +
-              '<input type="checkbox" class="participation-checkbox" data-pseudo="' + escapeHTML(p.pseudo) + '"' + (isChecked ? ' checked' : '') + '>' +
-              '<span class="check-slider"></span>' +
+            '<input type="checkbox" class="participation-checkbox appointed-checkbox" data-pseudo="' +
+            escapeHTML(p.pseudo) +
+            '"' +
+            (isAppointedChecked ? ' checked' : '') +
+            '>' +
+            '<span class="check-slider"></span>' +
             '</label>' +
-          '</td>' +
-          (isDtr
-            ? '<td class="gm-center" data-label="Appointed">' +
-                '<label class="check-toggle">' +
-                  '<input type="checkbox" class="participation-checkbox appointed-checkbox" data-pseudo="' + escapeHTML(p.pseudo) + '"' + (isAppointedChecked ? ' checked' : '') + '>' +
-                  '<span class="check-slider"></span>' +
-                '</label>' +
+            '</td>'
+          : '') +
+        (granular
+          ? granularCells
+          : isSvsOrGvg
+            ? '<td class="gm-right" data-label="' +
+              t('col_score_prep') +
+              '">' +
+              '<input type="text" inputmode="numeric" class="gm-score-input score-input-prep" value="' +
+              (p.score_prep != null ? formatNumber(p.score_prep) : '') +
+              '" placeholder="-" data-pseudo="' +
+              escapeHTML(p.pseudo) +
+              '" aria-label="' +
+              escapeHTML(t('col_score_prep') + ', ' + p.pseudo) +
+              '">' +
+              '</td>' +
+              '<td class="gm-right" data-label="' +
+              t('col_score_pvp') +
+              '">' +
+              '<input type="text" inputmode="numeric" class="gm-score-input score-input-pvp" value="' +
+              (p.score_pvp != null ? formatNumber(p.score_pvp) : '') +
+              '" placeholder="-" data-pseudo="' +
+              escapeHTML(p.pseudo) +
+              '" aria-label="' +
+              escapeHTML(t('col_score_pvp') + ', ' + p.pseudo) +
+              '">' +
               '</td>'
-            : '') +
-          (granular
-            ? granularCells
-            : (isSvsOrGvg
-              ? '<td class="gm-right" data-label="' + t('col_score_prep') + '">' +
-                  '<input type="text" inputmode="numeric" class="gm-score-input score-input-prep" value="' + (p.score_prep != null ? formatNumber(p.score_prep) : '') + '" placeholder="-" data-pseudo="' + escapeHTML(p.pseudo) + '" aria-label="' + escapeHTML(t('col_score_prep') + ', ' + p.pseudo) + '">' +
-                '</td>' +
-                '<td class="gm-right" data-label="' + t('col_score_pvp') + '">' +
-                  '<input type="text" inputmode="numeric" class="gm-score-input score-input-pvp" value="' + (p.score_pvp != null ? formatNumber(p.score_pvp) : '') + '" placeholder="-" data-pseudo="' + escapeHTML(p.pseudo) + '" aria-label="' + escapeHTML(t('col_score_pvp') + ', ' + p.pseudo) + '">' +
+            : hasScore
+              ? '<td class="gm-right" data-label="' +
+                t('col_score') +
+                '">' +
+                '<input type="text" inputmode="numeric" class="gm-score-input score-input" value="' +
+                (p.score != null ? formatNumber(p.score) : '') +
+                '" placeholder="-" data-pseudo="' +
+                escapeHTML(p.pseudo) +
+                '" aria-label="' +
+                escapeHTML(t('col_score') + ', ' + p.pseudo) +
+                '">' +
                 '</td>'
-              : (hasScore ? '<td class="gm-right" data-label="' + t('col_score') + '">' +
-                  '<input type="text" inputmode="numeric" class="gm-score-input score-input" value="' + (p.score != null ? formatNumber(p.score) : '') + '" placeholder="-" data-pseudo="' + escapeHTML(p.pseudo) + '" aria-label="' + escapeHTML(t('col_score') + ', ' + p.pseudo) + '">' +
-                '</td>' : ''))) +
-          (pendingCount > 0 ? '<td class="gm-center" data-label="Actions">' + actionBtn + '</td>' : '') +
+              : '') +
+        (pendingCount > 0 ? '<td class="gm-center" data-label="Actions">' + actionBtn + '</td>' : '') +
         '</tr>';
     });
 
@@ -1183,7 +1459,9 @@ export class EventsView {
       cb.addEventListener('change', () => {
         const pseudo = cb.getAttribute('data-pseudo') || '';
         const row = cb.closest('.participant-row');
-        const partCb = row ? row.querySelector('.participation-checkbox:not(.appointed-checkbox)') as HTMLInputElement | null : null;
+        const partCb = row
+          ? (row.querySelector('.participation-checkbox:not(.appointed-checkbox)') as HTMLInputElement | null)
+          : null;
 
         const pp = this.state[tabKey].participants.find((x) => x.pseudo === pseudo);
         const promises: Promise<any>[] = [];
@@ -1191,12 +1469,22 @@ export class EventsView {
         if (cb.checked && partCb && !partCb.checked) {
           partCb.checked = true;
           if (row) row.classList.add('participated');
-          promises.push(this.saveParticipation(tabKey, pseudo, 1).then(() => { if (pp) pp.participated = 1; }));
+          promises.push(
+            this.saveParticipation(tabKey, pseudo, 1).then(() => {
+              if (pp) pp.participated = 1;
+            })
+          );
         }
 
-        promises.push(this.saveAppointed(tabKey, pseudo, cb.checked).then(() => { if (pp) pp.appointed = cb.checked; }));
+        promises.push(
+          this.saveAppointed(tabKey, pseudo, cb.checked).then(() => {
+            if (pp) pp.appointed = cb.checked;
+          })
+        );
 
-        Promise.all(promises).then(() => { this.refreshStats(el, tabKey); });
+        Promise.all(promises).then(() => {
+          this.refreshStats(el, tabKey);
+        });
       });
     });
 
@@ -1217,7 +1505,9 @@ export class EventsView {
             }
             const row = inp.closest('.participant-row');
             if (row && num > 0) {
-              const cb = row.querySelector('.participation-checkbox:not(.appointed-checkbox)') as HTMLInputElement | null;
+              const cb = row.querySelector(
+                '.participation-checkbox:not(.appointed-checkbox)'
+              ) as HTMLInputElement | null;
               if (cb && !cb.checked) {
                 cb.checked = true;
                 row.classList.add('participated');
@@ -1266,10 +1556,16 @@ export class EventsView {
         btn.textContent = '...';
         try {
           const db = getClient();
-          const rpcRes = await approveParticipantSubmission(db, this.currentGuild(), s.activeEventName, s.sessionId, pseudo);
+          const rpcRes = await approveParticipantSubmission(
+            db,
+            this.currentGuild(),
+            s.activeEventName,
+            s.sessionId,
+            pseudo
+          );
           if (rpcRes.error) throw rpcRes.error;
           const data = rpcRes.data;
-          const ok = data && (data.ok !== false);
+          const ok = data && data.ok !== false;
           if (!ok) throw new Error((data && data.error) || 'approve_failed');
 
           const pp = this.state[tabKey].participants.find((x) => x.pseudo === pseudo);
@@ -1297,10 +1593,18 @@ export class EventsView {
           const activeGuildForApproval = this.currentGuild();
           await runInChunks(pendingPseudos, 10, async (pseudo: string) => {
             const db = getClient();
-            const rpcRes = await approveParticipantSubmission(db, activeGuildForApproval, s.activeEventName, s.sessionId, pseudo);
+            const rpcRes = await approveParticipantSubmission(
+              db,
+              activeGuildForApproval,
+              s.activeEventName,
+              s.sessionId,
+              pseudo
+            );
             if (rpcRes.error) throw rpcRes.error;
           });
-          this.state[tabKey].participants.forEach((p) => { if (p.is_pending) p.is_pending = false; });
+          this.state[tabKey].participants.forEach((p) => {
+            if (p.is_pending) p.is_pending = false;
+          });
           this.renderParticipants(tabKey);
           await this.fetchParticipants(tabKey);
         } catch (err) {
@@ -1325,7 +1629,8 @@ export class EventsView {
         : participants.reduce((a, p) => a + (p.score || 0), 0);
     const chips = el.querySelectorAll('.event-stats .gm-chip');
     if (chips[1]) chips[1].innerHTML = '<i class="ph ph-check-circle"></i> ' + done + ' ' + t('event_participated');
-    if (chips[2]) chips[2].innerHTML = '<i class="ph ph-x-circle"></i> ' + (participants.length - done) + ' ' + t('event_absent');
+    if (chips[2])
+      chips[2].innerHTML = '<i class="ph ph-x-circle"></i> ' + (participants.length - done) + ' ' + t('event_absent');
 
     const isDtr = this.state[tabKey].activeEventName === 'Defend Trade Route';
     if (isDtr) {

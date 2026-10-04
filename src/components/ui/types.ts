@@ -13,15 +13,7 @@ export type UiSize = 'sm' | 'md';
  * 'default' falls back to --gm-event-gvg (the UI accent), then the FGF
  * event tones (SvS, GvG, Glory, Arms Race, Shadowfront, DTR) and 'danger'.
  */
-export type UiAccent =
-  | 'default'
-  | 'svs'
-  | 'gvg'
-  | 'glory'
-  | 'armsrace'
-  | 'shadowfront'
-  | 'dtr'
-  | 'danger';
+export type UiAccent = 'default' | 'svs' | 'gvg' | 'glory' | 'armsrace' | 'shadowfront' | 'dtr' | 'danger';
 
 /** Interaction state shared by toggles and inputs. */
 export type UiState = 'idle' | 'checked' | 'disabled' | 'indeterminate';

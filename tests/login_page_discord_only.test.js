@@ -131,7 +131,7 @@ describe('the one-door login page (2026-10-02)', () => {
     expect(html).toMatch(/id="login-discord-status"[^>]*aria-live="polite"/);
     const callback = controller.slice(
       controller.indexOf('export async function handleDiscordCallback'),
-      controller.indexOf('\n}\n', controller.indexOf('export async function handleDiscordCallback')),
+      controller.indexOf('\n}\n', controller.indexOf('export async function handleDiscordCallback'))
     );
     expect(callback).toContain('setDiscordStatus(');
     expect(callback).not.toContain('setLoginError(');
@@ -144,7 +144,9 @@ describe('the one-door login page (2026-10-02)', () => {
   });
 
   it('gives the Discord button feedback and restores it after a Back navigation', () => {
-    expect(squash(controller)).toContain(squash("wireOnce(el('login-discord-btn'), '__gmAuthWired', 'click', () => { startDiscordSignIn(); })"));
+    expect(squash(controller)).toContain(
+      squash("wireOnce(el('login-discord-btn'), '__gmAuthWired', 'click', () => { startDiscordSignIn(); })")
+    );
     expect(controller).toContain("'Opening Discord…'");
     expect(controller).toMatch(/addEventListener\('pageshow'[\s\S]{0,80}resetDiscordButton\(\)/);
   });
@@ -163,7 +165,10 @@ describe('the one-door login page (2026-10-02)', () => {
   });
 
   it('brings the login page back when signing out of the portal', () => {
-    const show = controller.slice(controller.indexOf('export function showLogin'), controller.indexOf('export function startConditionalPasskeyListener'));
+    const show = controller.slice(
+      controller.indexOf('export function showLogin'),
+      controller.indexOf('export function startConditionalPasskeyListener')
+    );
     expect(show).toContain("el('player-portal-view')");
     const portal = stripJs(read('src/modules/portal/views/PortalView.ts'));
     expect(squash(portal)).toContain(squash("signOutBtn.addEventListener('click', () => { exitPortalToLogin(); })"));

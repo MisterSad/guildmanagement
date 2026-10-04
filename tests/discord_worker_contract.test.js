@@ -54,7 +54,9 @@ describe('the worker reads a Discord identity that may hold several accounts', (
       path.resolve(__dirname, '../supabase/functions/discord-bot-interactions/index.ts'),
       'utf-8'
     );
-    expect(botSrc2).toContain('linked to ${usable.length} player accounts'.replace('${usable.length}', '${usable.length}'));
+    expect(botSrc2).toContain(
+      'linked to ${usable.length} player accounts'.replace('${usable.length}', '${usable.length}')
+    );
   });
 
   it('treats an ambiguous link as resolving no guild in the best-effort paths', () => {
@@ -74,7 +76,9 @@ describe('the worker does not write player stats at all any more', () => {
     // /glory in favour of /update-stats would have LOST that, so /update-stats
     // moved to the Edge Function's audited helpers instead.
     expect(workerSrc).toContain('"update-stats"');
-    expect(workerSrc).toContain('const FORWARDED_COMMANDS = new Set(["update-stats", "timezone", "challenges", "absence", "invite"])');
+    expect(workerSrc).toContain(
+      'const FORWARDED_COMMANDS = new Set(["update-stats", "timezone", "challenges", "absence", "invite"])'
+    );
     expect(workerSrc).not.toMatch(/\.rpc\("gm_upsert_player_metrics"/);
     expect(workerSrc).not.toMatch(/\.rpc\("gm_upsert_player_glory"/);
     expect(workerSrc).not.toContain('function handleUpdateStats');
@@ -209,7 +213,9 @@ describe('one transport, one registry, one implementation', () => {
   );
 
   it('routes the orphaned commands instead of reimplementing them', () => {
-    expect(workerSrc).toContain('const FORWARDED_COMMANDS = new Set(["update-stats", "timezone", "challenges", "absence", "invite"])');
+    expect(workerSrc).toContain(
+      'const FORWARDED_COMMANDS = new Set(["update-stats", "timezone", "challenges", "absence", "invite"])'
+    );
     expect(workerSrc).toContain('FORWARDED_COMMANDS.has(interaction.commandName)');
     expect(workerSrc).toContain('INTERACTIONS_FUNCTION_URL');
     // The validated write helpers stay on the Deno side, shared with the Portal.
@@ -219,7 +225,7 @@ describe('one transport, one registry, one implementation', () => {
     }
   });
 
-  it('acknowledges within Discord\'s 3-second window before the round trip', () => {
+  it("acknowledges within Discord's 3-second window before the round trip", () => {
     const fwd = workerSrc.slice(workerSrc.indexOf('async function forwardInteraction'));
     const deferIdx = fwd.indexOf('deferReply');
     const fetchIdx = fwd.indexOf('fetch(INTERACTIONS_FUNCTION_URL');
@@ -227,7 +233,7 @@ describe('one transport, one registry, one implementation', () => {
     expect(fetchIdx).toBeGreaterThan(deferIdx);
   });
 
-  it('sends Discord\'s raw option shape, not discord.js toJSON()', () => {
+  it("sends Discord's raw option shape, not discord.js toJSON()", () => {
     // The Edge Function reads interaction.data.options and, for /absence, the
     // subcommand nested in options[0].options. discord.js toJSON() does not
     // return that.
@@ -254,14 +260,15 @@ describe('one transport, one registry, one implementation', () => {
     // Every command the worker forwards must also be one the worker defines,
     // or Discord would serve a command no source file describes.
     for (const name of ['update-stats', 'timezone', 'challenges', 'absence']) {
-      expect(workerSrc, `/${name} must be defined in the worker`).toMatch(
-        new RegExp(`name: "${name}"`)
-      );
+      expect(workerSrc, `/${name} must be defined in the worker`).toMatch(new RegExp(`name: "${name}"`));
       expect(workerSrc, `/${name} must be registered`).toContain(`["${name}", `);
     }
     // And a retired command must be actively excluded, not merely dropped.
     expect(workerSrc).toContain('const RETIRED_COMMANDS = new Set(["power", "glory", "link"])');
-    const desiredBlock = workerSrc.slice(workerSrc.indexOf('const desired = new Map(['), workerSrc.indexOf('const body = []'));
+    const desiredBlock = workerSrc.slice(
+      workerSrc.indexOf('const desired = new Map(['),
+      workerSrc.indexOf('const body = []')
+    );
     expect(desiredBlock.length).toBeGreaterThan(100);
     for (const retired of ['power', 'glory', 'link']) {
       expect(desiredBlock, `/${retired} must not be registered`).not.toContain(`["${retired}", `);
@@ -278,18 +285,22 @@ describe('one transport, one registry, one implementation', () => {
     expect(workerSrc).toContain('body: [] }');
     expect(workerSrc).not.toContain('const guildBody =');
     // And nothing may register into guild scope any more, on boot or on join.
-    const guildPuts = workerSrc.match(/rest\.put\(Routes\.applicationGuildCommands\([^)]*\), \{ body: (?!\[\] )/g) || [];
+    const guildPuts =
+      workerSrc.match(/rest\.put\(Routes\.applicationGuildCommands\([^)]*\), \{ body: (?!\[\] )/g) || [];
     expect(guildPuts).toEqual([]);
   });
 
   it('does not re-create the duplication when the bot joins a server', () => {
-    const gc = workerSrc.slice(workerSrc.indexOf('client.on("guildCreate"'), workerSrc.indexOf('client.on("messageCreate"'));
+    const gc = workerSrc.slice(
+      workerSrc.indexOf('client.on("guildCreate"'),
+      workerSrc.indexOf('client.on("messageCreate"')
+    );
     expect(gc).not.toContain('applicationGuildCommands');
     expect(gc).toContain('global commands already apply');
   });
 });
 
-describe('/mystats reports the app\'s numbers without inventing a new one', () => {
+describe("/mystats reports the app's numbers without inventing a new one", () => {
   it('uses gm_player_stats, the only stats RPC a service-role caller can reach', () => {
     expect(workerSrc).toContain('.rpc("gm_player_stats"');
     // The gated ones return false when auth.uid() is NULL, so the worker must
@@ -302,7 +313,10 @@ describe('/mystats reports the app\'s numbers without inventing a new one', () =
   it('computes no weighted score of its own', () => {
     // The weighting lives in src/core/scoring/reliability.ts, shared by the admin
     // page and the Portal. A third copy here is how those two came to disagree.
-    const fn = workerSrc.slice(workerSrc.indexOf('async function handleMyStats'), workerSrc.indexOf('async function handleVerifications'));
+    const fn = workerSrc.slice(
+      workerSrc.indexOf('async function handleMyStats'),
+      workerSrc.indexOf('async function handleVerifications')
+    );
     expect(fn).not.toMatch(/coeff|weight|reliability_score/i);
     // It reports att/opp and the guild's pooled rate, nothing more.
     expect(fn).toContain('mine.att');
@@ -313,17 +327,21 @@ describe('/mystats reports the app\'s numbers without inventing a new one', () =
     expect(workerSrc).toContain('Math.min(Math.max(requested ?? 4, 1), 26)');
   });
 
-  it('is ephemeral, so a player cannot read it off someone else\'s screen', () => {
-    const fn = workerSrc.slice(workerSrc.indexOf('async function handleMyStats'), workerSrc.indexOf('async function handleVerifications'));
+  it("is ephemeral, so a player cannot read it off someone else's screen", () => {
+    const fn = workerSrc.slice(
+      workerSrc.indexOf('async function handleMyStats'),
+      workerSrc.indexOf('async function handleVerifications')
+    );
     expect(fn).toContain('ephemeral: true');
   });
 });
 
 describe('/verifications never takes the guild from the caller', () => {
-  const fn = () => workerSrc.slice(
-    workerSrc.indexOf('async function handleVerifications'),
-    workerSrc.indexOf('function normalizeTag')
-  );
+  const fn = () =>
+    workerSrc.slice(
+      workerSrc.indexOf('async function handleVerifications'),
+      workerSrc.indexOf('function normalizeTag')
+    );
 
   it('resolves the guild from the channel map or the linked account only', () => {
     const body = fn();
@@ -331,7 +349,9 @@ describe('/verifications never takes the guild from the caller', () => {
     expect(body).toContain('resolveLinkedAccount(interaction.user.id)');
     // No guild option exists to be supplied.
     expect(body).not.toMatch(/getString\(\s*["']guild["']/);
-    expect(workerSrc.slice(workerSrc.indexOf('const VERIFICATIONS_COMMAND'), workerSrc.indexOf('const LINK_COMMAND'))).not.toMatch(/name: "guild"/);
+    expect(
+      workerSrc.slice(workerSrc.indexOf('const VERIFICATIONS_COMMAND'), workerSrc.indexOf('const LINK_COMMAND'))
+    ).not.toMatch(/name: "guild"/);
   });
 
   it('is gated by a Discord permission, not by an app role', () => {
@@ -355,15 +375,18 @@ describe('/verifications never takes the guild from the caller', () => {
 });
 
 describe('/reconcile-roles reports before it removes', () => {
-  const fn = () => workerSrc.slice(
-    workerSrc.indexOf('async function handleReconcileRoles'),
-    workerSrc.indexOf('async function handleReconcileButton')
-  );
+  const fn = () =>
+    workerSrc.slice(
+      workerSrc.indexOf('async function handleReconcileRoles'),
+      workerSrc.indexOf('async function handleReconcileButton')
+    );
 
   it('does not request the privileged members intent unless it was switched on', () => {
     // Declaring GuildMembers while the Developer Portal toggle is off makes the
     // bot fail to log in entirely -- the whole bot, for one command.
-    expect(workerSrc).toContain("const MEMBERS_INTENT_ENABLED = (process.env.DISCORD_GUILD_MEMBERS_INTENT || \"\").trim() === \"true\"");
+    expect(workerSrc).toContain(
+      'const MEMBERS_INTENT_ENABLED = (process.env.DISCORD_GUILD_MEMBERS_INTENT || "").trim() === "true"'
+    );
     expect(workerSrc).toContain('...(MEMBERS_INTENT_ENABLED ? [GatewayIntentBits.GuildMembers] : [])');
     expect(fn()).toContain('if (!MEMBERS_INTENT_ENABLED)');
     expect(fn()).toContain('Server Members Intent');

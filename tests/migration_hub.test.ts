@@ -3,7 +3,7 @@
  *
  * Unit tests for the Migration Hub view module, markdown sanitizer, and scope handling.
  */
-import { describe, it, expect, beforeEach, afterEach, } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { MigrationHubView } from '../src/modules/migration/views/MigrationHubView';
 import { NAV_ITEMS } from '../src/modules/shell/views/ShellView';
 import fs from 'fs';
@@ -86,7 +86,7 @@ describe('Migration Hub', () => {
         '| Target | Server | Power |',
         '| :--- | :---: | :---: |',
         '| AlphaLead | 1089 | 150M |',
-        '| BetaLead | 1089 | 120M |'
+        '| BetaLead | 1089 | 120M |',
       ].join('\n');
 
       const rendered = view.renderMarkdown(tableText);
@@ -173,8 +173,8 @@ describe('Migration Hub', () => {
           updated_by_account_id: 'acc1',
           updated_by_pseudo: 'HawkEye',
           created_at: '2026-09-19T20:00:00Z',
-          updated_at: '2026-09-19T20:00:00Z'
-        }
+          updated_at: '2026-09-19T20:00:00Z',
+        },
       ];
       (view as any).filterState.activePageId = 'test-page-1';
       (view as any).renderActivePage();
@@ -244,7 +244,7 @@ describe('Migration Hub', () => {
           author_guild_id: 'ALPHA',
           author_role: 'guild_admin',
           created_at: '2026-09-19T20:45:00Z',
-          updated_at: '2026-09-19T20:45:00Z'
+          updated_at: '2026-09-19T20:45:00Z',
         },
         {
           id: 'comment-2',
@@ -255,8 +255,8 @@ describe('Migration Hub', () => {
           author_guild_id: 'BABE',
           author_role: 'server_admin',
           created_at: '2026-09-19T20:50:00Z',
-          updated_at: '2026-09-19T20:50:00Z'
-        }
+          updated_at: '2026-09-19T20:50:00Z',
+        },
       ];
 
       (view as any).renderComments();
@@ -284,8 +284,8 @@ describe('Migration Hub', () => {
           author_guild_id: 'ALPHA',
           author_role: 'guild_admin',
           created_at: '2026-09-19T20:45:00Z',
-          updated_at: '2026-09-19T20:45:00Z'
-        }
+          updated_at: '2026-09-19T20:45:00Z',
+        },
       ];
 
       (view as any).renderComments();

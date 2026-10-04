@@ -45,28 +45,74 @@ export function getDomRef(id: string): HTMLElement | null {
  */
 export function getDomRefs(): DomRefs {
   return {
-    get loginView() { return getDomRef('login-view'); },
-    get dashboardView() { return getDomRef('dashboard-view'); },
-    get loginForm() { return getDomRef('login-form'); },
-    get loginError() { return getDomRef('login-error'); },
-    get logoutBtn() { return getDomRef('logout-btn'); },
-    get createAccountForm() { return getDomRef('create-account-form'); },
-    get accountList() { return getDomRef('account-list'); },
-    get accountCount() { return getDomRef('account-count'); },
-    get toastContainer() { return getDomRef('toast-container'); },
-    get addMemberForm() { return getDomRef('add-member-form'); },
-    get guildMemberList() { return getDomRef('guild-member-list'); },
-    get guildMemberCount() { return getDomRef('guild-member-count'); },
-    get addBannedForm() { return getDomRef('add-banned-form'); },
-    get bannedListContainer() { return getDomRef('banned-list-container'); },
-    get bannedCount() { return getDomRef('banned-count'); },
-    get bannedSearch() { return getDomRef('banned-search'); },
-    get adminMembersView() { return getDomRef('admin-members'); },
-    get accountsManagement() { return getDomRef('admin-home'); },
-    get guildRequestsSection() { return getDomRef('admin-superadmin'); },
-    get guildRequestsList() { return getDomRef('guild-requests-list'); },
-    get adminMembersViewMode() { return getDomRef('admin-members-view-mode'); },
-    get ocrModal() { return getDomRef('ocr-modal-overlay'); },
-    get playerPortalView() { return getDomRef('player-portal-view'); }
+    get loginView() {
+      return getDomRef('login-view');
+    },
+    get dashboardView() {
+      return getDomRef('dashboard-view');
+    },
+    get loginForm() {
+      return getDomRef('login-form');
+    },
+    get loginError() {
+      return getDomRef('login-error');
+    },
+    get logoutBtn() {
+      return getDomRef('logout-btn');
+    },
+    get createAccountForm() {
+      return getDomRef('create-account-form');
+    },
+    get accountList() {
+      return getDomRef('account-list');
+    },
+    get accountCount() {
+      return getDomRef('account-count');
+    },
+    get toastContainer() {
+      return getDomRef('toast-container');
+    },
+    get addMemberForm() {
+      return getDomRef('add-member-form');
+    },
+    get guildMemberList() {
+      return getDomRef('guild-member-list');
+    },
+    get guildMemberCount() {
+      return getDomRef('guild-member-count');
+    },
+    get addBannedForm() {
+      return getDomRef('add-banned-form');
+    },
+    get bannedListContainer() {
+      return getDomRef('banned-list-container');
+    },
+    get bannedCount() {
+      return getDomRef('banned-count');
+    },
+    get bannedSearch() {
+      return getDomRef('banned-search');
+    },
+    get adminMembersView() {
+      return getDomRef('admin-members');
+    },
+    get accountsManagement() {
+      return getDomRef('admin-home');
+    },
+    get guildRequestsSection() {
+      return getDomRef('admin-superadmin');
+    },
+    get guildRequestsList() {
+      return getDomRef('guild-requests-list');
+    },
+    get adminMembersViewMode() {
+      return getDomRef('admin-members-view-mode');
+    },
+    get ocrModal() {
+      return getDomRef('ocr-modal-overlay');
+    },
+    get playerPortalView() {
+      return getDomRef('player-portal-view');
+    },
   };
 }

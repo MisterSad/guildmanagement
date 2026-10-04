@@ -53,7 +53,12 @@ export class PortalChart {
   }
 
   public render(dataPoints: ChartDataPoint[], options: PortalChartOptions = {}): void {
-    const { width = this.canvas.width / (window.devicePixelRatio || 1), height = 200, lineColor = '#6366f1', fillColor = 'rgba(99, 102, 241, 0.15)' } = options;
+    const {
+      width = this.canvas.width / (window.devicePixelRatio || 1),
+      height = 200,
+      lineColor = '#6366f1',
+      fillColor = 'rgba(99, 102, 241, 0.15)',
+    } = options;
 
     // Explicitly clear canvas buffer to prevent curve overlay ghosting
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);

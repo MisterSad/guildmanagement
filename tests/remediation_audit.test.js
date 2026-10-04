@@ -46,11 +46,17 @@ describe('Audit Remediation Verification Suite', () => {
     // auth-login's shadow-user bridge (createUser-or-lookup-by-email) was
     // extracted into _shared/shadow-session.ts so auth-passkey can reuse it;
     // the paginated lookup guard now lives there, not inline in auth-login.
-    const authLoginContent = fs.readFileSync(path.resolve(__dirname, '../supabase/functions/auth-login/index.ts'), 'utf-8');
+    const authLoginContent = fs.readFileSync(
+      path.resolve(__dirname, '../supabase/functions/auth-login/index.ts'),
+      'utf-8'
+    );
     expect(authLoginContent).toContain('establishShadowSession');
     expect(authLoginContent).not.toMatch(/admin\.auth\.admin\.listUsers\(\)/);
 
-    const shadowSessionContent = fs.readFileSync(path.resolve(__dirname, '../supabase/functions/_shared/shadow-session.ts'), 'utf-8');
+    const shadowSessionContent = fs.readFileSync(
+      path.resolve(__dirname, '../supabase/functions/_shared/shadow-session.ts'),
+      'utf-8'
+    );
     expect(shadowSessionContent).toContain('findUserByEmail');
     expect(shadowSessionContent).not.toMatch(/admin\.auth\.admin\.listUsers\(\)/);
 
@@ -67,7 +73,10 @@ describe('Audit Remediation Verification Suite', () => {
     // parseSafeScore/MAX_ALLOWED_EVENT_SCORE moved to _shared/player-actions.ts
     // (Discord bot Phase 2) so discord-bot-interactions can reuse the same
     // bounds -- member-portal now imports it rather than redefining it.
-    const playerActionsContent = fs.readFileSync(path.resolve(__dirname, '../supabase/functions/_shared/player-actions.ts'), 'utf-8');
+    const playerActionsContent = fs.readFileSync(
+      path.resolve(__dirname, '../supabase/functions/_shared/player-actions.ts'),
+      'utf-8'
+    );
     expect(playerActionsContent).toContain('MAX_ALLOWED_EVENT_SCORE = 9_999_999_999');
     expect(playerActionsContent).toContain('function parseSafeScore');
     expect(content).toContain('parseSafeScore,');
@@ -75,12 +84,18 @@ describe('Audit Remediation Verification Suite', () => {
   });
 
   it('SEV-07: verifies EventsService and PortalService schema and action alignment', () => {
-    const eventsServiceContent = fs.readFileSync(path.resolve(__dirname, '../src/modules/events/events.service.ts'), 'utf-8');
+    const eventsServiceContent = fs.readFileSync(
+      path.resolve(__dirname, '../src/modules/events/events.service.ts'),
+      'utf-8'
+    );
     expect(eventsServiceContent).toContain(".eq('is_active', true)");
-    expect(eventsServiceContent).toContain("is_active: true");
+    expect(eventsServiceContent).toContain('is_active: true');
     expect(eventsServiceContent).not.toContain(".eq('active', true)");
 
-    const portalServiceContent = fs.readFileSync(path.resolve(__dirname, '../src/modules/portal/portal.service.ts'), 'utf-8');
+    const portalServiceContent = fs.readFileSync(
+      path.resolve(__dirname, '../src/modules/portal/portal.service.ts'),
+      'utf-8'
+    );
     expect(portalServiceContent).toContain("invokeAction('submit-scores'");
     expect(portalServiceContent).toContain("invokeAction('update-power', { power: overallPower })");
     expect(portalServiceContent).toContain("invokeAction('set-absence'");
@@ -113,7 +128,7 @@ describe('Audit Remediation Verification Suite', () => {
 
     const result = calculateMatchupData([
       { pseudo: 'PlayerA', overall_power: 100_000_000 },
-      { pseudo: 'PlayerB', overall_power: 20_000_000 }
+      { pseudo: 'PlayerB', overall_power: 20_000_000 },
     ]);
 
     expect(result.members.length).toBe(2);
@@ -127,7 +142,7 @@ describe('Audit Remediation Verification Suite', () => {
   it('verifies calculateMatchupAsync computes results asynchronously', async () => {
     const result = await calculateMatchupAsync([
       { pseudo: 'PlayerA', overall_power: 100_000_000 },
-      { pseudo: 'PlayerB', overall_power: 20_000_000 }
+      { pseudo: 'PlayerB', overall_power: 20_000_000 },
     ]);
 
     expect(result.members.length).toBe(2);
@@ -148,14 +163,21 @@ describe('Audit Remediation Verification Suite', () => {
   });
 
   it('W3 & W7: verifies payment hardening migration locks rows and normalizes subscription_type', () => {
-    const paymentMigPath = path.resolve(__dirname, '../supabase/migrations/20260823053000_harden_subscription_payment_and_plans.sql');
+    const paymentMigPath = path.resolve(
+      __dirname,
+      '../supabase/migrations/20260823053000_harden_subscription_payment_and_plans.sql'
+    );
     expect(fs.existsSync(paymentMigPath)).toBe(true);
     const content = fs.readFileSync(paymentMigPath, 'utf-8');
     expect(content).toContain('FOR UPDATE');
     expect(content).toContain("subscription_type = 'Premium'");
     expect(content).toContain('plan_key = v_payment.plan_key');
-    expect(content).toContain('REVOKE ALL ON FUNCTION public.gm_apply_subscription_payment(text, text, text, text) FROM public, anon, authenticated;');
-    expect(content).toContain('GRANT EXECUTE ON FUNCTION public.gm_apply_subscription_payment(text, text, text, text) TO service_role;');
+    expect(content).toContain(
+      'REVOKE ALL ON FUNCTION public.gm_apply_subscription_payment(text, text, text, text) FROM public, anon, authenticated;'
+    );
+    expect(content).toContain(
+      'GRANT EXECUTE ON FUNCTION public.gm_apply_subscription_payment(text, text, text, text) TO service_role;'
+    );
   });
 
   it('W5: verifies member-portal security, scope and resilience hardening', () => {
@@ -175,7 +197,10 @@ describe('Audit Remediation Verification Suite', () => {
     // reused by both member-portal and the Discord bot -- Phase 2)
     expect(content).not.toContain('parseInt(payload?.power) || 0');
     expect(content).toContain('.eq("guild", member.guild)');
-    const playerActionsContent = fs.readFileSync(path.resolve(__dirname, '../supabase/functions/_shared/player-actions.ts'), 'utf-8');
+    const playerActionsContent = fs.readFileSync(
+      path.resolve(__dirname, '../supabase/functions/_shared/player-actions.ts'),
+      'utf-8'
+    );
     expect(playerActionsContent).toContain('error: "invalid_power"');
     expect(playerActionsContent).toContain('.eq("guild", member.guild)');
 
@@ -196,7 +221,9 @@ describe('Audit Remediation Verification Suite', () => {
     expect(content).toContain('public.gm_transfer_guild_member');
     expect(content).not.toContain("COALESCE(v_caller_guild, 'ALPHA')");
     expect(content).toContain('REVOKE ALL ON FUNCTION public.gm_log_player_audit');
-    expect(content).toContain('GRANT EXECUTE ON FUNCTION public.gm_log_player_audit(text, text, text, text, text, text, jsonb, text, text) TO service_role;');
+    expect(content).toContain(
+      'GRANT EXECUTE ON FUNCTION public.gm_log_player_audit(text, text, text, text, text, text, jsonb, text, text) TO service_role;'
+    );
     expect(content).toContain('CREATE POLICY audit_logs_insert_policy ON public.system_audit_logs');
     expect(content).toContain('FOR INSERT TO service_role');
   });
@@ -211,8 +238,14 @@ describe('Audit Remediation Verification Suite', () => {
     expect(vaultContent).toContain('public.gm_invoke_event_reminders');
 
     // 2. Legacy migrations scrubbed
-    const leg1 = fs.readFileSync(path.resolve(__dirname, '../supabase/migrations/20260817113000_schedule_event_reminders_cron.sql'), 'utf-8');
-    const leg2 = fs.readFileSync(path.resolve(__dirname, '../supabase/migrations/20260817114500_update_event_reminders_cron_secret.sql'), 'utf-8');
+    const leg1 = fs.readFileSync(
+      path.resolve(__dirname, '../supabase/migrations/20260817113000_schedule_event_reminders_cron.sql'),
+      'utf-8'
+    );
+    const leg2 = fs.readFileSync(
+      path.resolve(__dirname, '../supabase/migrations/20260817114500_update_event_reminders_cron_secret.sql'),
+      'utf-8'
+    );
     // The retired cron secret is checked by digest, never by value: this test
     // used to carry the plaintext it was guarding against (audit REC-03).
     expect(containsRetiredCronSecret(leg1)).toBe(false);
@@ -227,22 +260,42 @@ describe('Audit Remediation Verification Suite', () => {
     expect(remindersContent).toContain('safeEqual(authBearer, cronSecret)');
 
     // 4. discord-webhook-proxy masks blocked webhook URL
-    const discordContent = fs.readFileSync(path.resolve(__dirname, '../supabase/functions/discord-webhook-proxy/index.ts'), 'utf-8');
+    const discordContent = fs.readFileSync(
+      path.resolve(__dirname, '../supabase/functions/discord-webhook-proxy/index.ts'),
+      'utf-8'
+    );
     // Either quote: the formatter normalises string quotes per file.
-    expect(squash(discordContent).replace(/"\$1\*\*\*"/g, "'$1***'")).toContain('replace(/(https:\\/\\/discord\\.com\\/api\\/webhooks\\/\\d+\\/)[^?#\\s]+/, \'$1***\')');
+    expect(squash(discordContent).replace(/"\$1\*\*\*"/g, "'$1***'")).toContain(
+      "replace(/(https:\\/\\/discord\\.com\\/api\\/webhooks\\/\\d+\\/)[^?#\\s]+/, '$1***')"
+    );
     expect(discordContent).toContain('redirect: "error"');
 
     // 5. ocr-guild-members uses x-goog-api-key header
-    const ocrContent = fs.readFileSync(path.resolve(__dirname, '../supabase/functions/ocr-guild-members/index.ts'), 'utf-8');
+    const ocrContent = fs.readFileSync(
+      path.resolve(__dirname, '../supabase/functions/ocr-guild-members/index.ts'),
+      'utf-8'
+    );
     expect(ocrContent).toContain('"x-goog-api-key": GEMINI_API_KEY');
     expect(ocrContent).not.toContain('?key=${GEMINI_API_KEY}');
   });
 
   it('W8: verifies canonical migration reconciliation, idempotence and reload notifications', () => {
-    const mig1 = fs.readFileSync(path.resolve(__dirname, '../supabase/migrations/20260812000001_schema_tables_and_indexes.sql'), 'utf-8');
-    const mig2 = fs.readFileSync(path.resolve(__dirname, '../supabase/migrations/20260812000002_security_rls_policies.sql'), 'utf-8');
-    const mig3 = fs.readFileSync(path.resolve(__dirname, '../supabase/migrations/20260812000003_functions_and_rpcs.sql'), 'utf-8');
-    const mig4 = fs.readFileSync(path.resolve(__dirname, '../supabase/migrations/20260812000004_triggers_and_crons.sql'), 'utf-8');
+    const mig1 = fs.readFileSync(
+      path.resolve(__dirname, '../supabase/migrations/20260812000001_schema_tables_and_indexes.sql'),
+      'utf-8'
+    );
+    const mig2 = fs.readFileSync(
+      path.resolve(__dirname, '../supabase/migrations/20260812000002_security_rls_policies.sql'),
+      'utf-8'
+    );
+    const mig3 = fs.readFileSync(
+      path.resolve(__dirname, '../supabase/migrations/20260812000003_functions_and_rpcs.sql'),
+      'utf-8'
+    );
+    const mig4 = fs.readFileSync(
+      path.resolve(__dirname, '../supabase/migrations/20260812000004_triggers_and_crons.sql'),
+      'utf-8'
+    );
 
     expect(mig1).toContain('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";');
     expect(mig1).toContain('CREATE EXTENSION IF NOT EXISTS pgcrypto;');
@@ -259,7 +312,7 @@ describe('Audit Remediation Verification Suite', () => {
   it('W9/GAP 2: verifies CSP hardening without unsafe-eval, and pinned SRI attributes', () => {
     const vercelConfig = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../vercel.json'), 'utf-8'));
     const headers = vercelConfig.headers[0].headers;
-    const csp = headers.find(h => h.key === 'Content-Security-Policy')?.value;
+    const csp = headers.find((h) => h.key === 'Content-Security-Policy')?.value;
 
     expect(csp).toBeDefined();
     expect(csp).not.toContain("'unsafe-eval'");
@@ -267,10 +320,13 @@ describe('Audit Remediation Verification Suite', () => {
     expect(csp).toContain("base-uri 'self'");
     expect(csp).toContain("frame-ancestors 'none'");
     expect(csp).toContain("worker-src 'self' blob:");
-    expect(csp).toContain("connect-src 'self' https://vgweufzwmfwplusskmuf.supabase.co wss://vgweufzwmfwplusskmuf.supabase.co");
+    expect(csp).toContain(
+      "connect-src 'self' https://vgweufzwmfwplusskmuf.supabase.co wss://vgweufzwmfwplusskmuf.supabase.co"
+    );
     const htmlContent = fs.readFileSync(path.resolve(__dirname, '../index.html'), 'utf-8');
     // Vendored locally via Vite: if any third-party CDN scripts are ever added, they MUST have SRI attributes
-    const scriptTags = htmlContent.match(/<script[^>]*src="https:\/\/(?:cdn\.jsdelivr\.net|unpkg\.com)[^"]*"[^>]*>/g) || [];
+    const scriptTags =
+      htmlContent.match(/<script[^>]*src="https:\/\/(?:cdn\.jsdelivr\.net|unpkg\.com)[^"]*"[^>]*>/g) || [];
     for (const tag of scriptTags) {
       expect(tag).toContain('integrity="sha384-');
       expect(tag).toContain('crossorigin="anonymous"');
@@ -289,7 +345,10 @@ describe('Audit Remediation Verification Suite', () => {
     expect(authContent).toContain("extensions.gen_salt('bf', 10)");
     expect(authContent).toContain('account_locked');
 
-    const authLoginContent = fs.readFileSync(path.resolve(__dirname, '../supabase/functions/auth-login/index.ts'), 'utf-8');
+    const authLoginContent = fs.readFileSync(
+      path.resolve(__dirname, '../supabase/functions/auth-login/index.ts'),
+      'utf-8'
+    );
     expect(authLoginContent).toContain('error: "account_locked"');
   });
 
@@ -307,7 +366,9 @@ describe('Audit Remediation Verification Suite', () => {
 
   it('W12: verifies WCAG viewport accessibility and logout storage cleanup', () => {
     const htmlContent = fs.readFileSync(path.resolve(__dirname, '../index.html'), 'utf-8');
-    expect(htmlContent).toContain('<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">');
+    expect(htmlContent).toContain(
+      '<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">'
+    );
     expect(htmlContent).not.toContain('user-scalable=no');
     expect(htmlContent).not.toContain('maximum-scale=1.0');
 

@@ -36,7 +36,10 @@ const rootDir = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(rootDir, p), 'utf8');
 const exists = (p) => fs.existsSync(path.join(rootDir, p));
 const stripComments = (s) =>
-  s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '').replace(/\/\/.*$/gm, '');
+  s
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '')
+    .replace(/\/\/.*$/gm, '');
 
 const SW_SOURCE = 'src/sw/service-worker.ts';
 
@@ -196,7 +199,7 @@ describe('phase-2 residue that measurement says is already gone', () => {
       'player_push_prefs',
       'save_push_subscription',
       'gm_get_push_prefs',
-      'gm_set_push_prefs'
+      'gm_set_push_prefs',
     ]) {
       expect(drop, `${obj} must be dropped by the migration`).toContain(obj);
     }

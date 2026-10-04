@@ -16,7 +16,9 @@ export function wireLoginPasswordToggle(): void {
   passwordToggleWired = true;
   document.querySelectorAll('[data-gm-pwd-toggle]').forEach((btn) => {
     const wrap = btn.closest('.gm-input-with-icon');
-    const input = (wrap ? wrap.querySelector('input[type="password"], input[type="text"]') : null) as HTMLInputElement | null;
+    const input = (
+      wrap ? wrap.querySelector('input[type="password"], input[type="text"]') : null
+    ) as HTMLInputElement | null;
     if (!input) return;
     btn.addEventListener('click', () => {
       const isPwd = input.type === 'password';
@@ -34,7 +36,8 @@ export function wireSearchClearButtons(): void {
   document.addEventListener('input', (e) => {
     const input = e.target as HTMLInputElement | null;
     if (!input || input.tagName !== 'INPUT') return;
-    const wrap = input.closest('.gm-input-with-icon, .input-wrapper, .search-wrapper, .ocr-filter-bar') || input.parentElement;
+    const wrap =
+      input.closest('.gm-input-with-icon, .input-wrapper, .search-wrapper, .ocr-filter-bar') || input.parentElement;
     if (!wrap) return;
     const clearBtn = wrap.querySelector('[data-gm-search-clear], .gm-search-clear-btn');
     if (!clearBtn) return;
@@ -51,7 +54,8 @@ export function wireSearchClearButtons(): void {
     if (!btn) return;
     e.preventDefault();
     e.stopPropagation();
-    const wrap = btn.closest('.gm-input-with-icon, .input-wrapper, .search-wrapper, .ocr-filter-bar') || btn.parentElement;
+    const wrap =
+      btn.closest('.gm-input-with-icon, .input-wrapper, .search-wrapper, .ocr-filter-bar') || btn.parentElement;
     const input = (wrap ? wrap.querySelector('input') : null) as HTMLInputElement | null;
     if (!input) return;
     input.value = '';

@@ -28,7 +28,10 @@ export async function emailFor(id: string): Promise<string> {
 export function randomSecret(): string {
   const b = new Uint8Array(48);
   crypto.getRandomValues(b);
-  return btoa(String.fromCharCode(...b)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  return btoa(String.fromCharCode(...b))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
 }
 
 export type ShadowSessionResult =
@@ -82,7 +85,10 @@ export async function establishShadowSession(
   if (!row || !row.auth_user_id || !secret) {
     secret = randomSecret();
     const { data: created, error: cuErr } = await admin.auth.admin.createUser({
-      email, password: secret, email_confirm: true, app_metadata: meta,
+      email,
+      password: secret,
+      email_confirm: true,
+      app_metadata: meta,
     });
     let uid = created?.user?.id;
     if (cuErr || !uid) {
@@ -94,7 +100,11 @@ export async function establishShadowSession(
       uid = existing.id;
       await admin.auth.admin.updateUserById(uid, { password: secret, app_metadata: meta });
     }
-    const { error: aErr } = await admin.rpc("gm_attach_shadow", { p_id: canonicalId, p_auth_user_id: uid, p_secret: secret });
+    const { error: aErr } = await admin.rpc("gm_attach_shadow", {
+      p_id: canonicalId,
+      p_auth_user_id: uid,
+      p_secret: secret,
+    });
     if (aErr) {
       logger.error("Failed to attach shadow user", aErr, { canonicalId, uid });
       return { ok: false, error: "server_error", status: 500 };

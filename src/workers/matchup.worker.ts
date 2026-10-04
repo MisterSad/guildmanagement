@@ -39,7 +39,7 @@ export function calculateMatchupData(members: MatchupMemberInput[]): MatchupCalc
       overall_power: power,
       tier,
       powerPenalty,
-      adjustedPower
+      adjustedPower,
     };
   });
 
@@ -52,7 +52,7 @@ export function calculateMatchupData(members: MatchupMemberInput[]): MatchupCalc
     members: processed,
     totalPower,
     averagePower,
-    dangerosityScore
+    dangerosityScore,
   };
 }
 
@@ -60,9 +60,12 @@ export async function calculateMatchupAsync(members: MatchupMemberInput[]): Prom
   return new Promise((resolve) => {
     try {
       if (typeof window !== 'undefined' && typeof Worker !== 'undefined') {
-        const workerBlob = new Blob([
-          `(${computeMemberTier.toString()});\n(${calculateMatchupData.toString()});\nself.onmessage = function(e) { if (e.data && e.data.action === 'calculateMatchup') { self.postMessage({ action: 'calculateMatchupResult', result: calculateMatchupData(e.data.payload || []) }); } };`
-        ], { type: 'application/javascript' });
+        const workerBlob = new Blob(
+          [
+            `(${computeMemberTier.toString()});\n(${calculateMatchupData.toString()});\nself.onmessage = function(e) { if (e.data && e.data.action === 'calculateMatchup') { self.postMessage({ action: 'calculateMatchupResult', result: calculateMatchupData(e.data.payload || []) }); } };`,
+          ],
+          { type: 'application/javascript' }
+        );
         const workerUrl = URL.createObjectURL(workerBlob);
         const worker = new Worker(workerUrl);
 
@@ -100,4 +103,3 @@ if (typeof self !== 'undefined' && typeof window === 'undefined') {
     }
   });
 }
-

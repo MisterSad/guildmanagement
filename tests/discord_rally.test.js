@@ -32,12 +32,17 @@ describe('ctaSessionFromRows', () => {
 
 describe('ctaHeaderFromEmbed', () => {
   it('reads back the event name and the description it was posted with', () => {
-    expect(ctaHeaderFromEmbed({ title: '⚔️ Call to Arms: SvS Saturday', description: 'Portal at 14:00' + CTA_CLICK_SUFFIX }))
-      .toEqual({ eventName: 'SvS Saturday', description: 'Portal at 14:00' });
+    expect(
+      ctaHeaderFromEmbed({ title: '⚔️ Call to Arms: SvS Saturday', description: 'Portal at 14:00' + CTA_CLICK_SUFFIX })
+    ).toEqual({ eventName: 'SvS Saturday', description: 'Portal at 14:00' });
   });
   it('handles a rally posted without a description', () => {
-    expect(ctaHeaderFromEmbed({ title: '⚔️ Call to Arms: GvG', description: '**Click a button below to declare your attendance for this battle:**' }))
-      .toEqual({ eventName: 'GvG', description: null });
+    expect(
+      ctaHeaderFromEmbed({
+        title: '⚔️ Call to Arms: GvG',
+        description: '**Click a button below to declare your attendance for this battle:**',
+      })
+    ).toEqual({ eventName: 'GvG', description: null });
   });
 });
 
@@ -56,7 +61,10 @@ describe('worker wiring', () => {
 });
 
 describe('discord_rally_responses migration', () => {
-  const sql = fs.readFileSync(path.resolve(__dirname, '../supabase/migrations/20260930174334_discord_rally_responses.sql'), 'utf-8');
+  const sql = fs.readFileSync(
+    path.resolve(__dirname, '../supabase/migrations/20260930174334_discord_rally_responses.sql'),
+    'utf-8'
+  );
   it('is service-role only: RLS forced, no policy, no API-role grant', () => {
     expect(sql).toContain('ENABLE ROW LEVEL SECURITY');
     expect(sql).toContain('FORCE ROW LEVEL SECURITY');

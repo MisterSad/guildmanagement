@@ -42,8 +42,9 @@ describe('a bar that sets a height must not be left inline', () => {
       expect(body, `${selector} is missing from components.css`).toBeTruthy();
       // It sets height (and the track sets flex), so it cannot be inline.
       expect(body).toMatch(/height\s*:/);
-      expect(body, `${selector} sets a height but never declares display, so a <span> renders nothing`)
-        .toMatch(/display\s*:\s*(block|flex|inline-block)/);
+      expect(body, `${selector} sets a height but never declares display, so a <span> renders nothing`).toMatch(
+        /display\s*:\s*(block|flex|inline-block)/
+      );
     });
   }
 });
@@ -75,8 +76,9 @@ describe('labels fit the column they are given', () => {
     const body = ruleBody('.gm-kpi-label');
     expect(body).toMatch(/text-overflow\s*:\s*ellipsis/);
 
-    const labels = (statsView.match(/\['(core|regular|occasional|dormant|unmeasured)', '([^']+)'/g) || [])
-      .map((m) => m.split("', '")[1].replace(/'$/, ''));
+    const labels = (statsView.match(/\['(core|regular|occasional|dormant|unmeasured)', '([^']+)'/g) || []).map((m) =>
+      m.split("', '")[1].replace(/'$/, '')
+    );
     expect(labels.length).toBe(5);
     for (const label of labels) {
       expect(label.length, `"${label}" will be ellipsised in a 96px column`).toBeLessThanOrEqual(12);

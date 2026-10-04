@@ -18,13 +18,15 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 // confirms immediately (it used to be a stub on the removed window bridge).
 vi.mock('../src/modules/app/dialogs/dialogs.service', async (importOriginal) => ({
   ...(await importOriginal()),
-  showConfirm: vi.fn((_t, _m, cb) => { void cb(); })
+  showConfirm: vi.fn((_t, _m, cb) => {
+    void cb();
+  }),
 }));
 // The guild tag is read through guild-config; pin it rather than depend on
 // the fake client's empty guild_config.
 vi.mock('../src/core/config/guild-config', async (importOriginal) => ({
   ...(await importOriginal()),
-  getGuildTag: vi.fn(async () => '[FGF]')
+  getGuildTag: vi.fn(async () => '[FGF]'),
 }));
 
 import { setVerifiedRole } from '../src/core/auth/roles';
@@ -34,7 +36,13 @@ import fs from 'fs';
 import path from 'path';
 
 import { openOcrModal, setOcrMetric, commitOcrUpdates } from '../src/modules/app/ocr/ocr.controller';
-import { setOcrExtractedPlayers, getOcrScanDay, setOcrScanDay, getCurrentOcrMetric, OCR_METRICS_META } from '../src/modules/app/ocr/ocr.meta';
+import {
+  setOcrExtractedPlayers,
+  getOcrScanDay,
+  setOcrScanDay,
+  getCurrentOcrMetric,
+  OCR_METRICS_META,
+} from '../src/modules/app/ocr/ocr.meta';
 import { setDbClient, resetSupabaseClient } from '../src/core/api/supabase';
 
 const root = path.resolve(__dirname, '..');
@@ -82,33 +90,65 @@ function makeDb() {
   const calls = { rpc: [], update: [], insert: [] };
   function chain(table, singularCb) {
     const obj = {
-      select() { return obj; }, eq() { return obj; }, order() { return obj; },
-      not() { return obj; }, ilike() { return obj; },
-      maybeSingle: async () => singularCb ? singularCb() : ({ data: null, error: null }),
-      single: async () => singularCb ? singularCb() : ({ data: null, error: null }),
+      select() {
+        return obj;
+      },
+      eq() {
+        return obj;
+      },
+      order() {
+        return obj;
+      },
+      not() {
+        return obj;
+      },
+      ilike() {
+        return obj;
+      },
+      maybeSingle: async () => (singularCb ? singularCb() : { data: null, error: null }),
+      single: async () => (singularCb ? singularCb() : { data: null, error: null }),
       in: async () => ({ data: [], error: null }),
-      then: (resolve) => resolve({ data: [], error: null })
+      then: (resolve) => resolve({ data: [], error: null }),
     };
     void table;
     return obj;
   }
   return {
     __calls: calls,
-    rpc: async (name, args) => { calls.rpc.push({ name, args }); return { data: { ok: true }, error: null }; },
+    rpc: async (name, args) => {
+      calls.rpc.push({ name, args });
+      return { data: { ok: true }, error: null };
+    },
     from(table) {
       if (table === 'event_status') {
         return {
-          select: () => chain(table, () => ({ data: { event_name: 'SvS', is_active: true, session_id: SESSION, start_at: '2026-08-02' }, error: null })),
-          update: (payload) => { calls.update.push({ table, payload }); return chain(table); },
-          insert: (payload) => { calls.insert.push({ table, payload }); return chain(table); }
+          select: () =>
+            chain(table, () => ({
+              data: { event_name: 'SvS', is_active: true, session_id: SESSION, start_at: '2026-08-02' },
+              error: null,
+            })),
+          update: (payload) => {
+            calls.update.push({ table, payload });
+            return chain(table);
+          },
+          insert: (payload) => {
+            calls.insert.push({ table, payload });
+            return chain(table);
+          },
         };
       }
       return {
         select: () => chain(table),
-        update: (payload) => { calls.update.push({ table, payload }); return chain(table); },
-        insert: (payload) => { calls.insert.push({ table, payload }); return chain(table); }
+        update: (payload) => {
+          calls.update.push({ table, payload });
+          return chain(table);
+        },
+        insert: (payload) => {
+          calls.insert.push({ table, payload });
+          return chain(table);
+        },
       };
-    }
+    },
   };
 }
 
@@ -156,12 +196,14 @@ describe('war OCR commit routing — day containers', () => {
 
     const calls = dailyRpcCalls();
     expect(calls.length).toBe(1);
-    expect(calls[0].args).toEqual(expect.objectContaining({
-      p_guild: 'ALPHA',
-      p_event_name: 'SvS',
-      p_session_id: SESSION,
-      p_rows: [{ pseudo: 'Alpha', day: 0, score: 12000 }]
-    }));
+    expect(calls[0].args).toEqual(
+      expect.objectContaining({
+        p_guild: 'ALPHA',
+        p_event_name: 'SvS',
+        p_session_id: SESSION,
+        p_rows: [{ pseudo: 'Alpha', day: 0, score: 12000 }],
+      })
+    );
     // No direct event_participants write for war metrics.
     expect(db.__calls.update.filter((c) => c.table === 'event_participants').length).toBe(0);
   });
@@ -230,7 +272,9 @@ describe('OCR modal day selector', () => {
     // Clicking Day 4 updates the module state used by the commit routing.
     document.querySelector('#ocr-day-buttons .gm-seg-btn[data-ocr-day="4"]').click();
     expect(getOcrScanDay()).toBe(4);
-    expect(document.querySelector('#ocr-day-buttons .gm-seg-btn[data-ocr-day="4"]').classList.contains('gm-active')).toBe(true);
+    expect(
+      document.querySelector('#ocr-day-buttons .gm-seg-btn[data-ocr-day="4"]').classList.contains('gm-active')
+    ).toBe(true);
 
     // Switching to a non-day metric hides the selector.
     await setOcrMetric('svs_prep');
@@ -304,7 +348,6 @@ describe('syncWarOcrGate removal', () => {
 //   is empty.
 // ─────────────────────────────────────────────────────────────────────────────
 describe('Regression — GvG/SvS OCR lazy roster prefetch', () => {
-
   it('controller source contains the lazy roster-prefetch guard inside handleOcrFiles', () => {
     const src = read('src/modules/app/ocr/ocr.controller.ts');
 

@@ -23,22 +23,32 @@ import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 
-
 const rootDir = path.resolve(__dirname, '..');
 const read = (file) => fs.readFileSync(path.join(rootDir, file), 'utf8');
-
 
 describe('Guild Settings retrofit — index.html integrity contract', () => {
   const html = read('index.html');
   const styles = read('styles.css');
 
   const NOTIFY_IDS = [
-    'notify-armsrace-creation', 'notify-armsrace-30', 'notify-armsrace-5', 'notify-armsrace-start',
-    'notify-dtr-creation', 'notify-dtr-30', 'notify-dtr-5', 'notify-dtr-start',
-    'notify-shadowfront-creation', 'notify-shadowfront-30', 'notify-shadowfront-5', 'notify-shadowfront-start',
+    'notify-armsrace-creation',
+    'notify-armsrace-30',
+    'notify-armsrace-5',
+    'notify-armsrace-start',
+    'notify-dtr-creation',
+    'notify-dtr-30',
+    'notify-dtr-5',
+    'notify-dtr-start',
+    'notify-shadowfront-creation',
+    'notify-shadowfront-30',
+    'notify-shadowfront-5',
+    'notify-shadowfront-start',
     'notify-calamity-10',
-    'notify-gvg-daily-tasks', 'notify-gvg-pvp',
-    'notify-svs-pvp', 'notify-svs-garrison', 'notify-svs-won-prep'
+    'notify-gvg-daily-tasks',
+    'notify-gvg-pvp',
+    'notify-svs-pvp',
+    'notify-svs-garrison',
+    'notify-svs-won-prep',
   ];
 
   it('keeps every notify-* id as a gm-ui-switch native input (backward compat)', () => {
@@ -50,7 +60,8 @@ describe('Guild Settings retrofit — index.html integrity contract', () => {
   });
 
   it('exposes role="switch" + coherent aria-checked on every notify switch', () => {
-    const re = /<input type="checkbox" id="(notify-[\w-]+)" class="gm-ui-switch-input"( checked)? role="switch" aria-checked="(true|false)">/g;
+    const re =
+      /<input type="checkbox" id="(notify-[\w-]+)" class="gm-ui-switch-input"( checked)? role="switch" aria-checked="(true|false)">/g;
     const found = [...html.matchAll(re)].map((m) => m[1]);
     NOTIFY_IDS.forEach((id) => expect(found, `no switch-aria match for ${id}`).toContain(id));
     [...html.matchAll(re)].forEach((m) => {
@@ -60,13 +71,29 @@ describe('Guild Settings retrofit — index.html integrity contract', () => {
   });
 
   it('wraps coeff/webhook/role fields as gm-ui-input-field with stable ids', () => {
-    ['coeff-svs', 'coeff-gvg', 'coeff-shadowfront', 'coeff-dtr', 'coeff-armsrace',
-      'webhook-armsrace', 'webhook-dtr', 'webhook-shadowfront', 'webhook-calamity',
-      'webhook-gvg', 'webhook-svs',
-      'discord-role-id', 'discord-role-id-armsrace', 'discord-role-id-dtr',
-      'discord-role-id-shadowfront', 'discord-role-id-shadowfront-squad2',
-      'discord-role-id-calamity', 'discord-role-id-gvg', 'discord-role-id-svs',
-      'guild-server-number-setting', 'guild-tag-setting', 'discord-verification-channel-id'
+    [
+      'coeff-svs',
+      'coeff-gvg',
+      'coeff-shadowfront',
+      'coeff-dtr',
+      'coeff-armsrace',
+      'webhook-armsrace',
+      'webhook-dtr',
+      'webhook-shadowfront',
+      'webhook-calamity',
+      'webhook-gvg',
+      'webhook-svs',
+      'discord-role-id',
+      'discord-role-id-armsrace',
+      'discord-role-id-dtr',
+      'discord-role-id-shadowfront',
+      'discord-role-id-shadowfront-squad2',
+      'discord-role-id-calamity',
+      'discord-role-id-gvg',
+      'discord-role-id-svs',
+      'guild-server-number-setting',
+      'guild-tag-setting',
+      'discord-verification-channel-id',
     ].forEach((id) => {
       expect(html, `missing gm-ui-input-field for ${id}`).toMatch(
         new RegExp('id="' + id + '"(?: aria-label="[^"]*")? class="gm-ui-input-field[ "]')
@@ -75,9 +102,15 @@ describe('Guild Settings retrofit — index.html integrity contract', () => {
   });
 
   it('styles.css ships the gm-ui primitives consuming theme.css variables', () => {
-    ['.gm-ui-switch-track', '.gm-ui-switch-thumb', '.gm-ui-checkbox-box',
-      '.gm-ui-input-field', '.gm-ui-accent-svs', '.gm-ui-accent-gvg',
-      '.gm-ui-accent-glory', '.gm-ui-accent-danger'
+    [
+      '.gm-ui-switch-track',
+      '.gm-ui-switch-thumb',
+      '.gm-ui-checkbox-box',
+      '.gm-ui-input-field',
+      '.gm-ui-accent-svs',
+      '.gm-ui-accent-gvg',
+      '.gm-ui-accent-glory',
+      '.gm-ui-accent-danger',
     ].forEach((sel) => expect(styles, `missing ${sel} in styles.css`).toContain(sel));
     expect(styles).toMatch(/\.gm-ui-switch-input:focus-visible ~ \.gm-ui-switch-track \{[^}]*var\(--ring\)/);
     expect(styles).toMatch(/\.gm-ui-input-field:focus-visible \{[^}]*var\(--ring\)/);
