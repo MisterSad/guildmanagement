@@ -260,7 +260,10 @@ const WEBHOOK_FIELDS: ConfigField[] = [
   { key: 'webhook_svs', el: 'webhook-svs', gated: true },
 ];
 
-const WEBHOOK_SET_PLACEHOLDER = 'Webhook set. Paste a new URL to replace it.';
+// Short enough for the card's input (the long form was cut off mid-word); the
+// full sentence is the field's tooltip.
+const WEBHOOK_SET_PLACEHOLDER = 'Set — paste a URL to replace';
+const WEBHOOK_SET_TITLE = 'A webhook is set. Paste a new URL to replace it.';
 
 /** The webhook keys set when the form was last loaded. */
 let configuredWebhookKeys: string[] = [];
@@ -271,6 +274,7 @@ function renderWebhookField(field: ConfigField, isSet: boolean): void {
   if (!input.dataset.gmEmptyPlaceholder) input.dataset.gmEmptyPlaceholder = input.placeholder;
   input.value = '';
   input.placeholder = isSet ? WEBHOOK_SET_PLACEHOLDER : input.dataset.gmEmptyPlaceholder || '';
+  input.title = isSet ? WEBHOOK_SET_TITLE : '';
   const wrapper = input.closest('.gm-ui-input') || input;
   let remove =
     wrapper.parentElement?.querySelector<HTMLButtonElement>(`button[data-gm-webhook-remove="${field.key}"]`) || null;

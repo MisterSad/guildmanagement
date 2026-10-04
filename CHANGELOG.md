@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- **Webhook fields: a placeholder that fits.** A set webhook's field read "Webhook set. Paste a new URL to replace it.", cut off mid-word in the Discord Notifications cards. It now reads "Set — paste a URL to replace", with the full sentence as the field's tooltip. The URL itself is still never shown (ARC-04). Covered by `tests/webhook_field_placeholder.test.js`.
+
 - **`'unsafe-inline'` leaves the CSP** (owner request, 2026-10-04; the last item M5 left open). `style-src` is now `'self'`, like `script-src`. No visible change.
   - **The e2e suite now runs under the real CSP.**
     - Before this, `serve` had no headers, so no violation could ever be seen.
