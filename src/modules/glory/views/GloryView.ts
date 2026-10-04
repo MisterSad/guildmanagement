@@ -91,7 +91,7 @@ export class GloryView {
         '<div class="gm-section-title"><i class="ph ph-list-numbers"></i> Members Glory Log</div>' +
         '<div class="gm-input-with-icon" style="min-width: 220px; max-width: 320px;">' +
           '<i class="ph ph-magnifying-glass gm-icon"></i>' +
-          '<input type="text" class="gm-input glory-search-input" placeholder="' + t('search_placeholder') + '">' +
+          '<input type="text" class="gm-input glory-search-input" aria-label="' + escapeHTML(t('search_placeholder')) + '" placeholder="' + t('search_placeholder') + '">' +
           '<button type="button" class="gm-search-clear-btn" data-gm-search-clear aria-label="Clear search" tabindex="-1"><i class="ph ph-x-circle"></i></button>' +
         '</div>' +
       '</div>' +
@@ -125,6 +125,7 @@ export class GloryView {
               '<input type="text" inputmode="numeric" class="gm-glory-input glory-input"' +
                 ' value="' + (curr !== '' ? formatNumber(curr) : '') + '" placeholder="0"' +
                 ' data-pseudo="' + escapeHTML(pseudo) + '"' +
+                ' aria-label="' + escapeHTML(t('glory_input') + ', ' + pseudo) + '"' +
                 ' data-prev="' + (prev !== null ? prev : '') + '">' +
               '<i class="ph ph-circle-notch ph-spin saving-icon hidden" style="position:absolute; right:.6rem;"></i>' +
             '</div>' +

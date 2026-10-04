@@ -11,6 +11,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { adoptDialog } from '../../../components/ui/Dialog';
 import { escapeHTML } from '../../../core/utils/text';
 import { t } from '../../../core/i18n/i18n';
 import { getClient } from '../../../core/api/supabase';
@@ -175,7 +176,7 @@ export class TicketsView {
           '</td>' +
           '<td data-label="' + escapeHTML(t('tickets_date')) + '" style="padding:0.65rem 0.5rem; font-size:0.78rem; color:var(--text-muted); white-space:nowrap;">' + escapeHTML(dateStr) + '</td>' +
           '<td data-label="' + escapeHTML(t('tickets_set')) + '" style="padding:0.65rem 0.75rem; text-align:center;">' +
-            '<select class="gm-select gm-select-sm gm-ticket-status" data-id="' + escapeHTML(tk.id) + '" data-ticket-no="' + escapeHTML(tk.ticket_number) + '" style="font-size:0.75rem; padding:0.15rem 0.4rem; height:auto; width:auto; min-width:145px; border-radius:4px;">' +
+            '<select class="gm-select gm-select-sm gm-ticket-status" data-id="' + escapeHTML(tk.id) + '" data-ticket-no="' + escapeHTML(tk.ticket_number) + '" aria-label="' + escapeHTML(t('tickets_set') + ', #' + tk.ticket_number) + '" style="font-size:0.75rem; padding:0.15rem 0.4rem; height:auto; width:auto; min-width:145px; border-radius:4px;">' +
               '<option value="waiting"' + (curStatus === 'waiting' ? ' selected' : '') + '>⏳ ' + escapeHTML(t('tickets_status_waiting')) + '</option>' +
               '<option value="in_progress"' + (curStatus === 'in_progress' ? ' selected' : '') + '>🔨 ' + escapeHTML(t('tickets_status_in_progress')) + '</option>' +
               '<option value="resolved"' + (curStatus === 'resolved' ? ' selected' : '') + '>✅ ' + escapeHTML(t('tickets_status_resolved')) + '</option>' +
@@ -208,12 +209,13 @@ export class TicketsView {
     (modal as HTMLElement).style.zIndex = '9999';
     modal.innerHTML =
       '<div style="position:relative; max-width:92vw; max-height:92vh; display:flex; flex-direction:column; align-items:center;">' +
-        '<button type="button" class="gm-btn gm-btn-ghost gm-btn-icon" style="position:absolute; top:-38px; right:0; color:#fff; font-size:1.4rem;" title="Close">✕</button>' +
-        '<img src="' + escapeHTML(src) + '" style="max-width:100%; max-height:85vh; object-fit:contain; border-radius:8px; box-shadow:0 8px 30px rgba(0,0,0,0.8); border:1px solid rgba(255,255,255,0.1);">' +
+        '<button type="button" class="gm-btn gm-btn-ghost gm-btn-icon" style="position:absolute; top:-38px; right:0; color:#fff; font-size:1.4rem;" title="Close" aria-label="Close">✕</button>' +
+        '<img src="' + escapeHTML(src) + '" alt="Ticket screenshot" style="max-width:100%; max-height:85vh; object-fit:contain; border-radius:8px; box-shadow:0 8px 30px rgba(0,0,0,0.8); border:1px solid rgba(255,255,255,0.1);">' +
       '</div>';
     document.body.appendChild(modal);
     const close = (): void => { if (modal && modal.parentNode) modal.parentNode.removeChild(modal); };
     modal.addEventListener('click', close);
+    adoptDialog(modal, { card: modal.firstElementChild as HTMLElement, label: 'Ticket screenshot', onEscape: close });
   }
 
   private async updateStatus(id: string, status: string, sel: HTMLSelectElement): Promise<void> {

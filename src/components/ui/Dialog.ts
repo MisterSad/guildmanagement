@@ -11,6 +11,12 @@
  * Lifecycle: openDialog(opts) → closeDialog(root). Hooks: onConfirm
  * (primary button), onCancel (secondary button / Escape / backdrop / header X).
  * `onClose` fires on every close path.
+ *
+ * adoptDialog(overlay, opts) gives the same behaviour to a surface that builds
+ * its own markup (the OCR modal, the member forms...): the dialog role and
+ * label, the focus trap, Escape, the inert page behind, and focus returned on
+ * close (medium-term plan, M5). Every dialog joins one stack, so a confirm
+ * opened over a modal owns the keyboard until it closes.
  */
 
 import { cva } from '../../core/utils/cva';
@@ -84,7 +90,148 @@ function titleIdFor(id: string): string {
 function focusableElements(card: HTMLElement): HTMLElement[] {
   return Array.from(card.querySelectorAll<HTMLElement>(
     'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-  ));
+  )).filter((el) => {
+    // A hand-built card hides whole steps with display:none; focus() on those
+    // is a silent no-op that would break the trap. Where the browser can tell.
+    const check = (el as HTMLElement & { checkVisibility?: () => boolean }).checkVisibility;
+    return typeof check === 'function' ? check.call(el) : true;
+  });
+}
+
+/** Open dialogs, innermost last. Only the innermost one handles Tab and Escape. */
+const dialogStack: HTMLElement[] = [];
+
+/** True while any dialog is open. */
+export function isDialogOpen(): boolean {
+  return dialogStack.length > 0;
+}
+
+interface ModalBehaviour {
+  /** The element focus is trapped in. */
+  card: HTMLElement;
+  /** Escape (and, when the caller wires it, the backdrop). Omit to ignore Escape. */
+  onEscape?: () => void;
+  initialFocus?: HTMLElement | null;
+}
+
+/**
+ * Wires the keyboard and focus side of a modal: Tab cycles inside `card`,
+ * Escape calls `onEscape`, the page behind (#app) is hidden from assistive
+ * technology, and focus goes back where it was on release. Returns release().
+ */
+function engageModal(root: HTMLElement, b: ModalBehaviour): () => void {
+  const previouslyFocused = document.activeElement as HTMLElement | null;
+  const appRoot = document.getElementById('app');
+  const prevAriaHidden = appRoot ? appRoot.getAttribute('aria-hidden') : null;
+  if (appRoot) appRoot.setAttribute('aria-hidden', 'true');
+  dialogStack.push(root);
+
+  const onKeydown = (e: KeyboardEvent): void => {
+    if (dialogStack[dialogStack.length - 1] !== root) return;
+    if (e.key === 'Escape' || e.key === 'Esc') {
+      if (!b.onEscape) return;
+      e.preventDefault();
+      b.onEscape();
+      return;
+    }
+    if (e.key !== 'Tab') return;
+    const items = focusableElements(b.card);
+    if (items.length === 0) {
+      e.preventDefault();
+      b.card.focus();
+      return;
+    }
+    const activeIdx = items.indexOf(document.activeElement as HTMLElement);
+    if (e.shiftKey) {
+      if (activeIdx <= 0) {
+        e.preventDefault();
+        items[items.length - 1].focus();
+      }
+    } else if (activeIdx === items.length - 1 || activeIdx === -1) {
+      e.preventDefault();
+      items[0].focus();
+    }
+  };
+  document.addEventListener('keydown', onKeydown, true);
+
+  const first = b.initialFocus || focusableElements(b.card)[0] || b.card;
+  if (first) {
+    if (first === b.card && !b.card.hasAttribute('tabindex')) b.card.setAttribute('tabindex', '-1');
+    try { first.focus(); } catch { /* best effort */ }
+  }
+
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    document.removeEventListener('keydown', onKeydown, true);
+    const at = dialogStack.indexOf(root);
+    if (at !== -1) dialogStack.splice(at, 1);
+    // The page stays hidden while an outer dialog is still open.
+    if (appRoot && dialogStack.length === 0) {
+      if (prevAriaHidden !== null) appRoot.setAttribute('aria-hidden', prevAriaHidden);
+      else appRoot.removeAttribute('aria-hidden');
+    }
+    if (previouslyFocused && typeof previouslyFocused.focus === 'function' && document.contains(previouslyFocused)) {
+      try { previouslyFocused.focus(); } catch { /* best effort */ }
+    }
+  };
+}
+
+export interface AdoptDialogOptions {
+  /** The dialog surface; defaults to the overlay's `.gm-modal-card`. */
+  card?: HTMLElement | null;
+  /** id of the visible title; defaults to the card's first heading (given an id if it has none). */
+  labelledBy?: string;
+  /** Accessible name when there is no visible title. */
+  label?: string;
+  /** 'alertdialog' for a destructive confirmation. */
+  role?: 'dialog' | 'alertdialog';
+  /** The surface's own close path, run on Escape. Omit when Escape must not close it. */
+  onEscape?: () => void;
+  initialFocus?: HTMLElement | null;
+}
+
+let adoptedUid = 0;
+
+/**
+ * Makes a hand-built overlay an accessible modal dialog without changing its
+ * markup or its look. Call it once the overlay is in the document and shown.
+ * The returned release() undoes it; it also runs by itself when the overlay
+ * leaves the document, which is how most of these surfaces close.
+ */
+export function adoptDialog(overlay: HTMLElement, opts: AdoptDialogOptions = {}): () => void {
+  const card = opts.card || overlay.querySelector<HTMLElement>('.gm-modal-card') || overlay;
+  card.setAttribute('role', opts.role || 'dialog');
+  card.setAttribute('aria-modal', 'true');
+  if (overlay !== card) {
+    // The role lives on the card; an overlay that claimed it would announce twice.
+    overlay.removeAttribute('role');
+    overlay.removeAttribute('aria-modal');
+    overlay.removeAttribute('aria-labelledby');
+  }
+  let labelledBy = opts.labelledBy || '';
+  if (!labelledBy && !opts.label) {
+    const heading = card.querySelector<HTMLElement>('h1, h2, h3, h4');
+    if (heading) {
+      if (!heading.id) heading.id = 'gm-adopted-dialog-title-' + (++adoptedUid);
+      labelledBy = heading.id;
+    }
+  }
+  if (labelledBy) card.setAttribute('aria-labelledby', labelledBy);
+  else if (opts.label) card.setAttribute('aria-label', opts.label);
+
+  const release = engageModal(overlay, { card, onEscape: opts.onEscape, initialFocus: opts.initialFocus });
+  let observer: MutationObserver | null = null;
+  const releaseAll = (): void => {
+    if (observer) { observer.disconnect(); observer = null; }
+    release();
+  };
+  if (overlay.parentNode && typeof MutationObserver !== 'undefined') {
+    observer = new MutationObserver(() => { if (!overlay.isConnected) releaseAll(); });
+    observer.observe(overlay.parentNode, { childList: true });
+  }
+  return releaseAll;
 }
 
 /** Builds a detached dialog root (backdrop + card). No listeners attached. */
@@ -169,57 +316,20 @@ export function dialogCard(dialog: HTMLElement): HTMLElement | null {
  * focusable) and returns the root element.
  */
 export function openDialog(opts: DialogOptions): HTMLElement {
-  const previouslyFocused = typeof document !== 'undefined'
-    ? (document.activeElement as HTMLElement | null)
-    : null;
-
-  const appRoot = typeof document !== 'undefined' ? document.getElementById('app') : null;
-  const prevAriaHidden = appRoot ? appRoot.getAttribute('aria-hidden') : null;
-  if (appRoot) {
-    appRoot.setAttribute('aria-hidden', 'true');
-  }
-
   const dialog = createDialog(opts);
-  const card = dialogCard(dialog);
+  const card = dialogCard(dialog) as HTMLElement;
   document.body.appendChild(dialog);
 
   const close = (): void => closeDialog(dialog);
-
-  const onKeydown = (e: KeyboardEvent): void => {
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      opts.onCancel?.();
-      close();
-      return;
-    }
-    if (e.key !== 'Tab') return;
-    const items = focusableElements(card as HTMLElement);
-    if (items.length === 0) {
-      e.preventDefault();
-      card?.focus();
-      return;
-    }
-    const active = document.activeElement;
-    const activeIdx = items.indexOf(active as HTMLElement);
-    if (e.shiftKey) {
-      if (activeIdx <= 0) {
-        e.preventDefault();
-        items[items.length - 1].focus();
-      }
-    } else if (activeIdx === items.length - 1 || activeIdx === -1) {
-      e.preventDefault();
-      items[0].focus();
-    }
+  const cancel = (): void => {
+    opts.onCancel?.();
+    close();
   };
+  const release = engageModal(dialog, { card, onEscape: cancel, initialFocus: opts.initialFocus });
 
   const onBackdropClick = (e: MouseEvent): void => {
-    if (e.target === dialog) {
-      opts.onCancel?.();
-      close();
-    }
+    if (e.target === dialog) cancel();
   };
-
-  document.addEventListener('keydown', onKeydown, true);
   dialog.addEventListener('click', onBackdropClick);
 
   if (!opts.noFooter) {
@@ -229,11 +339,7 @@ export function openDialog(opts: DialogOptions): HTMLElement {
       confirmBtn?.addEventListener('click', () => {
         void Promise.resolve(opts.onConfirm ? opts.onConfirm() : undefined).then(() => close());
       });
-      const cancelBtn = footer.querySelector('.gm-ui-dialog-cancel');
-      cancelBtn?.addEventListener('click', () => {
-        opts.onCancel?.();
-        close();
-      });
+      footer.querySelector('.gm-ui-dialog-cancel')?.addEventListener('click', cancel);
       // Custom-footers (e.g. HistoryView's danger zone): auto-wire data attrs.
       footer.querySelectorAll<HTMLElement>('[data-dialog-confirm]').forEach((btn) => {
         btn.addEventListener('click', () => {
@@ -241,40 +347,26 @@ export function openDialog(opts: DialogOptions): HTMLElement {
         });
       });
       footer.querySelectorAll<HTMLElement>('[data-dialog-close]').forEach((btn) => {
-        btn.addEventListener('click', () => {
-          opts.onCancel?.();
-          close();
-        });
+        btn.addEventListener('click', cancel);
       });
     }
   }
 
-  const headerClose = card?.querySelector<HTMLElement>('.gm-ui-dialog-header-close');
-  headerClose?.addEventListener('click', () => {
-    opts.onCancel?.();
-    close();
-  });
+  card?.querySelector<HTMLElement>('.gm-ui-dialog-header-close')?.addEventListener('click', cancel);
+
+  // A dialog removed by other code (dialog.remove()) still releases the
+  // keyboard, the page behind and its place in the stack.
+  const observer = typeof MutationObserver !== 'undefined'
+    ? new MutationObserver(() => { if (!dialog.isConnected) closeDialog(dialog); })
+    : null;
+  observer?.observe(document.body, { childList: true });
 
   cleanupRegistry.set(dialog, () => {
-    document.removeEventListener('keydown', onKeydown, true);
+    observer?.disconnect();
     dialog.removeEventListener('click', onBackdropClick);
-    if (appRoot) {
-      if (prevAriaHidden !== null) {
-        appRoot.setAttribute('aria-hidden', prevAriaHidden);
-      } else {
-        appRoot.removeAttribute('aria-hidden');
-      }
-    }
-    if (previouslyFocused && typeof previouslyFocused.focus === 'function' && document.contains(previouslyFocused)) {
-      try { previouslyFocused.focus(); } catch { /* best effort */ }
-    }
+    release();
     opts.onClose?.();
   });
-
-  const first = opts.initialFocus
-    ? opts.initialFocus
-    : focusableElements(card as HTMLElement)[0] ?? card;
-  if (first) first.focus();
 
   return dialog;
 }

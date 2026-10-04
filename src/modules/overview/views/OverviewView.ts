@@ -11,6 +11,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { adoptDialog } from '../../../components/ui/Dialog';
 import {
   ClockMember,
   prettyEventName,
@@ -589,10 +590,10 @@ export class OverviewView {
         '<div style="border-top: 1px solid var(--border-soft); padding-top: 1.2rem;">' +
           '<h4 style="font-size: var(--fs-base); font-weight: 600; color: var(--fg-muted); margin-bottom: 0.6rem;">' + t('modal_add_clock_section') + '</h4>' +
           '<div class="gm-col" style="gap: 0.6rem;">' +
-            '<input type="text" id="gm-new-clock-name" class="gm-input" placeholder="' + t('modal_add_clock_name_placeholder') + '" maxlength="20">' +
-            '<select id="gm-new-clock-tz" class="gm-select" style="padding: .55rem .75rem;">' + tzOptions + '</select>' +
+            '<input type="text" id="gm-new-clock-name" class="gm-input" placeholder="' + t('modal_add_clock_name_placeholder') + '" aria-label="' + escapeHTML(t('modal_add_clock_name_placeholder')) + '" maxlength="20">' +
+            '<select id="gm-new-clock-tz" class="gm-select" aria-label="' + escapeHTML(t('a11y_clock_timezone')) + '" style="padding: .55rem .75rem;">' + tzOptions + '</select>' +
             '<div style="display: flex; gap: 0.5rem;">' +
-              '<select id="gm-new-clock-offset" class="gm-select" style="flex: 1; padding: .55rem .75rem;">' + offsetOptions + '</select>' +
+              '<select id="gm-new-clock-offset" class="gm-select" aria-label="' + escapeHTML(t('a11y_clock_offset')) + '" style="flex: 1; padding: .55rem .75rem;">' + offsetOptions + '</select>' +
               '<button id="gm-add-clock-btn" class="gm-btn gm-btn-primary" style="flex-shrink: 0;"><i class="ph ph-plus"></i> ' + t('modal_add_clock_btn') + '</button>' +
             '</div>' +
           '</div>' +
@@ -613,6 +614,7 @@ export class OverviewView {
     overlay.addEventListener('click', (ev) => { if (ev.target === overlay) modalClose(); });
     const closeBtn = document.getElementById('gm-clocks-modal-close');
     if (closeBtn) closeBtn.addEventListener('click', modalClose);
+    adoptDialog(overlay, { onEscape: modalClose });
 
     const renderModalClocks = (): void => {
       const listContainer = overlay.querySelector('#gm-clocks-list-container');

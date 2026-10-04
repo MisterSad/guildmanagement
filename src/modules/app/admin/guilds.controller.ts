@@ -102,7 +102,7 @@ export async function renderGuildsList(): Promise<void> {
             '<div class="gm-row" style="gap: 0.5rem; align-items: center; flex-wrap: wrap;">' +
               '<div class="gm-col" style="flex: 1; gap: 0.25rem; min-width:100px;">' +
                 '<label class="gm-dim" style="font-size: var(--fs-sm); margin-bottom:0;">Server #</label>' +
-                '<input type="text" maxlength="4" pattern="\\d{4}" class="gm-input gm-input-sm guild-server-number" data-guild="' + esc(guildId) + '" value="' + esc(serverNum) + '" style="padding: 0.25rem 0.5rem; font-size: var(--fs-sm); height: auto;" placeholder="e.g. 1089">' +
+                '<input type="text" maxlength="4" pattern="\\d{4}" class="gm-input gm-input-sm guild-server-number" data-guild="' + esc(guildId) + '" aria-label="' + esc('Server number of ' + guildId) + '" value="' + esc(serverNum) + '" style="padding: 0.25rem 0.5rem; font-size: var(--fs-sm); height: auto;" placeholder="e.g. 1089">' +
               '</div>' +
               '<button class="gm-btn gm-btn-primary save-guild-btn" data-guild="' + esc(guildId) + '" style="margin-top: 1.15rem; padding: 0.35rem 0.65rem; font-size: var(--fs-sm); display:flex; align-items:center; gap:0.25rem; height: auto; line-height: 1.2;">' +
                 '<i class="ph ph-floppy-disk"></i> Save' +

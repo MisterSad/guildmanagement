@@ -972,14 +972,14 @@ export class PortalView {
       if (isSvsOrGvg) {
         scoreHtml +=
           '<div class="portal-score-fields">' +
-            '<div class="portal-field"><label class="portal-field-label">Days 1-5 score</label><input type="text" class="gm-input gm-input-sm portal-score-prep" value="' + escapeHTML(curr.score_prep != null ? curr.score_prep : '') + '" placeholder="e.g. 150000"></div>' +
-            '<div class="portal-field"><label class="portal-field-label">Day 6 score</label><input type="text" class="gm-input gm-input-sm portal-score-pvp" value="' + escapeHTML(curr.score_pvp != null ? curr.score_pvp : '') + '" placeholder="e.g. 50000"></div>' +
+            '<div class="portal-field"><label class="portal-field-label">Days 1-5 score</label><input type="text" class="gm-input gm-input-sm portal-score-prep" aria-label="Days 1-5 score" value="' + escapeHTML(curr.score_prep != null ? curr.score_prep : '') + '" placeholder="e.g. 150000"></div>' +
+            '<div class="portal-field"><label class="portal-field-label">Day 6 score</label><input type="text" class="gm-input gm-input-sm portal-score-pvp" aria-label="Day 6 score" value="' + escapeHTML(curr.score_pvp != null ? curr.score_pvp : '') + '" placeholder="e.g. 50000"></div>' +
           '</div>' +
           '<div class="portal-score-total"><span class="portal-score-total-label">Total</span><span class="portal-score-total-value" data-total>0</span></div>';
       } else {
         scoreHtml +=
           '<div class="portal-score-fields">' +
-            '<div class="portal-field"><label class="portal-field-label">Score</label><input type="text" class="gm-input gm-input-sm portal-score" value="' + escapeHTML(curr.score != null ? curr.score : '') + '" placeholder="e.g. 45000"></div>' +
+            '<div class="portal-field"><label class="portal-field-label">Score</label><input type="text" class="gm-input gm-input-sm portal-score" aria-label="Score" value="' + escapeHTML(curr.score != null ? curr.score : '') + '" placeholder="e.g. 45000"></div>' +
           '</div>' +
           '<div class="portal-score-total"><span class="portal-score-total-label">Score</span><span class="portal-score-total-value" data-total>0</span></div>';
       }
@@ -1164,7 +1164,7 @@ export class PortalView {
 
         '<div class="portal-card">' +
           '<div class="portal-card-title"><i class="ph ph-clock"></i> My Timezone<button class="gm-help-btn" data-help-id="help-portal-timezone" aria-label="Help: My Timezone"><i class="ph ph-info"></i></button></div>' +
-          '<div class="portal-row"><select id="portal-timezone-select" class="gm-input"></select><button type="button" id="portal-timezone-detect-btn" class="gm-btn gm-btn-ghost gm-btn-sm" title="Detect my timezone"><i class="ph ph-crosshair"></i><span>Auto</span></button><button type="button" id="portal-timezone-btn" class="gm-btn gm-btn-primary gm-btn-sm"><i class="ph ph-floppy-disk"></i><span>Save</span></button></div>' +
+          '<div class="portal-row"><select id="portal-timezone-select" class="gm-input" aria-label="My timezone"></select><button type="button" id="portal-timezone-detect-btn" class="gm-btn gm-btn-ghost gm-btn-sm" title="Detect my timezone"><i class="ph ph-crosshair"></i><span>Auto</span></button><button type="button" id="portal-timezone-btn" class="gm-btn gm-btn-primary gm-btn-sm"><i class="ph ph-floppy-disk"></i><span>Save</span></button></div>' +
           '<div class="portal-msg" id="portal-timezone-msg"></div>' +
           '<div class="portal-timezone-hint"><i class="ph ph-info"></i> Helps officers plan events when most players are available.</div>' +
         '</div>' +
@@ -1173,7 +1173,7 @@ export class PortalView {
 
         '<div class="portal-card">' +
           '<div class="portal-card-title"><i class="ph ph-swap"></i> Request Guild Transfer<button class="gm-help-btn" data-help-id="help-portal-transfer" aria-label="Help: Guild Transfer"><i class="ph ph-info"></i></button></div>' +
-          '<div class="portal-row"><select id="portal-transfer-select" class="gm-input"><option value="">Select Target Guild...</option></select><button type="button" id="portal-transfer-btn" class="gm-btn gm-btn-primary gm-btn-sm" disabled><i class="ph ph-paper-plane-tilt"></i><span>Send</span></button></div>' +
+          '<div class="portal-row"><select id="portal-transfer-select" class="gm-input" aria-label="Target guild"><option value="">Select Target Guild...</option></select><button type="button" id="portal-transfer-btn" class="gm-btn gm-btn-primary gm-btn-sm" disabled><i class="ph ph-paper-plane-tilt"></i><span>Send</span></button></div>' +
           '<div id="portal-transfer-msg" class="portal-msg"></div>' +
         '</div>' +
 
@@ -1474,10 +1474,10 @@ export class PortalView {
       '<div class="portal-card portal-absence-form">' +
         '<div class="portal-card-title"><i class="ph ph-calendar-plus"></i> Declare a period</div>' +
         '<div class="portal-absence-fields">' +
-          '<div class="portal-field"><label class="portal-field-label">Type</label><select id="portal-absence-kind" class="gm-input"><option value="full">Full absence</option><option value="reduced">Reduced activity</option></select></div>' +
-          '<div class="portal-field"><label class="portal-field-label">From</label><input type="date" id="portal-absence-start" class="gm-input"></div>' +
-          '<div class="portal-field"><label class="portal-field-label">To</label><input type="date" id="portal-absence-end" class="gm-input"></div>' +
-          '<div class="portal-field"><label class="portal-field-label">Note (optional)</label><input type="text" id="portal-absence-note" class="gm-input" placeholder="e.g. exams, work, holidays" maxlength="120"></div>' +
+          '<div class="portal-field"><label class="portal-field-label" for="portal-absence-kind">Type</label><select id="portal-absence-kind" class="gm-input"><option value="full">Full absence</option><option value="reduced">Reduced activity</option></select></div>' +
+          '<div class="portal-field"><label class="portal-field-label" for="portal-absence-start">From</label><input type="date" id="portal-absence-start" class="gm-input"></div>' +
+          '<div class="portal-field"><label class="portal-field-label" for="portal-absence-end">To</label><input type="date" id="portal-absence-end" class="gm-input"></div>' +
+          '<div class="portal-field"><label class="portal-field-label" for="portal-absence-note">Note (optional)</label><input type="text" id="portal-absence-note" class="gm-input" placeholder="e.g. exams, work, holidays" maxlength="120"></div>' +
         '</div>' +
         '<div id="portal-absence-msg" class="portal-msg"></div>' +
         '<button type="button" id="portal-absence-save-btn" class="gm-btn gm-btn-primary gm-btn-sm"><i class="ph ph-floppy-disk"></i><span>Save</span></button>' +

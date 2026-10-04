@@ -122,8 +122,9 @@ describe('the router tears down the view it navigates away from', () => {
     // They are imported view objects now, so a rename is a compile error rather
     // than a teardown that silently stops happening.
     expect(router).toContain('TEARDOWN_BY_TAB');
+    // M5: the views are lazy; only one already loaded has anything to release.
     for (const view of ['migrationHubView', 'overviewView', 'sanctionsView']) {
-      expect(router, `${view} must be torn down`).toContain(`${view}.destroy()`);
+      expect(router, `${view} must be torn down`).toContain(`${view}Lazy.peek()?.destroy()`);
     }
   });
 

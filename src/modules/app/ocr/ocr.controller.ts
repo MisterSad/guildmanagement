@@ -11,6 +11,8 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { adoptDialog, closeDialog } from '../../../components/ui/Dialog';
+import { eventsViewLazy, armsRaceViewLazy, shadowfrontViewLazy } from '../lazy-views';
 import { esc, byId } from '../admin/utils';
 import { showToast, showConfirm } from '../dialogs/dialogs.service';
 import { getClient } from '../../../core/api/supabase';
@@ -59,9 +61,6 @@ import {
 } from './ocr.meta';
 import { renderOcrResults, renderOcrCoverage, toggleAllCheckboxes } from './ocr.render';
 import { EventsService } from '../../events/events.service';
-import { eventsView } from '../../events/views/EventsView';
-import { armsRaceView } from '../../armsrace/views/ArmsRaceView';
-import { shadowfrontView } from '../../shadowfront/views/ShadowfrontView';
 
 export { getOcrModel };
 
@@ -102,7 +101,8 @@ export async function setOcrMetric(metric: string): Promise<void> {
     const isActive = m === active;
     btn.classList.toggle('active', isActive);
     (btn as HTMLElement).style.background = isActive ? (OCR_METRICS_META[m] ? OCR_METRICS_META[m].color : 'var(--accent)') : 'transparent';
-    (btn as HTMLElement).style.color = isActive ? '#fff' : 'var(--text-muted)';
+    // Dark text: every metric colour is light enough that white fails AA (M5).
+    (btn as HTMLElement).style.color = isActive ? '#0b0f19' : 'var(--text-muted)';
   });
 
   const titleEl = byId('ocr-modal-title');
@@ -135,11 +135,11 @@ export async function setOcrMetric(metric: string): Promise<void> {
     if (scopeDesc) scopeDesc.textContent = 'Screenshots contain multi-guild players. Targeting members with tag ' + ((tagInput && tagInput.value) ? tagInput.value : configuredTag) + '.';
     if (tagInputGroup) tagInputGroup.style.display = 'flex';
   } else if (meta.isEvent) {
-    if (scopeBadge) { scopeBadge.innerHTML = '<i class="' + (meta.icon || 'ph-sword') + '"></i> Event Session Scan'; scopeBadge.style.background = 'rgba(99,102,241,0.18)'; scopeBadge.style.color = meta.color || 'var(--accent)'; }
+    if (scopeBadge) { scopeBadge.innerHTML = '<i class="' + (meta.icon || 'ph-sword') + '"></i> Event Session Scan'; scopeBadge.style.background = 'rgba(99,102,241,0.18)'; scopeBadge.style.color = meta.color || 'var(--accent-text)'; }
     if (scopeDesc) scopeDesc.textContent = meta.subtitle || 'Screenshots will update event participants for active session.';
     if (tagInputGroup) tagInputGroup.style.display = 'none';
   } else {
-    if (scopeBadge) { scopeBadge.innerHTML = '<i class="ph ph-shield-check"></i> Intra-Guild Scan'; scopeBadge.style.background = 'rgba(99,102,241,0.18)'; scopeBadge.style.color = 'var(--accent)'; }
+    if (scopeBadge) { scopeBadge.innerHTML = '<i class="ph ph-shield-check"></i> Intra-Guild Scan'; scopeBadge.style.background = 'rgba(99,102,241,0.18)'; scopeBadge.style.color = 'var(--accent-text)'; }
     if (scopeDesc) scopeDesc.textContent = 'Screenshots contain exclusively your guild members (full roster scan).';
     if (tagInputGroup) tagInputGroup.style.display = 'none';
   }
@@ -175,6 +175,9 @@ export function resetOcrModalState(): void {
   if (filterInput) filterInput.value = '';
 }
 
+/** Releases the OCR modal's focus trap; set while the modal is open. */
+let releaseOcrDialog: (() => void) | null = null;
+
 export async function openOcrModal(metric?: string): Promise<void> {
   initOcrGeminiModule();
   await setOcrMetric(metric || 'power');
@@ -183,18 +186,27 @@ export async function openOcrModal(metric?: string): Promise<void> {
     modal.style.display = 'flex';
     modal.classList.add('visible');
     resetOcrModalState();
+    // The modal lives in index.html and is shown, not created: adopt it on
+    // every open, release it on close (M5).
+    if (!releaseOcrDialog) releaseOcrDialog = adoptDialog(modal, { labelledBy: 'ocr-modal-title', onEscape: closeOcrModal });
   }
 }
 
 export function closeOcrModal(): void {
+  // A confirmation opened over the modal goes first: it is on top of the stack.
+  const confirmOverlay = typeof document !== 'undefined' ? document.getElementById('confirm-overlay') : null;
+  if (confirmOverlay) {
+    // closeDialog, not remove(): it releases the focus trap and the stack entry.
+    closeDialog(confirmOverlay);
+  }
   const modal = byId('ocr-modal-overlay');
   if (modal) {
     modal.classList.remove('visible');
     modal.style.display = 'none';
   }
-  const confirmOverlay = typeof document !== 'undefined' ? document.getElementById('confirm-overlay') : null;
-  if (confirmOverlay) {
-    confirmOverlay.remove();
+  if (releaseOcrDialog) {
+    releaseOcrDialog();
+    releaseOcrDialog = null;
   }
 }
 
@@ -794,7 +806,7 @@ export async function commitOcrUpdates(): Promise<void> {
         // Phase 7: a direct call. The `window` probe silently skipped the
         // refresh whenever the namespace or method name drifted, leaving the
         // Shadowfront tab showing pre-OCR data with no error.
-        await shadowfrontView.load();
+        await shadowfrontViewLazy.peek()?.load();
       } else if (meta.eventType === 'armsrace') {
         const arEvName = meta.stage === 'stageA' ? 'ARMS RACE STAGE A' : 'ARMS RACE STAGE B';
         const arRes = await fetchEventSessionStatus(client, currentG, arEvName);
@@ -805,7 +817,7 @@ export async function commitOcrUpdates(): Promise<void> {
         const arSid = arRes.data.session_id;
         await recordEventAttendance(arEvName, arSid, getWeekStart(arRes.data.start_at || new Date()),
           selectedPlayers.map((sp: any) => ({ pseudo: sp.pseudo })));
-        await armsRaceView.load();
+        await armsRaceViewLazy.peek()?.load();
       } else {
         const evName = meta.eventKey;
         // `eventKey` is optional on the metric metadata. Without this guard an
@@ -848,7 +860,7 @@ export async function commitOcrUpdates(): Promise<void> {
               appointed: !((sp.score != null ? sp.score : 0) > 0)
             })));
         }
-        await eventsView.loadEvent(evName);
+        await eventsViewLazy.peek()?.loadEvent(evName);
       }
 
       showToast(selectedPlayers.length + ' participant(s) updated for ' + meta.header + '!', 'success');

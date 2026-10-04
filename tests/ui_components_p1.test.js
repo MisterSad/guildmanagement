@@ -69,7 +69,7 @@ describe('Guild Settings retrofit — index.html integrity contract', () => {
       'guild-server-number-setting', 'guild-tag-setting', 'discord-verification-channel-id'
     ].forEach((id) => {
       expect(html, `missing gm-ui-input-field for ${id}`).toMatch(
-        new RegExp('id="' + id + '" class="gm-ui-input-field"')
+        new RegExp('id="' + id + '"(?: aria-label="[^"]*")? class="gm-ui-input-field[ "]')
       );
     });
   });

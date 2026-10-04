@@ -60,6 +60,7 @@ const EXCLUDED_FILES = [
   'styles.css',
   'components.css',
   'shell.css',
+  'utilities.css',
 ];
 
 // The legacy root-level .js/.css files are served as-is (no bundler touches
@@ -238,6 +239,103 @@ for (const file of files) {
     `${before} -> ${after} bytes (-${Math.round((1 - after / before) * 100)}%), ` +
     `as ${subsetName} (${rewritten} stylesheet${rewritten === 1 ? '' : 's'} rewritten).`
   );
+
+  // The stylesheet keeps one `.ph.ph-NAME:before { content }` rule per icon of
+  // the package (M5). Drop the rules whose glyph is no longer in the font, with
+  // the same `used` set: a rule kept for a missing glyph would draw nothing,
+  // and a rule dropped for a kept glyph is what e2e/icons.spec.js catches.
+  // A rule may list aliases (`.ph.ph-folder:before,.ph.ph-folder-notch:before`);
+  // it keeps the aliases in use and goes only when none is.
+  const iconRule = /(?<=\})((?:\.ph\.ph-[a-z0-9-]+:before,?)+)\{content:"[^"]*"\}/g;
+  let kept = 0;
+  let dropped = 0;
+  for (const f of fs.readdirSync(assetsDir)) {
+    if (!f.endsWith('.css')) continue;
+    const cssPath = path.join(assetsDir, f);
+    const body = fs.readFileSync(cssPath, 'utf8');
+    const pruned = body.replace(iconRule, (rule, selectors) => {
+      const live = selectors.split(',').filter((s) => used.has(s.slice(4, -':before'.length)));
+      if (live.length === 0) { dropped++; return ''; }
+      kept++;
+      return rule.replace(selectors, live.join(','));
+    });
+    if (pruned === body) continue;
+    // Re-hash and rename, for the reason the font is renamed above: Vite
+    // hashed the stylesheet before pruning, so an icon added in a .ts file
+    // alone would change these bytes but not the URL, and returning visitors
+    // would keep a cached stylesheet without its rule.
+    const stem = f.replace(/-[A-Za-z0-9_-]+\.css$/, '');
+    const renamed = `${stem}-${crypto.createHash('sha256').update(pruned).digest('base64url').slice(0, 8)}.css`;
+    fs.writeFileSync(path.join(assetsDir, renamed), pruned);
+    if (renamed !== f) {
+      fs.unlinkSync(cssPath);
+      let refs = 0;
+      const referrers = [
+        ...fs.readdirSync(distDir).filter((n) => n.endsWith('.html')).map((n) => path.join(distDir, n)),
+        ...fs.readdirSync(assetsDir).filter((n) => n.endsWith('.js')).map((n) => path.join(assetsDir, n)),
+      ];
+      for (const file of referrers) {
+        const text = fs.readFileSync(file, 'utf8');
+        if (!text.includes(f)) continue;
+        fs.writeFileSync(file, text.split(f).join(renamed));
+        refs++;
+      }
+      if (refs === 0) {
+        throw new Error(`build.js: nothing referenced ${f}; the pruned stylesheet ${renamed} would be unreachable.`);
+      }
+    }
+  }
+  if (kept === 0) {
+    throw new Error('build.js: no Phosphor icon rule survived pruning -- every icon would render blank.');
+  }
+  console.log(`Pruned Phosphor CSS: kept ${kept} icon rules, dropped ${dropped}.`);
+}
+
+// ── index.html: minified (M5) ────────────────────────────────────────────────
+// Vite leaves the page as written: 96 comments and the indentation of 2,000
+// lines. Comments go and whitespace collapses, conservatively -- one space is
+// kept wherever there was some, so text between inline elements keeps its
+// gaps; <pre> and <textarea> are left alone by the minifier.
+{
+  const { minify } = await import('html-minifier-terser');
+  const htmlPath = path.join(distDir, 'index.html');
+  const source = fs.readFileSync(htmlPath, 'utf8');
+  const minified = await minify(source, {
+    removeComments: true,
+    collapseWhitespace: true,
+    conservativeCollapse: true,
+    keepClosingSlash: true,
+    minifyCSS: false,
+    minifyJS: false,
+  });
+  if (!minified.includes('<div id="') || minified.length < source.length / 4) {
+    throw new Error('build.js: the minified index.html looks truncated; refusing to ship it.');
+  }
+  fs.writeFileSync(htmlPath, minified);
+  console.log(`Minified index.html: ${source.length} -> ${minified.length} bytes.`);
+}
+
+// ── Initial-load budget (M5) ─────────────────────────────────────────────────
+// What a first visit downloads before anything is shown: the entry script and
+// the chunks index.html preloads with it. The views, the admin chunk and the
+// Sentry SDK load on demand and are not counted. Fails the build, so a static
+// import that folds a lazy chunk back into the entry cannot ship unnoticed.
+{
+  const INITIAL_JS_BUDGET = 450 * 1024;
+  const html = fs.readFileSync(path.join(distDir, 'index.html'), 'utf8');
+  const initial = [
+    ...html.matchAll(/<script type="module"[^>]*src="\/(assets\/[^"]+\.js)"/g),
+    ...html.matchAll(/<link rel="modulepreload"[^>]*href="\/(assets\/[^"]+\.js)"/g),
+  ].map((m) => m[1]);
+  if (initial.length === 0) {
+    throw new Error('build.js: found no entry script in dist/index.html -- the budget check would pass vacuously.');
+  }
+  const total = initial.reduce((sum, f) => sum + fs.statSync(path.join(distDir, f)).size, 0);
+  const kb = (n) => `${Math.round(n / 1024)} KB`;
+  if (total > INITIAL_JS_BUDGET) {
+    throw new Error(`build.js: initial JS is ${kb(total)} (${initial.join(', ')}), over the ${kb(INITIAL_JS_BUDGET)} budget.`);
+  }
+  console.log(`Initial JS: ${kb(total)} of ${kb(INITIAL_JS_BUDGET)} (${initial.length} files).`);
 }
 
 console.log('Build complete! All root scripts & assets copied to dist/.');

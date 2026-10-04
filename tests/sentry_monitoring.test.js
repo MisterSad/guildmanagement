@@ -28,16 +28,16 @@ describe('TICKET-05 [OBS-02]: Sentry Browser Monitoring & PII Scrubbing', () => 
   });
 
   describe('Initialization', () => {
-    it('does not initialize Sentry when no DSN is provided', () => {
-      const result = initSentry({ dsn: '' });
+    it('does not initialize Sentry when no DSN is provided', async () => {
+      const result = await initSentry({ dsn: '' });
       expect(result).toBe(false);
       expect(isSentryInitialized()).toBe(false);
       expect(mockInit).not.toHaveBeenCalled();
     });
 
-    it('initializes Sentry when a valid DSN is provided', () => {
+    it('initializes Sentry when a valid DSN is provided', async () => {
       const testDsn = 'https://examplePublicKey@o0.ingest.sentry.io/0';
-      const result = initSentry({ dsn: testDsn, release: 'V3.19.0', environment: 'production' });
+      const result = await initSentry({ dsn: testDsn, release: 'V3.19.0', environment: 'production' });
 
       expect(result).toBe(true);
       expect(isSentryInitialized()).toBe(true);
@@ -51,10 +51,10 @@ describe('TICKET-05 [OBS-02]: Sentry Browser Monitoring & PII Scrubbing', () => 
       expect(initConfig.sendDefaultPii).toBe(false);
     });
 
-    it('is idempotent on multiple initSentry calls', () => {
+    it('is idempotent on multiple initSentry calls', async () => {
       const testDsn = 'https://examplePublicKey@o0.ingest.sentry.io/0';
-      initSentry({ dsn: testDsn });
-      initSentry({ dsn: testDsn });
+      await Promise.all([initSentry({ dsn: testDsn }), initSentry({ dsn: testDsn })]);
+      await initSentry({ dsn: testDsn });
       expect(mockInit).toHaveBeenCalledTimes(1);
     });
   });
@@ -146,8 +146,8 @@ describe('TICKET-05 [OBS-02]: Sentry Browser Monitoring & PII Scrubbing', () => 
       expect(mockCaptureException).not.toHaveBeenCalled();
     });
 
-    it('captures sanitized exception if Sentry is initialized', () => {
-      initSentry({ dsn: 'https://key@o0.ingest.sentry.io/0' });
+    it('captures sanitized exception if Sentry is initialized', async () => {
+      await initSentry({ dsn: 'https://key@o0.ingest.sentry.io/0' });
       const err = new Error('Test error');
       const result = captureException(err, { password: 'secret', action: 'test' });
 
@@ -157,6 +157,16 @@ describe('TICKET-05 [OBS-02]: Sentry Browser Monitoring & PII Scrubbing', () => 
       expect(calledErr).toBe(err);
       expect(calledContext.extra.password).toBe('[REDACTED]');
       expect(calledContext.extra.action).toBe('test');
+    });
+  });
+
+  describe('errors thrown while the SDK loads (M5)', () => {
+    it('are held and reported once Sentry is up', async () => {
+      const ready = initSentry({ dsn: 'https://key@o0.ingest.sentry.io/0' });
+      const early = new Error('during boot');
+      window.dispatchEvent(new ErrorEvent('error', { error: early, message: 'during boot' }));
+      await ready;
+      expect(mockCaptureException).toHaveBeenCalledWith(early);
     });
   });
 

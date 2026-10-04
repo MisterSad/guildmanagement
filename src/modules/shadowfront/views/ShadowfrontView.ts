@@ -635,7 +635,7 @@ export class ShadowfrontView {
     html +=
       '<div class="input-wrapper" style="margin-bottom: 1.5rem;">' +
         '<i class="ph ph-magnifying-glass"></i>' +
-        '<input type="text" class="sf-search-input" placeholder="' + t('search_placeholder') + '">' +
+        '<input type="text" class="sf-search-input" aria-label="' + escapeHTML(t('search_placeholder')) + '" placeholder="' + t('search_placeholder') + '">' +
       '</div>';
 
     // ── Panel: Composition ────────────────────────────────────────────────────

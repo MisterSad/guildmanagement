@@ -353,7 +353,7 @@ export class StatsView {
           { key: 'DTR', label: '🛡️ DTR (Defend Route)' },
           { key: 'Glory', label: '✨ Glory' }
         ];
-        eventPickerHtml = '<select class="gm-select event-select" style="width:auto; min-width:180px; font-weight:700;">' +
+        eventPickerHtml = '<select class="gm-select event-select" aria-label="Event" style="width:auto; min-width:180px; font-weight:700;">' +
           eventsList.map((ev) => {
             return '<option value="' + ev.key + '"' + (ev.key === (state.selectedEvent || state.currentMode) ? ' selected' : '') + '>' + esc(ev.label) + '</option>';
           }).join('') +
@@ -368,8 +368,8 @@ export class StatsView {
       el.innerHTML =
         '<div class="gm-row" style="gap:.5rem; flex-wrap:wrap; align-items:center;">' +
           eventPickerHtml +
-          '<select class="gm-select week-select" style="width:auto; min-width:160px;">' + weekOpts + '</select>' +
-          '<select class="gm-select period-select" style="width:auto; min-width:140px;">' + periodOpts + '</select>' +
+          '<select class="gm-select week-select" aria-label="Week" style="width:auto; min-width:160px;">' + weekOpts + '</select>' +
+          '<select class="gm-select period-select" aria-label="Period" style="width:auto; min-width:140px;">' + periodOpts + '</select>' +
         '</div>';
 
       const eventSelect = el.querySelector('.event-select') as HTMLSelectElement | null;

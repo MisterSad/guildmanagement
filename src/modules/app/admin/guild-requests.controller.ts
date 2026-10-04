@@ -9,6 +9,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { overviewViewLazy } from '../lazy-views';
 import { getActiveGuild } from '../../../core/auth/roles';
 import { adminAccounts } from '../../../core/auth/session';
 import { config, getGuildTag } from '../../../core/config/guild-config';
@@ -19,7 +20,6 @@ import { showToast, showConfirm, openCustomMsgModal } from '../dialogs/dialogs.s
 import { initChestTiersSettings, loadChestTiers } from '../../events/chest-settings';
 import { testDiscordWebhook, formatDiscordRoleMention, sendDiscordWebhookDetailed, configuredWebhooks, setDiscordWebhook } from '../../../core/integrations/discord';
 import { buildGvgDailyTaskEmbed } from '../../../core/config/gvg-tasks';
-import { overviewView } from '../../overview/views/OverviewView';
 import { queryPendingMemberAccounts } from './admin.service';
 
 const GUILD_REQUEST_STATUS_META: Record<string, { label: string; cls: string }> = {
@@ -497,7 +497,7 @@ export async function resolveRegistration(id: string, action: 'approve' | 'rejec
     await fetchAccounts();
     // Phase 7: the Overview reload was a `window` probe with a fallback that
     // only ran when the namespace was missing -- i.e. never, in production.
-    void overviewView.load();
+    void overviewViewLazy.peek()?.load();
     showToast(action === 'approve' ? 'Player account approved.' : 'Player registration rejected.', 'success');
   } catch (err: any) {
     showToast(t('toast_err_generic') + ' ' + err.message, 'error');

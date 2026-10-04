@@ -31,17 +31,11 @@ import { loadGuildSettings, fetchGuildRequests } from './admin/guild-requests.co
 import { renderGuildsList } from './admin/guilds.controller';
 import { renderMigrationGroupsList } from './admin/migration-groups.controller';
 import { loadGuildTagCard } from './admin/guild-rename';
-import { migrationHubView } from '../migration/views/MigrationHubView';
-import { ticketsView } from '../tickets/views/TicketsView';
-import { sanctionsView } from '../sanctions/views/SanctionsView';
-import { overviewView } from '../overview/views/OverviewView';
-import { eventsView } from '../events/views/EventsView';
-import { shadowfrontView } from '../shadowfront/views/ShadowfrontView';
-import { armsRaceView } from '../armsrace/views/ArmsRaceView';
-import { gloryView } from '../glory/views/GloryView';
-import { historyView } from '../history/views/HistoryView';
-import { statsView } from '../stats/views/StatsView';
-import { portalView } from '../portal/views/PortalView';
+// M5: every tab view is its own chunk, imported when its tab is first shown.
+import {
+  migrationHubViewLazy, ticketsViewLazy, sanctionsViewLazy, overviewViewLazy, eventsViewLazy,
+  shadowfrontViewLazy, armsRaceViewLazy, gloryViewLazy, historyViewLazy, statsViewLazy, portalViewLazy
+} from './lazy-views';
 import { shellView } from '../shell/views/ShellView';
 
 function ls(): Storage | null {
@@ -108,15 +102,15 @@ interface TeardownTarget {
 
 const MIGRATION_HUB_TEARDOWN: TeardownTarget = {
   label: 'MigrationHubView',
-  destroy: () => migrationHubView.destroy()
+  destroy: () => migrationHubViewLazy.peek()?.destroy()
 };
 const OVERVIEW_TEARDOWN: TeardownTarget = {
   label: 'OverviewView',
-  destroy: () => overviewView.destroy()
+  destroy: () => overviewViewLazy.peek()?.destroy()
 };
 const SANCTIONS_TEARDOWN: TeardownTarget = {
   label: 'SanctionsView',
-  destroy: () => sanctionsView.destroy()
+  destroy: () => sanctionsViewLazy.peek()?.destroy()
 };
 
 const TEARDOWN_BY_TAB: Record<string, TeardownTarget> = {
@@ -225,26 +219,26 @@ export async function triggerTabDataLoad(tabId: string): Promise<void> {
     }
 
     // ── Migrated /src-backed view modules ────────────────────────────────────
-    if (tabId === 'admin-migration-hub' || tabId === 'migration-hub') { await runLoader('migration-hub', () => migrationHubView.load()); }
-    if (tabId === 'tab-tickets') { await runLoader('tickets', () => ticketsView.load()); }
-    if (tabId === 'tab-sanctions' || tabId === 'sanctions') { await runLoader('sanctions', () => sanctionsView.load()); }
-    if (tabId === 'gm-overview' || tabId === 'overview') { await runLoader('overview', () => overviewView.load()); }
-    if (tabId === 'event-svs' || tabId === 'svs') { await runLoader('events:SvS', () => eventsView.loadEvent('SvS')); }
-    if (tabId === 'event-gvg' || tabId === 'gvg') { await runLoader('events:GvG', () => eventsView.loadEvent('GvG')); }
+    if (tabId === 'admin-migration-hub' || tabId === 'migration-hub') { await runLoader('migration-hub', async () => (await migrationHubViewLazy.get()).load()); }
+    if (tabId === 'tab-tickets') { await runLoader('tickets', async () => (await ticketsViewLazy.get()).load()); }
+    if (tabId === 'tab-sanctions' || tabId === 'sanctions') { await runLoader('sanctions', async () => (await sanctionsViewLazy.get()).load()); }
+    if (tabId === 'gm-overview' || tabId === 'overview') { await runLoader('overview', async () => (await overviewViewLazy.get()).load()); }
+    if (tabId === 'event-svs' || tabId === 'svs') { await runLoader('events:SvS', async () => (await eventsViewLazy.get()).loadEvent('SvS')); }
+    if (tabId === 'event-gvg' || tabId === 'gvg') { await runLoader('events:GvG', async () => (await eventsViewLazy.get()).loadEvent('GvG')); }
     if (tabId === 'event-shadowfront' || tabId === 'Shadowfront' || tabId === 'shadowfront') {
-      await runLoader('shadowfront', () => shadowfrontView.load());
+      await runLoader('shadowfront', async () => (await shadowfrontViewLazy.get()).load());
     }
-    if (tabId === 'event-dtr' || tabId === 'dtr') { await runLoader('events:DTR', () => eventsView.loadEvent('Defend Trade Route')); }
+    if (tabId === 'event-dtr' || tabId === 'dtr') { await runLoader('events:DTR', async () => (await eventsViewLazy.get()).loadEvent('Defend Trade Route')); }
     if (tabId === 'event-arms-race' || tabId === 'ARMS RACE' || tabId === 'Arms Race' || tabId === 'armsrace') {
-      await runLoader('armsrace', () => armsRaceView.load());
+      await runLoader('armsrace', async () => (await armsRaceViewLazy.get()).load());
     }
-    if (tabId === 'event-glory' || tabId === 'glory') { await runLoader('glory', () => gloryView.load()); }
-    if (tabId === 'event-history' || tabId === 'history') { await runLoader('history', () => historyView.load()); }
+    if (tabId === 'event-glory' || tabId === 'glory') { await runLoader('glory', async () => (await gloryViewLazy.get()).load()); }
+    if (tabId === 'event-history' || tabId === 'history') { await runLoader('history', async () => (await historyViewLazy.get()).load()); }
     if (tabId === 'stats-admin' || tabId === 'stats-member' || tabId === 'stats') {
-      await runLoader('stats', () => statsView.load());
+      await runLoader('stats', async () => (await statsViewLazy.get()).load());
     }
     if (tabId === 'player-portal-view' || tabId === 'portal') {
-      await runLoader('portal', () => portalView.loadDashboard());
+      await runLoader('portal', async () => (await portalViewLazy.get()).loadDashboard());
     }
   } finally {
     // Only the still-current controller releases the lock; an aborted older

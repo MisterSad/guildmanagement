@@ -10,12 +10,15 @@
  */
 
 // Core styles bundled & minified by Vite (cascade order: tokens -> theme -> styles -> components -> shell)
+import { portalViewLazy } from './modules/app/lazy-views';
 import '../tokens.css';
 import '../theme.css';
 import '../styles.css';
 import '../components.css';
 import '../shell.css';
 import '@phosphor-icons/web/regular';
+// Last: the classes that replaced index.html's inline styles (M5) must win ties.
+import '../utilities.css';
 
 import { applyTranslations } from './core/i18n/i18n';
 import { setDbClient, handleSessionInvalidation, resetSessionInvalidationFlag } from './core/api/supabase';
@@ -25,10 +28,7 @@ import { SUPABASE_URL, SUPABASE_KEY } from './core/config/constants';
 import { installDbWriteGuard } from './core/api/db-guard';
 import { runGmBootstrap } from './core/bootstrap';
 import { initAppState } from './core/state/app-state';
-import { shellView } from './modules/shell/views/ShellView';
-import { portalView } from './modules/portal/views/PortalView';
 import { helpView } from './modules/help/HelpView';
-import { sanctionsView } from './modules/sanctions/views/SanctionsView';
 import { showConfirm, showToast as showAppToast } from './modules/app/dialogs/dialogs.service';
 import { openDialog } from './components/ui/Dialog';
 import {
@@ -40,18 +40,15 @@ import {
 } from './modules/app/auth/auth.controller';
 import { captureIntentFromHash } from './core/auth/pending-intent';
 import { initVersionCheck } from './modules/app/auth/version-check';
-import { restoreSavedTab, initTabNavigation, showAdminDashboard } from './modules/app/router';
-import { initAccountsUi } from './modules/app/admin/accounts.controller';
-import { initGuildRequestsUi } from './modules/app/admin/guild-requests.controller';
-import { initMembersUi } from './modules/app/members/members.controller';
-import { initBannedUi } from './modules/app/members/banned.controller';
-import { openOcrModal, initOcrDropdown, initTimezoneCollapsible } from './modules/app/ocr/ocr.controller';
 import { initNetworkStatusMonitoring } from './core/net/network-status';
 import { initTooltips } from './components/ui/Tooltip';
 import { initSentry } from './core/monitoring/sentry';
+import { loadAdmin } from './modules/app/admin-loader';
+import { wireLoginPasswordToggle, wireSearchClearButtons } from './core/dom/form-controls';
 
-// Initialize Sentry APM & crash reporting early
-initSentry();
+// Crash reporting. The SDK is its own chunk (M5); errors thrown while it loads
+// are held and reported once it is up.
+void initSentry();
 
 if (typeof window !== 'undefined') {
   // P3: build the client from hardcoded constants (never import.meta.env) and
@@ -68,9 +65,9 @@ if (typeof window !== 'undefined') {
   // replaces are gone (M4c); tests/gm_bridge_contract.test.js pins this list.
   Object.defineProperty(window, 'GM_E2E', {
     value: Object.freeze({
-      showAdminDashboard: () => showAdminDashboard(),
-      openOcrModal: (metric?: string) => openOcrModal(metric),
-      loadPortalDashboard: () => portalView.loadDashboard(),
+      showAdminDashboard: () => loadAdmin().then((a) => a.showAdminDashboard()),
+      openOcrModal: (metric?: string) => loadAdmin().then((a) => a.openOcrModal(metric)),
+      loadPortalDashboard: () => portalViewLazy.get().then((v) => v.loadDashboard()),
       openDialog,
       showConfirm,
     }),
@@ -91,35 +88,20 @@ if (typeof window !== 'undefined') {
       onSessionInvalid: () => { handleSessionInvalidation(); },
     });
     window.addEventListener('gm:session-expired', () => { void doLogout(); });
-    // Auth/session form wiring, tab router, admin forms, OCR dropdown, tz
-    // collapsible, stale-tab detection.
+    // Auth/session form wiring and stale-tab detection. The admin forms, tab
+    // router, OCR triggers and shell are wired by startAdmin() when the admin
+    // chunk loads (M5); the sign-in screen and the portal never download it.
     initAuthForms();
-    initTabNavigation();
-    initAccountsUi();
-    initGuildRequestsUi();
-    initMembersUi();
-    initBannedUi();
-    initOcrDropdown();
-    initTimezoneCollapsible();
     initVersionCheck();
     initNetworkStatusMonitoring();
-    // Former shell.js/gm-help.js/sanctions bootstrap.
-    shellView.init();
+    // Sign-in screen controls: the password eye and the search clear buttons.
+    wireLoginPasswordToggle();
+    wireSearchClearButtons();
     helpView.init();
-    sanctionsView.init();
     // i18n single pass over the complete dictionary once the DOM is ready.
     applyTranslations();
     // Declarative gm-ui tooltips over [data-tooltip] elements.
     initTooltips();
-    // Former app.js document-level OCR trigger delegation. Without it the
-    // .btn-ocr-trigger dropdown/menu buttons would no longer open the modal.
-    document.addEventListener('click', (ev) => {
-      const target = ev.target;
-      const btn = target instanceof HTMLElement ? target.closest('.btn-ocr-trigger') : null;
-      if (!btn) return;
-      const metric = btn.getAttribute('data-metric') || 'members';
-      void openOcrModal(metric);
-    });
     // A Discord sign-in returns here carrying a one-time ticket in the URL, and
     // must be handled BEFORE the ordinary restore: it installs a session, so
     // letting restoreSession win the race would settle the page into a
@@ -137,7 +119,7 @@ if (typeof window !== 'undefined') {
         if (res && res.restored) {
           resetSessionInvalidationFlag();
           if (res.role !== 'member' && !res.portal) {
-            restoreSavedTab();
+            void loadAdmin().then((a) => a.restoreSavedTab());
           }
         }
         applyLinkIntentAtBoot(!!(res && res.restored));

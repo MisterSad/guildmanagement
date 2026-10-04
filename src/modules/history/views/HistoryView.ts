@@ -503,7 +503,7 @@ export class HistoryView {
           }
           const d6 = dayOf[6];
           if (isAdmin) {
-            dayCells += '<td class="gm-right" data-label="Day 6"><input type="text" inputmode="numeric" class="hist-edit-num hist-day-input gm-score-input" data-field="day_score" data-pseudo="' + escapeHTML(r.pseudo) + '" data-day="6" value="' + (d6 != null ? formatNumber(d6) : '') + '"></td>';
+            dayCells += '<td class="gm-right" data-label="Day 6"><input type="text" inputmode="numeric" class="hist-edit-num hist-day-input gm-score-input" data-field="day_score" data-pseudo="' + escapeHTML(r.pseudo) + '" aria-label="' + escapeHTML('Day 6, ' + r.pseudo) + '" data-day="6" value="' + (d6 != null ? formatNumber(d6) : '') + '"></td>';
           } else {
             dayCells += '<td class="gm-right" data-label="Day 6">' + (d6 != null ? formatNumber(d6) : '-') + '</td>';
           }
@@ -516,7 +516,7 @@ export class HistoryView {
           for (let d = 1; d <= 6; d++) {
             const v = dayOf[d];
             if (isAdmin) {
-              dayCells += '<td class="gm-right" data-label="Day ' + d + '"><input type="text" inputmode="numeric" class="hist-edit-num hist-day-input gm-score-input" data-field="day_score" data-pseudo="' + escapeHTML(r.pseudo) + '" data-day="' + d + '" value="' + (v != null ? formatNumber(v) : '') + '"></td>';
+              dayCells += '<td class="gm-right" data-label="Day ' + d + '"><input type="text" inputmode="numeric" class="hist-edit-num hist-day-input gm-score-input" data-field="day_score" data-pseudo="' + escapeHTML(r.pseudo) + '" aria-label="' + escapeHTML('Day ' + d + ', ' + r.pseudo) + '" data-day="' + d + '" value="' + (v != null ? formatNumber(v) : '') + '"></td>';
             } else {
               dayCells += '<td class="gm-right" data-label="Day ' + d + '">' + (v != null ? formatNumber(v) : '-') + '</td>';
             }
@@ -532,10 +532,10 @@ export class HistoryView {
         scoreCells = dayCells;
       } else if (isAdmin) {
         if (isDualScore) {
-          scoreCells = '<td class="gm-right" data-label="' + t('col_score_prep') + '"><input type="text" inputmode="numeric" class="hist-edit-num gm-score-input" data-field="score_prep" data-pseudo="' + escapeHTML(r.pseudo) + '" value="' + (r.score_prep != null ? formatNumber(r.score_prep) : '') + '"></td>' +
-            '<td class="gm-right" data-label="' + t('col_score_pvp') + '"><input type="text" inputmode="numeric" class="hist-edit-num gm-score-input" data-field="score_pvp" data-pseudo="' + escapeHTML(r.pseudo) + '" value="' + (r.score_pvp != null ? formatNumber(r.score_pvp) : '') + '"></td>';
+          scoreCells = '<td class="gm-right" data-label="' + t('col_score_prep') + '"><input type="text" inputmode="numeric" class="hist-edit-num gm-score-input" data-field="score_prep" data-pseudo="' + escapeHTML(r.pseudo) + '" aria-label="' + escapeHTML(t('col_score_prep') + ', ' + r.pseudo) + '" value="' + (r.score_prep != null ? formatNumber(r.score_prep) : '') + '"></td>' +
+            '<td class="gm-right" data-label="' + t('col_score_pvp') + '"><input type="text" inputmode="numeric" class="hist-edit-num gm-score-input" data-field="score_pvp" data-pseudo="' + escapeHTML(r.pseudo) + '" aria-label="' + escapeHTML(t('col_score_pvp') + ', ' + r.pseudo) + '" value="' + (r.score_pvp != null ? formatNumber(r.score_pvp) : '') + '"></td>';
         } else if (meta.hasScore) {
-          scoreCells = '<td class="gm-right" data-label="' + t('col_score') + '"><input type="text" inputmode="numeric" class="hist-edit-num gm-score-input" data-field="score" data-pseudo="' + escapeHTML(r.pseudo) + '" value="' + (r.score != null ? formatNumber(r.score) : '') + '"></td>';
+          scoreCells = '<td class="gm-right" data-label="' + t('col_score') + '"><input type="text" inputmode="numeric" class="hist-edit-num gm-score-input" data-field="score" data-pseudo="' + escapeHTML(r.pseudo) + '" aria-label="' + escapeHTML(t('col_score') + ', ' + r.pseudo) + '" value="' + (r.score != null ? formatNumber(r.score) : '') + '"></td>';
         }
       } else {
         if (isDualScore) {

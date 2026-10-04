@@ -1243,7 +1243,8 @@ input:not(:placeholder-shown) ~ .gm-search-clear-btn {
 }
 
 .gm-login-footer-stacked .gm-footer-link {
-    display: block;
+    display: flex;
+    justify-content: center;
 }
 
 .gm-login-footer,
@@ -1270,6 +1271,10 @@ input:not(:placeholder-shown) ~ .gm-search-clear-btn {
     border: none;
     padding: 0;
     font-family: inherit;
+    /* WCAG 2.5.8: a 24px-tall hit area (axe, M5); the text keeps its size. */
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
 }
 
 .gm-footer-link:hover,
@@ -1380,8 +1385,10 @@ input:not(:placeholder-shown) ~ .gm-search-clear-btn {
     /* One per line. These are inline anchors, so the moment a second one was
        added next to the first they rendered as "Terms & ConditionsPrivacy
        Policy" with nothing between them. */
-    display: block;
-    margin-top: 0.15rem;
+    display: flex;
+    align-items: center;
+    /* WCAG 2.5.8: a 24px-tall hit area (axe, M5). */
+    min-height: 24px;
     color: var(--text-muted, #94a3b8);
     text-decoration: none;
     transition: color 0.18s ease;

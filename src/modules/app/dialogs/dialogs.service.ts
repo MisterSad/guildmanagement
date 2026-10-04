@@ -18,6 +18,7 @@
 import { renderToast } from '../../../core/dom/toast';
 import { drawScoreTrendChart } from '../../../core/dom/ui';
 import { escapeHTML } from '../../../core/utils/text';
+import { openDialog, closeDialog, adoptDialog } from '../../../components/ui/Dialog';
 import { t } from '../../../core/i18n/i18n';
 import { getClient } from '../../../core/api/supabase';
 import { config } from '../../../core/config/guild-config';
@@ -57,47 +58,27 @@ export function showConfirm(
 ): void {
   if (typeof document === 'undefined') return;
 
+  // Single-modal invariant: a new confirmation replaces a pending one.
   const existing = document.getElementById('confirm-overlay');
-  if (existing) existing.remove();
+  if (existing) closeDialog(existing);
 
-  const overlay = document.createElement('div');
-  overlay.id = 'confirm-overlay';
-  overlay.className = 'gm-modal-overlay';
-  overlay.style.zIndex = '1000001';
-  overlay.innerHTML =
-    '<div class="gm-modal-card" style="max-width: 400px; width: 90%; text-align: center;">' +
-      '<div class="confirm-icon"><i class="ph ph-warning text-error"></i></div>' +
-      '<h3>' + esc(title) + '</h3>' +
-      '<p>' + message + '</p>' +
-      '<div class="confirm-actions">' +
-        '<button id="confirm-cancel" class="gm-btn gm-btn-ghost">' + t('confirm_cancel') + '</button>' +
-        '<button id="confirm-ok" class="gm-btn gm-btn-danger">' + t('confirm_ok') + '</button>' +
-      '</div>' +
-    '</div>';
-  document.body.appendChild(overlay);
-  requestAnimationFrame(() => { overlay.classList.add('visible'); });
-
-  let settled = false;
-  function close(confirmed: boolean): void {
-    if (settled) return;
-    settled = true;
-    document.removeEventListener('keydown', onKeydown);
-    overlay.classList.remove('visible');
-    setTimeout(() => { overlay.remove(); }, 300);
-    if (confirmed) onConfirm();
-    else if (onCancel) onCancel();
-  }
-
-  function onKeydown(ev: KeyboardEvent): void {
-    if (ev.key === 'Escape') close(false);
-  }
-
-  const cancelBtn = document.getElementById('confirm-cancel');
-  if (cancelBtn) cancelBtn.addEventListener('click', () => close(false));
-  const okBtn = document.getElementById('confirm-ok');
-  if (okBtn) okBtn.addEventListener('click', () => close(true));
-  overlay.addEventListener('click', (ev) => { if (ev.target === overlay) close(false); });
-  document.addEventListener('keydown', onKeydown);
+  // An accessible alert dialog (M5): role, label, focus trap, Escape, focus
+  // returned on close -- the hand-built overlay had none of them. The ids are
+  // kept for the callers and tests that look them up.
+  openDialog({
+    id: 'confirm-overlay',
+    title,
+    iconClass: 'ph-warning',
+    tone: 'danger',
+    size: 'sm',
+    body: '<p class="gm-ui-dialog-message">' + message + '</p>',
+    cancelLabel: t('confirm_cancel'),
+    footer:
+      '<button type="button" id="confirm-cancel" class="gm-btn gm-btn-ghost" data-dialog-close>' + esc(t('confirm_cancel')) + '</button>' +
+      '<button type="button" id="confirm-ok" class="gm-btn gm-btn-danger" data-dialog-confirm>' + esc(t('confirm_ok')) + '</button>',
+    onConfirm: () => { onConfirm(); },
+    onCancel: () => { if (onCancel) onCancel(); },
+  });
 }
 
 interface PlayerMetricsRow {
@@ -120,7 +101,7 @@ export async function showPlayerHistoryDialog(uid: string, pseudo: string): Prom
             '<i class="ph ph-chart-line-up" style="font-size: var(--fs-3xl); color: var(--accent);"></i>' +
             '<h3 style="margin:0; font-size: var(--fs-xl);">' + esc(pseudo) + ' — Player History</h3>' +
           '</div>' +
-          '<button type="button" class="gm-mini-btn gm-close-modal"><i class="ph ph-x"></i></button>' +
+          '<button type="button" class="gm-mini-btn gm-close-modal" aria-label="Close"><i class="ph ph-x" aria-hidden="true"></i></button>' +
         '</div>' +
         '<div class="gm-modal-body" id="player-history-body" style="display:flex; flex-direction:column; gap:1.25rem; max-height:70vh; overflow-y:auto;">' +
           '<div class="gm-empty" style="padding:2rem;"><i class="ph ph-circle-notch ph-spin gm-icon"></i><div class="gm-empty-title">Loading history...</div></div>' +
@@ -142,6 +123,7 @@ export async function showPlayerHistoryDialog(uid: string, pseudo: string): Prom
   };
   overlay.querySelectorAll('.gm-close-modal').forEach((btn) => { btn.addEventListener('click', closeModal); });
   overlay.addEventListener('click', (ev) => { if (ev.target === overlay) closeModal(); });
+  adoptDialog(overlay, { onEscape: closeModal });
 
   const body = document.getElementById('player-history-body');
   if (!body) return;
@@ -491,7 +473,7 @@ export async function openCustomMsgModal(eventPrefix: string): Promise<void> {
         '<h3 style="font-family: var(--font-display); font-size: var(--fs-xl); margin: 0; display: flex; align-items: center; gap: 0.5rem; color: var(--fg);">' +
           '<i class="ph ph-note-pencil" style="color: var(--accent);"></i> Personalization - ' + esc(eventTitle) +
         '</h3>' +
-        '<button type="button" class="gm-btn gm-btn-ghost gm-btn-icon" id="custom-msg-modal-close" style="padding: 0.25rem;"><i class="ph ph-x"></i></button>' +
+        '<button type="button" class="gm-btn gm-btn-ghost gm-btn-icon" id="custom-msg-modal-close" aria-label="Close" style="padding: 0.25rem;"><i class="ph ph-x" aria-hidden="true"></i></button>' +
       '</div>' +
       tabsHtml +
       '<div class="discord-custom-body">' +
@@ -520,6 +502,7 @@ export async function openCustomMsgModal(eventPrefix: string): Promise<void> {
   const cancelBtn = document.getElementById('custom-msg-modal-cancel');
   if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
   overlay.addEventListener('click', (ev) => { if (ev.target === overlay) closeModal(); });
+  adoptDialog(overlay, { onEscape: closeModal });
 
   // Cursor insertion helper
   function insertAtCursor(el: HTMLInputElement | HTMLTextAreaElement, text: string): void {

@@ -69,7 +69,8 @@ describe('Ticket 2.2 — Tactical Force Matrix Alignment & Timezone Collapsible 
             expect(html).toMatch(/id="admin-timezone-toggle"[^>]*aria-expanded="false"/);
             expect(html).toMatch(/id="admin-timezone-toggle"[^>]*aria-controls="admin-timezone-body"/);
 
-            expect(html).toMatch(/id="admin-timezone-body"[^>]*style="[^"]*display:\s*none;?[^"]*"/);
+            // Closed by default: u-d-none (utilities.css) replaced the inline display:none (M5).
+            expect(html).toMatch(/id="admin-timezone-body" class="[^"]*\bu-d-none\b/);
 
             expect(html).toMatch(/<button type="button" class="gm-help-btn" data-help-id="help-timezones"/);
         });

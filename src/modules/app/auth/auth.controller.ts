@@ -15,6 +15,9 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { adoptDialog } from '../../../components/ui/Dialog';
+import { loadAdmin } from '../admin-loader';
+import { portalViewLazy } from '../lazy-views';
 import { fetchAccountGuild, fetchAccountGuildAndServer, fetchGuildServerNumber } from './auth.service';
 import { getAppState, patchAppState, resetAppState } from '../../../core/state/app-state';
 import { showToast } from '../dialogs/dialogs.service';
@@ -25,10 +28,6 @@ import {
 } from '../../../core/auth/session';
 import { getClient, sessionInfo, forceRefreshPortalSession } from '../../../core/api/supabase';
 import { t } from '../../../core/i18n/i18n';
-import { showAdminDashboard, reloadActiveView } from '../router';
-import { fetchGuilds } from '../admin/accounts.controller';
-import { shellView } from '../../shell/views/ShellView';
-import { portalView } from '../../portal/views/PortalView';
 import { clearPendingIntent, peekPendingIntent, savePendingIntent } from '../../../core/auth/pending-intent';
 
 export interface LoginResponse {
@@ -198,15 +197,20 @@ export function revealPortal(): void {
   const container = document.querySelector('.gm-portal-container');
   if (container) container.classList.add('portal-wide');
 
-  void portalView.loadDashboard();
+  void portalViewLazy.get().then((v) => v.loadDashboard());
 }
 
-export function revealAdmin(role: string): void {
+/**
+ * Shows the admin dashboard, downloading the admin chunk first (M5: the
+ * sign-in screen and the portal never load it).
+ */
+export async function revealAdmin(role: string): Promise<void> {
   if (role === 'member') {
     console.warn('Blocked attempt to reveal admin dashboard for member role. Redirecting to portal.');
     revealPortal();
     return;
   }
+  const { showAdminDashboard, shellView } = await loadAdmin();
   showAdminDashboard();
   // The sidebar is rendered at boot, BEFORE sign-in resolves the tenant, and
   // this early return used to skip every re-render -- so the guild badge kept
@@ -218,7 +222,7 @@ export function revealAdmin(role: string): void {
 }
 
 async function fetchGuildsIfAvailable(): Promise<void> {
-  try { await fetchGuilds(); } catch (_) { /* best effort */ }
+  try { await (await loadAdmin()).fetchGuilds(); } catch (_) { /* best effort */ }
 }
 
 // ── Session restore ──────────────────────────────────────────────────────────
@@ -330,8 +334,8 @@ export async function restoreSession(): Promise<RestoreSessionResult> {
   // Same reason as at login: a reloaded tab whose stored selection was cleared
   // would otherwise restore into an empty Command Center.
   await ensureInitialGuildSelection(info.accountId || null);
-  revealAdmin(role);
-  reloadActiveView();
+  await revealAdmin(role);
+  (await loadAdmin()).reloadActiveView();
 
   return { restored: true, role };
 }
@@ -437,7 +441,7 @@ export async function handleSuccessfulLogin(resp: LoginResponse, typedUser?: str
   // bails and the Command Center renders empty (reported live, 2026-09-27).
   await ensureInitialGuildSelection(canonicalUser || null);
 
-  revealAdmin(role);
+  await revealAdmin(role);
 
   // Land on Overview, explicitly.
   //
@@ -452,7 +456,7 @@ export async function handleSuccessfulLogin(resp: LoginResponse, typedUser?: str
   // `gotoItem` activates the panel AND calls `appOnTabActivated`, so the data
   // loads. A fresh sign-in starts on Overview; a reload still restores the last
   // tab through `restoreSession`, which is the behaviour worth keeping there.
-  shellView.gotoItem('overview');
+  (await loadAdmin()).shellView.gotoItem('overview');
 
   showToast(role === 'super_admin'
     ? t('toast_login_ok')
@@ -713,7 +717,7 @@ export function openRecoveryCodeDialog(): void {
   const submit = document.getElementById('recovery-submit') as HTMLButtonElement | null;
   const idEl = document.getElementById('recovery-id') as HTMLInputElement | null;
   const codeEl = document.getElementById('recovery-code') as HTMLInputElement | null;
-  if (idEl) idEl.focus();
+  adoptDialog(overlay, { onEscape: close, initialFocus: idEl });
 
   const fail = (msg: string): void => {
     const box = overlay.querySelector('#recovery-error') as HTMLElement | null;
@@ -850,6 +854,8 @@ export function openAccountChooser(
       setDiscordStatus("Sign-in cancelled — continue with Discord whenever you're ready.", 'info');
     });
   }
+  // Escape is the Cancel button: same message, same continuation-ticket loss.
+  adoptDialog(overlay, { onEscape: () => { (cancelBtn as HTMLButtonElement | null)?.click(); } });
 
   const fail = (msg: string): void => {
     const box = overlay.querySelector('#discord-choose-error') as HTMLElement | null;
@@ -944,11 +950,11 @@ export function openLinkAccountDialog(
     '</div>';
 
   const html =
-    '<div id="discord-link-overlay" class="gm-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="discord-link-title">' +
+    '<div id="discord-link-overlay" class="gm-modal-overlay">' +
       '<div class="gm-modal-card gm-onboard" style="max-width: 480px; width: 94%;">' +
         '<div class="gm-modal-header gm-onboard-header">' +
           '<button type="button" class="gm-onboard-back hidden" id="discord-link-back" aria-label="Back">' +
-            '<i class="ph ph-arrow-left"></i>' +
+            '<i class="ph ph-arrow-left" aria-hidden="true"></i>' +
           '</button>' +
           '<i class="ph ph-discord-logo gm-onboard-logo" aria-hidden="true"></i>' +
           '<h3 id="discord-link-title">' + greeting + '</h3>' +
@@ -1080,7 +1086,6 @@ export function openLinkAccountDialog(
   let confirmTimer: ReturnType<typeof setTimeout> | null = null;
   const closeModal = (announce: boolean): void => {
     overlay.classList.remove('visible');
-    document.removeEventListener('keydown', onKey);
     setTimeout(() => { overlay.remove(); }, 200);
     if (announce) setDiscordStatus("Sign-in cancelled — continue with Discord whenever you're ready.", 'info');
   };
@@ -1101,8 +1106,9 @@ export function openLinkAccountDialog(
   };
   // The backdrop no longer closes this: a stray click used to throw away the
   // ticket and everything typed, silently.
-  const onKey = (ev: KeyboardEvent): void => { if (ev.key === 'Escape') { ev.preventDefault(); requestClose(); } };
-  document.addEventListener('keydown', onKey);
+  // Escape goes through the same two-step discard. The dialog role, label and
+  // focus trap now sit on the card, through the shared Dialog (M5).
+  adoptDialog(overlay, { labelledBy: 'discord-link-title', onEscape: requestClose });
   if (cancelBtn) cancelBtn.addEventListener('click', requestClose);
 
   const setPath = (p: Path): void => {
@@ -1417,6 +1423,8 @@ function showBackupCodesOnce(codes: string[]): void {
     overlay.classList.remove('visible');
     setTimeout(() => { overlay.remove(); }, 200);
   });
+  // No onEscape: this dialog is blocking on purpose -- the codes are shown once.
+  adoptDialog(overlay);
 }
 
 /** Escaping for the single interpolation in the dialog above. */

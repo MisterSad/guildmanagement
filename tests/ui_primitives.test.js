@@ -2,7 +2,7 @@
  * tests/ui_primitives.test.js
  *
  * Foundation suite for the shadcn/ui philosophy layer:
- * - cn() canonical combiner (clsx + tailwind-merge)
+ * - cn() canonical combiner (clsx; tailwind-merge was dropped in M5, the app has no Tailwind utilities)
  * - cva() variant recipes (class-variance-authority)
  * - theme.css semantic token layer (1:1 over tokens.css M3 base)
  */
@@ -17,7 +17,7 @@ import { UiSize, UiAccent, UiState } from '../src/components/ui/types';
 const rootDir = path.resolve(__dirname, '..');
 const read = (file) => fs.readFileSync(path.join(rootDir, file), 'utf8');
 
-describe('cn — canonical class combiner (clsx + tailwind-merge)', () => {
+describe('cn — canonical class combiner (clsx)', () => {
   it('joins plain strings and filters falsy values', () => {
     expect(cn('a', 'b')).toBe('a b');
     expect(cn('a', false, null, undefined, 0, '')).toBe('a');
@@ -25,12 +25,6 @@ describe('cn — canonical class combiner (clsx + tailwind-merge)', () => {
 
   it('resolves conditional objects and nested arrays', () => {
     expect(cn({ 'is-active': true, hidden: false }, ['x', ['y']])).toBe('is-active x y');
-  });
-
-  it('resolves utility conflicts last-wins (tailwind-merge)', () => {
-    expect(cn('px-2 px-4')).toBe('px-4');
-    expect(cn('bg-red-500', 'bg-blue-500')).toBe('bg-blue-500');
-    expect(cn('text-sm', 'text-lg')).toBe('text-lg');
   });
 
   it('passes non-utility (gm-ui-*) classes through untouched', () => {

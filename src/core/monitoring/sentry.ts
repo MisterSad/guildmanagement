@@ -4,12 +4,36 @@
  * Client-side APM & crash reporting via @sentry/browser.
  * Features conditional initialization, strict PII & token scrubbing,
  * and tenant context tagging.
+ *
+ * M5: @sentry/browser (about a fifth of the old entry bundle) is its own chunk,
+ * imported by initSentry() rather than parsed before the first paint. Errors
+ * thrown while it downloads are held (up to MAX_EARLY_ERRORS) and reported
+ * once it is up, so the boot is not a blind spot.
  */
 
-import * as Sentry from '@sentry/browser';
+import type * as SentryNS from '@sentry/browser';
 import { SENTRY_DSN, APP_VERSION } from '../config/constants';
 
 let isInitialized = false;
+let sdk: typeof import('./sentry-sdk') | null = null;
+let loading: Promise<boolean> | null = null;
+
+const MAX_EARLY_ERRORS = 20;
+let earlyErrors: unknown[] = [];
+let detachEarlyListeners: (() => void) | null = null;
+
+function holdEarlyErrors(): void {
+  if (typeof window === 'undefined' || detachEarlyListeners) return;
+  const onError = (e: ErrorEvent) => { if (earlyErrors.length < MAX_EARLY_ERRORS) earlyErrors.push(e.error || e.message); };
+  const onRejection = (e: PromiseRejectionEvent) => { if (earlyErrors.length < MAX_EARLY_ERRORS) earlyErrors.push(e.reason); };
+  window.addEventListener('error', onError);
+  window.addEventListener('unhandledrejection', onRejection);
+  detachEarlyListeners = () => {
+    window.removeEventListener('error', onError);
+    window.removeEventListener('unhandledrejection', onRejection);
+    detachEarlyListeners = null;
+  };
+}
 
 const SENSITIVE_KEYS = new Set([
   'password',
@@ -68,7 +92,7 @@ export function scrubData(data: unknown, depth = 0): unknown {
   return sanitized;
 }
 
-export function scrubSentryEvent(event: Sentry.ErrorEvent): Sentry.ErrorEvent | null {
+export function scrubSentryEvent(event: SentryNS.ErrorEvent): SentryNS.ErrorEvent | null {
   if (!event) return null;
 
   // Scrub main event message
@@ -121,16 +145,23 @@ export interface SentryInitOptions {
   sampleRate?: number;
 }
 
-export function initSentry(options?: SentryInitOptions): boolean {
-  if (isInitialized) return true;
+/**
+ * Starts Sentry when a DSN is configured. Resolves true once the SDK is loaded
+ * and initialised, false when there is no DSN or it could not start. Safe to
+ * call repeatedly: every call shares the first one's outcome.
+ */
+export function initSentry(options?: SentryInitOptions): Promise<boolean> {
+  if (isInitialized) return Promise.resolve(true);
+  if (loading) return loading;
 
   const dsn = options && 'dsn' in options ? options.dsn : SENTRY_DSN;
   if (!dsn || typeof dsn !== 'string' || !dsn.trim()) {
     // Sentry is disabled when no DSN is provided
-    return false;
+    return Promise.resolve(false);
   }
 
-  try {
+  holdEarlyErrors();
+  loading = import('./sentry-sdk').then((Sentry) => {
     Sentry.init({
       dsn: dsn.trim(),
       release: options?.release || APP_VERSION,
@@ -139,23 +170,34 @@ export function initSentry(options?: SentryInitOptions): boolean {
         (typeof import.meta !== 'undefined' && (import.meta as any).env?.MODE) ||
         'production',
       sampleRate: options?.sampleRate ?? 1.0,
-      beforeSend: (event) => scrubSentryEvent(event as Sentry.ErrorEvent),
+      beforeSend: (event) => scrubSentryEvent(event as SentryNS.ErrorEvent),
       sendDefaultPii: false,
     });
-
+    sdk = Sentry;
     isInitialized = true;
+    // Sentry's own global handlers take over from here; report what came first.
+    if (detachEarlyListeners) detachEarlyListeners();
+    const held = earlyErrors;
+    earlyErrors = [];
+    for (const err of held) {
+      try { Sentry.captureException(err); } catch (_) { /* never let reporting throw */ }
+    }
     return true;
-  } catch (_) {
-    // Silent fail in case of initialization error (e.g. invalid DSN format)
+  }).catch(() => {
+    // Silent fail: invalid DSN format, or the chunk could not be downloaded.
+    if (detachEarlyListeners) detachEarlyListeners();
+    earlyErrors = [];
+    loading = null;
     return false;
-  }
+  });
+  return loading;
 }
 
 export function captureException(error: unknown, context?: Record<string, unknown>): string | undefined {
-  if (!isInitialized) return undefined;
+  if (!isInitialized || !sdk) return undefined;
   try {
     const safeContext = context ? (scrubData(context) as Record<string, unknown>) : undefined;
-    return Sentry.captureException(error, safeContext ? { extra: safeContext } : undefined);
+    return sdk.captureException(error, safeContext ? { extra: safeContext } : undefined);
   } catch (_) {
     return undefined;
   }
@@ -168,4 +210,8 @@ export function isSentryInitialized(): boolean {
 /** Reset initialized state for test harnesses. */
 export function _resetSentryForTesting(): void {
   isInitialized = false;
+  sdk = null;
+  loading = null;
+  earlyErrors = [];
+  if (detachEarlyListeners) detachEarlyListeners();
 }

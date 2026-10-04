@@ -384,14 +384,14 @@ export class MigrationHubView {
 
     if (scope === 'guild') {
       guildBtn?.classList.add('active');
-      guildBtn?.style.setProperty('background', 'var(--accent)');
+      guildBtn?.style.setProperty('background', 'var(--accent-strong)');
       guildBtn?.style.setProperty('color', '#fff');
       serverBtn?.classList.remove('active');
       serverBtn?.style.setProperty('background', 'transparent');
       serverBtn?.style.setProperty('color', 'var(--text-muted)');
     } else {
       serverBtn?.classList.add('active');
-      serverBtn?.style.setProperty('background', 'var(--accent)');
+      serverBtn?.style.setProperty('background', 'var(--accent-strong)');
       serverBtn?.style.setProperty('color', '#fff');
       guildBtn?.classList.remove('active');
       guildBtn?.style.setProperty('background', 'transparent');

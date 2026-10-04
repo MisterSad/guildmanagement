@@ -12,8 +12,9 @@ import { t, getLang, setLang, applyTranslations } from '../src/core/i18n/i18n';
 import { EN } from '../src/core/i18n/i18n.dictionary';
 
 describe('i18n dictionary (golden)', () => {
-  it('keeps the full 544-key English dictionary', () => {
-    // 544 since the Discord sign-in redesign added login_invite_banner,
+  it('keeps the full 546-key English dictionary', () => {
+    // 546 since M5 named two unlabelled clock-dialog fields (a11y_clock_timezone,
+    // a11y_clock_offset). 544 since the Discord sign-in redesign added login_invite_banner,
     // login_busy and login_legacy_note. 541 since the audit/officers channel became configurable from the app
     // (label_discord_audit_channel_id and its hint). 539 since ADR-020 added the roster-gate switch
     // (label_discord_verification_require_roster and its _hint). 537 since the
@@ -24,7 +25,7 @@ describe('i18n dictionary (golden)', () => {
     // `sf_commanders_full`. 531 since finding H2 added `guild_unresolved`, the
     // message shown when the active tenant cannot be resolved -- which used to
     // silently become ALPHA.
-    expect(Object.keys(EN).length).toBe(544);
+    expect(Object.keys(EN).length).toBe(546);
   });
 
   it('has no empty translation value', () => {

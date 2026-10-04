@@ -467,7 +467,7 @@ export class EventsView {
         '<div class="gm-row" style="gap:1rem; flex-wrap:wrap; align-items:center; justify-content:space-between;">' +
           '<div class="gm-row" style="gap:.5rem; align-items:center; flex:1 1 260px; min-width:220px;">' +
             '<span class="gm-chip" style="white-space:nowrap;">' + t('war_opponent_label') + '</span>' +
-            '<input type="text" class="gm-input war-opponent-input" list="' + datalistId + '" placeholder="' +
+            '<input type="text" class="gm-input war-opponent-input" aria-label="' + escapeHTML(t('war_opponent_label')) + '" list="' + datalistId + '" placeholder="' +
               escapeHTML(isSvs ? t('war_opponent_placeholder_svs') : t('war_opponent_placeholder_gvg')) + '" value="' + escapeHTML(current) + '">' +
             '<datalist id="' + datalistId + '">' + options + '</datalist>' +
           '</div>' +
@@ -1049,7 +1049,7 @@ export class EventsView {
         '</div>' +
         '<div class="gm-input-with-icon" style="min-width: 220px; max-width: 320px;">' +
           '<i class="ph ph-magnifying-glass gm-icon"></i>' +
-          '<input type="text" class="gm-input event-search-input" placeholder="' + t('search_placeholder') + '">' +
+          '<input type="text" class="gm-input event-search-input" aria-label="' + escapeHTML(t('search_placeholder')) + '" placeholder="' + t('search_placeholder') + '">' +
           '<button type="button" class="gm-search-clear-btn" data-gm-search-clear aria-label="Clear search" tabindex="-1"><i class="ph ph-x-circle"></i></button>' +
         '</div>' +
         '</div>' +
@@ -1088,10 +1088,10 @@ export class EventsView {
           const agg = dayScores[WAR_AGGREGATE_DAY];
           const d6 = dayScores[6];
           granularCells += '<td class="gm-right" data-label="' + t('war_col_total_d15') + '">' +
-            '<input type="text" inputmode="numeric" class="gm-score-input day-score-input" data-pseudo="' + escapeHTML(p.pseudo) + '" data-day="0" value="' + (agg != null ? formatNumber(agg) : '') + '" placeholder="-">' +
+            '<input type="text" inputmode="numeric" class="gm-score-input day-score-input" data-pseudo="' + escapeHTML(p.pseudo) + '" aria-label="' + escapeHTML(t('war_col_total_d15') + ', ' + p.pseudo) + '" data-day="0" value="' + (agg != null ? formatNumber(agg) : '') + '" placeholder="-">' +
           '</td>';
           granularCells += '<td class="gm-right" data-label="Day 6">' +
-            '<input type="text" inputmode="numeric" class="gm-score-input day-score-input" data-pseudo="' + escapeHTML(p.pseudo) + '" data-day="6" value="' + (d6 != null ? formatNumber(d6) : '') + '" placeholder="-">' +
+            '<input type="text" inputmode="numeric" class="gm-score-input day-score-input" data-pseudo="' + escapeHTML(p.pseudo) + '" aria-label="' + escapeHTML('Day 6, ' + p.pseudo) + '" data-day="6" value="' + (d6 != null ? formatNumber(d6) : '') + '" placeholder="-">' +
           '</td>';
           chestTotal = resolvePrepChests(grid, dayScores, agg) +
             resolveChestsForScore(grid.filter((g) => g.day === 6), d6);
@@ -1099,7 +1099,7 @@ export class EventsView {
           for (let d = 1; d <= 6; d++) {
             const v = dayScores[d];
             granularCells += '<td class="gm-right" data-label="Day ' + d + '">' +
-              '<input type="text" inputmode="numeric" class="gm-score-input day-score-input" data-pseudo="' + escapeHTML(p.pseudo) + '" data-day="' + d + '" value="' + (v != null ? formatNumber(v) : '') + '" placeholder="-">' +
+              '<input type="text" inputmode="numeric" class="gm-score-input day-score-input" data-pseudo="' + escapeHTML(p.pseudo) + '" aria-label="' + escapeHTML('Day ' + d + ', ' + p.pseudo) + '" data-day="' + d + '" value="' + (v != null ? formatNumber(v) : '') + '" placeholder="-">' +
             '</td>';
           }
           for (let d = 1; d <= 6; d++) {
@@ -1149,13 +1149,13 @@ export class EventsView {
             ? granularCells
             : (isSvsOrGvg
               ? '<td class="gm-right" data-label="' + t('col_score_prep') + '">' +
-                  '<input type="text" inputmode="numeric" class="gm-score-input score-input-prep" value="' + (p.score_prep != null ? formatNumber(p.score_prep) : '') + '" placeholder="-" data-pseudo="' + escapeHTML(p.pseudo) + '">' +
+                  '<input type="text" inputmode="numeric" class="gm-score-input score-input-prep" value="' + (p.score_prep != null ? formatNumber(p.score_prep) : '') + '" placeholder="-" data-pseudo="' + escapeHTML(p.pseudo) + '" aria-label="' + escapeHTML(t('col_score_prep') + ', ' + p.pseudo) + '">' +
                 '</td>' +
                 '<td class="gm-right" data-label="' + t('col_score_pvp') + '">' +
-                  '<input type="text" inputmode="numeric" class="gm-score-input score-input-pvp" value="' + (p.score_pvp != null ? formatNumber(p.score_pvp) : '') + '" placeholder="-" data-pseudo="' + escapeHTML(p.pseudo) + '">' +
+                  '<input type="text" inputmode="numeric" class="gm-score-input score-input-pvp" value="' + (p.score_pvp != null ? formatNumber(p.score_pvp) : '') + '" placeholder="-" data-pseudo="' + escapeHTML(p.pseudo) + '" aria-label="' + escapeHTML(t('col_score_pvp') + ', ' + p.pseudo) + '">' +
                 '</td>'
               : (hasScore ? '<td class="gm-right" data-label="' + t('col_score') + '">' +
-                  '<input type="text" inputmode="numeric" class="gm-score-input score-input" value="' + (p.score != null ? formatNumber(p.score) : '') + '" placeholder="-" data-pseudo="' + escapeHTML(p.pseudo) + '">' +
+                  '<input type="text" inputmode="numeric" class="gm-score-input score-input" value="' + (p.score != null ? formatNumber(p.score) : '') + '" placeholder="-" data-pseudo="' + escapeHTML(p.pseudo) + '" aria-label="' + escapeHTML(t('col_score') + ', ' + p.pseudo) + '">' +
                 '</td>' : ''))) +
           (pendingCount > 0 ? '<td class="gm-center" data-label="Actions">' + actionBtn + '</td>' : '') +
         '</tr>';

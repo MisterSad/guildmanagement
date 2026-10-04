@@ -14,7 +14,7 @@ describe('Ticket 2.1 — Compact OCR Scanners Dropdown Menu', () => {
         const app = read('src/modules/app/ocr/ocr.controller.ts');
 
         it('replaces horizontal 8-button row with single compact trigger button in .gm-ocr-toolbar', () => {
-            const toolbarMatch = html.match(/<div class="gm-ocr-toolbar"[^>]*>([\s\S]*?)<\/div>\s*<form id="add-member-form"/);
+            const toolbarMatch = html.match(/<div class="gm-ocr-toolbar[^"]*"[^>]*>([\s\S]*?)<\/div>\s*<form id="add-member-form"/);
             expect(toolbarMatch).not.toBeNull();
             const toolbarContent = toolbarMatch[1];
 
@@ -23,7 +23,7 @@ describe('Ticket 2.1 — Compact OCR Scanners Dropdown Menu', () => {
 
             // 2. The single compact trigger button exists
             expect(toolbarContent).toContain('id="ocr-dropdown-trigger"');
-            expect(toolbarContent).toContain('class="gm-btn gm-btn-sm ocr-dropdown-trigger"');
+            expect(toolbarContent).toMatch(/class="gm-btn gm-btn-sm ocr-dropdown-trigger[ "]/);
             expect(toolbarContent).toContain('ph ph-sparkle');
             expect(toolbarContent).toContain('AI Metric Scanners');
             expect(toolbarContent).toContain('ph-caret-down');
@@ -33,7 +33,7 @@ describe('Ticket 2.1 — Compact OCR Scanners Dropdown Menu', () => {
             expect(toolbarContent).toContain('id="ocr-dropdown-menu"');
 
             // 4. The 8 individual buttons are NOT direct children of .gm-ocr-toolbar anymore
-            const directChildButtonsRegex = /<div class="gm-ocr-toolbar"[^>]*>\s*(<button[\s\S]*?<\/button>\s*){2,}/;
+            const directChildButtonsRegex = /<div class="gm-ocr-toolbar[^"]*"[^>]*>\s*(<button[\s\S]*?<\/button>\s*){2,}/;
             expect(directChildButtonsRegex.test(html)).toBe(false);
         });
 
@@ -78,9 +78,9 @@ describe('Ticket 2.1 — Compact OCR Scanners Dropdown Menu', () => {
             expect(i18nTs).toContain('AI Metric Scanners');
         });
 
-        it('defines initOcrDropdown in the OCR controller and exposes it through window.GM_OCR', () => {
+        it('defines initOcrDropdown in the OCR controller', () => {
+            // startAdmin() calls it when the admin chunk loads (tests/admin_shell.test.js).
             expect(app).toContain('function initOcrDropdown');
-            expect(read('src/main.ts')).toContain('initOcrDropdown');
         });
     });
 

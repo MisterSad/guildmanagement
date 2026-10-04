@@ -19,9 +19,11 @@
     "setup:hooks": "bash scripts/setup-hooks.sh"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@playwright/test": "1.62.1",
     "@vitest/coverage-v8": "^4.1.11",
     "esbuild": "0.28.2",
+    "html-minifier-terser": "^7.2.0",
     "jsdom": "25.0.1",
     "serve": "14.2.6",
     "subset-font": "^2.9.0",
@@ -35,7 +37,6 @@
     "@supabase/supabase-js": "2.112.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "tailwind-merge": "^3.7.0",
     "zod": "^3.23.8"
   }
 }

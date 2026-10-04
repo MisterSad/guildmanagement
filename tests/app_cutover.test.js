@@ -55,19 +55,16 @@ describe('Final cutover: src/main.ts bootstrap', () => {
     const order = [
       'runGmBootstrap()',
       'initAuthForms()',
-      'initTabNavigation()',
-      'initAccountsUi()',
-      'initGuildRequestsUi()',
-      'initOcrDropdown()',
-      'initTimezoneCollapsible()',
       'initVersionCheck()',
       'initNetworkStatusMonitoring()',
-      'shellView.init()',
+      'wireLoginPasswordToggle()',
+      'wireSearchClearButtons()',
       'helpView.init()',
-      'sanctionsView.init()',
       'applyTranslations()',
       'restoreSession()'
     ];
+    // The admin wiring (tab router, admin forms, OCR, shell) runs when the
+    // admin chunk loads (M5); tests/admin_shell.test.js runs it.
     let cursor = -1;
     for (const call of order) {
       const idx = boot.indexOf(call);
@@ -80,9 +77,9 @@ describe('Final cutover: src/main.ts bootstrap', () => {
   // Comments are stripped: main.ts documents the bridges it no longer installs.
   const mainCode = main.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
-  it('wires the OCR modal by import, not through window globals', () => {
-    expect(main).toContain("import { openOcrModal");
-    expect(main).toContain('openOcrModal(metric)');
+  it('opens the OCR modal through the admin chunk, not through window globals', () => {
+    expect(main).toContain("import { loadAdmin } from './modules/app/admin-loader'");
+    expect(main).toContain('a.openOcrModal(metric)');
     expect(mainCode).not.toMatch(/window\.(openOcrModal|closeOcrModal)\s*=/);
     expect(mainCode).not.toMatch(/\bwAny\b/);
   });
@@ -95,11 +92,6 @@ describe('Final cutover: src/main.ts bootstrap', () => {
     expect(mainCode).toContain('Object.freeze(');
   });
 
-  it('delegates OCR trigger clicks (former app.js document handler)', () => {
-    expect(main).toContain("closest('.btn-ocr-trigger')");
-    expect(main).toContain('openOcrModal(metric)');
-  });
-
   it('restores the saved tab only after a successful session restore', () => {
     expect(main).toMatch(/restoreSession\(\)\.then\([\s\S]*?restoreSavedTab\(\)/);
   });
@@ -109,8 +101,7 @@ describe('Final cutover: residual app.js wiring re-homed under /src', () => {
   const main = read('src/main.ts');
 
   it('wires the Members/Banned tab controls that app.js owned', () => {
-    expect(main).toContain('initMembersUi()');
-    expect(main).toContain('initBannedUi()');
+    // initMembersUi/initBannedUi run from startAdmin() (tests/admin_shell.test.js).
     const membersCtrl = read('src/modules/app/members/members.controller.ts');
     expect(membersCtrl).toContain("byId<HTMLFormElement>('add-member-form')");
     expect(membersCtrl).toContain("byId<HTMLInputElement>('member-search-admin')");

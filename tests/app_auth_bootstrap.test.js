@@ -232,7 +232,8 @@ describe('restoreSession', () => {
     expect(res.portal).toBe(true);
     expect(localStorage.getItem('gm_role')).toBe('member');
     expect(document.getElementById('player-portal-view').classList.contains('hidden')).toBe(false);
-    expect(portalView.loadDashboard).toHaveBeenCalled();
+    // The portal is its own chunk (M5): it loads after restoreSession returns.
+    await vi.waitFor(() => expect(portalView.loadDashboard).toHaveBeenCalled());
   });
 
   it('restores a member session into the player portal even without pre-existing gm_portal_session', async () => {
@@ -249,7 +250,8 @@ describe('restoreSession', () => {
     expect(mocks.showAdminDashboard).not.toHaveBeenCalled();
     expect(document.getElementById('player-portal-view').classList.contains('hidden')).toBe(false);
     expect(document.getElementById('dashboard-view').classList.contains('hidden')).toBe(true);
-    expect(portalView.loadDashboard).toHaveBeenCalled();
+    // The portal is its own chunk (M5): it loads after restoreSession returns.
+    await vi.waitFor(() => expect(portalView.loadDashboard).toHaveBeenCalled());
   });
 
   it('resolves a server_admin restriction from the accounts row', async () => {
@@ -279,7 +281,8 @@ describe('handleSuccessfulLogin', () => {
     expect(mocks.showAdminDashboard).not.toHaveBeenCalled();
     expect(document.getElementById('player-portal-view').classList.contains('hidden')).toBe(false);
     expect(document.getElementById('dashboard-view').classList.contains('hidden')).toBe(true);
-    expect(portalView.loadDashboard).toHaveBeenCalled();
+    // The portal is its own chunk (M5): it loads after restoreSession returns.
+    await vi.waitFor(() => expect(portalView.loadDashboard).toHaveBeenCalled());
   });
 
   it('syncs the guild restriction and routes to the admin shell', async () => {
@@ -317,19 +320,21 @@ describe('handleSuccessfulLogin', () => {
 });
 
 describe('revealAdmin and revealPortal', () => {
-  it('guards revealAdmin against showing admin dashboard to members', () => {
+  it('guards revealAdmin against showing admin dashboard to members', async () => {
     revealAdmin('member');
     expect(mocks.showAdminDashboard).not.toHaveBeenCalled();
     expect(document.getElementById('player-portal-view').classList.contains('hidden')).toBe(false);
     expect(document.getElementById('dashboard-view').classList.contains('hidden')).toBe(true);
-    expect(portalView.loadDashboard).toHaveBeenCalled();
+    // The portal is its own chunk (M5): it loads after restoreSession returns.
+    await vi.waitFor(() => expect(portalView.loadDashboard).toHaveBeenCalled());
   });
 
-  it('revealPortal activates player portal and hides admin dashboard', () => {
+  it('revealPortal activates player portal and hides admin dashboard', async () => {
     revealPortal();
     expect(document.getElementById('player-portal-view').classList.contains('hidden')).toBe(false);
     expect(document.getElementById('dashboard-view').classList.contains('hidden')).toBe(true);
-    expect(portalView.loadDashboard).toHaveBeenCalled();
+    // The portal is its own chunk (M5): it loads after restoreSession returns.
+    await vi.waitFor(() => expect(portalView.loadDashboard).toHaveBeenCalled());
   });
 });
 

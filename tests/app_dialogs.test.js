@@ -51,26 +51,42 @@ afterEach(() => {
 });
 
 describe('showConfirm', () => {
-  it('injects the overlay, escapes the title and keeps trusted message HTML', () => {
+  it('opens an accessible alert dialog, escapes the title and keeps trusted message HTML', () => {
+    const opener = document.createElement('button');
+    document.body.appendChild(opener);
+    opener.focus();
     const onConfirm = vi.fn();
     showConfirm('<b>Danger</b>', '<strong>Body</strong>', onConfirm);
 
     const overlay = document.getElementById('confirm-overlay');
     expect(overlay).toBeTruthy();
-    expect(overlay.className).toContain('gm-modal-overlay');
-    expect(overlay.style.zIndex).toBe('1000001');
-
-    const title = overlay.querySelector('h3');
+    // M5: the shared Dialog -- a labelled, modal alert dialog that holds focus.
+    const card = overlay.querySelector('[role="alertdialog"]');
+    expect(card).toBeTruthy();
+    expect(card.getAttribute('aria-modal')).toBe('true');
+    const title = document.getElementById(card.getAttribute('aria-labelledby'));
     // Title is escaped: no live <b> element, literal text preserved.
     expect(title.querySelector('b')).toBeNull();
     expect(title.textContent).toContain('<b>Danger</b>');
+    expect(card.contains(document.activeElement)).toBe(true);
 
     // Message stays trusted HTML by contract (legacy callers pass markup).
-    expect(overlay.querySelector('p').innerHTML).toContain('<strong>Body</strong>');
+    expect(overlay.querySelector('.gm-ui-dialog-message').innerHTML).toContain('<strong>Body</strong>');
 
-    // Settle so the document-level Escape listener is removed.
     document.getElementById('confirm-ok').click();
     expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
+
+  it('gives focus back to the control that opened it', async () => {
+    const opener = document.createElement('button');
+    document.body.appendChild(opener);
+    opener.focus();
+    showConfirm('Title', 'Message', vi.fn());
+    expect(document.activeElement).not.toBe(opener);
+    document.getElementById('confirm-cancel').click();
+    await Promise.resolve();
+    expect(document.getElementById('confirm-overlay')).toBeNull();
+    expect(document.activeElement).toBe(opener);
   });
 
   it('invokes onConfirm when the confirm button is clicked', () => {
@@ -107,7 +123,7 @@ describe('showConfirm', () => {
     showConfirm('First', 'M', vi.fn());
     showConfirm('Second', 'M', vi.fn());
     expect(document.querySelectorAll('#confirm-overlay').length).toBe(1);
-    expect(document.getElementById('confirm-overlay').querySelector('h3').textContent).toBe('Second');
+    expect(document.getElementById('confirm-overlay').querySelector('.gm-ui-dialog-title').textContent).toBe('Second');
     document.getElementById('confirm-ok').click();
   });
 });

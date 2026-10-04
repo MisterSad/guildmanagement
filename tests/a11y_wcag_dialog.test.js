@@ -192,7 +192,7 @@ describe('WCAG 2.2 AA Accessibility & Focus Management (TICKET-11 / A11Y-01)', (
     it('ocr-modal-overlay contains role="dialog", aria-modal="true", and aria-labelledby', () => {
       expect(html).toContain('id="ocr-modal-overlay"');
       expect(html).toContain('role="dialog" aria-modal="true" aria-labelledby="ocr-modal-title" aria-describedby="ocr-modal-subtitle"');
-      expect(html).toContain('id="ocr-modal-close" style="cursor: pointer;" aria-label="Close"');
+      expect(html).toMatch(/id="ocr-modal-close" aria-label="Close"/);
     });
 
     it('logout-btn contains accessible aria-label', () => {

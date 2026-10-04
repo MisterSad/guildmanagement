@@ -89,7 +89,7 @@ describe('the app warns when join requests would be announced nowhere', () => {
   const ctrl = read('src/modules/app/admin/guild-requests.controller.ts');
 
   it('has a warning under the officers channel field, hidden by default', () => {
-    expect(html).toMatch(/id="discord-audit-channel-warning" class="[^"]*hidden"/);
+    expect(html).toMatch(/id="discord-audit-channel-warning" class="[^"]*\bhidden\b[^"]*"/);
   });
 
   it('shows it while the field is empty, and follows typing', () => {

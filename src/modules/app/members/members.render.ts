@@ -452,9 +452,9 @@ export function renderAbsenceSummary(): void {
     if (aa !== ba) return aa - ba;
     return String(a.start_date).localeCompare(String(b.start_date));
   });
-  if (relevant.length === 0) { section.style.display = 'none'; return; }
+  section.classList.toggle('hidden', relevant.length === 0);
+  if (relevant.length === 0) return;
 
-  section.style.display = '';
   countEl.textContent = String(relevant.length);
 
   const membersByUid: Record<string, GuildMember> = {};
@@ -496,9 +496,9 @@ export function renderTimezoneCoverage(): void {
     if ((m.guild || '') !== currentG) return false;
     return !!m.timezone || (m.timezone_offset != null && !isNaN(Number(m.timezone_offset)));
   });
-  if (withTz.length === 0) { section.style.display = 'none'; return; }
+  section.classList.toggle('hidden', withTz.length === 0);
+  if (withTz.length === 0) return;
 
-  section.style.display = '';
   countEl.textContent = withTz.length + '/' + members.length;
 
   const now = new Date();
@@ -765,7 +765,7 @@ function bindRosterDelegation(): void {
         const bb = b as HTMLElement;
         const isActive = bb.getAttribute('data-view') === v;
         bb.classList.toggle('active', isActive);
-        bb.style.background = isActive ? 'var(--accent)' : 'transparent';
+        bb.style.background = isActive ? 'var(--accent-strong)' : 'transparent';
         bb.style.color = isActive ? '#fff' : 'var(--text-muted)';
       });
       renderGuildMembers();

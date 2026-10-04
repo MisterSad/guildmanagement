@@ -9,6 +9,8 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { adoptDialog } from '../../../components/ui/Dialog';
+import { eventsViewLazy, armsRaceViewLazy, shadowfrontViewLazy } from '../lazy-views';
 import { t, esc, byId } from '../admin/utils';
 import { getActiveGuild } from '../../../core/auth/roles';
 import { patchAppState } from '../../../core/state/app-state';
@@ -26,9 +28,6 @@ import {
   findBannedUid, deleteGuildMemberRow, listTransferEligibleGuilds, fetchGuildServerNumber,
   transferGuildMember, listNameHistory, deleteNameHistoryEntry
 } from '../../members/members.service';
-import { eventsView } from '../../events/views/EventsView';
-import { armsRaceView } from '../../armsrace/views/ArmsRaceView';
-import { shadowfrontView } from '../../shadowfront/views/ShadowfrontView';
 import { toastFetchError, isAbortError } from '../../../core/api/fetch-errors';
 import { COMMON_TIMEZONES, detectUserTimezone, getTimezoneOffset } from '../../../utils/timezone';
 
@@ -193,9 +192,10 @@ export function renderPendingTransfers(): void {
   if (!section || !list || !count) return;
 
   const transfers = getPendingTransfers();
-  if (transfers.length === 0) { section.style.display = 'none'; return; }
+  // `hidden` rather than style.display (M5: index.html carries no inline styles).
+  section.classList.toggle('hidden', transfers.length === 0);
+  if (transfers.length === 0) return;
 
-  section.style.display = '';
   count.textContent = String(transfers.length);
   const currentG = activeGuild();
 
@@ -349,7 +349,7 @@ export async function showUidTakenDialog(typedPseudo: string, uid: string, info:
   overlay.innerHTML =
     '<div class="gm-modal-card" style="max-width: 520px; width: 92%; position: relative; text-align:left;">' +
       '<div class="gm-modal-header" style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">' +
-        titleHtml + '<button type="button" class="gm-mini-btn gm-close-uid" style="cursor:pointer;"><i class="ph ph-x"></i></button>' +
+        titleHtml + '<button type="button" class="gm-mini-btn gm-close-uid" style="cursor:pointer;" aria-label="Close"><i class="ph ph-x" aria-hidden="true"></i></button>' +
       '</div>' + bodyHtml + noticeHtml + footerHtml +
     '</div>';
   document.body.appendChild(overlay);
@@ -359,6 +359,7 @@ export async function showUidTakenDialog(typedPseudo: string, uid: string, info:
     overlay.classList.remove('visible');
     setTimeout(() => { overlay.remove(); }, 200);
   };
+  adoptDialog(overlay, { onEscape: closeDialog });
   overlay.querySelectorAll('.gm-close-uid').forEach((btn) => btn.addEventListener('click', closeDialog));
   overlay.addEventListener('click', (ev) => { if (ev.target === overlay) closeDialog(); });
 
@@ -505,9 +506,10 @@ export async function handleAddMember(inputId: string, uidInputId: string, power
     // Phase 7: direct calls. These were three `window` probes that no-opped
     // whenever a name drifted -- the same shape as the dead `maybeInitOcr`
     // above, which probed a method that never existed.
-    await eventsView.addMemberToActiveEvents(pseudo);
-    await armsRaceView.addMemberToActiveEvents(pseudo);
-    await shadowfrontView.load();
+    // Only views already open have anything to bring in step (M5: lazy views).
+    await eventsViewLazy.peek()?.addMemberToActiveEvents(pseudo);
+    await armsRaceViewLazy.peek()?.addMemberToActiveEvents(pseudo);
+    await shadowfrontViewLazy.peek()?.load();
 
     if (addedEvents > 0) showToast(pseudo + ' ' + t('toast_member_added_active_events'), 'info');
   } catch (err: any) {
@@ -531,9 +533,9 @@ export async function deleteGuildMember(pseudo: string): Promise<void> {
     showToast(t('toast_member_removed'), 'success');
     cache.invalidate();
 
-    eventsView.removeMemberFromActiveEvents(pseudo);
-    armsRaceView.removeMemberFromActiveEvents(pseudo);
-    await shadowfrontView.load();
+    eventsViewLazy.peek()?.removeMemberFromActiveEvents(pseudo);
+    armsRaceViewLazy.peek()?.removeMemberFromActiveEvents(pseudo);
+    await shadowfrontViewLazy.peek()?.load();
   } catch (err: any) {
     showToast(t('toast_err_generic') + ' ' + err.message, 'error');
   }
@@ -665,7 +667,7 @@ export async function showTransferMemberDialog(member: any): Promise<void> {
       '<div class="gm-modal-card" style="max-width: 480px; width: 90%; position: relative;">' +
         '<div class="gm-modal-header" style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 1rem;">' +
           '<div style="display:flex; align-items:center; gap:0.5rem;"><i class="ph ph-arrows-left-right" style="font-size: var(--fs-3xl); color: var(--accent);"></i><h3 style="margin:0; font-size: var(--fs-xl);">Transfer Member</h3></div>' +
-          '<button type="button" class="gm-mini-btn gm-close-modal"><i class="ph ph-x"></i></button>' +
+          '<button type="button" class="gm-mini-btn gm-close-modal" aria-label="Close"><i class="ph ph-x" aria-hidden="true"></i></button>' +
         '</div>' +
         '<div class="gm-modal-body" style="display:flex; flex-direction:column; gap:1rem;">' +
           '<div style="background: rgba(255,255,255,0.03); padding: 0.75rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.08);">' +
@@ -673,7 +675,7 @@ export async function showTransferMemberDialog(member: any): Promise<void> {
             '<div style="font-size: var(--fs-base); color: var(--text-dim); margin-top: 0.25rem;">Current Guild: <strong>' + esc(currentG) + '</strong> (Server #' + esc(currentServer) + ')</div>' +
           '</div>' +
           '<div class="gm-form-group">' +
-            '<label class="gm-label" style="font-size: var(--fs-base); font-weight: 600; margin-bottom: 0.35rem; display:block;">Select Target Guild:</label>' +
+            '<label class="gm-label" for="transfer-target-guild" style="font-size: var(--fs-base); font-weight: 600; margin-bottom: 0.35rem; display:block;">Select Target Guild:</label>' +
             '<select id="transfer-target-guild" class="gm-select gm-input">' + optionsHtml + '</select>' +
           '</div>' +
         '</div>' +
@@ -691,6 +693,7 @@ export async function showTransferMemberDialog(member: any): Promise<void> {
   const closeModal = (): void => { overlay.classList.remove('visible'); setTimeout(() => { overlay.remove(); }, 200); };
   overlay.querySelectorAll('.gm-close-modal').forEach((btn) => btn.addEventListener('click', closeModal));
   overlay.addEventListener('click', (ev) => { if (ev.target === overlay) closeModal(); });
+  adoptDialog(overlay, { onEscape: closeModal });
 
   const confirmBtn = byId<HTMLButtonElement>('confirm-transfer-btn');
   if (!confirmBtn) return;
@@ -749,7 +752,7 @@ export async function showEditMemberDialog(member: any): Promise<void> {
             const date = new Date(h.changed_at).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
             return '<div style="display: flex; justify-content: space-between; align-items: center; font-size: var(--fs-sm); background: var(--bg-dim); border: 1px solid var(--border-soft); padding: 0.35rem 0.5rem; border-radius: var(--radius-sm);">' +
               '<span><strong>' + esc(h.old_pseudo) + '</strong> ➔ <strong>' + esc(h.new_pseudo) + '</strong> <span class="gm-dim" style="font-size: var(--fs-sm);">(' + date + ' by ' + esc(h.changed_by) + ')</span></span>' +
-              '<button type="button" class="delete-history-btn" data-id="' + esc(h.id) + '" style="background: none; border: none; color: var(--error); cursor: pointer; padding: 2px;"><i class="ph ph-trash"></i></button>' +
+              '<button type="button" class="delete-history-btn" data-id="' + esc(h.id) + '" aria-label="Delete this name change" style="background: none; border: none; color: var(--error); cursor: pointer; padding: 2px;"><i class="ph ph-trash" aria-hidden="true"></i></button>' +
             '</div>';
           }).join('') +
         '</div></div>'
@@ -833,6 +836,7 @@ export async function showEditMemberDialog(member: any): Promise<void> {
   const cancelBtn = byId('edit-cancel');
   if (cancelBtn) cancelBtn.addEventListener('click', close);
   overlay.addEventListener('click', (ev) => { if (ev.target === overlay) close(); });
+  adoptDialog(overlay, { onEscape: close });
 
   const editUidInput = byId<HTMLInputElement>('edit-uid');
   if (editUidInput) {

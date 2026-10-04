@@ -185,9 +185,12 @@ describe('Build pipeline: the root copy loop', () => {
     }
   });
 
-  it('no longer claims to minify anything', () => {
+  it('no longer claims to minify anything it copies', () => {
     expect(buildJs).not.toContain('minifyToDist');
-    expect(buildJs).not.toContain('Minified ');
+    // The one real minification is index.html's (M5), in its own block.
+    const copyLoop = buildJs.slice(buildJs.indexOf('for (const file of files)'), buildJs.indexOf('fonts/ holds no woff2'));
+    expect(copyLoop.length).toBeGreaterThan(100);
+    expect(copyLoop).not.toMatch(/minif/i);
   });
 
   it('still syntax-checks root scripts, in the suite that always runs', () => {

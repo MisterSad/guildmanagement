@@ -589,4 +589,8 @@ export const EN: Record<string, string> = {
             placeholder_uid:                 'Player UID',
             placeholder_banned_reason:       'Ban reason (optional)',
             label_uid:                       'Player UID',
-            btn_refresh:                     'Refresh',};
+            btn_refresh:                     'Refresh',
+            /* ── Accessibility labels (M5): names for fields and dialogs with no visible label ── */
+            a11y_clock_timezone: 'Time zone',
+            a11y_clock_offset: 'UTC offset',
+};

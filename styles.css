@@ -5,6 +5,10 @@
     --primary: #6366f1;
     --primary-hover: #4f46e5;
     --accent: #8b5cf6;
+    /* WCAG AA pairs for the violet accent (M5, axe): #8b5cf6 reads at 3.4:1 as
+       text on the dark cards and 4.2:1 behind white text. */
+    --accent-text: #a78bfa;   /* violet text on a dark surface, 5.3:1 and up */
+    --accent-strong: #7c3aed; /* violet surface behind white text, 5.7:1 */
     --text-main: #f8fafc;
     --text-muted: #94a3b8;
     --error: #ef4444;
@@ -1195,7 +1199,9 @@ h1, h2, h3 { font-weight: 600; letter-spacing: -0.02em; }
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     display: flex;
-    z-index: 9999;
+    /* Above every hand-built overlay (the OCR modal is 999999): a confirm is
+       opened over them, and must not render behind (M5). */
+    z-index: 1000001;
     padding: 1.5rem 1rem;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;

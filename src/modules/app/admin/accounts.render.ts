@@ -218,7 +218,7 @@ export function renderAccountCardsToContainer(
     let roleSelectHtml = '';
     let guildSelectHtml = '';
     if (superAdmin) {
-      roleSelectHtml = '<select class="gm-select gm-select-sm gm-account-role-select" data-id="' + esc(acc.id) + '" style="font-size: var(--fs-sm); padding: 0.15rem 0.4rem; height: auto; width: auto; min-width: 105px; border-radius: 4px; line-height: 1.2; font-weight: 600;">' +
+      roleSelectHtml = '<select class="gm-select gm-select-sm gm-account-role-select" data-id="' + esc(acc.id) + '" aria-label="' + esc('Role of ' + acc.id) + '" style="font-size: var(--fs-sm); padding: 0.15rem 0.4rem; height: auto; width: auto; min-width: 105px; border-radius: 4px; line-height: 1.2; font-weight: 600;">' +
         '<option value="guild_admin"' + (role === 'guild_admin' ? ' selected' : '') + '>Guild Admin</option>' +
         '<option value="server_admin"' + (role === 'server_admin' ? ' selected' : '') + '>Server Admin</option>' +
         '<option value="super_admin"' + (role === 'super_admin' ? ' selected' : '') + '>Super Admin</option>' +
@@ -229,7 +229,7 @@ export function renderAccountCardsToContainer(
       (getAppState().guildsList || []).forEach((g: string) => {
         options += '<option value="' + esc(g) + '"' + (acc.guild === g ? ' selected' : '') + '>' + esc(g) + '</option>';
       });
-      guildSelectHtml = '<select class="gm-select gm-select-sm gm-account-guild-select" data-id="' + esc(acc.id) + '" style="font-size: var(--fs-sm); padding: 0.15rem 0.4rem; height: auto; width: auto; min-width: 90px; border-radius: 4px; line-height: 1.2;">' +
+      guildSelectHtml = '<select class="gm-select gm-select-sm gm-account-guild-select" data-id="' + esc(acc.id) + '" aria-label="' + esc('Guild of ' + acc.id) + '" style="font-size: var(--fs-sm); padding: 0.15rem 0.4rem; height: auto; width: auto; min-width: 90px; border-radius: 4px; line-height: 1.2;">' +
         options +
       '</select>';
     } else {

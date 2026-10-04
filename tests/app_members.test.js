@@ -47,9 +47,9 @@ const MEMBERS_DOM = `
   <div id="admin-members-bulk-bar"><span id="admin-bulk-selected-count"></span></div>
   <button id="admin-members-select-all-btn"><span></span><i></i></button>
   <button id="admin-bulk-clear-btn"></button>
-  <div id="admin-absences-section"><span id="admin-absences-count"></span><div id="admin-absences-list"></div></div>
-  <div id="admin-timezone-section"><span id="admin-timezone-count"></span><div id="admin-timezone-list"></div></div>
-  <div id="admin-pending-transfers-section"><span id="admin-pending-transfers-count"></span><table><tbody id="admin-pending-transfers-list"></tbody></table></div>
+  <div id="admin-absences-section" class="hidden"><span id="admin-absences-count"></span><div id="admin-absences-list"></div></div>
+  <div id="admin-timezone-section" class="hidden"><span id="admin-timezone-count"></span><div id="admin-timezone-list"></div></div>
+  <div id="admin-pending-transfers-section" class="hidden"><span id="admin-pending-transfers-count"></span><table><tbody id="admin-pending-transfers-list"></tbody></table></div>
   <div id="toast-container"></div>
 `;
 
@@ -205,7 +205,7 @@ describe('pending transfers', () => {
     renderPendingTransfers();
 
     const section = document.getElementById('admin-pending-transfers-section');
-    expect(section.style.display).toBe('');
+    expect(section.classList.contains('hidden')).toBe(false);
     expect(document.getElementById('admin-pending-transfers-count').textContent).toBe('1');
     const list = document.getElementById('admin-pending-transfers-list');
     expect(list.textContent).toContain('Mover');
@@ -216,7 +216,7 @@ describe('pending transfers', () => {
   it('hides the section when there are no pending transfers', () => {
     setPendingTransfers([]);
     renderPendingTransfers();
-    expect(document.getElementById('admin-pending-transfers-section').style.display).toBe('none');
+    expect(document.getElementById('admin-pending-transfers-section').classList.contains('hidden')).toBe(true);
   });
 
   it('resolves a transfer through the RPC after confirmation', async () => {
@@ -309,14 +309,14 @@ describe('absences & timezone panels', () => {
     patchAppState({ guildAbsences: [{ uid: '333333', start_date: '2026-01-01', end_date: future, kind: 'full', note: 'Vacation' }] });
     renderAbsenceSummary();
     const list = document.getElementById('admin-absences-list');
-    expect(document.getElementById('admin-absences-section').style.display).toBe('');
+    expect(document.getElementById('admin-absences-section').classList.contains('hidden')).toBe(false);
     expect(list.textContent).toContain('Bob');
     expect(list.textContent).toContain('Vacation');
   });
 
   it('renders the timezone histogram for members with a declared offset', () => {
     renderTimezoneCoverage();
-    expect(document.getElementById('admin-timezone-section').style.display).toBe('');
+    expect(document.getElementById('admin-timezone-section').classList.contains('hidden')).toBe(false);
     expect(document.getElementById('admin-timezone-count').textContent).toContain('/4');
     expect(document.getElementById('admin-timezone-list').querySelectorAll('.gm-tz-bar-row').length).toBe(24);
   });

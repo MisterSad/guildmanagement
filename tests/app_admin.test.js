@@ -12,6 +12,7 @@ vi.mock('../src/modules/overview/views/OverviewView', () => ({
   overviewView: { load: vi.fn(), destroy: vi.fn() }
 }));
 import { overviewView } from '../src/modules/overview/views/OverviewView';
+import { overviewViewLazy } from '../src/modules/app/lazy-views';
 
 // The admin modules import these directly; each test sets the behaviour it needs.
 vi.mock('../src/core/auth/session', async (importOriginal) => ({
@@ -304,6 +305,8 @@ describe('pending registrations', () => {
     });
     await fetchAccounts();
     await renderPendingRegistrations('ALPHA');
+    // Only an Overview already loaded is refreshed (M5); a closed one loads fresh.
+    await overviewViewLazy.get();
 
     document.querySelector('.gm-pending-approve').click();
 

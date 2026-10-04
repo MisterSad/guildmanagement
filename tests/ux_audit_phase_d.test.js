@@ -57,7 +57,7 @@ describe('Legacy button/modal classes unified to the gm-btn / gm-modal-* system'
 
   it('the OCR modal (index.html, previously mismatched confirm-overlay wrapping a gm-modal-card) now uses gm-modal-overlay throughout', () => {
     const html = read('index.html');
-    expect(html).toContain('id="ocr-modal-overlay" class="gm-modal-overlay"');
+    expect(html).toMatch(/id="ocr-modal-overlay" class="gm-modal-overlay[ "]/);
   });
 });
 

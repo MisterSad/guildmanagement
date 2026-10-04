@@ -17,6 +17,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { adoptDialog } from '../../../components/ui/Dialog';
 import { esc, byId, getDb, ls } from './utils';
 import { getActiveGuild } from '../../../core/auth/roles';
 import { getAppState, patchAppState } from '../../../core/state/app-state';
@@ -187,12 +188,9 @@ export function openRenameGuildDialog(guild: string, onRenamed?: (newTag: string
   overlay.id = 'guild-rename-overlay';
   overlay.className = 'gm-modal-overlay';
   overlay.style.zIndex = '1000001';
-  overlay.setAttribute('role', 'dialog');
-  overlay.setAttribute('aria-modal', 'true');
-  overlay.setAttribute('aria-labelledby', 'guild-rename-title');
   overlay.innerHTML =
     '<div class="gm-modal-card" style="max-width: 440px; width: 92%;">' +
-      '<h3 id="guild-rename-title"><i class="ph ph-tag"></i> Change the TAG of ' + esc(guild) + '</h3>' +
+      '<h3 id="guild-rename-title"><i class="ph ph-tag" aria-hidden="true"></i> Change the TAG of ' + esc(guild) + '</h3>' +
       '<label class="gm-dim" for="guild-rename-input" style="font-size: 0.85rem;">New TAG</label>' +
       '<span class="gm-ui-input gm-ui-input-md" style="margin: 0.35rem 0 0.25rem;">' +
         '<input type="text" id="guild-rename-input" class="gm-ui-input-field" maxlength="14" autocomplete="off" spellcheck="false" ' +
@@ -221,7 +219,6 @@ export function openRenameGuildDialog(guild: string, onRenamed?: (newTag: string
   let busy = false;
 
   function close(): void {
-    document.removeEventListener('keydown', onKeydown);
     overlay.classList.remove('visible');
     setTimeout(() => { overlay.remove(); }, 300);
   }
@@ -269,17 +266,13 @@ export function openRenameGuildDialog(guild: string, onRenamed?: (newTag: string
     }
   }
 
-  function onKeydown(ev: KeyboardEvent): void {
-    if (ev.key === 'Escape') close();
-  }
-
   input.addEventListener('input', () => { validate(); });
   input.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); void submit(); } });
   okBtn.addEventListener('click', () => { void submit(); });
   cancelBtn.addEventListener('click', close);
   overlay.addEventListener('click', (ev) => { if (ev.target === overlay) close(); });
-  document.addEventListener('keydown', onKeydown);
-  setTimeout(() => input.focus(), 50);
+  // Role, label, focus trap and Escape (M5); focus starts in the TAG field.
+  adoptDialog(overlay, { labelledBy: 'guild-rename-title', onEscape: close, initialFocus: input });
 }
 
 // ── Card (Accounts & Access) ─────────────────────────────────────────────────

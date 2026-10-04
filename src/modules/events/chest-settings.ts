@@ -53,9 +53,9 @@ function renderGrid(): void {
     const rows = tiers.map((tier, idx) =>
       '<div class="chest-tier-row" data-day="' + day + '">' +
         '<span class="chest-tier-index">' + tierIndexBadge(day, idx) + '</span>' +
-        '<input type="number" class="chest-tier-min gm-input gm-input-sm" min="0" step="1" value="' + esc(tier.min_score) + '" placeholder="' + t('war_min_score') + '">' +
+        '<input type="number" class="chest-tier-min gm-input gm-input-sm" min="0" step="1" value="' + esc(tier.min_score) + '" placeholder="' + t('war_min_score') + '" aria-label="' + esc(t('war_min_score')) + '">' +
         '<span class="chest-tier-arrow">→</span>' +
-        '<input type="number" class="chest-tier-chests gm-input gm-input-sm" min="1" step="1" value="' + esc(tier.chests) + '" placeholder="' + t('war_chests_count') + '">' +
+        '<input type="number" class="chest-tier-chests gm-input gm-input-sm" min="1" step="1" value="' + esc(tier.chests) + '" placeholder="' + t('war_chests_count') + '" aria-label="' + esc(t('war_chests_count')) + '">' +
         '<button type="button" class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm chest-tier-remove" title="' + t('war_chest_tier_remove') + '" aria-label="' + t('war_chest_tier_remove') + '"><i class="ph ph-trash"></i></button>' +
       '</div>'
     ).join('');
@@ -82,9 +82,9 @@ function addTier(day: number): void {
   const nextChests = tiers.length > 0 ? tiers[tiers.length - 1].chests : 1;
   row.innerHTML =
     '<span class="chest-tier-index">' + tierIndexBadge(day, tiers.length) + '</span>' +
-    '<input type="number" class="chest-tier-min gm-input gm-input-sm" min="0" step="1" value="' + nextMin + '" placeholder="' + t('war_min_score') + '">' +
+    '<input type="number" class="chest-tier-min gm-input gm-input-sm" min="0" step="1" value="' + nextMin + '" placeholder="' + t('war_min_score') + '" aria-label="' + esc(t('war_min_score')) + '">' +
     '<span class="chest-tier-arrow">→</span>' +
-    '<input type="number" class="chest-tier-chests gm-input gm-input-sm" min="1" step="1" value="' + nextChests + '" placeholder="' + t('war_chests_count') + '">' +
+    '<input type="number" class="chest-tier-chests gm-input gm-input-sm" min="1" step="1" value="' + nextChests + '" placeholder="' + t('war_chests_count') + '" aria-label="' + esc(t('war_chests_count')) + '">' +
     '<button type="button" class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm chest-tier-remove" title="' + t('war_chest_tier_remove') + '" aria-label="' + t('war_chest_tier_remove') + '"><i class="ph ph-trash"></i></button>';
 
   const dayBlock = Array.from(gridEl.querySelectorAll('.chest-tier-day'))

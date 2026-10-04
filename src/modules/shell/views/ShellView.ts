@@ -19,6 +19,8 @@
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { adoptDialog } from '../../../components/ui/Dialog';
+import { armsRaceViewLazy, shadowfrontViewLazy, overviewViewLazy } from '../../app/lazy-views';
 import {
   getActiveGuild, roleFromStorage, isSuperAdmin as isSuperAdminRole, isServerAdmin as isServerAdminRole,
   isGuildAdmin, detectClientEnvironment
@@ -82,9 +84,6 @@ import { formatTicketDescription } from '../../members/members.service';
 import { compressImageForUpload } from '../../ocr/ocr.service';
 import { onTabActivated, reloadActiveView } from '../../app/router';
 import { createTicket } from '../shell.service';
-import { overviewView } from '../../overview/views/OverviewView';
-import { shadowfrontView } from '../../shadowfront/views/ShadowfrontView';
-import { armsRaceView } from '../../armsrace/views/ArmsRaceView';
 
 /**
  * Sets the active guild through the store, which mirrors onto `window` itself.
@@ -153,8 +152,8 @@ export class ShellView {
     this.renderEventsTabs();
     this.observeActiveTab();
     this.observeViewport();
-    this.wireLoginPasswordToggle();
-    this.wireSearchClearButtons();
+    // The sign-in screen's password toggle and search clear buttons are wired
+    // at boot by core/dom/form-controls (M5): the shell loads after sign-in.
   }
 
   /** Release every tracked side effect (observer, matchMedia listener). */
@@ -221,9 +220,9 @@ export class ShellView {
           this.renderEventsTabs();
 
           if (tabId === 'event-arms-race') {
-            void armsRaceView.load();
+            void armsRaceViewLazy.get().then((v) => v.load());
           } else if (tabId === 'event-shadowfront') {
-            void shadowfrontView.load();
+            void shadowfrontViewLazy.get().then((v) => v.load());
           }
 
           activateTab(tabId);
@@ -233,52 +232,10 @@ export class ShellView {
   }
 
   // ── Login password toggle ─────────────────────────────────────────────────
-  private wireLoginPasswordToggle(): void {
-    document.querySelectorAll('[data-gm-pwd-toggle]').forEach((btn) => {
-      const wrap = btn.closest('.gm-input-with-icon');
-      const input = (wrap ? wrap.querySelector('input[type="password"], input[type="text"]') : null) as HTMLInputElement | null;
-      if (!input) return;
-      btn.addEventListener('click', () => {
-        const isPwd = input.type === 'password';
-        input.type = isPwd ? 'text' : 'password';
-        const icon = btn.querySelector('i');
-        if (icon) icon.className = isPwd ? 'ph ph-eye-slash' : 'ph ph-eye';
-      });
-    });
-  }
+
 
   // ── Search clear buttons (delegated) ──────────────────────────────────────
-  private wireSearchClearButtons(): void {
-    document.addEventListener('input', (e) => {
-      const input = e.target as HTMLInputElement | null;
-      if (!input || input.tagName !== 'INPUT') return;
-      const wrap = input.closest('.gm-input-with-icon, .input-wrapper, .search-wrapper, .ocr-filter-bar') || input.parentElement;
-      if (!wrap) return;
-      const clearBtn = wrap.querySelector('[data-gm-search-clear], .gm-search-clear-btn');
-      if (!clearBtn) return;
-      if (input.value && input.value.trim().length > 0) {
-        clearBtn.classList.add('gm-visible');
-      } else {
-        clearBtn.classList.remove('gm-visible');
-      }
-    });
 
-    document.addEventListener('click', (e) => {
-      const target = e.target as Element | null;
-      const btn = target ? target.closest('[data-gm-search-clear], .gm-search-clear-btn') : null;
-      if (!btn) return;
-      e.preventDefault();
-      e.stopPropagation();
-      const wrap = btn.closest('.gm-input-with-icon, .input-wrapper, .search-wrapper, .ocr-filter-bar') || btn.parentElement;
-      const input = (wrap ? wrap.querySelector('input') : null) as HTMLInputElement | null;
-      if (!input) return;
-      input.value = '';
-      btn.classList.remove('gm-visible');
-      input.dispatchEvent(new Event('input', { bubbles: true }));
-      input.dispatchEvent(new Event('change', { bubbles: true }));
-      input.focus();
-    });
-  }
 
   // ── Wrap existing panels into the shell structure ─────────────────────────
   private wrapDashboardInShell(): void {
@@ -340,7 +297,7 @@ export class ShellView {
         dashboard.querySelectorAll('.tab-panel').forEach((p) => p.classList.remove('active'));
         const panel = document.getElementById('gm-overview');
         if (panel) panel.classList.add('active');
-        void overviewView.load();
+        void overviewViewLazy.get().then((v) => v.load());
       });
     }
   }
@@ -388,7 +345,7 @@ export class ShellView {
         return '<option value="' + escapeHTML(g) + '"' + (getActiveGuild() === g ? ' selected' : '') + '>' + escapeHTML(g) + sNum + '</option>';
       }).join('');
       return '<div class="gm-sidebar-guild-select-wrapper">' +
-        '<select class="gm-sidebar-guild-select" data-gm-guild-select>' +
+        '<select class="gm-sidebar-guild-select" data-gm-guild-select aria-label="Active guild">' +
           guildOptions +
         '</select>' +
       '</div>';
@@ -571,7 +528,7 @@ export class ShellView {
 
     const html = brandHtml +
       '<div class="gm-topbar-actions">' +
-        '<select id="guild-selector" class="gm-select" style="' + selectStyle + '">' +
+        '<select id="guild-selector" class="gm-select" aria-label="Active guild" style="' + selectStyle + '">' +
           guildOptions +
         '</select>' +
         (canReportBug
@@ -722,6 +679,7 @@ export class ShellView {
     };
     overlay.querySelectorAll('.bug-report-close').forEach((b) => { b.addEventListener('click', close); });
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    adoptDialog(overlay, { labelledBy: 'bug-report-title', onEscape: close });
 
     const submit = overlay.querySelector('#bug-report-submit') as HTMLButtonElement | null;
     if (submit) {
@@ -800,9 +758,9 @@ export class ShellView {
         '<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.9rem; position:sticky; top:0; background:var(--bg-card); z-index:2; padding-bottom:0.4rem; border-bottom:1px solid var(--border-soft);">' +
           '<div style="display:flex; align-items:center; gap:0.55rem;">' +
             '<i class="ph ph-bug" style="color:var(--accent); font-size: var(--fs-2xl);"></i>' +
-            '<strong style="font-size: var(--fs-xl);">' + t_('ticket_report_bug') + '</strong>' +
+            '<strong id="bug-report-title" style="font-size: var(--fs-xl);">' + t_('ticket_report_bug') + '</strong>' +
           '</div>' +
-          '<button type="button" class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm bug-report-close" title="Close"><i class="ph ph-x"></i></button>' +
+          '<button type="button" class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm bug-report-close" title="Close" aria-label="Close"><i class="ph ph-x" aria-hidden="true"></i></button>' +
         '</div>' +
         '<div class="gm-modal-body" style="display:flex; flex-direction:column; gap:0.85rem;">' +
           '<div class="gm-form-group">' +
@@ -850,7 +808,7 @@ export class ShellView {
               '<span style="font-size: var(--fs-xs); color:var(--text-muted);"><span id="ticket-screenshots-count">0</span>/3</span>' +
             '</div>' +
             '<div id="ticket-dropzone" style="border:1px dashed var(--border-soft); border-radius:var(--radius-sm); padding:0.75rem; text-align:center; cursor:pointer; background:rgba(255,255,255,0.02); transition:border-color 0.2s, background 0.2s;">' +
-              '<input type="file" id="ticket-file-input" accept="image/png,image/jpeg,image/webp" multiple style="display:none;">' +
+              '<input type="file" id="ticket-file-input" accept="image/png,image/jpeg,image/webp" multiple aria-label="Attach screenshots" style="display:none;">' +
               '<div style="display:flex; align-items:center; justify-content:center; gap:0.4rem; color:var(--text-muted); font-size: var(--fs-sm);">' +
                 '<i class="ph ph-image-square" style="font-size: var(--fs-xl); color:var(--accent);"></i>' +
                 '<span>' + esc(t_('ticket_screenshots_hint')) + '</span>' +

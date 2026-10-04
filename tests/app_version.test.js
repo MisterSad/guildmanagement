@@ -52,7 +52,8 @@ describe('Release version propagation (v3.5.2)', () => {
     const css = read('shell.css');
     const rule = css.slice(css.indexOf('.gm-sidebar-legal-link {'));
     const body = rule.slice(0, rule.indexOf('}'));
-    expect(body, 'the links must not be inline: they render on one line').toMatch(/display:\s*block/);
+    // flex since M5, for a 24px hit area; a block-level box either way.
+    expect(body, 'the links must not be inline: they render on one line').toMatch(/display:\s*(block|flex)/);
   });
 
   it('DISCORD_CHANGELOG.md title matches the app version exactly (no drift)', () => {

@@ -8,6 +8,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { adoptDialog } from '../../components/ui/Dialog';
 import { formatNumber, formatPower, escapeHTML } from '../utils/text';
 import { formatChartDate, pad2 } from '../utils/date';
 import { showToast } from './toast';
@@ -69,11 +70,11 @@ export function pickEventStart(opts: PickEventStartOptions | undefined, callback
       '<p>' + (o.eventLabel ? '<strong>' + escapeHTML(o.eventLabel) + '</strong> - ' : '') + t('event_start_when_body') + '</p>' +
       '<div class="gm-col" style="gap:.75rem; text-align:left; margin:.25rem 0 1.2rem;">' +
         '<div class="gm-col" style="gap:.3rem;">' +
-          '<span class="gm-dim" style="font-size:.8rem;">' + t('event_start_date') + '</span>' +
+          '<label for="evt-start-date" class="gm-dim" style="font-size:.8rem;">' + t('event_start_date') + '</label>' +
           '<input type="date" id="evt-start-date" class="gm-input" value="' + defDate + '">' +
         '</div>' +
         '<div class="gm-col" style="gap:.3rem;">' +
-          '<span class="gm-dim" style="font-size:.8rem;">' + t('event_start_time') + '</span>' +
+          '<label for="evt-start-time" class="gm-dim" style="font-size:.8rem;">' + t('event_start_time') + '</label>' +
           '<input type="time" id="evt-start-time" class="gm-input" value="' + defTime + '">' +
         '</div>' +
       '</div>' +
@@ -93,6 +94,7 @@ export function pickEventStart(opts: PickEventStartOptions | undefined, callback
     setTimeout(() => { overlay.remove(); }, 300);
     callback(result);
   };
+  adoptDialog(overlay, { onEscape: () => close(null) });
 
   const cancelBtn = document.getElementById('evt-start-cancel');
   if (cancelBtn) cancelBtn.addEventListener('click', () => close(null));

@@ -9,7 +9,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { shadowfrontView } from '../../shadowfront/views/ShadowfrontView';
+import { shadowfrontViewLazy } from '../lazy-views';
 import { esc, byId } from '../admin/utils';
 import {
   formatNumber,
@@ -86,7 +86,7 @@ export function renderOcrRankCell(idx: number, detectedRank: string | null | und
   ['R4', 'R3', 'R2', 'R1'].forEach((r) => {
     opts += '<option value="' + r + '"' + (detectedRank === r ? ' selected' : '') + '>' + r + '</option>';
   });
-  return '<td class="ocr-cell-rank"><select class="ocr-edit-rank gm-input" data-index="' + idx + '" style="padding:0.2rem 0.35rem; font-size: var(--fs-sm); font-weight:600; width:100%; max-width:118px;">' + opts + '</select></td>';
+  return '<td class="ocr-cell-rank"><select class="ocr-edit-rank gm-input" data-index="' + idx + '" aria-label="' + esc('Rank, row ' + (Number(idx) + 1)) + '" style="padding:0.2rem 0.35rem; font-size: var(--fs-sm); font-weight:600; width:100%; max-width:118px;">' + opts + '</select></td>';
 }
 
 export function renderOcrResults(players: any[]): void {
@@ -130,7 +130,7 @@ export function renderOcrResults(players: any[]): void {
 
     let updateCount = 0, reconciledCount = 0, otherGuildCount = 0;
     let sfAssignments: any[] = [];
-    if (meta.eventType === 'shadowfront') sfAssignments = shadowfrontView.getAssignments();
+    if (meta.eventType === 'shadowfront') sfAssignments = shadowfrontViewLazy.peek()?.getAssignments() ?? [];
 
     let html = '';
     players.forEach((p, idx) => {
@@ -176,10 +176,10 @@ export function renderOcrResults(players: any[]): void {
       }
 
       html += '<tr class="ocr-row" data-pseudo="' + esc(effectivePseudo.toLowerCase()) + '">' +
-        '<td class="ocr-cell-check" style="text-align: center;"><input type="checkbox" class="ocr-row-cb" data-index="' + idx + '" ' + (isChecked ? 'checked' : '') + '></td>' +
-        '<td class="ocr-cell-pseudo"><input type="text" class="ocr-edit-pseudo gm-input" data-index="' + idx + '" value="' + esc(effectivePseudo) + '" placeholder="Player Username" style="padding:0.25rem 0.5rem; font-size: var(--fs-base); font-weight:600; width:100%; max-width:180px;"></td>' +
+        '<td class="ocr-cell-check" style="text-align: center;"><input type="checkbox" class="ocr-row-cb" data-index="' + idx + '" aria-label="' + esc('Import row ' + (Number(idx) + 1)) + '" ' + (isChecked ? 'checked' : '') + '></td>' +
+        '<td class="ocr-cell-pseudo"><input type="text" class="ocr-edit-pseudo gm-input" data-index="' + idx + '" aria-label="' + esc('Player name, row ' + (Number(idx) + 1)) + '" value="' + esc(effectivePseudo) + '" placeholder="Player Username" style="padding:0.25rem 0.5rem; font-size: var(--fs-base); font-weight:600; width:100%; max-width:180px;"></td>' +
         '<td class="ocr-cell-metric"><span class="ocr-metric-label"><i class="ph ' + esc(meta.icon || 'ph-hash') + '"></i> ' + esc(meta.header || 'Score') + ':</span>' +
-          '<input type="number" class="ocr-edit-power gm-input" data-index="' + idx + '" value="' + pScore + '" style="padding:0.25rem 0.5rem; font-size: var(--fs-base); font-weight:600; color:' + esc(meta.color) + '; width:100%; max-width:140px;"></td>' +
+          '<input type="number" class="ocr-edit-power gm-input" data-index="' + idx + '" aria-label="' + esc('Score, row ' + (Number(idx) + 1)) + '" value="' + pScore + '" style="padding:0.25rem 0.5rem; font-size: var(--fs-base); font-weight:600; color:' + esc(meta.color) + '; width:100%; max-width:140px;"></td>' +
         '<td class="ocr-cell-status">' + badgeHtml + '</td>' +
       '</tr>';
     });
@@ -211,12 +211,12 @@ export function renderOcrResults(players: any[]): void {
         else badgeHtml = '<span class="gm-chip" style="background:rgba(255,255,255,0.05); color:var(--text-muted);"><i class="ph ph-check"></i> Unchanged</span>';
 
         existingHtml += '<tr class="ocr-row ocr-row--existing" data-pseudo="' + esc(effPseudo.toLowerCase()) + '">' +
-          '<td class="ocr-cell-check" style="text-align: center;"><input type="checkbox" class="ocr-row-cb" data-index="' + idx + '" data-section="existing" checked></td>' +
-          '<td class="ocr-cell-pseudo"><input type="text" class="ocr-edit-pseudo gm-input" data-index="' + idx + '" value="' + esc(effPseudo) + '" placeholder="Player Username" style="padding:0.25rem 0.5rem; font-size: var(--fs-base); font-weight:600; width:100%; max-width:180px;"></td>' +
+          '<td class="ocr-cell-check" style="text-align: center;"><input type="checkbox" class="ocr-row-cb" data-index="' + idx + '" aria-label="' + esc('Import row ' + (Number(idx) + 1)) + '" data-section="existing" checked></td>' +
+          '<td class="ocr-cell-pseudo"><input type="text" class="ocr-edit-pseudo gm-input" data-index="' + idx + '" aria-label="' + esc('Player name, row ' + (Number(idx) + 1)) + '" value="' + esc(effPseudo) + '" placeholder="Player Username" style="padding:0.25rem 0.5rem; font-size: var(--fs-base); font-weight:600; width:100%; max-width:180px;"></td>' +
           '<td class="ocr-cell-uid"><span class="ocr-readonly-uid">' + esc(uid || '—') + '</span></td>' +
           (isMembersMode ? renderOcrRankCell(idx, item.ocrPlayer && item.ocrPlayer.rank, item.member && item.member.role) : '') +
           '<td class="ocr-cell-metric"><span class="ocr-metric-label"><i class="ph ' + esc(meta.icon || 'ph-hash') + '"></i> ' + esc(metricLabel) + ':</span>' +
-            '<input type="number" class="ocr-edit-power gm-input" data-index="' + idx + '" value="' + pScore + '" style="padding:0.25rem 0.5rem; font-size: var(--fs-base); font-weight:600; color:' + esc(meta.color) + '; width:100%; max-width:140px;"></td>' +
+            '<input type="number" class="ocr-edit-power gm-input" data-index="' + idx + '" aria-label="' + esc('Score, row ' + (Number(idx) + 1)) + '" value="' + pScore + '" style="padding:0.25rem 0.5rem; font-size: var(--fs-base); font-weight:600; color:' + esc(meta.color) + '; width:100%; max-width:140px;"></td>' +
           '<td class="ocr-cell-status">' + badgeHtml + '</td>' +
         '</tr>';
       });
@@ -243,12 +243,12 @@ export function renderOcrResults(players: any[]): void {
             : '<span class="gm-chip gm-chip-success"><i class="ph ph-user-plus"></i> New Player</span>';
 
           newHtml += '<tr class="ocr-row ocr-row--new" data-pseudo="' + esc(effPseudo.toLowerCase()) + '">' +
-            '<td class="ocr-cell-check" style="text-align: center;"><input type="checkbox" class="ocr-row-cb" data-index="' + idx + '" data-section="new" ' + (isChecked ? 'checked' : '') + '></td>' +
-            '<td class="ocr-cell-pseudo"><input type="text" class="ocr-edit-pseudo gm-input" data-index="' + idx + '" value="' + esc(effPseudo) + '" placeholder="Player Username" style="padding:0.25rem 0.5rem; font-size: var(--fs-base); font-weight:600; width:100%; max-width:180px;"></td>' +
-            '<td class="ocr-cell-uid"><input type="text" class="ocr-edit-uid gm-input" data-index="' + idx + '" value="' + esc(uid) + '" placeholder="TEMP (auto)" style="' + uidInputStyle + '"></td>' +
+            '<td class="ocr-cell-check" style="text-align: center;"><input type="checkbox" class="ocr-row-cb" data-index="' + idx + '" aria-label="' + esc('Import row ' + (Number(idx) + 1)) + '" data-section="new" ' + (isChecked ? 'checked' : '') + '></td>' +
+            '<td class="ocr-cell-pseudo"><input type="text" class="ocr-edit-pseudo gm-input" data-index="' + idx + '" aria-label="' + esc('Player name, row ' + (Number(idx) + 1)) + '" value="' + esc(effPseudo) + '" placeholder="Player Username" style="padding:0.25rem 0.5rem; font-size: var(--fs-base); font-weight:600; width:100%; max-width:180px;"></td>' +
+            '<td class="ocr-cell-uid"><input type="text" class="ocr-edit-uid gm-input" data-index="' + idx + '" aria-label="' + esc('Player UID, row ' + (Number(idx) + 1)) + '" value="' + esc(uid) + '" placeholder="TEMP (auto)" style="' + uidInputStyle + '"></td>' +
             renderOcrRankCell(idx, item.ocrPlayer && item.ocrPlayer.rank, null) +
             '<td class="ocr-cell-metric"><span class="ocr-metric-label"><i class="ph ' + esc(meta.icon || 'ph-hash') + '"></i> ' + esc(metricLabel) + ':</span>' +
-              '<input type="number" class="ocr-edit-power gm-input" data-index="' + idx + '" value="' + pScore + '" style="padding:0.25rem 0.5rem; font-size: var(--fs-base); font-weight:600; color:' + esc(meta.color) + '; width:100%; max-width:140px;"></td>' +
+              '<input type="number" class="ocr-edit-power gm-input" data-index="' + idx + '" aria-label="' + esc('Score, row ' + (Number(idx) + 1)) + '" value="' + pScore + '" style="padding:0.25rem 0.5rem; font-size: var(--fs-base); font-weight:600; color:' + esc(meta.color) + '; width:100%; max-width:140px;"></td>' +
             '<td class="ocr-cell-status">' + badgeHtml + '</td>' +
           '</tr>';
         });
@@ -257,7 +257,7 @@ export function renderOcrResults(players: any[]): void {
       newHtml += '<tr class="ocr-section-header ocr-section-header--unknown"><td colspan="5"><div class="ocr-section-title" style="color:#fbbf24;"><i class="ph ph-user-focus"></i> Not in Roster <span class="gm-badge" style="background:rgba(245,158,11,0.2); color:#fbbf24;">' + diff.unknown.length + '</span></div></td></tr>';
       diff.unknown.forEach((item: any) => {
         newHtml += '<tr class="ocr-row ocr-row--unknown" data-pseudo="' + esc(String(item.effectivePseudo).toLowerCase()) + '">' +
-          '<td class="ocr-cell-check" style="text-align: center;"><input type="checkbox" class="ocr-row-cb" disabled style="opacity:0.4; cursor:not-allowed;"></td>' +
+          '<td class="ocr-cell-check" style="text-align: center;"><input type="checkbox" class="ocr-row-cb" disabled aria-label="' + esc('Cannot import ' + item.effectivePseudo) + '" style="opacity:0.4; cursor:not-allowed;"></td>' +
           '<td class="ocr-cell-pseudo"><span style="font-weight:600; color:var(--text-muted);">' + esc(item.effectivePseudo) + '</span></td>' +
           '<td class="ocr-cell-uid"><span class="ocr-readonly-uid">—</span></td>' +
           '<td class="ocr-cell-metric"><span class="ocr-metric-label"><i class="ph ' + esc(meta.icon || 'ph-hash') + '"></i> ' + esc(metricLabel) + ':</span>' +
@@ -296,7 +296,7 @@ export function renderOcrResults(players: any[]): void {
       diff.removed.forEach((item: any) => {
         const pseudo = item.pseudo;
         removedHtml += '<tr class="ocr-row ocr-row--removed" data-pseudo="' + esc(String(pseudo).toLowerCase()) + '" data-removal-pseudo="' + esc(pseudo) + '">' +
-          '<td class="ocr-cell-check" style="text-align: center;"><input type="checkbox" class="ocr-row-cb ocr-removal-cb" data-removal-pseudo="' + esc(pseudo) + '" data-section="removed"' + (removalDefaultChecked ? ' checked' : '') + '></td>' +
+          '<td class="ocr-cell-check" style="text-align: center;"><input type="checkbox" class="ocr-row-cb ocr-removal-cb" data-removal-pseudo="' + esc(pseudo) + '" aria-label="' + esc('Remove ' + pseudo) + '" data-section="removed"' + (removalDefaultChecked ? ' checked' : '') + '></td>' +
           '<td class="ocr-cell-pseudo"><span style="font-weight:600; color:var(--text-muted);">' + esc(pseudo) + '</span></td>' +
           '<td class="ocr-cell-uid"><span class="ocr-readonly-uid">' + esc(item.uid || '—') + '</span></td>' +
           '<td class="ocr-cell-rank"><span class="gm-chip" style="background:rgba(100,116,139,0.15); color:#94a3b8; border:1px solid rgba(100,116,139,0.3); font-size: var(--fs-xs); white-space:nowrap;">' + esc(item.role || 'R1') + '</span></td>' +

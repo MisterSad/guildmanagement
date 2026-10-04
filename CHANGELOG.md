@@ -2,6 +2,41 @@
 
 ## [Unreleased]
 
+- **Front-end performance and accessibility** (medium-term plan, phase M5; audit FE-03, FE-04, FE-05, FE-12, FE-13).
+  - **Code splitting.**
+    - What a first visit downloads before rendering: 1.06 MB of JS (281 KB gzip) before, **354 KB (101 KB gzip)** now. `scripts/build.js` fails the build above 450 KB.
+    - The eleven tab views load on first use (`src/modules/app/lazy-views.ts`).
+    - The admin side (shell, router, admin controllers, OCR) is one chunk, `admin-shell.ts`, reached only through `loadAdmin()`. The sign-in screen and the player portal never download it.
+    - The Sentry SDK loads after boot. Errors thrown in the meantime are held and reported. Named re-exports (`sentry-sdk.ts`) shrink it from 447 KB to 85 KB, since the namespace import had kept Session Replay and rrweb.
+    - `tailwind-merge` is dropped. The app has no Tailwind utilities, and `cn()` is now `clsx` alone.
+    - `tests/code_splitting.test.js` walks the static import graph from `main.ts` and names the chain of any lazy module it reaches.
+  - **Behaviour changes.**
+    - A view never opened is no longer refreshed after a member add or an OCR commit. It loads fresh from the database when first shown.
+    - The sanctions form is wired on its first load instead of at boot.
+    - The sign-in password eye and the search clear buttons moved from the shell to `core/dom/form-controls.ts`, wired at boot.
+  - **index.html.**
+    - The 403 inline `style=` attributes became 312 classes in `utilities.css`. They are `!important` inside `:where()`, which gives them exactly an inline style's precedence: they beat ordinary rules and lose to any `!important` one. Properties the code writes through `element.style` stay non-important.
+    - A computed-style and layout diff of all 1,380 elements in Chromium, at 1280 and 375 px, found no difference. The one exception is `background-position` on 35 transparent buttons (`0% 0%` vs `0px 0px`, not visible).
+    - Three member sections are now shown with the `hidden` class instead of `style.display = ''`.
+    - The page is minified by the build: 179 KB to 106 KB (18.5 KB gzip).
+    - **Not done:**
+      - Moving the admin panel templates into their chunk. It would save login visitors about 13 KB gzip, but needs rework in 32 tests that read index.html and in the boot-time wiring.
+      - Removing `style-src 'unsafe-inline'` from the CSP. That still needs the 866 inline styles in 31 TS templates to go.
+  - **Icons.** The Phosphor stylesheet keeps only the rules of the 174 glyphs left in the subset font (1,338 dropped, CSS 247 KB to 193 KB before utilities). The pruned CSS is re-hashed, so a new icon changes its URL.
+  - **Accessibility.**
+    - `showConfirm` is now an `openDialog` alert dialog. It was a hand-built overlay with no role, no focus trap and no focus return.
+    - The 16 hand-built overlays and the OCR modal now go through `adoptDialog()`, with their markup unchanged. It adds the role and label on the card, a focus trap, Escape (except for the one-time backup codes, which stay blocking), an inert page behind, and focus returned on close. It releases itself when the overlay is removed.
+    - Every dialog shares one stack, so a confirm opened over a modal owns the keyboard.
+    - The dialog backdrop sits above the OCR modal (z-index 9999 to 1000001).
+    - Labels: the 46 unnamed fields of index.html and about 53 template fields now have a name. Score fields, for example, read "PvP score, <player>".
+    - Contrast:
+      - `--accent-text` (#a78bfa) for violet text, `--accent-strong` (#7c3aed) behind white text.
+      - Danger buttons use the M3 on-error text colour.
+      - The active OCR metric tab uses dark text.
+    - The legal links have a 24 px hit area.
+    - `e2e/a11y.spec.js` runs axe-core (WCAG 2.2 A/AA) on 17 screens: sign-in, portal, 13 admin tabs, the OCR modal and the confirm dialog. It finds 0 critical or serious violations; the first run found 8 unnamed selects, 10 contrast failures and the target sizes.
+  - **Tests.** New: `code_splitting`, `admin_shell`, `form_controls`, `index_html_styles`, `field_labels`, `dialog_adopt`, and the axe e2e. Source-text assertions on the old boot wiring were replaced by tests that run it. Full gate: 2,508 vitest tests, Playwright 61/61.
+
 - **The window bridge is gone** (medium-term plan, phase M4c step 2; audit ARC-07, FE-07, finding M8).
   - **What was removed.**
     - `src/core/gm-bridge.ts` is deleted.
