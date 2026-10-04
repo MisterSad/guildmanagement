@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+- **V3.35.0: the medium-term work, announced.** The app version is bumped (`APP_VERSION`, `package.json`).
+  - `DISCORD_CHANGELOG.md` is rewritten from scratch as one note for guild leaders and players, in three Discord-sized messages (each under 2,000 characters). It covers what they will notice:
+    - faster first load;
+    - changes saved whole or not at all;
+    - all-or-nothing OCR imports;
+    - SvS/GvG moves that keep their results;
+    - Clear history sparing running events;
+    - webhook links no longer shown;
+    - dialogs, labels, contrast and tap targets;
+    - the stricter CSP.
+  - Everything it announces was checked live first.
+  - The earlier V3.34.x notes remain in git history.
+
 - **Webhook fields: a placeholder that fits.** A set webhook's field read "Webhook set. Paste a new URL to replace it.", cut off mid-word in the Discord Notifications cards. It now reads "Set — paste a URL to replace", with the full sentence as the field's tooltip. The URL itself is still never shown (ARC-04). Covered by `tests/webhook_field_placeholder.test.js`.
 
 - **`'unsafe-inline'` leaves the CSP** (owner request, 2026-10-04; the last item M5 left open). `style-src` is now `'self'`, like `script-src`. No visible change.

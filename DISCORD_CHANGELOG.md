@@ -1,83 +1,57 @@
-📢 **FGF Guild Management Tool Update — CHANG_V3.34.2**
+📢 **FGF Guild Management Tool Update — CHANG_V3.35.0**
 
-**🛠️ Two fixes for guild leaders**
+**🧰 A big clean-up under the hood, and what it changes for you**
 
-**⚔️ Chest tiers finally save**
-• In **Discord notifications → SvS / GvG — Chest Tiers**, saving your chest thresholds always ended with *"Could not save chest tiers."* Fixed: set them once and they stick.
-• Honest note: it had never worked since it shipped. If you gave up on it, now is the time to fill it in.
+Over the last few days I rebuilt a lot of the tool's foundations. You won't see most of it, but you'll feel it.
 
-**🧹 Deleting a guild now deletes all of it**
-• When a guild is removed, its bans, absences, settings and activity log now go with it. Before, a few of those stayed behind.
-• Its TAG becomes free again, and a new guild taking it starts with a clean slate, never with someone else's history.
+**⚡ Faster to open**
+• The sign-in page and the Player Portal now load about **3× less**. Players no longer download the officers' Command Center along with their own pages.
+• On a phone or a slow connection, the first screen shows up noticeably sooner.
+• In the Command Center, each tab now loads the first time you open it instead of everything at once.
 
-**🔒 Privacy policy updated**
-• The policy now says this plainly: deleting a guild deletes everything it holds, and a ban is kept only as long as the guild exists. Nothing else changes.
+**✅ No more half-saved changes**
+These actions are now saved **in one go: completely, or not at all**:
+• banning a player;
+• adding or editing a member;
+• moving or deleting an event;
+• clearing history;
+• importing an OCR scan;
+• creating a migration group.
 
-**What changes for you:** nothing to do.
-
--# Something still won't save? Tell me with the 🐞 **Report a bug** button. 💪
-
----8<---
-
-📢 **FGF Guild Management Tool Update — CHANG_V3.34.1**
-
-**🏷️ Changed your guild TAG in game? Change it in the tool too**
-
-Until now, a new TAG in game meant asking me to delete your guild and create it again, and losing its history. Not anymore.
-
-**⚔️ For guild leaders**
-• Go to **Accounts & Access** → **Guild TAG** → **Change TAG**.
-• Type the new TAG (2 to 12 letters, digits or `_`). Everything follows: members, scores, events, sanctions, absences, stats and settings. Your join code and invite links keep working.
-• You can change it **once every 7 days**. The card shows your past TAGs and when the next change is possible.
-
-**🤖 On Discord, one thing to do by hand**
-• Rename your guild's **Discord role** to the new TAG (and your channels, if you like). The bot finds the role by its name.
-• Screenshot verification picks up the new TAG within **5 minutes**.
-
-**🎮 For players and other officers**
-• Nothing to do. If you had the tool open during the change, just **reload the page**.
-
-**🔒 Safety**
-• Only the guild's admin (or me) can change its TAG.
-• A TAG that is already taken, or that still holds data from a deleted guild, is refused, so nobody ever inherits another guild's history.
-
--# Something odd after changing your TAG? Tell me with the 🐞 **Report a bug** button. 💪
+So a dropped connection can no longer leave a banned player on the roster, or a rename only half done.
 
 ---8<---
 
-📢 **FGF Guild Management Tool Update — CHANG_V3.34.0**
+**⚔️ For officers: what you'll notice**
 
-**🚀 Signing in with Discord, rebuilt — and the bot walks your players in**
+**📸 OCR imports are all or nothing**
+If one row is refused, for example a UID already taken, a banned player, or an R5 who would be removed, **nothing is saved**. The tool tells you which row to fix, so you never end up with a half-imported roster.
 
-This update covers two releases: a new sign-in (V3.33) and a bot that now works hand in hand with it (V3.34).
+**📅 Moving an SvS or GvG to another week**
+The war results and daily scores now move with the event. They no longer stay stuck on the old date.
 
-**🔑 Signing in (V3.33)**
-• **One button for everyone:** **Continue with Discord**. Officers land in the Command Center, players in their Player Portal, automatically. Old identifier and password? Tucked underneath, and it opens by itself if that's how you signed in last time.
-• **First time here?** Pick **join my guild**, **I already have an account** or **create a guild**. Each says what you'll need.
-• **A typo no longer sends you back to Discord.** The form stays filled in, the error shows under the field, and you just fix it.
-• **Invite links:** in **Accounts & Access**, **Copy invite link** sits next to your join code. Players open it and the code is already filled in; all they type is their UID.
-• **No more waiting in the dark:** after asking to join, players see a clear **"Waiting for approval"** screen, and get a Discord DM once an officer decides.
+**🧹 Clear history**
+It now leaves the event that's still running alone, and squads that haven't started yet.
+
+**🔗 Discord webhooks**
+• Once a webhook is saved, the tool no longer shows its link. The field just says **"Set — paste a URL to replace"**.
+• Why: anyone who has that link can post in your channel. Now it never leaves the server.
+• Need the link? Discord → **Server Settings → Integrations → Webhooks**.
+• Only real Discord webhook links are accepted.
 
 ---8<---
 
-**🤖 The bot (V3.34)**
+**♿ Easier to use, for everyone**
+• **Pop-ups behave properly.** **Escape** closes them, the keyboard stays inside the window, and you land back where you were when it closes.
+• **Form fields have proper names**, so screen readers can announce them.
+• **Easier to read:** red "danger" buttons and purple labels have stronger contrast.
+• **Easier to tap:** the Privacy and Terms links are bigger on phones.
 
-**⚔️ For officers**
-• **New `/invite` command.** Run it in your welcome channel: the bot posts a **Join [TAG]** button. Players press it, continue with Discord, and only type their UID. The join code is already filled in.
-• **Approve new players without leaving Discord.** When someone asks to join, the request lands in your officers channel with **Approve** and **Reject** buttons. Reject asks you to confirm, the player gets a DM either way, and the buttons disappear once it's decided.
-• Only an officer of that player's guild can decide, exactly like in the tool. A Discord role alone isn't enough.
-• No officers channel set? The tool now warns you in **Admin → Discord Notifications**: without one, join requests aren't announced anywhere. `/setup-server` creates it for you.
+**🔒 Safer**
+• **Stricter browser security rules.** Your browser now refuses any style or script that doesn't come from the tool itself. Injected content can't dress itself up as part of the interface.
+• **One place for permissions.** Every check of who can do what now goes through one place on the server.
+• **Tested before release.** Many more automated tests run the real code, database rules included, before anything goes live.
 
-**🎮 For players**
-• **`/link` is gone.** Signing in to the tool with **Continue with Discord** links your account, and that's all the bot needs.
-• Not linked yet? The bot's answer comes with a **Continue with Discord** button. One tap, done.
-• Still signing in with a password? **My Info → Switch to Discord sign-in** moves you over in one step.
-• Got your guild role after posting your screenshot? The welcome DM now has a button to your Player Portal. If you're not in the tool yet, it opens with your guild's code filled in.
+**What changes for you:** nothing to do. If a page looks odd right after the update, reload it once.
 
-**🔒 Under the hood**
-• `/link` could keep an old password alive next to Discord. That door is closed: Discord sign-in is the only way to link an account now.
-• Every approval or rejection, from the tool or from Discord, now leaves a trace of who decided.
-
-**What changes for you:** nothing to do. Next time you sign in, it's just smoother.
-
--# Something feels off with the sign-in or the bot? Tell me with the 🐞 **Report a bug** button, and say which step, command or button you used. 💪
+-# Something looks off? Tell me with the 🐞 **Report a bug** button. 💪
