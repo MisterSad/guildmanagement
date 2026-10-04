@@ -190,7 +190,7 @@ Roles are stored in `public.accounts.role`, restricted by a CHECK constraint to 
 ### 5.2 Row-Level Security
 Every public table has RLS **and** FORCE RLS. Policies call `SECURITY DEFINER` helpers with `SET search_path = ''`, and the helpers also refuse a session whose epoch was revoked (password reset, role change, suspension). Grants are given per column where a table holds credential material.
 
-`public.is_subscription_active(p_guild)` still appears in the write policies, but it is an inert stub that returns `true` (a literal `SELECT true`, verified on production 2026-10-04). It is not a security control and gates nothing; it remains only because 45 policies reference it.
+Write access is decided by `public.check_user_guild_write_access(guild)` alone. The former `public.is_subscription_active(p_guild)` was an inert stub (a literal `SELECT true`) that 45 write policies still called; it gated nothing and was removed from them and dropped on 2026-10-04.
 
 ### 5.3 Player Portal Isolation
 A player signs in with Discord and joins a guild with a join code and their UID, approved by an officer. Direct table queries from a member return nothing. The portal calls `member-portal`, which requires a platform-verified JWT, resolves the account from it (active status and current session epoch required), and derives the player's UID server-side; client-supplied identities are ignored.

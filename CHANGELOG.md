@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+- **The `is_subscription_active` stub is gone** (owner request, 2026-10-04; audit REC-07). No behaviour change.
+  - **Why.** Since the app became free it was a literal `SELECT true`, yet it looked like a control:
+    - 45 write policies (15 tables) ANDed it onto `check_user_guild_write_access`;
+    - 10 functions tested it to return `subscription_expired`, a branch that could never run and that no client handled.
+  - **What changed.** Migration `20261004084243_drop_is_subscription_active`, applied to production:
+    - the 45 policies are altered in place (`ALTER POLICY`; name, command, roles and permissiveness unchanged);
+    - the 10 functions are redefined from their production bodies minus the stub (md5-checked against a replay first);
+    - the stub is then dropped, with no `CASCADE`, so the drop fails if anything still depends on it.
+  - **Verified.**
+    - On a replay, every policy is identical before and after except for the removed conjunct.
+    - A dry run on production in a rolled-back transaction passed before the apply.
+    - The schema fingerprint of a fresh replay equals production's: 1,103 objects, regenerated.
+    - The SQL tests pass: 11 files, 148 assertions. The new `11_no_subscription_gate.sql` checks that the stub is gone and that write access still splits own guild / other guild / member.
+  - **Repo.** The database types, `ARCHITECTURE`, `PROJECT_CONTEXT`, the `fgf-rls-security` skill and the compliance whitepaper (MD, HTML, PDF regenerated) no longer describe a stub.
+
 - **Lint, format and documentation** (medium-term plan, phase M6; audit QA-07, REC-04 to REC-07, INF-12).
   - **Biome** (`biome.json`, `@biomejs/biome` 2.5.15).
     - `npm run lint` runs `biome ci .`, which covers lint and format. It is a new step in the CI job `build-and-test`, and AGENTS.md and the `fgf-quality-gate` skill list it.

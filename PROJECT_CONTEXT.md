@@ -17,7 +17,7 @@
 - **Authentification :** connexion Discord (OAuth via `auth-discord`, jamais le fournisseur Discord natif de Supabase), ID + mot de passe conservés pendant la transition. Les passkeys/WebAuthn ont été supprimées le 2026-10-03 ; les codes de secours du super_admin restent (flux Discord).
 - **Tests :** Vitest (`npm test`, avec un plancher de couverture), Playwright contre le vrai bundle de `dist/`, `deno check` + `deno test` sur les fonctions, rejeu des migrations et tests SQL par rôle (`scripts/replay-migrations.sh`, `scripts/sql-tests.sh`). Pas de compteur ici : il est périmé au test suivant.
 - **Hébergement :** Vercel (front statique, en-têtes de sécurité et CSP dans `vercel.json`), Supabase Cloud (Postgres, Auth, Storage, Edge Functions). Worker de vérification Discord sur Render.
-- **Gratuit :** aucun paiement, abonnement ni don (ADR-015). `is_subscription_active()` n'est plus qu'un `SELECT true` encore appelé par 45 policies.
+- **Gratuit :** aucun paiement, abonnement ni don (ADR-015). Le stub `is_subscription_active()` (`SELECT true`) a été retiré des 45 policies et 10 fonctions qui l'appelaient, puis supprimé, le 2026-10-04.
 
 ## 2. Règles d'or
 - **Modules uniquement :** tout code vit sous `src/` en TypeScript ; aucun script `.js` à la racine, rien de nouveau sur `window`.

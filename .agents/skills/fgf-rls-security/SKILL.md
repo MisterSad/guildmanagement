@@ -61,7 +61,7 @@ Trigger functions and maintenance functions get **no** `GRANT EXECUTE` at all. B
 - `public.gm_is_admin_caller()` / `public.is_super_admin()` / `public.is_server_admin()`
 - `public.gm_can_admin_see_absences(p_guild)`
 
-`public.is_subscription_active(p_guild)` also appears in ~44 policy clauses. It is a literal `SELECT true` — the app is free (ADR-015) — and survives only because rewriting those clauses is the riskiest remaining change. **Do not treat it as a live gate, and do not add new calls to it.**
+There is no subscription gate: `public.is_subscription_active` (a `SELECT true` stub) was removed from the 45 write policies and 10 functions that called it, then dropped (`20261004084243_drop_is_subscription_active.sql`, 2026-10-04). The app is free (ADR-015); do not reintroduce a plan or subscription check.
 
 ## Session revocation
 

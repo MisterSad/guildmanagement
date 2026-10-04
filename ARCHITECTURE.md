@@ -113,7 +113,7 @@ Authentication operates on an **accounts-table-only** role resolution model. `us
 #### The Four Access Roles:
 1. **`super_admin`**: Single global master account (`HawkEye`). Bypasses tenant RLS qualifiers. Accesses full Command Center and `#tab-tickets`.
 2. **`server_admin`**: Reads and writes all tenant guilds sharing their assigned `server_number`. Uses server-scoped Guild Switcher.
-3. **`guild_admin`**: Scoped strictly to own guild tenant (`accounts.guild`). Write operations still pass through `public.is_subscription_active()`, which has been a literal `SELECT true` since `20260824000000_free_app_and_donations.sql` — the app is free and the gate is inert. It survives only because 45 RLS policies call it (counted on production 2026-10-04 in `pg_policies`); removing it means rewriting all of them, which is a lot of its own (deferred, Phase 4.14).
+3. **`guild_admin`**: Scoped strictly to own guild tenant (`accounts.guild`). Writes are decided by `public.check_user_guild_write_access(guild)` alone. The inert `public.is_subscription_active()` stub (a literal `SELECT true` since the app became free) was removed from the 45 write policies and 10 functions that called it, then dropped, in `20261004084243_drop_is_subscription_active.sql`.
 4. **`member`**: **Zero direct database table access**. Communicates exclusively through the `member-portal` Edge Function.
 
 > These are the **only** values `accounts.role` may hold — the DB enforces it via the `accounts_role_check` CHECK constraint (column default `member`). The legacy virtual/in-game ranks (`R5`, `R4`) and the historical `admin` alias were **retired on 2026-09-13** and are rejected by the constraint; no helper maps them to elevated access anymore.
@@ -177,7 +177,7 @@ The Player Portal (`src/modules/portal/`: `PortalView` + `portal.service.ts`) ne
 - `public.gm_can_read_guilds()` — Permissive SELECT filter for `guilds`.
 - `public.gm_can_read_account(p_account_id text)` — Permissive SELECT filter for `accounts`.
 - `public.check_user_guild_write_access(p_guild text)` — INSERT/UPDATE/DELETE authorization check.
-- `public.is_subscription_active(p_guild text)` — inert: a literal `SELECT true` since the app became free (ADR-015), still referenced by 45 write policies (see §2).
+- `public.is_subscription_active` — dropped on 2026-10-04 (`20261004084243_drop_is_subscription_active.sql`); it was a `SELECT true` stub.
 - `public.gm_can_admin_see_absences(p_guild text)` — Absence visibility qualifier.
 
 #### 4.3 Active Cron Jobs
@@ -203,7 +203,7 @@ Twelve jobs, read from `cron.job` on production on 2026-10-04 (`SELECT jobname, 
 
 Tracks SvS and GvG at per-day granularity — scores (Day 1..6), parametrizable chest tiers, Won/Lost results per day and per-session opponent — replacing the previous monolithic `score_prep` (aggregated Day 1-5) / `score_pvp` (Day 6) columns as the primary entry path.
 
-**New tenanted tables** (all `FORCE ROW LEVEL SECURITY`, policies: `SELECT` via `public.gm_can_read_guild_data(guild)`, `INSERT/UPDATE/DELETE` via `public.check_user_guild_write_access(guild) AND public.is_subscription_active(guild)`):
+**New tenanted tables** (all `FORCE ROW LEVEL SECURITY`, policies: `SELECT` via `public.gm_can_read_guild_data(guild)`, `INSERT/UPDATE/DELETE` via `public.check_user_guild_write_access(guild)`):
 
 | Table | Role |
 |---|---|

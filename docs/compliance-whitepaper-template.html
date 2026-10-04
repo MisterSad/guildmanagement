@@ -697,9 +697,9 @@
   Every public table has RLS <strong>and</strong> FORCE RLS. Policies call <code>SECURITY DEFINER</code> helpers with <code>SET search_path = ''</code>, which also refuse a session whose epoch was revoked (password reset, role change, suspension). Tables holding credential material are granted per column.
 </p>
 <div class="callout callout-warning avoid-break">
-  <div class="callout-title">Not a control: <code>is_subscription_active()</code></div>
+  <div class="callout-title">No subscription gate</div>
   <p style="margin-bottom: 0; font-size: 8.5pt;">
-    <code>public.is_subscription_active(p_guild)</code> still appears in 45 write policies, but it is an inert stub (a literal <code>SELECT true</code>, verified on production on 2026-10-04). It gates nothing; the app is free.
+    Write access is decided by <code>check_user_guild_write_access(guild)</code> alone. The former <code>is_subscription_active()</code> was an inert stub (a literal <code>SELECT true</code>) still called by 45 write policies; it gated nothing and was removed and dropped on 2026-10-04. The app is free.
   </p>
 </div>
 

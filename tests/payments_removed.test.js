@@ -165,9 +165,10 @@ describe('the migration drops the schema and repairs its dependents', () => {
     }
   });
 
-  it('keeps is_subscription_active, which 44 RLS policies still invoke', () => {
-    // Neutralised to `SELECT true`. Dropping it means rewriting every write
-    // policy -- a separate lot, not a payment-removal side effect.
+  it('keeps is_subscription_active, which RLS policies still invoked at the time', () => {
+    // Neutralised to `SELECT true` here; the write policies were rewritten and
+    // the stub dropped later, in 20261004084243_drop_is_subscription_active
+    // (supabase/tests/11_no_subscription_gate.sql runs that end state).
     expect(sql).not.toMatch(/DROP FUNCTION[^\n]*is_subscription_active/);
   });
 

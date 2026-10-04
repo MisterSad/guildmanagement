@@ -2386,7 +2386,6 @@ export type Database = {
         }[]
       }
       is_server_admin: { Args: never; Returns: boolean }
-      is_subscription_active: { Args: { p_guild: string }; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
       request_guild_transfer: {
         Args: { p_target_guild: string; p_uid: string }

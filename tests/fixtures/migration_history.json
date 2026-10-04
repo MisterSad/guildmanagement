@@ -1,5 +1,5 @@
 {
-  "_comment": "Snapshot of supabase_migrations.schema_migrations on production (list_migrations), taken 2026-10-03. Update it after every apply_migration; tests/migration_history.test.js checks the files against it.",
+  "_comment": "Snapshot of supabase_migrations.schema_migrations on production (list_migrations), taken 2026-10-04. Update it after every apply_migration; tests/migration_history.test.js checks the files against it.",
   "migrations": [
     {
       "version": "20260812000001",
@@ -564,6 +564,10 @@
     {
       "version": "20261003203015",
       "name": "transactional_guild_writes"
+    },
+    {
+      "version": "20261004084243",
+      "name": "drop_is_subscription_active"
     }
   ]
 }
