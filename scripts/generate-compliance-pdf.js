@@ -50,8 +50,7 @@ async function generatePDF() {
       </div>
     `,
     footerTemplate: `
-      <div style="font-family: 'Plus Jakarta Sans', -apple-system, sans-serif; font-size: 7pt; color: #94a3b8; width: 100%; padding: 0 14mm; display: flex; justify-content: space-between; border-top: 0.5px solid #e2e8f0; padding-top: 2px;">
-        <span>CONFIDENTIAL & PROPRIETARY — PREPARED FOR GAME PUBLISHER & AUDITORS</span>
+      <div style="font-family: 'Plus Jakarta Sans', -apple-system, sans-serif; font-size: 7pt; color: #94a3b8; width: 100%; padding: 0 14mm; display: flex; justify-content: flex-end; border-top: 0.5px solid #e2e8f0; padding-top: 2px;">
         <span>Page <span class="pageNumber"></span> of <span class="totalPages"></span></span>
       </div>
     `,
