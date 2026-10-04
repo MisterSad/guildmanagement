@@ -10,12 +10,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // Phase 7: PortalView imports the badges service instead of probing
-// `window.GM_BADGES`, so the stub below no longer intercepts it.
+// a `GM_BADGES` global, so the stub below no longer intercepts it.
 vi.mock('../src/modules/badges/badges.service', async (importOriginal) => {
   const actual = await importOriginal();
   return { ...actual, computeBadges: vi.fn() };
 });
-// Phase M4c: PortalView imports its helpers instead of reading `window.GM`.
+// Phase M4c: PortalView imports its helpers (no window bridge left).
 // Chart drawing (canvas, absent in jsdom), the number formatter and the auth
 // calls are mocked at their source module.
 vi.mock('../src/core/dom/ui', async (importOriginal) => {
@@ -29,7 +29,7 @@ vi.mock('../src/core/auth/session', async (importOriginal) => {
 import { computeBadges } from '../src/modules/badges/badges.service';
 import { drawScoreTrendChart } from '../src/core/dom/ui';
 import { PortalView, submitErrorMessage } from '../src/modules/portal/views/PortalView';
-import { resetSupabaseClient } from '../src/core/api/supabase';
+import { setDbClient, resetSupabaseClient } from '../src/core/api/supabase';
 
 const FIXTURES = {
   'get-active-sessions': {
@@ -67,12 +67,10 @@ function installDb() {
     const reply = FIXTURES[action] || { ok: true };
     return { data: reply, error: null };
   });
-  window.GM.db = { functions: { invoke: invokeMock } };
-  resetSupabaseClient();
+  setDbClient({ functions: { invoke: invokeMock } });
 }
 
 function installGlobals() {
-  window.GM = window.GM || {};
   vi.mocked(drawScoreTrendChart).mockClear();
 
   vi.mocked(computeBadges).mockReturnValue({
@@ -82,7 +80,6 @@ function installGlobals() {
       { category: 'power', earned: true, current: 80000000, target: 100000000, progress: 100, color: '#ffe088', icon: 'ph-lightning', name: 'High Power', desc: 'Reach 100M power' }
     ] }]
   });
-  window.GM_PUSH = { mount: vi.fn() };
 }
 
 function mountDom() {
@@ -113,8 +110,6 @@ beforeEach(() => {
 afterEach(() => {
   delete window.requestAnimationFrame;
   resetSupabaseClient();
-  delete window.GM.db;
-  delete window.GM_PUSH;
   localStorage.clear();
   document.body.innerHTML = '';
   vi.restoreAllMocks();
@@ -215,7 +210,7 @@ describe('PortalView — chart delegation & cleanup', () => {
     });
   });
 
-  it('does not expose any window.GM_* global', async () => {
+  it('does not expose any GM_* global', async () => {
     const baseline = Object.getOwnPropertyNames(window).filter((k) => k.startsWith('GM_')).sort();
 
     const view = newView();
@@ -223,7 +218,7 @@ describe('PortalView — chart delegation & cleanup', () => {
 
     const after = Object.getOwnPropertyNames(window).filter((k) => k.startsWith('GM_')).sort();
     expect(after).toEqual(baseline);
-    expect(window.GM_PORTAL).toBeUndefined();
+    expect('GM_PORTAL' in window).toBe(false);
   });
 });
 

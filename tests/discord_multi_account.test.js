@@ -137,9 +137,10 @@ describe('the client asks instead of guessing', () => {
     expect(session).toMatch(/accounts: Array\.isArray\(data\.accounts\)/);
   });
 
-  it('exposes chooseDiscordAccount, and bridges it', () => {
+  it('exposes chooseDiscordAccount, and the auth controller imports it', () => {
+    // M4c: the GM bridge is deleted; the controller reaches it by typed import.
     expect(session).toMatch(/export async function chooseDiscordAccount/);
-    expect(read('src/core/gm-bridge.ts')).toContain('chooseDiscordAccount');
+    expect(ctrl).toMatch(/import \{[^}]*\bchooseDiscordAccount\b[^}]*\} from '[^']*core\/auth\/session'/);
   });
 
   it('opens the chooser rather than picking the first account', () => {

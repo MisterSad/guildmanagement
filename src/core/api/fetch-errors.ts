@@ -18,6 +18,7 @@
 // This stays consistent with the "pure" contract above: escapeHTML is a pure
 // string function and touches no DOM.
 import { escapeHTML } from '../utils/text';
+import { showToast } from '../dom/toast';
 
 export type FetchErrorKind = 'offline' | 'gateway' | 'rate_limited' | 'unauthorized' | 'server' | 'unknown';
 
@@ -130,11 +131,7 @@ export interface FetchErrorRuntime {
 }
 
 function defaultToast(message: unknown): void {
-  if (typeof window === 'undefined') return;
-  const w = window as any;
-  if (w.GM_APP && typeof w.GM_APP.showToast === 'function') {
-    (w.GM_APP.showToast as (m: unknown, t?: string) => void)(message, 'error');
-  }
+  showToast(message, 'error');
 }
 
 let runtime: Required<FetchErrorRuntime> = {

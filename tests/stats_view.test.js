@@ -8,16 +8,18 @@
  * The former Phase-1 suite compared live output against stats.js; with the
  * legacy file gone, this pins the exact same expected results as golden
  * values (captured from the pre-cutover parity run) plus the cutover guard
- * that StatsView exposes no new `window.GM_*` global.
+ * that StatsView exposes no new `GM_*` global on `window`.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 // StatsView imports ensureAuthSession directly (phase M4c): neutralise it at
-// its source module rather than through window.GM.
+// its source module.
 vi.mock('../src/core/api/supabase', async (importOriginal) => {
   const actual = await importOriginal();
   return { ...actual, ensureAuthSession: async () => null };
 });
 import { StatsView } from '../src/modules/stats/views/StatsView';
+import { setDbClient, resetSupabaseClient } from '../src/core/api/supabase';
+import { cache } from '../src/core/cache/cache';
 import { mockStatsMembers, mockStatsEvents } from './helpers/stats-aggregate.js';
 
 // ── Supabase mock (same shape as tests/stats.test.js) ─────────────────────────
@@ -153,23 +155,23 @@ function parseLeaderboard() {
 describe('StatsView golden results (post stats.js cutover)', () => {
   beforeEach(() => {
     mountContainers();
-    window.GM.db = buildDb();
-    if (window.GM.cache) window.GM.cache.invalidate();
+    setDbClient(buildDb());
+    cache.invalidate();
   });
 
   afterEach(() => {
-    delete window.GM.db;
+    resetSupabaseClient();
     document.body.innerHTML = '';
     localStorage.removeItem('gm_stats_mode');
   });
 
-  it('does not expose any new window.GM_* global (cutover guard)', async () => {
+  it('does not expose any new GM_* global on window (cutover guard)', async () => {
     const baseline = Object.getOwnPropertyNames(window).filter((k) => k.startsWith('GM_')).sort();
     const view = new StatsView();
     await view.load();
     const after = Object.getOwnPropertyNames(window).filter((k) => k.startsWith('GM_')).sort();
     expect(after).toEqual(baseline);
-    expect(window.GM_STATS).toBeUndefined();
+    expect(after).not.toContain('GM_STATS');
   });
 
   it('reliability leaderboard: golden rows, with the breakdown beside the number', async () => {

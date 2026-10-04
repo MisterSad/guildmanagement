@@ -4,13 +4,14 @@
 // Two separate claims, both of which failed before this work:
 //
 //   1. STRUCTURAL -- the store belongs in `core/`. It is imported by
-//      `core/auth/roles.ts` and `core/gm-bridge.ts`, and `core/` must not reach
-//      into `modules/`. It qualifies because it imports nothing at all.
+//      `core/auth/roles.ts`, and `core/` must not reach into `modules/`. It
+//      qualifies because it imports nothing at all.
 //
-//   2. BEHAVIOURAL -- reads are pure and hydration is absence-aware. Asking for
-//      the active guild used to CREATE `window.GM_COLLAPSED_ROLES` as a side
+//   2. BEHAVIOURAL -- reads are pure and the store is the only source. Asking
+//      for the active guild used to CREATE `window.GM_COLLAPSED_ROLES` as a side
 //      effect, and deleting a global used to be undone by the next read
-//      refilling it from the previous value.
+//      refilling it from the previous value. Since M4c the store mirrors
+//      nothing onto `window` and reads nothing back from it.
 //
 // The single-write-path check is a source scan rather than a runtime assertion,
 // because a stray `window.currentGuild = …` is invisible to both `tsc` and any
@@ -127,18 +128,22 @@ describe('a read does not write', () => {
     expect(window.guildsList).toBeUndefined();
   });
 
-  it('establishes the mirror at boot, and refreshes it on every write', () => {
+  it('installs no mirror at boot nor on a write; the module state is the truth', () => {
+    // M4c removed the window mirror. Boot and writes must not resurrect it,
+    // and a write must be visible through the store.
     initAppState();
-    expect(window.GM_COLLAPSED_ROLES).toBeTypeOf('object');
-    expect(Array.isArray(window.guildsList)).toBe(true);
+    expect(window.GM_COLLAPSED_ROLES).toBeUndefined();
+    expect(window.guildsList).toBeUndefined();
+    expect(getAppState().collapsedRoles).toBeTypeOf('object');
+    expect(Array.isArray(getAppState().guildsList)).toBe(true);
 
     patchAppState({ currentGuild: 'OMEGA' });
-    expect(window.currentGuild).toBe('OMEGA');
+    expect(window.currentGuild).toBeUndefined();
     expect(getAppState().currentGuild).toBe('OMEGA');
   });
 });
 
-describe('hydration is absence-aware', () => {
+describe('the store never hydrates from window', () => {
   beforeEach(() => {
     resetAppState();
     for (const k of STATE_KEYS) delete window[k];
@@ -149,19 +154,22 @@ describe('hydration is absence-aware', () => {
     localStorage.clear();
   });
 
-  it('clears a field when its global is deleted, rather than refilling it', () => {
+  it('clears a field only through a write, never via a stale mirror', () => {
     // The mirror used to be sticky: `ensureWindowMirror()` ran BEFORE
     // `hydrateFromWindow()`, so a deleted global was rewritten from the stale
-    // in-memory value and then read back as if it had never been cleared.
+    // in-memory value. With no mirror, clearing goes through patchAppState().
     patchAppState({ currentGuildRestriction: 'ALPHA' });
     expect(getAppState().currentGuildRestriction).toBe('ALPHA');
+    expect(window.currentGuildRestriction, 'the store mirrored onto window').toBeUndefined();
 
-    delete window.currentGuildRestriction;
-    expect(getAppState().currentGuildRestriction, 'a deleted restriction came back').toBeNull();
+    patchAppState({ currentGuildRestriction: null });
+    expect(getAppState().currentGuildRestriction, 'a cleared restriction came back').toBeNull();
   });
 
-  it('picks up a value assigned straight onto window, which is how the tests seed state', () => {
+  it('ignores a value assigned straight onto window; tests seed state with patchAppState()', () => {
     window.currentGuild = 'BABE';
+    expect(getAppState().currentGuild, 'the store read a window global').not.toBe('BABE');
+    patchAppState({ currentGuild: 'BABE' });
     expect(getAppState().currentGuild).toBe('BABE');
   });
 

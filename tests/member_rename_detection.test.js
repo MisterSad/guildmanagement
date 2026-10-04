@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { formatPower } from '../src/core/utils/text';
 
 describe('Member Duplicate UID & Same-Guild Rename Detection', () => {
     let container;
@@ -93,8 +94,8 @@ describe('Member Duplicate UID & Same-Guild Rename Detection', () => {
         expect(member.uid).toBe('1833757');
     });
 
-    it('formats power in player details using window.GM.formatPower', () => {
-        expect(window.GM.formatPower(50000000)).toBe('50.0M');
-        expect(window.GM.formatPower(1234567)).toBe('1.2M');
+    it('formats power in player details using formatPower', () => {
+        expect(formatPower(50000000)).toBe('50.0M');
+        expect(formatPower(1234567)).toBe('1.2M');
     });
 });

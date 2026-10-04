@@ -7,18 +7,20 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import fs from 'fs';
 import path from 'path';
+import { debounce, runInChunks } from '../src/core/utils/async';
+import { cache } from '../src/core/cache/cache';
 
 const root = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.resolve(root, p), 'utf-8');
 
-describe('window.GM.debounce / runInChunks / cache (GM bridge)', () => {
+describe('debounce / runInChunks / cache (core helpers, imported directly)', () => {
   beforeEach(() => {
-    if (window.GM && window.GM.cache) window.GM.cache.invalidate();
+    cache.invalidate();
   });
 
   it('debounce collapses a burst of calls into one, after the delay', async () => {
     let calls = 0;
-    const fn = window.GM.debounce(() => { calls++; }, 30);
+    const fn = debounce(() => { calls++; }, 30);
     fn(); fn(); fn();
     expect(calls).toBe(0);
     await new Promise((r) => setTimeout(r, 60));
@@ -28,7 +30,7 @@ describe('window.GM.debounce / runInChunks / cache (GM bridge)', () => {
   it('runInChunks processes all items in batches and returns their results in order', async () => {
     const seenConcurrently = [];
     const items = [1, 2, 3, 4, 5];
-    const results = await window.GM.runInChunks(items, 2, async (n) => {
+    const results = await runInChunks(items, 2, async (n) => {
       seenConcurrently.push(n);
       return n * 10;
     });
@@ -38,19 +40,19 @@ describe('window.GM.debounce / runInChunks / cache (GM bridge)', () => {
 
   it('cache.isFresh is false until markFresh, true within the TTL, and false again after invalidate', () => {
     const key = 'test:key';
-    expect(window.GM.cache.isFresh(key, 1000)).toBe(false);
-    window.GM.cache.markFresh(key);
-    expect(window.GM.cache.isFresh(key, 1000)).toBe(true);
-    window.GM.cache.invalidate(key);
-    expect(window.GM.cache.isFresh(key, 1000)).toBe(false);
+    expect(cache.isFresh(key, 1000)).toBe(false);
+    cache.markFresh(key);
+    expect(cache.isFresh(key, 1000)).toBe(true);
+    cache.invalidate(key);
+    expect(cache.isFresh(key, 1000)).toBe(false);
   });
 
   it('cache.invalidate() with no key clears every tracked key', () => {
-    window.GM.cache.markFresh('a');
-    window.GM.cache.markFresh('b');
-    window.GM.cache.invalidate();
-    expect(window.GM.cache.isFresh('a', 1000)).toBe(false);
-    expect(window.GM.cache.isFresh('b', 1000)).toBe(false);
+    cache.markFresh('a');
+    cache.markFresh('b');
+    cache.invalidate();
+    expect(cache.isFresh('a', 1000)).toBe(false);
+    expect(cache.isFresh('b', 1000)).toBe(false);
   });
 });
 

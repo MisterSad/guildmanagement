@@ -45,7 +45,7 @@ function openPortal(page) {
         view.classList.add('portal-connected');
         const step = document.getElementById('portal-step-form');
         step.classList.remove('hidden');
-        window.GM_PORTAL.loadDashboard();
+        window.GM_E2E.loadPortalDashboard();
     });
 }
 

@@ -1,15 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { statsView } from '../src/modules/stats/views/StatsView';
 import { mockStatsMembers, mockStatsEvents } from './helpers/stats-aggregate.js';
-
-// Mirror the src/main.ts bridge so window.GM_STATS keeps the same public API.
-window.GM_STATS = {
-    load: () => statsView.load(),
-    loadSingleEvent: (eventName, weeks) => statsView.loadSingleEvent(eventName, weeks),
-    renderLeaderboard: () => statsView.renderLeaderboard(),
-    setView: (view, mode) => statsView.setView(view, mode),
-    getState: () => statsView.getState()
-};
+import { setDbClient, resetSupabaseClient } from '../src/core/api/supabase';
+import { cache } from '../src/core/cache/cache';
 
 class MockBuilder {
     constructor(rows) {
@@ -77,18 +70,18 @@ describe('Ticket 1.2 — Leaderboard & Stats Empty State', () => {
         document.body.innerHTML =
             '<div class="stats-controls"></div>' +
             '<div class="stats-leaderboard-area"></div>';
-        if (window.GM && window.GM.cache) window.GM.cache.invalidate();
+        cache.invalidate();
     });
 
     afterEach(() => {
-        delete window.GM.db;
+        resetSupabaseClient();
         document.body.innerHTML = '';
         localStorage.removeItem('gm_stats_mode');
     });
 
     it('masks podium and renders empty state when participant list is empty for an event', async () => {
         // DB with members but 0 event participants in W_EMPTY
-        window.GM.db = makeDb({
+        setDbClient(makeDb({
             rpc: {
                 gm_stats_weeks: () => ({ data: { ok: true, weeks: [W_EMPTY] }, error: null }),
                 gm_stats_data: () => ({
@@ -106,10 +99,10 @@ describe('Ticket 1.2 — Leaderboard & Stats Empty State', () => {
                 guild_members: () => new MockBuilder(MEMBERS),
                 event_participants: () => new MockBuilder([])
             }
-        });
+        }));
 
         // Load single event mode for SvS on the empty week
-        await window.GM_STATS.loadSingleEvent('SvS', [W_EMPTY]);
+        await statsView.loadSingleEvent('SvS', [W_EMPTY]);
 
         const area = document.querySelector('.stats-leaderboard-area');
         expect(area).not.toBeNull();
@@ -146,7 +139,7 @@ describe('Ticket 1.2 — Leaderboard & Stats Empty State', () => {
             { pseudo: 'Charlie', event_name: 'Arms Race', week_start: W_EMPTY, score: 0, score_prep: 0, score_pvp: 0, participated: 0, guild: G }
         ];
 
-        window.GM.db = makeDb({
+        setDbClient(makeDb({
             rpc: {
                 gm_stats_weeks: () => ({ data: { ok: true, weeks: [W_EMPTY] }, error: null }),
                 gm_stats_data: () => ({
@@ -166,9 +159,9 @@ describe('Ticket 1.2 — Leaderboard & Stats Empty State', () => {
                 guild_members: () => new MockBuilder(MEMBERS),
                 event_participants: () => new MockBuilder(zeroParts)
             }
-        });
+        }));
 
-        await window.GM_STATS.loadSingleEvent('Arms Race', [W_EMPTY]);
+        await statsView.loadSingleEvent('Arms Race', [W_EMPTY]);
 
         const area = document.querySelector('.stats-leaderboard-area');
         // Podium and table MUST NOT be displayed
@@ -188,7 +181,7 @@ describe('Ticket 1.2 — Leaderboard & Stats Empty State', () => {
             { pseudo: 'Charlie', event_name: 'SvS', week_start: W_SCORED, score: 0, score_prep: 0, score_pvp: 0, participated: 0, guild: G }
         ];
 
-        window.GM.db = makeDb({
+        setDbClient(makeDb({
             rpc: {
                 gm_stats_weeks: () => ({ data: { ok: true, weeks: [W_SCORED] }, error: null }),
                 gm_stats_data: () => ({
@@ -208,9 +201,9 @@ describe('Ticket 1.2 — Leaderboard & Stats Empty State', () => {
                 guild_members: () => new MockBuilder(MEMBERS),
                 event_participants: () => new MockBuilder(validParts)
             }
-        });
+        }));
 
-        await window.GM_STATS.loadSingleEvent('SvS', [W_SCORED]);
+        await statsView.loadSingleEvent('SvS', [W_SCORED]);
 
         const area = document.querySelector('.stats-leaderboard-area');
         // Empty state must NOT be rendered

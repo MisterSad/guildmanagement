@@ -1,17 +1,18 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // StatsView imports getWeekStart directly (phase M4c), so pinning "the current
-// week" goes through a mock of its source module instead of window.GM.
-const weekOverride = vi.hoisted(() => ({ current: null }));
+// week" goes through a mock of its source module (there is no window bridge).
+const weekOverride = vi.hoisted(() => ({ current: null, prev: null }));
 vi.mock('../src/core/utils/date', async (importOriginal) => {
     const actual = await importOriginal();
     return {
         ...actual,
-        getWeekStart: (...args) => (weekOverride.current !== null ? weekOverride.current : actual.getWeekStart(...args))
+        getWeekStart: (...args) => (weekOverride.current !== null ? weekOverride.current : actual.getWeekStart(...args)),
+        getPrevWeekStart: (...args) => (weekOverride.prev !== null ? weekOverride.prev : actual.getPrevWeekStart(...args))
     };
 });
 // StatsView imports ensureAuthSession directly (phase M4c): neutralise it at
-// its source module rather than through window.GM.
+// its source module.
 vi.mock('../src/core/api/supabase', async (importOriginal) => {
     const actual = await importOriginal();
     return { ...actual, ensureAuthSession: async () => null };
@@ -19,16 +20,13 @@ vi.mock('../src/core/api/supabase', async (importOriginal) => {
 import { statsView } from '../src/modules/stats/views/StatsView';
 import { mockStatsMembers, mockStatsHealth, mockStatsEvents } from './helpers/stats-aggregate.js';
 
-// Bridge the /src StatsView onto the legacy window.GM_STATS surface, exactly
-// like src/main.ts does in production, so the historical suite keeps exercising
-// the same public API after the stats.js cutover.
-window.GM_STATS = {
-    load: () => statsView.load(),
-    loadSingleEvent: (eventName, weeks) => statsView.loadSingleEvent(eventName, weeks),
-    renderLeaderboard: () => statsView.renderLeaderboard(),
-    setView: (view, mode) => statsView.setView(view, mode),
-    getState: () => statsView.getState()
-};
+import { setDbClient, resetSupabaseClient } from '../src/core/api/supabase';
+import { cache } from '../src/core/cache/cache';
+import { computeShadowfrontAttendanceRate, eventScoringKey } from '../src/core/config/events';
+
+// The suite drives the StatsView singleton directly: the GM_STATS window
+// bridge main.ts used to install is gone (M4c).
+const STATS = statsView;
 
 // ── Mock Supabase query builder ───────────────────────────────────────────────
 class MockBuilder {
@@ -192,24 +190,24 @@ function parseLeaderboard() {
 beforeEach(() => {
     mountContainers();
     db = buildDb();
-    window.GM.db = db;
-    // Each test expects GM_STATS.load() to actually re-fetch against its own
-    // mock DB; the TTL freshness cache (gm-utils.js) is a same-session
-    // optimization and must not carry over between tests.
-    if (window.GM.cache) window.GM.cache.invalidate();
+    setDbClient(db);
+    // Each test expects STATS.load() to actually re-fetch against its own
+    // mock DB; the TTL freshness cache is a same-session optimization and must
+    // not carry over between tests.
+    cache.invalidate();
 });
 
 afterEach(() => {
-    delete window.GM.db;
+    resetSupabaseClient();
     document.body.innerHTML = '';
     localStorage.removeItem('gm_stats_mode');
 });
 
 describe('computeShadowfrontAttendanceRate (regression: rate exceeding 100%)', () => {
     it('matches the normal case where assigned squads cover every attended week', () => {
-        expect(window.GM.computeShadowfrontAttendanceRate(4, 5)).toBeCloseTo(0.8);
-        expect(window.GM.computeShadowfrontAttendanceRate(5, 5)).toBe(1);
-        expect(window.GM.computeShadowfrontAttendanceRate(0, 5)).toBe(0);
+        expect(computeShadowfrontAttendanceRate(4, 5)).toBeCloseTo(0.8);
+        expect(computeShadowfrontAttendanceRate(5, 5)).toBe(1);
+        expect(computeShadowfrontAttendanceRate(0, 5)).toBe(0);
     });
 
     it('caps at 100% instead of exceeding it when attendance history has more weeks than squad-assignment rows still on file', () => {
@@ -217,26 +215,26 @@ describe('computeShadowfrontAttendanceRate (regression: rate exceeding 100%)', (
         // shadowfront_squads only has 6 assignment rows left (2 older ones
         // were overwritten by a later session) — this used to render as
         // Math.round(8/6*100) = 133%.
-        expect(window.GM.computeShadowfrontAttendanceRate(8, 6)).toBe(1);
+        expect(computeShadowfrontAttendanceRate(8, 6)).toBe(1);
         // Never exceed 1 (100%) regardless of how far apart the two counts are.
-        expect(window.GM.computeShadowfrontAttendanceRate(8, 4)).toBe(1);
-        expect(window.GM.computeShadowfrontAttendanceRate(20, 1)).toBe(1);
+        expect(computeShadowfrontAttendanceRate(8, 4)).toBe(1);
+        expect(computeShadowfrontAttendanceRate(20, 1)).toBe(1);
     });
 
     it('still reports 100% for a player with attendance but zero squad-assignment rows on file', () => {
-        expect(window.GM.computeShadowfrontAttendanceRate(3, 0)).toBe(1);
+        expect(computeShadowfrontAttendanceRate(3, 0)).toBe(1);
     });
 
     it('returns 0 for a player with neither attendance nor assignments, without dividing by zero', () => {
-        expect(window.GM.computeShadowfrontAttendanceRate(0, 0)).toBe(0);
-        expect(window.GM.computeShadowfrontAttendanceRate(null, null)).toBe(0);
-        expect(window.GM.computeShadowfrontAttendanceRate(undefined, undefined)).toBe(0);
+        expect(computeShadowfrontAttendanceRate(0, 0)).toBe(0);
+        expect(computeShadowfrontAttendanceRate(null, null)).toBe(0);
+        expect(computeShadowfrontAttendanceRate(undefined, undefined)).toBe(0);
     });
 });
 
 describe('GM_STATS global mode', () => {
     it('computes weighted scores with glory deltas and consistency bonus by default for 1w (current week)', async () => {
-        await window.GM_STATS.load();
+        await STATS.load();
 
         const rows = parseLeaderboard();
         expect(rows).toHaveLength(3);
@@ -259,7 +257,7 @@ describe('GM_STATS global mode', () => {
     });
 
     it('renders week/period controls with 5 timeframe options (1w, 2w, 4w, 8w, all)', async () => {
-        await window.GM_STATS.load();
+        await STATS.load();
         const controls = document.querySelector('.stats-controls');
         expect(controls.querySelectorAll('.week-select option').length).toBe(2);
         const periodOpts = controls.querySelectorAll('.period-select option');
@@ -272,15 +270,15 @@ describe('GM_STATS global mode', () => {
     });
 
     it('does not throw when db is missing', async () => {
-        delete window.GM.db;
-        await expect(window.GM_STATS.load()).resolves.toBeUndefined();
+        resetSupabaseClient();
+        await expect(STATS.load()).resolves.toBeUndefined();
     });
 });
 
 describe('GM_STATS reliability across the whole window', () => {
     it('rates each member against what their guild actually ran', async () => {
-        await window.GM_STATS.load();
-        await window.GM_STATS.setView('leaderboard');
+        await STATS.load();
+        await STATS.setView('leaderboard');
         await selectPeriod('all');
 
         const rows = parseLeaderboard();
@@ -303,7 +301,7 @@ describe('GM_STATS reliability across the whole window', () => {
             { pseudo: 'AlphaPrime', event_name: 'SvS', session_id: 's3', week_start: W3, participated: 1, score: 999, score_prep: 0, score_pvp: 0, is_pending: false, guild: G },
             { pseudo: 'BetaKnight', event_name: 'SvS', session_id: 's3', week_start: W3, participated: 0, score: 0, score_prep: 0, score_pvp: 0, is_pending: false, guild: G }
         ]);
-        window.GM.db = makeDb({
+        setDbClient(makeDb({
             rpc: {
                 gm_stats_weeks: () => ({ data: { ok: true, weeks: [W3, W2, W1] }, error: null }),
                 gm_stats_data: () => ({ data: { guild: G, members: MEMBERS, participants: futureParts, glory: GLORY, squads: SQUADS }, error: null }),
@@ -315,12 +313,12 @@ describe('GM_STATS reliability across the whole window', () => {
                 event_participants: () => new MockBuilder(futureParts.concat(GLORY)),
                 shadowfront_squads: () => new MockBuilder(SQUADS)
             }
-        });
+        }));
         weekOverride.current = W2;
 
         try {
-            await window.GM_STATS.load();
-            await window.GM_STATS.setView('leaderboard');
+            await STATS.load();
+            await STATS.setView('leaderboard');
             await selectPeriod('all');
 
             const rows = parseLeaderboard();
@@ -380,20 +378,20 @@ describe('GM_STATS coefficient resolution (regression)', () => {
     // invisibly for exactly this purpose; setView() is the same path the
     // visible tabs take.
     async function loadInGlobalMode() {
-        await window.GM_STATS.load();
-        await window.GM_STATS.setView('leaderboard', 'global');
+        await STATS.load();
+        await STATS.setView('leaderboard', 'global');
     }
 
     it('applies the guild-configured coeff_dtr to a Defend Trade Route row instead of the pre-bug fallback of 1', async () => {
         // Defaults: DTR 2, SvS 5. Attending the DTR and missing the SvS gives
         // 2/(2+5) = 29%. Raising coeff_dtr to 50 makes the attended event the
         // one that matters: 50/(50+5) = 91%.
-        window.GM.db = buildDtrDb([]); // no override: falls back to default coeff_dtr = '2'
+        setDbClient(buildDtrDb([])); // no override: falls back to default coeff_dtr = '2'
         await loadInGlobalMode();
         const defaultScore = parseFloat(parseLeaderboard().find((r) => r.pseudo === 'DeltaRunner').score);
         expect(defaultScore).toBeCloseTo(28.6, 0);
 
-        window.GM.db = buildDtrDb([{ key: 'coeff_dtr', guild: G, value: '50' }]);
+        setDbClient(buildDtrDb([{ key: 'coeff_dtr', guild: G, value: '50' }]));
         await loadInGlobalMode();
         const customScore = parseFloat(parseLeaderboard().find((r) => r.pseudo === 'DeltaRunner').score);
         expect(customScore).toBeCloseTo(90.9, 0);
@@ -458,22 +456,22 @@ describe('GM_STATS cockpit', () => {
     beforeEach(() => {
         mountContainers();
         db = buildKpiDb();
-        window.GM.db = db;
+        setDbClient(db);
             // Deterministic week helpers: current week = W2, previous = W1
         weekOverride.current = W2;
-        window.GM.getPrevWeekStart = () => W1;
+        weekOverride.prev = W1;
     });
 
     afterEach(() => {
-        delete window.GM.db;
+        resetSupabaseClient();
             weekOverride.current = null;
-        window.GM.getPrevWeekStart = undefined;
+        weekOverride.prev = null;
         document.body.innerHTML = '';
     });
 
     it('leads with the four numbers a guild leader acts on', async () => {
-        await window.GM_STATS.load();
-        await window.GM_STATS.setView('cockpit');
+        await STATS.load();
+        await STATS.setView('cockpit');
         await new Promise((r) => setTimeout(r, 0));
 
         const text = document.querySelector('.stats-leaderboard-area').textContent;
@@ -488,8 +486,8 @@ describe('GM_STATS cockpit', () => {
         // war_sessions has been in the schema the whole time and the Stats page
         // never read it. Days 1-5 are preparation, day 6 is the battle: the
         // split is what tells an admin which half they are losing.
-        await window.GM_STATS.load();
-        await window.GM_STATS.setView('cockpit');
+        await STATS.load();
+        await STATS.setView('cockpit');
         await new Promise((r) => setTimeout(r, 0));
 
         const text = document.querySelector('.stats-leaderboard-area').textContent;
@@ -499,8 +497,8 @@ describe('GM_STATS cockpit', () => {
     });
 
     it('shows power progression as a median, with its sample size', async () => {
-        await window.GM_STATS.load();
-        await window.GM_STATS.setView('cockpit');
+        await STATS.load();
+        await STATS.setView('cockpit');
         await new Promise((r) => setTimeout(r, 0));
 
         const text = document.querySelector('.stats-leaderboard-area').textContent;
@@ -514,8 +512,8 @@ describe('GM_STATS cockpit', () => {
     });
 
     it('says how complete the data is, since every other number depends on it', async () => {
-        await window.GM_STATS.load();
-        await window.GM_STATS.setView('cockpit');
+        await STATS.load();
+        await STATS.setView('cockpit');
         await new Promise((r) => setTimeout(r, 0));
 
         const text = document.querySelector('.stats-leaderboard-area').textContent;
@@ -528,8 +526,8 @@ describe('GM_STATS cockpit', () => {
     });
 
     it('segments the roster by engagement instead of listing "inactive"', async () => {
-        await window.GM_STATS.load();
-        await window.GM_STATS.setView('cockpit');
+        await STATS.load();
+        await STATS.setView('cockpit');
         await new Promise((r) => setTimeout(r, 0));
 
         const text = document.querySelector('.stats-leaderboard-area').textContent;
@@ -544,7 +542,7 @@ describe('GM_STATS cockpit', () => {
         const parts = PARTS_POWER.concat([
             { pseudo: 'AlphaPrime', event_name: 'SvS', session_id: 'sFut', week_start: W3, participated: 1, is_pending: false, guild: G }
         ]);
-        window.GM.db = makeDb({
+        setDbClient(makeDb({
             rpc: {
                 gm_stats_weeks: () => ({ data: { ok: true, weeks: [W3, W2, W1] }, error: null }),
                 gm_stats_members: mockStatsMembers({ rows: parts, glory: [], members: MEMBERS_POWER }),
@@ -559,11 +557,11 @@ describe('GM_STATS cockpit', () => {
                 guild_transfers: () => new MockBuilder([]),
                 event_status: () => new MockBuilder([])
             }
-        });
+        }));
         weekOverride.current = W2;
 
-        await window.GM_STATS.load();
-        await window.GM_STATS.setView('cockpit');
+        await STATS.load();
+        await STATS.setView('cockpit');
         await new Promise((r) => setTimeout(r, 0));
         await new Promise((r) => setTimeout(r, 0));
 
@@ -577,8 +575,8 @@ describe('GM_STATS cockpit', () => {
     });
 
     it('renders the roster breakdown without throwing', async () => {
-        await window.GM_STATS.load();
-        await window.GM_STATS.setView('cockpit');
+        await STATS.load();
+        await STATS.setView('cockpit');
         await new Promise((r) => setTimeout(r, 0));
 
         const text = document.querySelector('.stats-leaderboard-area').textContent;
@@ -600,9 +598,9 @@ describe('GM_STATS cockpit', () => {
                 shadowfront_squads: () => new MockBuilder([])
             }
         });
-        window.GM.db = emptyDb;
-        await window.GM_STATS.load();
-        await window.GM_STATS.setView('cockpit');
+        setDbClient(emptyDb);
+        await STATS.load();
+        await STATS.setView('cockpit');
         await new Promise((r) => setTimeout(r, 0));
         await new Promise((r) => setTimeout(r, 0));
 
@@ -627,8 +625,8 @@ describe('GM_STATS cockpit', () => {
                 shadowfront_squads: () => new MockBuilder([])
             }
         });
-        window.GM.db = db;
-        await window.GM_STATS.load();
+        setDbClient(db);
+        await STATS.load();
         // Switch to the cockpit, then reload: the view is restored.
         //
         // This used to assert the persisted value was 'kpi-engage', reached by
@@ -637,11 +635,11 @@ describe('GM_STATS cockpit', () => {
         // a screen that did not exist. What matters, and what is asserted now,
         // is that a reload comes back to the cockpit rather than dropping the
         // user on the leaderboard.
-        await window.GM_STATS.setView('cockpit');
+        await STATS.setView('cockpit');
         await new Promise((r) => setTimeout(r, 0));
         expect(localStorage.getItem('gm_stats_mode')).toBe('kpi-health');
 
-        await window.GM_STATS.load();
+        await STATS.load();
         const text = document.querySelector('.stats-leaderboard-area').textContent;
         expect(text).toContain('Members turning up each week');
     });
@@ -655,9 +653,9 @@ describe('GM_STATS cockpit', () => {
                 shadowfront_squads: () => new MockBuilder([])
             }
         });
-        window.GM.db = db;
-        await window.GM_STATS.load();
-        await window.GM_STATS.setView('cockpit');
+        setDbClient(db);
+        await STATS.load();
+        await STATS.setView('cockpit');
         await new Promise((r) => setTimeout(r, 0));
 
         const controls = document.querySelector('.stats-controls');
@@ -688,7 +686,7 @@ describe('GM_STATS cockpit', () => {
         const tenantKeys = new Set();
         allRecords.forEach(r => {
             if ((r.eventName || '').toLowerCase() === 'glory') return;
-            tenantKeys.add(window.GM.eventScoringKey(r.eventName, r.sessionId, r.weekStart));
+            tenantKeys.add(eventScoringKey(r.eventName, r.sessionId, r.weekStart));
         });
         expect(tenantKeys.size).toBe(5);
 
@@ -697,7 +695,7 @@ describe('GM_STATS cockpit', () => {
         const aliceKeys = new Set();
         aliceRecords.forEach(r => {
             if ((r.eventName || '').toLowerCase() === 'glory') return;
-            if (r.attended) aliceKeys.add(window.GM.eventScoringKey(r.eventName, r.sessionId, r.weekStart));
+            if (r.attended) aliceKeys.add(eventScoringKey(r.eventName, r.sessionId, r.weekStart));
         });
         expect(aliceKeys.size).toBe(5);
         expect(Math.round((aliceKeys.size / tenantKeys.size) * 100)).toBe(100);
@@ -707,7 +705,7 @@ describe('GM_STATS cockpit', () => {
         const bobKeys = new Set();
         bobRecords.forEach(r => {
             if ((r.eventName || '').toLowerCase() === 'glory') return;
-            if (r.attended) bobKeys.add(window.GM.eventScoringKey(r.eventName, r.sessionId, r.weekStart));
+            if (r.attended) bobKeys.add(eventScoringKey(r.eventName, r.sessionId, r.weekStart));
         });
         expect(bobKeys.size).toBe(1);
         expect(Math.round((bobKeys.size / tenantKeys.size) * 100)).toBe(20);
@@ -719,7 +717,7 @@ describe('GM_STATS cockpit', () => {
             { pseudo: 'AlphaPrime', event_name: 'Arms Race', session_id: 'ar1', week_start: W2, participated: 1, score: 40, score_prep: 0, score_pvp: 0, is_pending: false, guild: G },
             { pseudo: 'AlphaPrime', event_name: 'Defend Trade Route', session_id: 'd1', week_start: W2, participated: 1, score: 30, score_prep: 0, score_pvp: 0, is_pending: false, guild: G }
         ]);
-        window.GM.db = makeDb({
+        setDbClient(makeDb({
             rpc: {
                 gm_stats_weeks: () => ({ data: { ok: true, weeks: [W2, W1] }, error: null }),
                 gm_stats_data: () => ({
@@ -740,16 +738,16 @@ describe('GM_STATS cockpit', () => {
                 event_participants: () => new MockBuilder(EVENT_PARTS.concat(GLORY)),
                 shadowfront_squads: () => new MockBuilder(SQUADS)
             }
-        });
-        await window.GM_STATS.load();
+        }));
+        await STATS.load();
 
-        await window.GM_STATS.setView('events', 'Shadowfront');
+        await STATS.setView('events', 'Shadowfront');
         expect(document.querySelector('.stats-leaderboard-area').textContent).toContain('AlphaPrime');
 
-        await window.GM_STATS.setView('events', 'Arms Race');
+        await STATS.setView('events', 'Arms Race');
         expect(document.querySelector('.stats-leaderboard-area').textContent).toContain('AlphaPrime');
 
-        await window.GM_STATS.setView('events', 'DTR');
+        await STATS.setView('events', 'DTR');
         expect(document.querySelector('.stats-leaderboard-area').textContent).toContain('AlphaPrime');
     });
 });

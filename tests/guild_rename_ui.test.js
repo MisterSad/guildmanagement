@@ -20,6 +20,7 @@ import {
   loadGuildTagCard
 } from '../src/modules/app/admin/guild-rename';
 import { getAppState, patchAppState, resetAppState } from '../src/core/state/app-state';
+import { setDbClient, resetSupabaseClient } from '../src/core/api/supabase';
 
 const CARD_DOM = `
   <div id="guild-tag-card" class="hidden">
@@ -33,15 +34,13 @@ const CARD_DOM = `
 
 function stubDb(handlers) {
   const calls = [];
-  window.GM = {
-    db: {
-      rpc: vi.fn(async (name, args) => {
-        calls.push({ name, args });
-        const h = handlers[name];
-        return h ? h(args) : { data: null, error: { message: 'no_handler' } };
-      })
-    }
-  };
+  setDbClient({
+    rpc: vi.fn(async (name, args) => {
+      calls.push({ name, args });
+      const h = handlers[name];
+      return h ? h(args) : { data: null, error: { message: 'no_handler' } };
+    })
+  });
   return calls;
 }
 
@@ -54,7 +53,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  delete window.GM;
+  resetSupabaseClient();
   document.getElementById('guild-rename-overlay')?.remove();
   vi.useRealTimers();
 });

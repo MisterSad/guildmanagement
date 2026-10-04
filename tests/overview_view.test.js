@@ -7,12 +7,13 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { hasDiscordWebhook } from '../src/modules/overview/overview.service';
 import { OverviewView } from '../src/modules/overview/views/OverviewView';
+import { setDbClient, resetSupabaseClient } from '../src/core/api/supabase';
 
 const W_CUR = '2026-08-03';
 const W_PREV = '2026-07-27';
 
 // The view imports its collaborators directly; mock the source modules
-// rather than the legacy window.GM surface.
+// rather than the removed window bridge.
 const mocks = vi.hoisted(() => ({
   showToast: vi.fn(),
   exportGuildData: vi.fn(async () => ({ ok: true })),
@@ -81,7 +82,7 @@ function chained(value) {
 }
 
 function installDb() {
-  window.GM.db = {
+  setDbClient({
     // ARC-04: the webhook keys that are set, never their values.
     rpc: (name, args) => Promise.resolve(name === 'gm_configured_webhooks'
       ? { data: TABLES.guild_config.filter((r) => r.guild === args.p_guild && String(r.value || '').trim() !== '').map((r) => r.key), error: null }
@@ -99,12 +100,12 @@ function installDb() {
       }
       return chained(TABLES[table] || []);
     }
-  };
+  });
 }
 
 function installGM() {
-  // Only the client lives on window.GM (getClient() reads it).
-  window.GM = { db: null };
+  // The client is installed with setDbClient() (getClient() reads it).
+  setDbClient(null);
 }
 
 function mount() {
@@ -119,7 +120,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers();
-  delete window.GM;
+  resetSupabaseClient();
   document.body.innerHTML = '';
   vi.restoreAllMocks();
 });
@@ -162,10 +163,10 @@ describe('OverviewView — tickers & cleanup', () => {
 });
 
 describe('OverviewView — cutover guard', () => {
-  it('does not expose window.GM_OVERVIEW', async () => {
+  it('does not expose a GM_OVERVIEW global', async () => {
     const view = new OverviewView();
     await view.load();
-    expect(window.GM_OVERVIEW).toBeUndefined();
+    expect('GM_OVERVIEW' in window).toBe(false);
   });
 });
 

@@ -3,7 +3,7 @@
  *
  * Golden suite for src/core/i18n/i18n.ts after the legacy root `i18n.js`
  * removal. The full English dictionary is the single source of
- * truth; window.GM_I18N is provided by tests/setup.js (mirroring src/main.ts).
+ * truth. Since M4c there is no GM_I18N / GM.t on window: callers import t().
  */
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
@@ -44,9 +44,10 @@ describe('i18n dictionary (golden)', () => {
     expect(t('toast_config_save_failed', { n: 3 })).toContain('could not be saved');
   });
 
-  it('is exposed through the setup bridge (window.GM_I18N / window.GM.t)', () => {
-    expect(window.GM_I18N.t('login_label_id')).toBe('Identifier');
-    expect(window.GM.t('login_label_id')).toBe('Identifier');
+  it('is no longer exposed on window (callers import t())', () => {
+    expect(t('login_label_id')).toBe('Identifier');
+    expect('GM_I18N' in window).toBe(false);
+    expect('GM' in window).toBe(false);
   });
 });
 

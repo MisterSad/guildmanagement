@@ -3,7 +3,8 @@
  *
  * Final Strangler cutover guards: the legacy `app.js` monolith must be gone
  * from disk and from `index.html`, and the runtime must be driven by the typed
- * /src modules through the window.GM_* bridge assembled in src/main.ts.
+ * /src modules, which import each other directly. The GM_* window bridge
+ * src/main.ts used to assemble is gone (M4c); only the frozen GM_E2E remains.
  */
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
@@ -76,16 +77,22 @@ describe('Final cutover: src/main.ts bootstrap', () => {
     }
   });
 
-  it('assigns the OCR modal bridges directly', () => {
-    expect(main).toContain('wAny.openOcrModal =');
-    expect(main).toContain('wAny.closeOcrModal =');
+  // Comments are stripped: main.ts documents the bridges it no longer installs.
+  const mainCode = main.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
+  it('wires the OCR modal by import, not through window globals', () => {
+    expect(main).toContain("import { openOcrModal");
     expect(main).toContain('openOcrModal(metric)');
+    expect(mainCode).not.toMatch(/window\.(openOcrModal|closeOcrModal)\s*=/);
+    expect(mainCode).not.toMatch(/\bwAny\b/);
   });
 
-  it('exposes the typed GM_* domain bridges', () => {
+  it('installs no GM_* domain bridge, only the frozen GM_E2E', () => {
     ['GM_AUTH', 'GM_ROUTER', 'GM_ADMIN', 'GM_MEMBERS', 'GM_OCR'].forEach((bridge) => {
-      expect(main).toContain('wAny.' + bridge + ' =');
+      expect(mainCode).not.toContain(bridge);
     });
+    expect(mainCode).toContain("Object.defineProperty(window, 'GM_E2E'");
+    expect(mainCode).toContain('Object.freeze(');
   });
 
   it('delegates OCR trigger clicks (former app.js document handler)', () => {
@@ -123,8 +130,8 @@ describe('Final cutover: residual app.js wiring re-homed under /src', () => {
     // The card was re-homed under /src during the cutover, and removed on
     // 2026-09-27. It let people REGISTER passkeys that could not be used to
     // sign in anywhere: both sign-in buttons called `wirePasskeyLoginButton()`
-    // and `openBackupCodeDialog()`, which are exported onto the window.GM
-    // bridge and were never invoked. The card, its mount, its router loader and
+    // and `openBackupCodeDialog()`, which were exported onto the (since
+    // removed) window bridge and were never invoked. The card, its mount, its router loader and
     // its bridge entries went together, so nothing is left to find nothing.
     //
     // Comments are stripped first. The code left behind NAMES the removed

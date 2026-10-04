@@ -7,9 +7,10 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { GloryView } from '../src/modules/glory/views/GloryView';
 import { showToast } from '../src/core/dom/toast';
+import { setDbClient, resetSupabaseClient } from '../src/core/api/supabase';
 
-// The view imports its helpers directly (no more `window.GM.*` reads): mock
-// the source modules with the stubs the suite used to put on window.GM.
+// The view imports its helpers directly: mock the source modules with the
+// stubs the suite used to put on the (now removed) window bridge.
 vi.mock('../src/core/i18n/i18n', async (importOriginal) => ({
   ...(await importOriginal()),
   t: (k) => k
@@ -52,11 +53,11 @@ function chained(value) {
   return chain;
 }
 
-function installGM(tables) {
+function installDb(tables) {
   rpcMock = vi.fn(async () => ({ data: [{ ok: true }], error: null }));
   localStorage.setItem('gm_current_guild', 'ALPHA');
-  // Only the Supabase client is still read from `window.GM` (via getClient()).
-  window.GM = { db: { from: (table) => chained(tables[table] || []), rpc: rpcMock } };
+  // The view reads the Supabase client through getClient().
+  setDbClient({ from: (table) => chained(tables[table] || []), rpc: rpcMock });
 }
 
 function mount() {
@@ -83,12 +84,12 @@ const TABLES = {
 beforeEach(() => {
   vi.mocked(showToast).mockClear();
   mount();
-  installGM(JSON.parse(JSON.stringify(TABLES)));
+  installDb(JSON.parse(JSON.stringify(TABLES)));
 });
 
 afterEach(() => {
   vi.useRealTimers();
-  delete window.GM;
+  resetSupabaseClient();
   document.body.innerHTML = '';
   vi.restoreAllMocks();
 });
@@ -108,7 +109,7 @@ describe('GloryView.load()', () => {
   });
 
   it('renders the empty state without members', async () => {
-    installGM({ guild_members: [], event_participants: [] });
+    installDb({ guild_members: [], event_participants: [] });
     const view = new GloryView();
     await view.load();
     expect(area().innerHTML).toContain('gm-empty-title');
@@ -131,7 +132,7 @@ describe('GloryView — search & save', () => {
   });
 
   // The old title ended "then refreshes members": the view called
-  // window.GM.fetchGuildMembers(), which only this suite ever defined -- in the
+  // the bridge's fetchGuildMembers(), which only this suite ever defined -- in the
   // app it was a no-op, and the call is gone.
   it('debounces and upserts via gm_upsert_player_glory', async () => {
     vi.useFakeTimers();
@@ -169,9 +170,9 @@ describe('GloryView — search & save', () => {
 });
 
 describe('GloryView — cutover guard', () => {
-  it('does not expose window.GM_GLORY', async () => {
+  it('does not expose a GM_GLORY global on window', async () => {
     const view = new GloryView();
     await view.load();
-    expect(window.GM_GLORY).toBeUndefined();
+    expect(Object.getOwnPropertyNames(window)).not.toContain('GM_GLORY');
   });
 });

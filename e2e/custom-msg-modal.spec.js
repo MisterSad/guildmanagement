@@ -25,15 +25,9 @@ test('all 6 custom message buttons have accessible labels', async ({ page }) => 
 test('opens Discord message customizer and closes via Cancel button', async ({ page }) => {
   await page.goto('/');
 
-  // Trigger modal via direct helper or button click
+  // Open it from its button. The guild config it reads comes from the stubbed
+  // /rest/v1 above (the global config injection this used is gone, M4c).
   await page.evaluate(() => {
-    // Inject a dummy config getter if not present
-    window.GM = window.GM || {};
-    window.GM.config = window.GM.config || {
-      get: async () => '',
-      set: async () => {},
-    };
-
     const btn = document.querySelector('[data-custom-msg="armsrace"]');
     if (btn) {
       btn.click();

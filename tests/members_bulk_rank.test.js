@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'fs';
 import path from 'path';
+import { getAllowedBulkRoles, isRoleAllowedForBulk, filterBulkEligibleMembers } from '../src/modules/members/members.service';
+import { t } from '../src/core/i18n/i18n';
 
 const root = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.resolve(root, p), 'utf-8');
@@ -8,20 +10,20 @@ const read = (p) => fs.readFileSync(path.resolve(root, p), 'utf-8');
 describe('Bulk Member Rank Assignment (Excluding R5)', () => {
     describe('1. Role Whitelist & Validation', () => {
         it('getAllowedBulkRoles returns exactly R1, R2, R3, R4 and excludes R5', () => {
-            const roles = window.GM.getAllowedBulkRoles();
+            const roles = getAllowedBulkRoles();
             expect(roles).toEqual(['R1', 'R2', 'R3', 'R4']);
             expect(roles.includes('R5')).toBe(false);
         });
 
         it('isRoleAllowedForBulk accurately validates permissible bulk ranks', () => {
-            expect(window.GM.isRoleAllowedForBulk('R1')).toBe(true);
-            expect(window.GM.isRoleAllowedForBulk('R2')).toBe(true);
-            expect(window.GM.isRoleAllowedForBulk('R3')).toBe(true);
-            expect(window.GM.isRoleAllowedForBulk('R4')).toBe(true);
-            expect(window.GM.isRoleAllowedForBulk('R5')).toBe(false);
-            expect(window.GM.isRoleAllowedForBulk('admin')).toBe(false);
-            expect(window.GM.isRoleAllowedForBulk('')).toBe(false);
-            expect(window.GM.isRoleAllowedForBulk(null)).toBe(false);
+            expect(isRoleAllowedForBulk('R1')).toBe(true);
+            expect(isRoleAllowedForBulk('R2')).toBe(true);
+            expect(isRoleAllowedForBulk('R3')).toBe(true);
+            expect(isRoleAllowedForBulk('R4')).toBe(true);
+            expect(isRoleAllowedForBulk('R5')).toBe(false);
+            expect(isRoleAllowedForBulk('admin')).toBe(false);
+            expect(isRoleAllowedForBulk('')).toBe(false);
+            expect(isRoleAllowedForBulk(null)).toBe(false);
         });
     });
 
@@ -36,7 +38,7 @@ describe('Bulk Member Rank Assignment (Excluding R5)', () => {
 
         it('filters out R5 members from bulk selection and reports excluded count', () => {
             const selected = ['GuildLeader', 'OfficerOne', 'VeteranAlex', 'RecruitCharlie'];
-            const res = window.GM.filterBulkEligibleMembers(mockRoster, selected);
+            const res = filterBulkEligibleMembers(mockRoster, selected);
 
             expect(res.eligiblePseudos).toEqual(['OfficerOne', 'VeteranAlex', 'RecruitCharlie']);
             expect(res.eligiblePseudos.includes('GuildLeader')).toBe(false);
@@ -45,7 +47,7 @@ describe('Bulk Member Rank Assignment (Excluding R5)', () => {
 
         it('handles case-insensitive pseudos matching accurately', () => {
             const selected = new Set(['officerone', 'MEMBERBOB']);
-            const res = window.GM.filterBulkEligibleMembers(mockRoster, selected);
+            const res = filterBulkEligibleMembers(mockRoster, selected);
 
             expect(res.eligiblePseudos).toEqual(['OfficerOne', 'MemberBob']);
             expect(res.excludedR5Count).toBe(0);
@@ -53,15 +55,15 @@ describe('Bulk Member Rank Assignment (Excluding R5)', () => {
 
         it('returns empty list when only R5 is selected', () => {
             const selected = ['GuildLeader'];
-            const res = window.GM.filterBulkEligibleMembers(mockRoster, selected);
+            const res = filterBulkEligibleMembers(mockRoster, selected);
 
             expect(res.eligiblePseudos).toEqual([]);
             expect(res.excludedR5Count).toBe(1);
         });
 
         it('handles empty roster or selected set gracefully', () => {
-            expect(window.GM.filterBulkEligibleMembers([], [])).toEqual({ eligiblePseudos: [], excludedR5Count: 0 });
-            expect(window.GM.filterBulkEligibleMembers(null, null)).toEqual({ eligiblePseudos: [], excludedR5Count: 0 });
+            expect(filterBulkEligibleMembers([], [])).toEqual({ eligiblePseudos: [], excludedR5Count: 0 });
+            expect(filterBulkEligibleMembers(null, null)).toEqual({ eligiblePseudos: [], excludedR5Count: 0 });
         });
     });
 
@@ -104,11 +106,11 @@ describe('Bulk Member Rank Assignment (Excluding R5)', () => {
         });
 
         it('i18n.js includes all required translation keys for bulk actions', () => {
-            expect(window.GM_I18N.t('bulk_select_all')).toBe('Select All');
-            expect(window.GM_I18N.t('bulk_deselect_all')).toBe('Deselect All');
-            expect(window.GM_I18N.t('bulk_assign_rank')).toBe('Assign Rank:');
-            expect(window.GM_I18N.t('bulk_selected_count')).toContain('{n}');
-            expect(window.GM_I18N.t('toast_bulk_role_updated')).toContain('{role}');
+            expect(t('bulk_select_all')).toBe('Select All');
+            expect(t('bulk_deselect_all')).toBe('Deselect All');
+            expect(t('bulk_assign_rank')).toBe('Assign Rank:');
+            expect(t('bulk_selected_count')).toContain('{n}');
+            expect(t('toast_bulk_role_updated')).toContain('{role}');
         });
     });
 
@@ -122,9 +124,9 @@ describe('Bulk Member Rank Assignment (Excluding R5)', () => {
             const selected = new Set(['LeaderX', 'PlayerA', 'PlayerB']);
             const targetRole = 'R4';
 
-            expect(window.GM.isRoleAllowedForBulk(targetRole)).toBe(true);
+            expect(isRoleAllowedForBulk(targetRole)).toBe(true);
 
-            const { eligiblePseudos, excludedR5Count } = window.GM.filterBulkEligibleMembers(mockRoster, selected);
+            const { eligiblePseudos, excludedR5Count } = filterBulkEligibleMembers(mockRoster, selected);
             expect(eligiblePseudos).toEqual(['PlayerA', 'PlayerB']);
             expect(excludedR5Count).toBe(1);
 

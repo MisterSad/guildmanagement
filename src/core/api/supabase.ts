@@ -11,44 +11,35 @@ import { mapFetchError } from './fetch-errors';
 
 let client: SupabaseClient | null = null;
 
+/**
+ * Installs the app's single Supabase client. main.ts builds it from the
+ * hardcoded constants, wraps it in the multi-tenant write guard
+ * (installDbWriteGuard), and hands it here before any service runs. Tests
+ * install their fakes the same way.
+ *
+ * Until M4c this client lived on `window.GM.db` and every accessor read it
+ * back from there.
+ */
+export function setDbClient(next: SupabaseClient | null): void {
+  client = next;
+}
+
+/** Clears the client (tests). */
 export function resetSupabaseClient(): void {
   client = null;
 }
 
-/**
- * Runtime client accessor (port of gm-utils.js#getClient): returns the live
- * window.GM.db (tests / hot-swap) and nothing else — never a cached client.
- */
+/** The guarded client, or null before main.ts installed it. */
 export function getClient(): SupabaseClient | null {
-  if (typeof window !== 'undefined' && (window as any).GM && (window as any).GM.db) {
-    return (window as any).GM.db;
-  }
-  return null;
+  return client;
 }
 
 /**
- * Memoised accessor for the app's single Supabase client.
- *
- * `main.ts` builds the client from the hardcoded constants and wraps it in the
- * multi-tenant write guard before any service runs, then publishes it as
- * `window.GM.db` -- so that is the only source. An `import.meta.env`
- * (`VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`) fallback used to live here,
- * but it was unreachable: `main.ts:222` deliberately builds from the constants
- * ("never import.meta.env"), so `window.GM.db` was always already set. Worse, a
- * client created through that fallback would have bypassed `installDbWriteGuard`
- * entirely -- a silent hole in the tenant write guard if it had ever run.
- *
- * Returns `null` rather than fabricating an unguarded client.
+ * Same client as getClient(). Kept as a second name because services were
+ * written against it; it never fabricates an unguarded client.
  */
 export function getSupabaseClient(): SupabaseClient | null {
-  if (client) return client;
-
-  if (typeof window !== 'undefined' && (window as any).GM && (window as any).GM.db) {
-    client = (window as any).GM.db;
-    return client;
-  }
-
-  return null;
+  return client;
 }
 
 // `escapeHTML` used to be duplicated here. It now lives solely in

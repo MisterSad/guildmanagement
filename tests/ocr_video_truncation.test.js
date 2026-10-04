@@ -25,6 +25,8 @@ import { handleOcrFiles } from '../src/modules/app/ocr/ocr.controller';
 import { setCurrentOcrMetric, setOcrExtractedPlayers, getOcrExtractedPlayers } from '../src/modules/app/ocr/ocr.meta';
 import { setGuildMembers, clearMembersStore } from '../src/modules/app/members/members.store';
 import { geminiSupportsThinking } from '../supabase/functions/_shared/gemini.ts';
+import { setDbClient, resetSupabaseClient } from '../src/core/api/supabase';
+import { patchAppState } from '../src/core/state/app-state';
 
 const rootDir = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(rootDir, p), 'utf8');
@@ -151,14 +153,14 @@ beforeEach(() => {
     set src(_v) { queueMicrotask(() => { if (this.onerror) this.onerror(); }); }
   });
 
-  window.GM = window.GM || {};
-  window.GM.getActiveGuild = () => 'ALPHA';
-  window.GM.getGuildTag = async () => 'FGF';
+  // The controller resolves the guild and its tag through the real modules.
+  patchAppState({ currentGuild: 'ALPHA' });
 });
 
 afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+  resetSupabaseClient();
   clearMembersStore();
   setOcrExtractedPlayers([]);
   document.body.innerHTML = '';
@@ -166,7 +168,7 @@ afterEach(() => {
 
 describe('one bad batch does not discard the good ones', () => {
   it('keeps the players the surviving batches read', async () => {
-    window.GM.db = {
+    setDbClient({
       functions: {
         invoke: stubInvoke([
           { ok: true, players: [{ pseudo: 'Alpha', score: 500, raw_score: '500' }] },
@@ -174,7 +176,7 @@ describe('one bad batch does not discard the good ones', () => {
           { ok: true, players: [{ pseudo: 'Bravo', score: 400, raw_score: '400' }] }
         ])
       }
-    };
+    });
 
     await handleOcrFiles(frames());
 
@@ -184,7 +186,7 @@ describe('one bad batch does not discard the good ones', () => {
   });
 
   it('says so, because a silent partial scan is worse than a loud one', async () => {
-    window.GM.db = {
+    setDbClient({
       functions: {
         invoke: stubInvoke([
           { ok: true, players: [{ pseudo: 'Alpha', score: 500, raw_score: '500' }] },
@@ -192,7 +194,7 @@ describe('one bad batch does not discard the good ones', () => {
           { ok: true, players: [{ pseudo: 'Bravo', score: 400, raw_score: '400' }] }
         ])
       }
-    };
+    });
 
     await handleOcrFiles(frames());
 
@@ -201,7 +203,7 @@ describe('one bad batch does not discard the good ones', () => {
   });
 
   it('still fails outright when nothing at all came back', async () => {
-    window.GM.db = {
+    setDbClient({
       functions: {
         invoke: stubInvoke([
           { ok: false, error: 'json_parse_failed' },
@@ -209,7 +211,7 @@ describe('one bad batch does not discard the good ones', () => {
           { ok: false, error: 'json_parse_failed' }
         ])
       }
-    };
+    });
 
     await handleOcrFiles(frames());
 

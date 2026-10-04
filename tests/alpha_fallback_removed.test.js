@@ -20,6 +20,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { getActiveGuild, canWriteGuild } from '../src/core/auth/roles.ts';
+import { patchAppState } from '../src/core/state/app-state';
 
 const rootDir = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(rootDir, p), 'utf8');
@@ -37,15 +38,11 @@ function walk(dir, out = []) {
 
 beforeEach(() => {
   localStorage.clear();
-  delete window.currentGuild;
-  delete window.currentGuildRestriction;
-  delete window.guildsData;
+  patchAppState({ currentGuild: null, currentGuildRestriction: null, guildsData: {} });
 });
 afterEach(() => {
   localStorage.clear();
-  delete window.currentGuild;
-  delete window.currentGuildRestriction;
-  delete window.guildsData;
+  patchAppState({ currentGuild: null, currentGuildRestriction: null, guildsData: {} });
 });
 
 describe('H2 — the resolver reports failure instead of inventing a tenant', () => {
@@ -54,9 +51,9 @@ describe('H2 — the resolver reports failure instead of inventing a tenant', ()
   });
 
   it('treats blank and whitespace as unresolved, not as a guild id', () => {
-    window.currentGuild = '   ';
+    patchAppState({ currentGuild: '   ' });
     expect(getActiveGuild()).toBe(null);
-    window.currentGuild = '';
+    patchAppState({ currentGuild: '' });
     localStorage.setItem('gm_current_guild', '  ');
     expect(getActiveGuild()).toBe(null);
   });
@@ -64,14 +61,14 @@ describe('H2 — the resolver reports failure instead of inventing a tenant', ()
   it('keeps the documented precedence: restriction → current → localStorage', () => {
     localStorage.setItem('gm_current_guild', 'STORED');
     expect(getActiveGuild()).toBe('STORED');
-    window.currentGuild = 'CURRENT';
+    patchAppState({ currentGuild: 'CURRENT' });
     expect(getActiveGuild()).toBe('CURRENT');
-    window.currentGuildRestriction = 'RESTRICTED';
+    patchAppState({ currentGuildRestriction: 'RESTRICTED' });
     expect(getActiveGuild()).toBe('RESTRICTED');
   });
 
   it('trims, so a stray space cannot create a second tenant', () => {
-    window.currentGuild = '  OMEGA  ';
+    patchAppState({ currentGuild: '  OMEGA  ' });
     expect(getActiveGuild()).toBe('OMEGA');
   });
 });
@@ -89,17 +86,17 @@ describe('H2 — an unresolved tenant blocks writes, including a super_admin\'s'
 
   it('still allows a super_admin once a guild IS resolved', () => {
     localStorage.setItem('gm_role', 'super_admin');
-    window.currentGuild = 'OMEGA';
+    patchAppState({ currentGuild: 'OMEGA' });
     expect(canWriteGuild()).toBe(true);
   });
 
   it('refuses an explicitly blank guild argument', () => {
     localStorage.setItem('gm_role', 'super_admin');
-    window.currentGuild = 'OMEGA';
+    patchAppState({ currentGuild: 'OMEGA' });
     // '' is falsy, so it falls through to the resolver rather than being taken
     // as a tenant named empty-string.
     expect(canWriteGuild('')).toBe(true);
-    delete window.currentGuild;
+    patchAppState({ currentGuild: null });
     expect(canWriteGuild('')).toBe(false);
   });
 
@@ -107,9 +104,9 @@ describe('H2 — an unresolved tenant blocks writes, including a super_admin\'s'
     // The guild_admin branch always refused to fall back to a default guild.
     // H2 extends that doctrine to every role.
     localStorage.setItem('gm_role', 'guild_admin');
-    window.currentGuild = 'OMEGA';
+    patchAppState({ currentGuild: 'OMEGA' });
     expect(canWriteGuild()).toBe(false); // no restriction set ⇒ blocked
-    window.currentGuildRestriction = 'OMEGA';
+    patchAppState({ currentGuildRestriction: 'OMEGA' });
     expect(canWriteGuild()).toBe(true);
   });
 });

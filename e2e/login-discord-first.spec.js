@@ -8,8 +8,8 @@
 //
 // Two of the buttons that used to sit on this page were never wired to
 // anything: "Sign in with a Passkey" and "Use a backup code instead". Both
-// called `wirePasskeyLoginButton` / `openBackupCodeDialog`, which are exported
-// onto the `window.GM` bridge and never invoked. They looked like features and
+// called `wirePasskeyLoginButton` / `openBackupCodeDialog`, which were exported
+// onto the old global bridge and never invoked. They looked like features and
 // did nothing when clicked, which is the exact failure mode finding M8
 // describes. They are gone, and this file makes sure they do not come back
 // without being wired.

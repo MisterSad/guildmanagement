@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { EventsView } from '../src/modules/events/views/EventsView';
 import { renderWarStatusBadge } from '../src/components/ui/Badge';
+import { setDbClient } from '../src/core/api/supabase';
 
 const SESSION = '2026-08-03';
 
@@ -42,7 +43,7 @@ function installDb() {
     }
     return { data: 0, error: null };
   });
-  window.GM.db = { from: (table) => chained(currentTables[table] || []), rpc: rpcMock };
+  setDbClient({ from: (table) => chained(currentTables[table] || []), rpc: rpcMock });
 }
 
 function mount() {

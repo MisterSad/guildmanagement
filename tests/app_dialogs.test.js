@@ -3,13 +3,13 @@
  *
  * Sous-lot 6.1 — unit/parity suite for the typed global dialogs ported from
  * app.js into src/modules/app/dialogs/dialogs.service.ts. The legacy app.js is
- * still loaded in production; these tests cover the /src implementation that
- * src/main.ts bridges onto window.showConfirm / window.GM_APP.*.
+ * gone; these tests cover the /src implementation, which callers import
+ * directly since M4c (there is no window bridge anymore).
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // Phase M4c: dialogs.service imports guild config and the chart renderer
-// instead of reading `window.GM.config` / `window.GM.drawScoreTrendChart`.
+// instead of reading them off the (now removed) window bridge.
 // Each test assigns `mocks.config` / `mocks.drawScoreTrendChart`.
 const mocks = vi.hoisted(() => ({
   config: { get: async () => '', set: async () => undefined },
@@ -35,11 +35,11 @@ import {
   showToast
 } from '../src/modules/app/dialogs/dialogs.service';
 import { initGuildRequestsUi } from '../src/modules/app/admin/guild-requests.controller';
+import { setDbClient, resetSupabaseClient, getClient } from '../src/core/api/supabase';
 
 beforeEach(() => {
   document.body.innerHTML = '';
-  if (!window.GM) window.GM = {};
-  delete window.GM.db;
+  resetSupabaseClient();
   mocks.config = { get: async () => '', set: async () => undefined };
   mocks.drawScoreTrendChart = () => undefined;
 });
@@ -47,8 +47,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.restoreAllMocks();
   document.body.innerHTML = '';
-  delete window.GM_APP;
-  delete window.showConfirm;
+  resetSupabaseClient();
 });
 
 describe('showConfirm', () => {
@@ -122,7 +121,7 @@ describe('showPlayerHistoryDialog', () => {
       return Promise.resolve({ data: { ok: true, events: { GvG: { attended: 3, count: 4, rate: 75 } } } });
     });
     const drawScoreTrendChart = vi.fn();
-    window.GM.db = { rpc };
+    setDbClient({ rpc });
     mocks.drawScoreTrendChart = drawScoreTrendChart;
 
     const pending = showPlayerHistoryDialog('123456', 'Alpha');
@@ -144,15 +143,15 @@ describe('showPlayerHistoryDialog', () => {
   });
 
   it('shows an empty-state when the player has no UID', async () => {
-    window.GM.db = { rpc: vi.fn() };
+    setDbClient({ rpc: vi.fn() });
     await showPlayerHistoryDialog('', 'Alpha');
     expect(document.getElementById('player-history-body').textContent).toContain('No UID on file');
-    expect(window.GM.db.rpc).not.toHaveBeenCalled();
+    expect(getClient().rpc).not.toHaveBeenCalled();
     document.getElementById('player-history-overlay').remove();
   });
 
   it('shows a failure state when the RPC rejects', async () => {
-    window.GM.db = { rpc: vi.fn(() => Promise.reject(new Error('network'))) };
+    setDbClient({ rpc: vi.fn(() => Promise.reject(new Error('network'))) });
     const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
     await showPlayerHistoryDialog('123456', 'Alpha');
@@ -272,9 +271,10 @@ describe('openCustomMsgModal', () => {
 });
 
 describe('showToast (concrete host)', () => {
-  it('renders a toast without recursing through GM_APP.showToast', () => {
+  // It used to be the host `GM_APP.showToast` pointed at, and had to avoid
+  // recursing through it; with the bridge gone it simply renders.
+  it('renders a toast', () => {
     document.body.innerHTML = '<div id="toast-container"></div>';
-    window.GM_APP = { showToast };
     showToast('Saved', 'success');
     const toast = document.querySelector('#toast-container .toast');
     expect(toast).toBeTruthy();

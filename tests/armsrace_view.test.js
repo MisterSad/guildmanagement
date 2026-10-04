@@ -8,6 +8,7 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { ArmsRaceView } from '../src/modules/armsrace/views/ArmsRaceView';
+import { setDbClient, resetSupabaseClient } from '../src/core/api/supabase';
 
 // The view imports its helpers directly (no more `window.GM.*` reads). Keep
 // i18n as the identity so assertions can match translation keys.
@@ -49,10 +50,10 @@ function chained(value) {
 }
 
 function installDb() {
-  window.GM.db = {
+  setDbClient({
     from: (table) => chained(tables[table] || []),
     rpc: vi.fn().mockResolvedValue({ data: null, error: null })
-  };
+  });
 }
 
 function baseTables() {
@@ -71,11 +72,6 @@ function baseTables() {
       { pseudo: 'Bravo', guild: 'ALPHA', event_name: STAGE_A, session_id: SESSION_A, participated: 0, week_start: '2026-08-02' }
     ]
   };
-}
-
-function installGM() {
-  // Only the Supabase client is still read from `window.GM` (via getClient()).
-  window.GM = { db: null };
 }
 
 function mount() {
@@ -104,14 +100,12 @@ beforeEach(() => {
   mount();
   localStorage.setItem('gm_role', 'guild_admin');
   tables = baseTables();
-  installGM();
   installDb();
 });
 
 afterEach(() => {
   views = [];
-  delete window.GM;
-  delete window.showConfirm;
+  resetSupabaseClient();
   localStorage.clear();
   document.body.innerHTML = '';
   vi.restoreAllMocks();
@@ -148,10 +142,10 @@ describe('ArmsRaceView — load & render', () => {
   });
 
   it('always renders even when the data layer throws (panel never blank)', async () => {
-    window.GM.db = {
+    setDbClient({
       from: () => { throw new Error('network down'); },
       rpc: vi.fn()
-    };
+    });
     const view = newView();
     await view.load();
 

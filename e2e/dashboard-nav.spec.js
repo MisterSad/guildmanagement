@@ -3,7 +3,8 @@ import { test, expect } from '@playwright/test';
 // Session & navigation coverage against the PRODUCTION bundle in dist/.
 // The real login needs the Supabase backend, so the session is injected the
 // same way existing specs bypass the boot (portal.spec.js / ocr-modal.spec.js):
-// call the typed bridge window.GM_APP.showAdminDashboard() directly. That is
+// call window.GM_E2E.showAdminDashboard() -- the app's one global, kept for
+// this suite (M4c) -- directly. That is
 // enough to exercise the tab router, the modern shell navigation and the global
 // confirm dialog, which are all pure DOM/state code.
 //
@@ -35,7 +36,7 @@ async function stubNetwork(page) {
 }
 
 async function openDashboard(page) {
-  await page.evaluate(() => window.GM_APP.showAdminDashboard());
+  await page.evaluate(() => window.GM_E2E.showAdminDashboard());
   await expect(page.locator('#dashboard-view')).toBeVisible();
   await expect(page.locator('.gm-nav-item[data-gm-nav-item="members"]')).toBeVisible();
 }
@@ -92,7 +93,7 @@ test('members panel renders a table or empty state without a DOM crash', async (
 test('global showConfirm modal closes via its Cancel button', async ({ page }) => {
   await openDashboard(page);
   await page.evaluate(() =>
-    window.showConfirm('Delete member', 'This cannot be undone.', () => {}, () => {})
+    window.GM_E2E.showConfirm('Delete member', 'This cannot be undone.', () => {}, () => {})
   );
 
   const overlay = page.locator('#confirm-overlay');
@@ -104,7 +105,7 @@ test('global showConfirm modal closes via its Cancel button', async ({ page }) =
 test('global showConfirm modal closes via the Escape key', async ({ page }) => {
   await openDashboard(page);
   await page.evaluate(() =>
-    window.showConfirm('Delete member', 'This cannot be undone.', () => {}, () => {})
+    window.GM_E2E.showConfirm('Delete member', 'This cannot be undone.', () => {}, () => {})
   );
 
   const overlay = page.locator('#confirm-overlay');

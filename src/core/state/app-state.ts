@@ -2,19 +2,14 @@
  * src/core/state/app-state.ts
  *
  * The app's cross-cutting state: active tenant, guild list, roster selection,
- * collapsed role groups. Lives in `core/` because `core/auth/roles.ts` and
- * `core/gm-bridge.ts` both need it, and this module imports nothing.
+ * collapsed role groups. Lives in `core/` because `core/auth/roles.ts` needs
+ * it, and this module imports nothing.
  *
- * It still mirrors every write onto `window`, but no longer because a classic
- * `app.js` reads them -- that script is gone. The mirror survives for the
- * `GM_*` bridge and for the tests and e2e specs that seed state by assigning
- * the globals directly. Retiring it is the window-mirror collapse (M7).
- *
- * Two properties the mirror MUST keep, both of which it once broke:
- *   - a read does not write, so asking for the active guild cannot create
- *     `window.GM_COLLAPSED_ROLES` as a side effect;
- *   - hydration is absence-aware, so deleting a global clears the field
- *     instead of being refilled from the previous value.
+ * A plain module singleton, and the only writer of this state (AGENTS.md).
+ * Until M4c it also mirrored every write onto `window` (`window.currentGuild`,
+ * `window.GM_COLLAPSED_ROLES`...) and re-read it on every access, for the GM_*
+ * bridge and for tests that seeded state by assigning the globals. Both are
+ * gone; tests call patchAppState().
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -46,10 +41,6 @@ export interface AppState {
   adminSelectedMembers: Set<string>;
   adminMembersViewMode: AdminMembersViewMode;
   collapsedRoles: CollapsedRoles;
-}
-
-function winAny(): any {
-  return (typeof window !== 'undefined' ? window : ({} as any)) as any;
 }
 
 function ls(): Storage | null {
@@ -93,100 +84,25 @@ function createDefaultState(): AppState {
 
 let state: AppState = createDefaultState();
 
-function isViewMode(value: unknown): value is AdminMembersViewMode {
-  return value === 'cards' || value === 'matrix';
-}
-
 /**
- * Fills any missing `window.*` mirror key with the current internal value.
- * Existing values (e.g. written by the still-loaded app.js) are preserved.
- */
-function ensureWindowMirror(): void {
-  const w = winAny();
-  if (w.currentGuildRestriction === undefined) w.currentGuildRestriction = state.currentGuildRestriction;
-  if (w.currentServerRestriction === undefined) w.currentServerRestriction = state.currentServerRestriction;
-  if (typeof w.currentGuild !== 'string' || !w.currentGuild) w.currentGuild = state.currentGuild;
-  if (!Array.isArray(w.guildsList)) w.guildsList = state.guildsList;
-  if (!w.guildsData || typeof w.guildsData !== 'object') w.guildsData = state.guildsData;
-  if (!Array.isArray(w.guildAbsences)) w.guildAbsences = state.guildAbsences;
-  if (!(w.adminSelectedMembers instanceof Set)) w.adminSelectedMembers = state.adminSelectedMembers;
-  if (!isViewMode(w.adminMembersViewMode)) w.adminMembersViewMode = state.adminMembersViewMode;
-  if (!w.GM_COLLAPSED_ROLES || typeof w.GM_COLLAPSED_ROLES !== 'object') {
-    w.GM_COLLAPSED_ROLES = { ...state.collapsedRoles };
-  }
-}
-
-/**
- * Imports any externally-written `window.*` values into the internal state.
- *
- * The three scalars below are absence-AWARE: a key that is missing or blank
- * resets the field to null rather than leaving the previous value in place.
- * Without that, the mirror is sticky -- `ensureWindowMirror()` refills a missing
- * key from the state and `hydrateFromWindow()` reads it straight back, so once a
- * guild had been seen it could never be forgotten. That was invisible while
- * every reader went to `window` directly; it surfaced the moment
- * `getActiveGuild()` started reading the store, where clearing the global no
- * longer fell through to localStorage.
- */
-function hydrateFromWindow(): void {
-  const w = winAny();
-  state.currentGuildRestriction = w.currentGuildRestriction ?? null;
-  state.currentServerRestriction = w.currentServerRestriction ?? null;
-  state.currentGuild = (typeof w.currentGuild === 'string' && w.currentGuild) ? w.currentGuild : null;
-  if (Array.isArray(w.guildsList)) state.guildsList = w.guildsList;
-  if (w.guildsData && typeof w.guildsData === 'object') state.guildsData = w.guildsData;
-  if (Array.isArray(w.guildAbsences)) state.guildAbsences = w.guildAbsences;
-  if (w.adminSelectedMembers instanceof Set) state.adminSelectedMembers = w.adminSelectedMembers;
-  if (isViewMode(w.adminMembersViewMode)) state.adminMembersViewMode = w.adminMembersViewMode;
-  if (w.GM_COLLAPSED_ROLES && typeof w.GM_COLLAPSED_ROLES === 'object') {
-    state.collapsedRoles = { ...state.collapsedRoles, ...w.GM_COLLAPSED_ROLES };
-  }
-}
-
-/** Writes every mirrored key back onto `window` from the internal state. */
-function syncToWindow(): void {
-  const w = winAny();
-  w.currentGuildRestriction = state.currentGuildRestriction;
-  w.currentServerRestriction = state.currentServerRestriction;
-  w.currentGuild = state.currentGuild;
-  w.guildsList = state.guildsList;
-  w.guildsData = state.guildsData;
-  w.guildAbsences = state.guildAbsences;
-  w.adminSelectedMembers = state.adminSelectedMembers;
-  w.adminMembersViewMode = state.adminMembersViewMode;
-  w.GM_COLLAPSED_ROLES = { ...state.collapsedRoles };
-}
-
-/**
- * Registers the mirror at boot. Safe to call before the app bootstrap: it only
- * fills `window` keys that are still undefined, so app.js-authored values win.
+ * Kept for the boot sequence's call order. The state is a plain module
+ * singleton since M4c: there is no `window` mirror left to establish.
  */
 export function initAppState(): void {
-  hydrateFromWindow();
-  ensureWindowMirror();
+  /* nothing to mirror */
 }
 
 /** Returns a snapshot of the unified state (Set/array members shared by ref). */
 export function getAppState(): AppState {
-  // A READ does not write. `ensureWindowMirror()` used to run here too, which
-  // meant merely asking for the active guild CREATED `window.GM_COLLAPSED_ROLES`
-  // and friends as a side effect -- the opposite of what this move is for, and
-  // caught by StatsView's cutover guard. The mirror is established at boot
-  // (`initAppState`) and refreshed on every write (`patchAppState`), which is
-  // when external consumers actually need it.
-  hydrateFromWindow();
   return { ...state, collapsedRoles: { ...state.collapsedRoles } };
 }
 
-/** Merges a partial update into the state and mirrors the result on `window`. */
+/** Merges a partial update into the state. */
 export function patchAppState(patch: Partial<AppState>): void {
-  hydrateFromWindow();
   state = { ...state, ...patch };
-  syncToWindow();
 }
 
-/** Clears the state back to defaults and resets the `window` mirror (tests). */
+/** Clears the state back to defaults (tests). */
 export function resetAppState(): void {
   state = createDefaultState();
-  syncToWindow();
 }

@@ -1,11 +1,13 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { overviewView } from '../src/modules/overview/views/OverviewView';
+import { setDbClient, resetSupabaseClient } from '../src/core/api/supabase';
+import { patchAppState, resetAppState } from '../src/core/state/app-state';
+import { getWeekStart, getPrevWeekStart } from '../src/core/utils/date';
 
-const GM = window.GM;
 const OV = overviewView;
 
-const W_CUR = GM.getWeekStart();
-const W_PREV = GM.getPrevWeekStart();
+const W_CUR = getWeekStart();
+const W_PREV = getPrevWeekStart();
 
 // ── Mock query builder (mirrors the db.from wrapper contract) ──────────────
 class MockBuilder {
@@ -58,11 +60,14 @@ let containerEl;
 
 beforeEach(() => {
     localStorage.clear();
-    window.currentGuildRestriction = 'ALPHA';
-    window.currentGuild = 'ALPHA';
-    window.guildsData = { ALPHA: { type: 'Unlimited' } };
-    GM.config = { get: vi.fn(async () => null), set: vi.fn(async () => {}) };
-    GM.db = makeDb();
+    patchAppState({
+        currentGuildRestriction: 'ALPHA',
+        currentGuild: 'ALPHA',
+        guildsData: { ALPHA: { type: 'Unlimited' } }
+    });
+    // The view reads its config through the real guild-config module, which
+    // queries guild_config on this same fake client (no rows -> defaults).
+    setDbClient(makeDb());
     document.body.innerHTML =
         '<main class="dashboard-content tab-panel" id="gm-overview">' +
             '<div data-gm-overview-content></div>' +
@@ -71,10 +76,10 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-    GM.db = null;
-    GM.config = null;
+    resetSupabaseClient();
     document.body.innerHTML = '';
-    delete window.currentGuildRestriction;
+    resetAppState();
+    patchAppState({ currentGuild: 'ALPHA' });
 });
 
 describe('GM_OVERVIEW Glory this week tile', () => {
@@ -92,9 +97,10 @@ describe('GM_OVERVIEW Glory this week tile', () => {
 
     it('treats a score decrease as zero gain for that member', async () => {
         // Swap: this week's Rem score is BELOW last week (glory reset case).
-        GM.db = makeDb();
+        const db = makeDb();
+        setDbClient(db);
         // Replace the builder to return a decreased score for Rem.
-        GM.db.from = (table) => {
+        db.from = (table) => {
             if (table === 'event_participants') {
                 return new MockBuilder(table, [
                     { pseudo: 'Rem',  guild: 'ALPHA', event_name: 'Glory', week_start: W_PREV, score: 478539754 },

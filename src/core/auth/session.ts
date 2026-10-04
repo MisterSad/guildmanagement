@@ -11,10 +11,8 @@
 
 import { getClient, parseFunctionsInvokeResult } from '../api/supabase';
 import { SUPABASE_URL } from '../config/constants';
+import { getAppState } from '../state/app-state';
 
-function winAny(): any {
-  return (typeof window !== 'undefined' ? window : {}) as any;
-}
 
 const AUTH_REQUEST_TIMEOUT_MS = 20_000;
 
@@ -448,7 +446,6 @@ export function generateJoinCode(prefix?: string): string {
 export async function adminAccounts(action: string, payload?: Record<string, any>): Promise<AuthResult> {
   const c = getClient();
   if (!c) return { ok: false, error: 'no_client' };
-  const w = winAny();
   const body = Object.assign({ action: action }, payload || {});
 
   // FINDING M16 / two sources of truth for authorization, now closed.
@@ -475,12 +472,10 @@ export async function adminAccounts(action: string, payload?: Record<string, any
     let targetServer = payload.serverNumber || null;
     if (payload.role === 'server_admin' && !targetServer) {
       let gId = targetGuild;
-      if (!gId && w.guildsData) {
-        const accObj = (w.accountsList || []).find((a: any) => (a.id || '').toLowerCase() === (payload.id || '').toLowerCase());
-        if (accObj) gId = accObj.guild;
-      }
+      // (A `window.accountsList` lookup stood here; nothing ever set it.)
       if (gId) {
-        const sNum = (w.guildsData && w.guildsData[gId] && w.guildsData[gId].server_number) ||
+        const guildsData = getAppState().guildsData;
+        const sNum = (guildsData[gId] && guildsData[gId]!.server_number) ||
           (typeof localStorage !== 'undefined' ? localStorage.getItem('gm_server_number_' + gId) : null);
         if (sNum) targetServer = String(sNum);
       }

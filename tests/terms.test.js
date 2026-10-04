@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
+import { t } from '../src/core/i18n/i18n';
+import { openTermsModal } from '../src/core/dom/ui';
 
 describe('Terms of Service & General Conditions of Sale (TOS/GCS) Page', () => {
     const termsHtmlPath = path.resolve(__dirname, '../terms.html');
@@ -9,7 +11,7 @@ describe('Terms of Service & General Conditions of Sale (TOS/GCS) Page', () => {
     const indexHtmlContent = fs.readFileSync(indexHtmlPath, 'utf8');
 
     it('has English translation for footer_terms', () => {
-        expect(window.GM_I18N.t('footer_terms')).toBe('Terms & Conditions');
+        expect(t('footer_terms')).toBe('Terms & Conditions');
     });
 
     it('terms.html exists and contains full legal document title and metadata', () => {
@@ -101,7 +103,10 @@ describe('Terms of Service & General Conditions of Sale (TOS/GCS) Page', () => {
         expect(indexHtmlContent).toContain('href="terms.html" class="gm-footer-link gm-terms-trigger"');
     });
 
-    it('window.GM.openTermsModal navigates to terms.html', () => {
-        expect(typeof window.GM.openTermsModal).toBe('function');
+    it('openTermsModal navigates to terms.html', () => {
+        expect(typeof openTermsModal).toBe('function');
+        const src = fs.readFileSync(path.resolve(__dirname, '../src/core/dom/ui.ts'), 'utf8');
+        const body = src.slice(src.indexOf('export function openTermsModal'));
+        expect(body.slice(0, body.indexOf('\n}'))).toContain("window.location.href = 'terms.html'");
     });
 });

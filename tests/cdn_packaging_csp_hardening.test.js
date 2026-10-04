@@ -43,11 +43,16 @@ describe('TICKET-08 [SEC-04]: CDN Packaging & CSP Hardening', () => {
     expect(packageJson.dependencies['@supabase/supabase-js']).toBeDefined();
   });
 
-  it('verifies that src/main.ts imports Phosphor icon styles and bridges window.supabase', () => {
+  it('verifies that src/main.ts imports Phosphor icon styles and bundles supabase-js locally', () => {
     expect(mainTs).toContain("import '@phosphor-icons/web/regular';");
     // The duotone family was dropped: 231 KB of CSS and a 164 KB woff2 for the
     // 56 icons that used it, all of which exist in the regular set.
     expect(mainTs).not.toContain("@phosphor-icons/web/duotone");
-    expect(mainTs).toContain('wAny.supabase = wAny.supabase || { createClient };');
+    // supabase-js comes from the local package, never a CDN global. The
+    // `window.supabase` shim main.ts used to install went with the window
+    // bridge (M4c): the client is built from the import and nothing else.
+    expect(mainTs).toContain("import { createClient } from '@supabase/supabase-js';");
+    expect(mainTs).toContain('createClient(SUPABASE_URL, SUPABASE_KEY)');
+    expect(mainTs).not.toMatch(/window\.supabase\s*=/);
   });
 });

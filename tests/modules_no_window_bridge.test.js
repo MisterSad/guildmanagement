@@ -1,8 +1,8 @@
 // Medium-term plan, M4c step 1 (audit ARC-07, FE-07): the feature modules no
 // longer read what the app installed on `window` -- window.GM, the GM_*
 // namespaces, window.showConfirm, the cross-cutting state mirrored there.
-// They import the typed function instead. main.ts still installs the bridge
-// (the e2e suite drives the app through it) until step 2 removes it.
+// They import the typed function instead. Step 2 then removed the bridge
+// itself; tests/gm_bridge_contract.test.js pins that end state.
 //
 // Browser APIs reached through `window` (location, matchMedia, events...) are
 // not the bridge and are not matched here.
@@ -14,12 +14,9 @@ import path from 'node:path';
 const MODULES = path.resolve(__dirname, '../src/modules');
 const BRIDGE = /\(window as any\)|winAny\(|window\.GM\b|\bGM_[A-Z_]+\.|window\.showConfirm|\.showConfirm\s*\(/;
 
-// Each allowed line is named, with why it is still here.
-const ALLOWED = [
-  // auth.controller publishes the signed-in account id for core/auth/roles'
-  // currentAccountId() fallback; it moves to app-state in M4c step 2.
-  "  const bridge = typeof window !== 'undefined' ? (window as any).GM : null;",
-];
+// Each allowed line is named, with why it is still here. None since M4c
+// step 2 removed the last one (the account-id publication).
+const ALLOWED = [];
 
 function files(dir) {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {

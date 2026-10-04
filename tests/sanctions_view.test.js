@@ -6,9 +6,10 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { SanctionsView } from '../src/modules/sanctions/views/SanctionsView';
+import { setDbClient, resetSupabaseClient } from '../src/core/api/supabase';
 
 // The view imports its collaborators directly; mock the source modules
-// rather than the legacy window.GM / window.showConfirm surface.
+// (there is no window bridge left to stub since M4c).
 const mocks = vi.hoisted(() => ({ showToast: vi.fn(), showConfirm: vi.fn() }));
 
 vi.mock('../src/core/i18n/i18n', async (importOriginal) => ({
@@ -52,7 +53,7 @@ function chained(value) {
 function installDb(members) {
   insertMock = vi.fn(() => chained([{}]));
   deleteMock = vi.fn(() => chained([]));
-  window.GM.db = {
+  setDbClient({
     from: (table) => {
       if (table === 'guild_members') return chained(members);
       if (table === 'sanctions') {
@@ -64,7 +65,7 @@ function installDb(members) {
       }
       return chained([]);
     }
-  };
+  });
 }
 
 function installGM() {
@@ -72,8 +73,7 @@ function installGM() {
   mocks.showConfirm.mockReset();
   mocks.showConfirm.mockImplementation((title, body, cb) => { cb && cb(); });
   showConfirmMock = mocks.showConfirm;
-  // Only the client lives on window.GM (getClient() reads it).
-  window.GM = { db: null };
+  resetSupabaseClient();
 }
 
 function mount() {
@@ -97,7 +97,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers();
-  delete window.GM;
+  resetSupabaseClient();
   document.body.innerHTML = '';
   vi.restoreAllMocks();
 });
@@ -185,9 +185,9 @@ describe('SanctionsView — form & delete', () => {
 });
 
 describe('SanctionsView — cutover guard', () => {
-  it('does not expose window.GM_SANCTIONS', async () => {
+  it('does not expose a GM_SANCTIONS global', async () => {
     const view = new SanctionsView();
     await view.load();
-    expect(window.GM_SANCTIONS).toBeUndefined();
+    expect('GM_SANCTIONS' in window).toBe(false);
   });
 });

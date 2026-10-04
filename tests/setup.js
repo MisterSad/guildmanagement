@@ -1,18 +1,12 @@
-// Strangler cutover: the legacy root i18n.js and gm-utils.js are gone, so
-// replicate the src/main.ts bridges for the test environment.
-import { t as i18nT, getLang as i18nGetLang, setLang as i18nSetLang, applyTranslations as i18nApplyTranslations } from '../src/core/i18n/i18n';
-import { installGmBridge } from '../src/core/gm-bridge';
+// The app installs nothing on `window` since M4c (only the frozen GM_E2E,
+// which main.ts sets and no unit test needs). Tests install a fake client with
+// setDbClient() and seed state with patchAppState(), exactly as the app does.
 import { beforeEach } from 'vitest';
 import { setVerifiedRole } from '../src/core/auth/roles';
+import { patchAppState } from '../src/core/state/app-state';
 
-if (typeof window !== 'undefined') {
-    window.GM_I18N = { t: i18nT, getLang: i18nGetLang, setLang: i18nSetLang, applyTranslations: i18nApplyTranslations };
-    window.GM = window.GM || {};
-    window.GM.t = i18nT;
-    // Full legacy window.GM surface from the typed /src modules.
-    installGmBridge();
-    if (!window.currentGuild) window.currentGuild = 'ALPHA';
-}
+// The default tenant every test file starts on, as the bridge used to seed it.
+patchAppState({ currentGuild: 'ALPHA' });
 
 beforeEach(() => {
     setVerifiedRole(null, null);

@@ -3,8 +3,6 @@ import fs from "fs";
 import path from "path";
 import { parseOcrScore } from "../src/modules/ocr/ocr.service";
 
-const GM = window.GM;
-
 describe("parseOcrScore — German & European Localization", () => {
   it("correctly parses German \"T\" / \"Tsd\" (Tausend = 1,000) with comma decimal", () => {
     // Exact values from screenshot:
@@ -73,12 +71,14 @@ describe("parseOcrScore — German & European Localization", () => {
   });
 });
 
-describe("OCR Window.GM bridge integration", () => {
-  it("exposes parseOcrScore on window.GM", () => {
-    expect(typeof GM.parseOcrScore).toBe("function");
-    expect(GM.parseOcrScore(0, "67,4T")).toBe(67400);
-    expect(GM.parseOcrScore(0, "24,98T")).toBe(24980);
-    expect(GM.parseOcrScore(0, "5.663")).toBe(5663);
+describe("parseOcrScore module export", () => {
+  // The window bridge that used to re-export it is gone (M4c): callers import it.
+  it("is reachable as a module export, not on a window global", () => {
+    expect(typeof parseOcrScore).toBe("function");
+    expect("GM" in window).toBe(false);
+    expect(parseOcrScore(0, "67,4T")).toBe(67400);
+    expect(parseOcrScore(0, "24,98T")).toBe(24980);
+    expect(parseOcrScore(0, "5.663")).toBe(5663);
   });
 });
 

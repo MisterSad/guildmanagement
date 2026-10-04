@@ -15,9 +15,6 @@ import { getGuildConfig } from '../config/guild-config';
 import { getActiveGuild } from '../auth/roles';
 import { getClient, ensureAuthSession } from '../api/supabase';
 
-function winAny(): any {
-  return (typeof window !== 'undefined' ? window : {}) as any;
-}
 
 /** Formats a role id / mention into a Discord <@&id> mention. */
 export function formatDiscordRoleMention(input?: string | null): string {

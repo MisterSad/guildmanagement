@@ -1,34 +1,38 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-
-const GM = window.GM;
-expect(GM).toBeTruthy();
+import {
+    levenshteinDistance, calculateStringSimilarity, findBestMatchingMember, validateUid
+} from '../src/core/utils/text';
+import {
+    categorizeOcrDiff, computeOcrRosterDelta, upsertPlayerMetrics
+} from '../src/modules/ocr/ocr.service';
+import { t } from '../src/core/i18n/i18n';
 
 describe('calculateStringSimilarity & levenshteinDistance', () => {
     it('computes exact distance and similarity for identical strings', () => {
-        expect(GM.levenshteinDistance('HawkEye', 'HawkEye')).toBe(0);
-        expect(GM.calculateStringSimilarity('HawkEye', 'HawkEye')).toBe(1.0);
+        expect(levenshteinDistance('HawkEye', 'HawkEye')).toBe(0);
+        expect(calculateStringSimilarity('HawkEye', 'HawkEye')).toBe(1.0);
     });
 
     it('computes expected distance for minor typos', () => {
-        expect(GM.levenshteinDistance('HawkEye', 'HawkEy')).toBe(1);
-        expect(GM.levenshteinDistance('Commander', 'Commandr')).toBe(1);
+        expect(levenshteinDistance('HawkEye', 'HawkEy')).toBe(1);
+        expect(levenshteinDistance('Commander', 'Commandr')).toBe(1);
     });
 
     it('computes high similarity for OCR typos (>= 0.75)', () => {
-        const sim = GM.calculateStringSimilarity('HawkEye', 'HawkEy');
+        const sim = calculateStringSimilarity('HawkEye', 'HawkEy');
         expect(sim).toBeGreaterThanOrEqual(0.75);
     });
 
     it('computes low similarity for completely different names', () => {
-        const sim = GM.calculateStringSimilarity('HawkEye', 'VanguardLeader');
+        const sim = calculateStringSimilarity('HawkEye', 'VanguardLeader');
         expect(sim).toBeLessThan(0.5);
     });
 
     it('handles empty or null strings safely without throwing', () => {
-        expect(GM.calculateStringSimilarity('', 'HawkEye')).toBe(0);
-        expect(GM.calculateStringSimilarity(null, 'HawkEye')).toBe(0);
-        expect(GM.levenshteinDistance('', '')).toBe(0);
-        expect(GM.levenshteinDistance(null, 'abc')).toBe(3);
+        expect(calculateStringSimilarity('', 'HawkEye')).toBe(0);
+        expect(calculateStringSimilarity(null, 'HawkEye')).toBe(0);
+        expect(levenshteinDistance('', '')).toBe(0);
+        expect(levenshteinDistance(null, 'abc')).toBe(3);
     });
 });
 
@@ -41,7 +45,7 @@ describe('findBestMatchingMember', () => {
     ];
 
     it('matches exact username with 1.0 score', () => {
-        const match = GM.findBestMatchingMember('HawkEye', sampleRoster, '[PR1M]');
+        const match = findBestMatchingMember('HawkEye', sampleRoster, '[PR1M]');
         expect(match).toBeTruthy();
         expect(match.matchType).toBe('exact');
         expect(match.score).toBe(1.0);
@@ -49,34 +53,34 @@ describe('findBestMatchingMember', () => {
     });
 
     it('matches username stripped of guild tag with clean_tag', () => {
-        const match = GM.findBestMatchingMember('[PR1M] StarWarrior', sampleRoster, '[PR1M]');
+        const match = findBestMatchingMember('[PR1M] StarWarrior', sampleRoster, '[PR1M]');
         expect(match).toBeTruthy();
         expect(match.member.pseudo).toBe('StarWarrior');
         expect(match.score).toBeGreaterThanOrEqual(0.95);
     });
 
     it('matches normalized alphanumeric strings (symbols stripped)', () => {
-        const match = GM.findBestMatchingMember('Shadow-Ninja', sampleRoster, '[PR1M]');
+        const match = findBestMatchingMember('Shadow-Ninja', sampleRoster, '[PR1M]');
         expect(match).toBeTruthy();
         expect(match.member.pseudo).toBe('Shadow_Ninja');
     });
 
     it('matches fuzzy OCR typo (>= 0.75)', () => {
-        const match = GM.findBestMatchingMember('AcePil0t', sampleRoster, '[PR1M]');
+        const match = findBestMatchingMember('AcePil0t', sampleRoster, '[PR1M]');
         expect(match).toBeTruthy();
         expect(match.member.pseudo).toBe('AcePilot');
         expect(match.matchType).toBe('fuzzy');
     });
 
     it('returns null when no member matches threshold', () => {
-        const match = GM.findBestMatchingMember('UnrelatedNewPlayer', sampleRoster, '[PR1M]');
+        const match = findBestMatchingMember('UnrelatedNewPlayer', sampleRoster, '[PR1M]');
         expect(match).toBeNull();
     });
 
     it('returns null on empty inputs', () => {
-        expect(GM.findBestMatchingMember('', sampleRoster)).toBeNull();
-        expect(GM.findBestMatchingMember('HawkEye', [])).toBeNull();
-        expect(GM.findBestMatchingMember('HawkEye', null)).toBeNull();
+        expect(findBestMatchingMember('', sampleRoster)).toBeNull();
+        expect(findBestMatchingMember('HawkEye', [])).toBeNull();
+        expect(findBestMatchingMember('HawkEye', null)).toBeNull();
     });
 });
 
@@ -97,7 +101,7 @@ describe('categorizeOcrDiff (Three-Section Diff Logic)', () => {
             // OldMemberLeaving is omitted -> removed
         ];
 
-        const diff = GM.categorizeOcrDiff(ocrPlayers, sampleRoster, '[PR1M]', 'overall_power', false);
+        const diff = categorizeOcrDiff(ocrPlayers, sampleRoster, '[PR1M]', 'overall_power', false);
 
         expect(diff.existing).toHaveLength(2);
         expect(diff.existing[0].status).toBe('update');
@@ -123,7 +127,7 @@ describe('categorizeOcrDiff (Three-Section Diff Logic)', () => {
             { pseudo: 'SteadyPilot', score: 80000000 }
         ];
 
-        const diff = GM.categorizeOcrDiff(ocrPlayers, sampleRoster, '[PR1M]', 'overall_power', false);
+        const diff = categorizeOcrDiff(ocrPlayers, sampleRoster, '[PR1M]', 'overall_power', false);
 
         expect(diff.existing).toHaveLength(3);
         const hawkItem = diff.existing.find(e => e.member.pseudo === 'HawkEye');
@@ -143,7 +147,7 @@ describe('categorizeOcrDiff (Three-Section Diff Logic)', () => {
             { pseudo: 'HawkEye', score: 150000000 }
         ];
 
-        const diff = GM.categorizeOcrDiff(ocrPlayers, sampleRoster, '[PR1M]', 'fleet_rating', true);
+        const diff = categorizeOcrDiff(ocrPlayers, sampleRoster, '[PR1M]', 'fleet_rating', true);
 
         expect(diff.new).toHaveLength(1);
         expect(diff.new[0].status).toBe('other_guild');
@@ -161,7 +165,7 @@ describe('categorizeOcrDiff (Three-Section Diff Logic)', () => {
             { pseudo: 'FoundingOfficer', score: 80000000, uid: '1002' }
         ];
 
-        const diff = GM.categorizeOcrDiff(ocrPlayers, [], '[PR1M]', 'overall_power', false);
+        const diff = categorizeOcrDiff(ocrPlayers, [], '[PR1M]', 'overall_power', false);
 
         expect(diff.existing).toEqual([]);
         expect(diff.removed).toEqual([]);
@@ -171,15 +175,15 @@ describe('categorizeOcrDiff (Three-Section Diff Logic)', () => {
     });
 
     it('guards safely on null or empty OCR players', () => {
-        expect(GM.categorizeOcrDiff([], sampleRoster)).toEqual({ existing: [], new: [], removed: [], unknown: [] });
-        expect(GM.categorizeOcrDiff(null, sampleRoster)).toEqual({ existing: [], new: [], removed: [], unknown: [] });
-        expect(GM.categorizeOcrDiff(undefined, sampleRoster)).toEqual({ existing: [], new: [], removed: [], unknown: [] });
+        expect(categorizeOcrDiff([], sampleRoster)).toEqual({ existing: [], new: [], removed: [], unknown: [] });
+        expect(categorizeOcrDiff(null, sampleRoster)).toEqual({ existing: [], new: [], removed: [], unknown: [] });
+        expect(categorizeOcrDiff(undefined, sampleRoster)).toEqual({ existing: [], new: [], removed: [], unknown: [] });
     });
 });
 
 describe('computeOcrRosterDelta', () => {
     it('computes delta with new additions only', () => {
-        const delta = GM.computeOcrRosterDelta(60, 3, 0);
+        const delta = computeOcrRosterDelta(60, 3, 0);
         expect(delta).toEqual({
             before: 60,
             after: 63,
@@ -189,7 +193,7 @@ describe('computeOcrRosterDelta', () => {
     });
 
     it('computes delta with additions and removals', () => {
-        const delta = GM.computeOcrRosterDelta(60, 2, 5);
+        const delta = computeOcrRosterDelta(60, 2, 5);
         expect(delta).toEqual({
             before: 60,
             after: 57,
@@ -199,7 +203,7 @@ describe('computeOcrRosterDelta', () => {
     });
 
     it('computes delta with zero selections (unchanged)', () => {
-        const delta = GM.computeOcrRosterDelta(60, 0, 0);
+        const delta = computeOcrRosterDelta(60, 0, 0);
         expect(delta).toEqual({
             before: 60,
             after: 60,
@@ -209,7 +213,7 @@ describe('computeOcrRosterDelta', () => {
     });
 
     it('computes delta from empty roster cold-start', () => {
-        const delta = GM.computeOcrRosterDelta(0, 45, 0);
+        const delta = computeOcrRosterDelta(0, 45, 0);
         expect(delta).toEqual({
             before: 0,
             after: 45,
@@ -219,7 +223,7 @@ describe('computeOcrRosterDelta', () => {
     });
 
     it('clamps negative after values to 0 defensively', () => {
-        const delta = GM.computeOcrRosterDelta(5, 0, 10);
+        const delta = computeOcrRosterDelta(5, 0, 10);
         expect(delta.after).toBe(0);
         expect(delta.removed).toBe(10);
     });
@@ -227,47 +231,46 @@ describe('computeOcrRosterDelta', () => {
 
 describe('validateUid Interplay', () => {
     it('accepts numeric strings within the 6-10 digit FGF UID range', () => {
-        expect(GM.validateUid('123456')).toBeNull();
-        expect(GM.validateUid('9999999999')).toBeNull();
-        expect(GM.validateUid('999999999')).toBeNull();
+        expect(validateUid('123456')).toBeNull();
+        expect(validateUid('9999999999')).toBeNull();
+        expect(validateUid('999999999')).toBeNull();
     });
 
     it('rejects numeric strings outside the 6-10 digit range', () => {
-        expect(GM.validateUid('12345')).toBe('validation_uid_too_short');
-        expect(GM.validateUid('12345678901234567890')).toBe('validation_uid_too_long');
+        expect(validateUid('12345')).toBe('validation_uid_too_short');
+        expect(validateUid('12345678901234567890')).toBe('validation_uid_too_long');
     });
 
     it('rejects TEMP-style generated UIDs', () => {
-        expect(GM.validateUid('TEMP-abc12345')).toBe('validation_uid_not_numeric');
-        expect(GM.validateUid('TEMP-998877')).toBe('validation_uid_not_numeric');
+        expect(validateUid('TEMP-abc12345')).toBe('validation_uid_not_numeric');
+        expect(validateUid('TEMP-998877')).toBe('validation_uid_not_numeric');
     });
 
     it('rejects non-numeric characters and spaces', () => {
-        expect(GM.validateUid('user123')).toBe('validation_uid_not_numeric');
-        expect(GM.validateUid('123 456')).toBe('validation_uid_not_numeric');
-        expect(GM.validateUid('12-34')).toBe('validation_uid_not_numeric');
+        expect(validateUid('user123')).toBe('validation_uid_not_numeric');
+        expect(validateUid('123 456')).toBe('validation_uid_not_numeric');
+        expect(validateUid('12-34')).toBe('validation_uid_not_numeric');
     });
 
     it('rejects strings longer than 20 digits', () => {
-        expect(GM.validateUid('123456789012345678901')).toBe('validation_uid_too_long');
+        expect(validateUid('123456789012345678901')).toBe('validation_uid_too_long');
     });
 
     it('accepts empty or null as valid (optional)', () => {
-        expect(GM.validateUid('')).toBeNull();
-        expect(GM.validateUid(null)).toBeNull();
-        expect(GM.validateUid(undefined)).toBeNull();
+        expect(validateUid('')).toBeNull();
+        expect(validateUid(null)).toBeNull();
+        expect(validateUid(undefined)).toBeNull();
     });
 });
 
-describe('upsertPlayerMetrics Bridge Definition', () => {
-    it('is exported as a function on window.GM', () => {
-        expect(typeof GM.upsertPlayerMetrics).toBe('function');
+describe('upsertPlayerMetrics export', () => {
+    it('is exported as a function by the OCR service', () => {
+        expect(typeof upsertPlayerMetrics).toBe('function');
     });
 });
 
 describe('Cold-Start i18n Keys', () => {
     it('provides valid English translations for empty roster cold-start CTA', () => {
-        const t = window.GM_I18N.t;
         expect(t('empty_members_roster_title')).toBe('Your roster is empty');
         expect(t('empty_members_roster_desc')).toContain('Import all members in one step');
         expect(t('empty_members_roster_cta')).toBe('Members OCR');
@@ -286,7 +289,7 @@ describe('categorizeOcrDiff Mode Semantics (v126.0 Members OCR vs Metric Scanner
             { pseudo: 'HawkEye', score: 160000000 },
             { pseudo: 'NewRecruit', score: 50000000 },
         ];
-        const diff = GM.categorizeOcrDiff(ocrPlayers, sampleRoster, '', 'overall_power', false, 'members');
+        const diff = categorizeOcrDiff(ocrPlayers, sampleRoster, '', 'overall_power', false, 'members');
         expect(diff.existing).toHaveLength(1);
         expect(diff.existing[0].effectivePseudo).toBe('HawkEye');
         expect(diff.new).toHaveLength(1);
@@ -301,7 +304,7 @@ describe('categorizeOcrDiff Mode Semantics (v126.0 Members OCR vs Metric Scanner
             { pseudo: 'HawkEye', score: 160000000 },
             { pseudo: 'UnregisteredPlayer', score: 75000000 },
         ];
-        const diff = GM.categorizeOcrDiff(ocrPlayers, sampleRoster, '', 'overall_power', false, 'metric');
+        const diff = categorizeOcrDiff(ocrPlayers, sampleRoster, '', 'overall_power', false, 'metric');
         expect(diff.existing).toHaveLength(1);
         expect(diff.existing[0].effectivePseudo).toBe('HawkEye');
         expect(diff.new).toEqual([]);
@@ -312,7 +315,7 @@ describe('categorizeOcrDiff Mode Semantics (v126.0 Members OCR vs Metric Scanner
     });
 
     it('empty players input returns empty arrays for all 4 buckets', () => {
-        const diff = GM.categorizeOcrDiff([], sampleRoster, '', 'overall_power', false, 'metric');
+        const diff = categorizeOcrDiff([], sampleRoster, '', 'overall_power', false, 'metric');
         expect(diff).toEqual({ existing: [], new: [], removed: [], unknown: [] });
     });
 
@@ -323,7 +326,7 @@ describe('categorizeOcrDiff Mode Semantics (v126.0 Members OCR vs Metric Scanner
             { pseudo: 'FreshRecruit', score: 20000000, rank: 'R2' },
             { pseudo: 'NoHeaderSeenYet', score: 5000000, rank: null },
         ];
-        const diff = GM.categorizeOcrDiff(ocrPlayers, sampleRoster, '', 'overall_power', false, 'members');
+        const diff = categorizeOcrDiff(ocrPlayers, sampleRoster, '', 'overall_power', false, 'members');
 
         const hawkEye = diff.existing.find(e => e.effectivePseudo === 'HawkEye');
         expect(hawkEye.ocrPlayer.rank).toBe('R3');

@@ -27,6 +27,7 @@ import { HistoryView } from '../src/modules/history/views/HistoryView';
 import { t } from '../src/core/i18n/i18n';
 import { clear as clearCache } from '../src/core/cache/cache';
 import { setVerifiedRole } from '../src/core/auth/roles';
+import { setDbClient, resetSupabaseClient } from '../src/core/api/supabase';
 import { showConfirm } from '../src/modules/app/dialogs/dialogs.service';
 
 // M4c: HistoryView imports showConfirm; it is mocked at its module.
@@ -282,27 +283,11 @@ describe('HistoryView — Dialog retrofit contract', () => {
   beforeEach(() => {
     document.body.innerHTML = '<div id="event-history"><div class="history-area"></div></div>';
     updateMock = vi.fn(() => chained([]));
-    window.GM = {
-      t: (k) => k,
-      escapeHTML: (s) => String(s ?? ''),
-      formatNumber: (n) => String(n ?? ''),
-      avatarInit: (s) => String(s || '').slice(0, 1).toUpperCase(),
-      attachNumberFormatter: vi.fn(),
-      parseNumber: (v) => parseInt(String(v).replace(/[^0-9]/g, ''), 10) || 0,
-      getActiveGuild: () => 'ALPHA',
-      buildEventSessionId: (ev, ws) => 'GLORY-' + ws,
-      getEventIcon: () => 'ph-swords',
-      getEventTheme: () => 'gm-task-card-dark',
-      formatWeek: (w) => w,
-      roleFromStorage: () => 'guild_admin',
-      showToast: vi.fn(),
-      cache: { isFresh: () => false, markFresh: vi.fn() },
-      db: {
-        rpc: vi.fn(async () => ({ data: JSON.parse(JSON.stringify(SESSIONS)), error: null })),
-        from: (table) => chained(table === 'event_participants' ? PARTICIPANT_ROWS : [], updateMock)
-      }
-    };
-    // The view reads the real cache, guild and role now, not window.GM stubs.
+    setDbClient({
+      rpc: vi.fn(async () => ({ data: JSON.parse(JSON.stringify(SESSIONS)), error: null })),
+      from: (table) => chained(table === 'event_participants' ? PARTICIPANT_ROWS : [], updateMock)
+    });
+    // The view reads the real i18n, utils, cache, guild and role modules.
     clearCache();
     localStorage.setItem('gm_current_guild', 'ALPHA');
     setVerifiedRole('guild_admin', 't_admin');
@@ -310,7 +295,7 @@ describe('HistoryView — Dialog retrofit contract', () => {
   });
 
   afterEach(() => {
-    delete window.GM;
+    resetSupabaseClient();
     localStorage.clear();
     document.body.innerHTML = '';
     vi.restoreAllMocks();

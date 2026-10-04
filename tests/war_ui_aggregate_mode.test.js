@@ -13,15 +13,14 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { EventsView } from '../src/modules/events/views/EventsView';
-import { resetSupabaseClient } from '../src/core/api/supabase';
+import { resetSupabaseClient, setDbClient } from '../src/core/api/supabase';
 import { showToast } from '../src/core/dom/toast';
 import { formatNumber } from '../src/core/utils/text';
 
 const SESSION = 'SVS-2026-W32';
 
-// The view imports its helpers directly (no more `window.GM.*` /
-// `window.showConfirm` reads): mock the source modules with the stubs the
-// suite used to put on window.
+// The view imports its helpers directly (the window bridge is gone): mock the
+// source modules with the stubs the suite used to put on window.
 vi.mock('../src/core/i18n/i18n', async (importOriginal) => ({
   ...(await importOriginal()),
   t: (k) => k
@@ -99,14 +98,14 @@ function installDb() {
     }
     return { data: 0, error: null };
   });
-  window.GM.db = { from: (table) => chained(currentTables[table] || []), rpc: rpcMock };
+  setDbClient({ from: (table) => chained(currentTables[table] || []), rpc: rpcMock });
 }
 
 function installGM() {
   vi.mocked(showToast).mockReset();
   localStorage.setItem('gm_current_guild', 'ALPHA');
-  // Only the Supabase client is still read from `window.GM` (via getClient()).
-  window.GM = { db: null };
+  // The Supabase client is installed with setDbClient() (read via getClient()).
+  setDbClient(null);
 }
 
 function mount() {
@@ -142,7 +141,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks();
-  delete window.GM;
+  resetSupabaseClient();
   document.body.innerHTML = '';
 });
 

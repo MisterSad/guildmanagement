@@ -1,17 +1,17 @@
 import { test, expect } from '@playwright/test';
 
 // Regression coverage for commit 506078a: the OCR modal's Cancel button had
-// zero JS wiring (only the X icon closed the modal). The typed bridge exposes
-// openOcrModal() on window.GM_OCR with no login/backend dependency, so we
+// zero JS wiring (only the X icon closed the modal). window.GM_E2E (the app's
+// one global, M4c) exposes openOcrModal() with no login/backend dependency, so we
 // bypass the dashboard boot entirely and open the modal directly, same bypass
 // style as portal.spec.js's openPortal() helper.
 
 function openMembersOcrModal(page) {
-    return page.evaluate(() => window.GM_OCR.openOcrModal('members'));
+    return page.evaluate(() => window.GM_E2E.openOcrModal('members'));
 }
 
 test.beforeEach(async ({ page }) => {
-    // Defensive net: setOcrMetric() awaits window.GM.getGuildTag(), which can
+    // Defensive net: setOcrMetric() awaits getGuildTag(), which can
     // hit Supabase for a guild_config row. It already falls back safely on
     // any failure, but stub the REST surface anyway so this spec never
     // depends on a real backend, per the project's e2e convention.

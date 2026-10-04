@@ -13,13 +13,29 @@
  *   - the OCR modal shows a day selector for svs_day / gvg_day.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+// The controller asks for confirmation through dialogs.service; the stub
+// confirms immediately (it used to be a stub on the removed window bridge).
+vi.mock('../src/modules/app/dialogs/dialogs.service', async (importOriginal) => ({
+  ...(await importOriginal()),
+  showConfirm: vi.fn((_t, _m, cb) => { void cb(); })
+}));
+// The guild tag is read through guild-config; pin it rather than depend on
+// the fake client's empty guild_config.
+vi.mock('../src/core/config/guild-config', async (importOriginal) => ({
+  ...(await importOriginal()),
+  getGuildTag: vi.fn(async () => '[FGF]')
+}));
+
 import { setVerifiedRole } from '../src/core/auth/roles';
+import { patchAppState } from '../src/core/state/app-state';
+import { eventsView } from '../src/modules/events/views/EventsView';
 import fs from 'fs';
 import path from 'path';
 
 import { openOcrModal, setOcrMetric, commitOcrUpdates } from '../src/modules/app/ocr/ocr.controller';
 import { setOcrExtractedPlayers, getOcrScanDay, setOcrScanDay, getCurrentOcrMetric, OCR_METRICS_META } from '../src/modules/app/ocr/ocr.meta';
-import { resetSupabaseClient } from '../src/core/api/supabase';
+import { setDbClient, resetSupabaseClient } from '../src/core/api/supabase';
 
 const root = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.resolve(root, p), 'utf-8');
@@ -108,23 +124,18 @@ beforeEach(() => {
   setOcrExtractedPlayers([]);
   setOcrScanDay(1);
   db = makeDb();
-  window.GM = window.GM || {};
-  window.GM.db = db;
+  setDbClient(db);
   setVerifiedRole('super_admin', 't_super');
-  window.GM.getActiveGuild = () => 'ALPHA';
-  window.GM.getGuildTag = async () => '[FGF]';
-  window.GM_EVENTS = { loadEvent: vi.fn() };
-  window.currentGuild = 'ALPHA';
-  window.showConfirm = vi.fn((_t, _m, cb) => { void cb(); });
+  patchAppState({ currentGuild: 'ALPHA', currentGuildRestriction: null });
+  // The post-commit refresh goes to the events view singleton.
+  vi.spyOn(eventsView, 'loadEvent').mockResolvedValue(undefined);
 });
 
 afterEach(() => {
   vi.restoreAllMocks();
   setOcrExtractedPlayers([]);
   document.body.innerHTML = '';
-  delete window.GM_EVENTS;
-  delete window.currentGuild;
-  delete window.showConfirm;
+  resetSupabaseClient();
   localStorage.clear();
 });
 

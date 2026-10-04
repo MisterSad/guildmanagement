@@ -1,14 +1,9 @@
 /**
  * src/core/dom/toast.ts
  *
- * Toast feedback (port of gm-utils.js#showToast). Prefers the app's own toast
- * host (window.GM_APP.showToast) and otherwise builds one safely via pure DOM
+ * Toast feedback (port of gm-utils.js#showToast), built safely via pure DOM
  * APIs (never innerHTML with user data).
  */
-
-function winAny(): any {
-  return (typeof window !== 'undefined' ? window : {}) as any;
-}
 
 /**
  * Concrete toast renderer: always builds the toast itself and never delegates
@@ -46,12 +41,11 @@ export function renderToast(message: unknown, type?: string, duration?: number):
   }, ttl);
 }
 
-/** Legacy entry: prefers the app toast host, else renders directly. */
+/**
+ * The app's toast. It used to go through `window.GM_APP.showToast`, which
+ * main.ts pointed at `renderToast(message, type, 3500)`; it now renders that
+ * directly (medium-term plan, M4c).
+ */
 export function showToast(message: unknown, type?: string, duration?: number): void {
-  const w = winAny();
-  if (w.GM_APP && typeof w.GM_APP.showToast === 'function') {
-    w.GM_APP.showToast(message, type);
-    return;
-  }
-  renderToast(message, type, duration);
+  renderToast(message, type, duration ?? 3500);
 }

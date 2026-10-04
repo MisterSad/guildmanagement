@@ -1,28 +1,28 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-
-const GM = window.GM;
+import { registerPlayer, generateJoinCode } from '../src/core/auth/session';
+import { setDbClient, resetSupabaseClient } from '../src/core/api/supabase';
 
 describe('registerPlayer (player self-registration)', () => {
     beforeEach(() => {
         localStorage.clear();
-        GM.db = null;
+        resetSupabaseClient();
     });
 
     afterEach(() => {
-        GM.db = null;
+        resetSupabaseClient();
     });
 
     it('invokes player-register edge function with the provided fields', async () => {
         let invoked = null;
-        GM.db = {
+        setDbClient({
             functions: {
                 invoke: async (name, opts) => {
                     invoked = { name, opts };
                     return { data: { ok: true, status: 'pending' } };
                 },
             },
-        };
-        const res = await GM.registerPlayer('myname', 'secretpass1', '123456789', 'FGF-ABCD-EFGH');
+        });
+        const res = await registerPlayer('myname', 'secretpass1', '123456789', 'FGF-ABCD-EFGH');
         expect(invoked.name).toBe('player-register');
         expect(invoked.opts.body).toEqual({
             id: 'myname',
@@ -35,15 +35,15 @@ describe('registerPlayer (player self-registration)', () => {
 
     it('trims identifier, uid and code before sending', async () => {
         let body = null;
-        GM.db = {
+        setDbClient({
             functions: {
                 invoke: async (_name, opts) => {
                     body = opts.body;
                     return { data: { ok: true } };
                 },
             },
-        };
-        await GM.registerPlayer('  myname  ', 'secretpass1', ' 123456789 ', ' FGF-X-Y ');
+        });
+        await registerPlayer('  myname  ', 'secretpass1', ' 123456789 ', ' FGF-X-Y ');
         expect(body).toEqual({
             id: 'myname',
             password: 'secretpass1',
@@ -53,16 +53,16 @@ describe('registerPlayer (player self-registration)', () => {
     });
 
     it('propagates edge function error codes', async () => {
-        GM.db = {
+        setDbClient({
             functions: {
                 invoke: async () => ({ data: { ok: false, error: 'invalid_code' } }),
             },
-        };
-        expect(await GM.registerPlayer('a', 'b', 'c', 'd')).toEqual({ ok: false, error: 'invalid_code' });
+        });
+        expect(await registerPlayer('a', 'b', 'c', 'd')).toEqual({ ok: false, error: 'invalid_code' });
     });
 
     it('recovers edge function error codes from non-2xx responses via parseFunctionsInvokeResult', async () => {
-        GM.db = {
+        setDbClient({
             functions: {
                 invoke: async () => ({
                     data: null,
@@ -76,38 +76,38 @@ describe('registerPlayer (player self-registration)', () => {
                     }
                 }),
             },
-        };
-        expect(await GM.registerPlayer('a', 'b', '12345678', 'FGF-ABCD-EFGH')).toEqual({
+        });
+        expect(await registerPlayer('a', 'b', '12345678', 'FGF-ABCD-EFGH')).toEqual({
             ok: false,
             error: 'uid_not_in_guild'
         });
     });
 
     it('returns request_failed when the invoke throws', async () => {
-        GM.db = {
+        setDbClient({
             functions: {
                 invoke: async () => { throw new Error('network'); },
             },
-        };
-        expect(await GM.registerPlayer('a', 'b', 'c', 'd')).toEqual({ ok: false, error: 'request_failed' });
+        });
+        expect(await registerPlayer('a', 'b', 'c', 'd')).toEqual({ ok: false, error: 'request_failed' });
     });
 
     it('returns no_client without a supabase client', async () => {
-        expect(await GM.registerPlayer('a', 'b', 'c', 'd')).toEqual({ ok: false, error: 'no_client' });
+        expect(await registerPlayer('a', 'b', 'c', 'd')).toEqual({ ok: false, error: 'no_client' });
     });
 });
 
 describe('generateJoinCode', () => {
     it('produces a code in the FGF-XXXX-XXXX shape', () => {
-        const code = GM.generateJoinCode('FGF');
+        const code = generateJoinCode('FGF');
         expect(code).toMatch(/^FGF-[A-Z2-9]{4}-[A-Z2-9]{4}$/);
     });
 
     it('uses a custom prefix when provided', () => {
-        expect(GM.generateJoinCode('TST')).toMatch(/^TST-[A-Z2-9]{4}-[A-Z2-9]{4}$/);
+        expect(generateJoinCode('TST')).toMatch(/^TST-[A-Z2-9]{4}-[A-Z2-9]{4}$/);
     });
 
     it('defaults the prefix to FGF', () => {
-        expect(GM.generateJoinCode()).toMatch(/^FGF-/);
+        expect(generateJoinCode()).toMatch(/^FGF-/);
     });
 });

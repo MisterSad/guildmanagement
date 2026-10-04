@@ -15,6 +15,7 @@ vi.mock('../src/modules/app/dialogs/dialogs.service', async (importOriginal) => 
 import { showConfirm } from '../src/modules/app/dialogs/dialogs.service';
 
 import { getAppState, patchAppState, resetAppState } from '../src/core/state/app-state';
+import { setDbClient, resetSupabaseClient } from '../src/core/api/supabase';
 import {
   setGuildMembers,
   setPendingTransfers,
@@ -94,6 +95,9 @@ const MEMBERS = [
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
+// The fake client installed for the current test (also handed to setDbClient).
+let db;
+
 beforeEach(() => {
   document.body.innerHTML = MEMBERS_DOM;
   localStorage.clear();
@@ -102,9 +106,9 @@ beforeEach(() => {
   setGuildMembers(MEMBERS);
   patchAppState({ adminMembersViewMode: 'cards', adminSelectedMembers: new Set(), guildAbsences: [] });
 
-  window.GM = window.GM || {};
-  window.GM.db = makeDb();
-  window.currentGuild = 'ALPHA';
+  db = makeDb();
+  setDbClient(db);
+  patchAppState({ currentGuild: 'ALPHA' });
   showConfirm.mockReset();
   showConfirm.mockImplementation((_title, _msg, onConfirm) => { if (onConfirm) void onConfirm(); });
 });
@@ -114,8 +118,7 @@ afterEach(() => {
   clearMembersStore();
   resetAppState();
   document.body.innerHTML = '';
-  delete window.GM_MEMBERS;
-  delete window.currentGuild;
+  resetSupabaseClient();
   localStorage.clear();
 });
 
@@ -171,7 +174,7 @@ describe('bulkUpdateMemberRoles — R5 protection', () => {
     getAppState().adminSelectedMembers.add('Leader');
     const ok = await bulkUpdateMemberRoles('R2');
     expect(ok).toBe(false);
-    expect(window.GM.db.__calls.update.length).toBe(0);
+    expect(db.__calls.update.length).toBe(0);
   });
 
   it('updates eligible members and never includes the R5 leader', async () => {
@@ -182,10 +185,10 @@ describe('bulkUpdateMemberRoles — R5 protection', () => {
     const ok = await bulkUpdateMemberRoles('R3');
 
     expect(ok).toBe(true);
-    const updates = window.GM.db.__calls.update;
+    const updates = db.__calls.update;
     expect(updates.length).toBe(1);
     expect(updates[0].payload.role).toBe('R3');
-    const inCall = window.GM.db.__calls.in.find((c) => c.table === 'guild_members');
+    const inCall = db.__calls.in.find((c) => c.table === 'guild_members');
     expect(inCall.vals).toEqual(['Bob']);
     expect(selected.size).toBe(0);
   });
@@ -220,8 +223,8 @@ describe('pending transfers', () => {
     await resolveTransfer('t1', 'approve');
     await tick();
     expect(showConfirm).toHaveBeenCalled();
-    expect(window.GM.db.__calls.rpc.map((c) => c.name)).toContain('resolve_guild_transfer');
-    expect(window.GM.db.__calls.rpc.find((c) => c.name === 'resolve_guild_transfer').args)
+    expect(db.__calls.rpc.map((c) => c.name)).toContain('resolve_guild_transfer');
+    expect(db.__calls.rpc.find((c) => c.name === 'resolve_guild_transfer').args)
       .toEqual({ p_transfer_id: 't1', p_action: 'approve' });
   });
 });
@@ -246,7 +249,7 @@ describe('UID-taken dialog', () => {
 
     requestBtn.click();
     await tick();
-    expect(window.GM.db.__calls.rpc.map((c) => c.name)).toContain('gm_admin_request_transfer');
+    expect(db.__calls.rpc.map((c) => c.name)).toContain('gm_admin_request_transfer');
   });
 
   it('offers a rename when the player is already in the guild', async () => {
@@ -266,7 +269,7 @@ describe('UID-taken dialog', () => {
 
 describe('transfer member dialog', () => {
   it('lists eligible target guilds and submits the transfer RPC', async () => {
-    window.GM.db = makeDb({
+    db = makeDb({
       maybeSingle: { guilds: { server_number: '1058' } },
       rpc: (name) => {
         if (name === 'gm_list_transfer_eligible_guilds') {
@@ -275,6 +278,7 @@ describe('transfer member dialog', () => {
         return { data: { ok: true }, error: null };
       }
     });
+    setDbClient(db);
 
     await showTransferMemberDialog(MEMBERS[2]);
 
@@ -288,11 +292,12 @@ describe('transfer member dialog', () => {
     await tick();
     // Phase 3: `transfer_guild_member` was a one-line SQL wrapper around this,
     // with an identical signature and no check of its own. It is dropped.
-    expect(window.GM.db.__calls.rpc.map((c) => c.name)).toContain('gm_transfer_guild_member');
+    expect(db.__calls.rpc.map((c) => c.name)).toContain('gm_transfer_guild_member');
   });
 
   it('warns when no guild is eligible', async () => {
-    window.GM.db = makeDb({ rpc: () => ({ data: [], error: null }) });
+    db = makeDb({ rpc: () => ({ data: [], error: null }) });
+    setDbClient(db);
     await showTransferMemberDialog(MEMBERS[2]);
     expect(document.getElementById('transfer-member-overlay')).toBeNull();
   });

@@ -1,9 +1,10 @@
 import { test, expect } from '@playwright/test';
 
 // Guild TAG card and rename dialog, against the PRODUCTION bundle in dist/.
-// The session is injected through window.GM_APP.showAdminDashboard(), as in
-// dashboard-nav.spec.js. supabase-js comes from the (stubbed) CDN, so GM.db is
-// replaced by a fake whose rpc() answers the two guild-rename functions.
+// The dashboard is opened through window.GM_E2E.showAdminDashboard(), as in
+// dashboard-nav.spec.js. The two guild-rename RPCs are answered at the network
+// (PostgREST /rest/v1/rpc/...) and every request body is recorded: since M4c
+// there is no global client left to swap for a fake.
 
 async function stubNetwork(page) {
   await page.route('https://cdn.jsdelivr.net/**', (route) =>
@@ -20,31 +21,30 @@ async function stubNetwork(page) {
   );
 }
 
+/** Answers the two guild-rename RPCs and records what the page sent them. */
+async function stubRenameRpcs(page, history) {
+  const calls = [];
+  await page.route('**/rest/v1/rpc/gm_guild_tag_history', (route) => {
+    calls.push({ name: 'gm_guild_tag_history', args: route.request().postDataJSON() });
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(history) });
+  });
+  await page.route('**/rest/v1/rpc/gm_rename_guild', (route) => {
+    calls.push({ name: 'gm_rename_guild', args: route.request().postDataJSON() });
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: false, error: 'tag_taken' }) });
+  });
+  return calls;
+}
+
 async function openAccountsTab(page, history) {
-  await page.evaluate((hist) => {
+  const calls = await stubRenameRpcs(page, history);
+  await page.evaluate(() => {
     localStorage.setItem('gm_current_guild', 'AB');
-    window.__renameCalls = [];
-    window.GM.db = {
-      rpc: async (name, args) => {
-        window.__renameCalls.push({ name, args });
-        if (name === 'gm_guild_tag_history') return { data: hist, error: null };
-        if (name === 'gm_rename_guild') return { data: { ok: false, error: 'tag_taken' }, error: null };
-        return { data: null, error: null };
-      },
-      from: () => {
-        const q = {
-          select: () => q, eq: () => q, ilike: () => q, order: () => q, in: () => q, limit: () => q,
-          maybeSingle: async () => ({ data: null, error: null }),
-          then: (res) => res({ data: [], error: null }),
-        };
-        return q;
-      },
-    };
-    window.GM_APP.showAdminDashboard();
-  }, history);
+    window.GM_E2E.showAdminDashboard();
+  });
   await expect(page.locator('#dashboard-view')).toBeVisible();
   await page.locator('.nav-tab[data-tab="admin-home"]').evaluate((el) => el.click());
   await expect(page.locator('#admin-home')).toHaveClass(/active/);
+  return calls;
 }
 
 test.beforeEach(async ({ page }) => {
@@ -57,7 +57,7 @@ test('the Guild TAG card is shown when the server allows a rename, and the dialo
   page.on('pageerror', (err) => errors.push(String(err)));
   page.on('console', (msg) => { if (msg.type() === 'error' && /Content Security Policy/i.test(msg.text())) errors.push(msg.text()); });
 
-  await openAccountsTab(page, {
+  const calls = await openAccountsTab(page, {
     ok: true, can_rename: true, cooldown_applies: true, next_allowed_at: null,
     history: [{ old_tag: 'OLD', new_tag: 'AB', changed_at: '2026-09-01T10:00:00Z' }],
   });
@@ -82,8 +82,7 @@ test('the Guild TAG card is shown when the server allows a rename, and the dialo
   await expect(page.locator('#guild-rename-error')).toContainText('Another guild already uses this TAG');
   await expect(dialog).toBeVisible();
 
-  const calls = await page.evaluate(() => window.__renameCalls.filter((c) => c.name === 'gm_rename_guild'));
-  expect(calls).toEqual([{ name: 'gm_rename_guild', args: { p_guild: 'AB', p_new_tag: 'CD' } }]);
+  expect(calls.filter((c) => c.name === 'gm_rename_guild')).toEqual([{ name: 'gm_rename_guild', args: { p_guild: 'AB', p_new_tag: 'CD' } }]);
 
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);
@@ -91,7 +90,7 @@ test('the Guild TAG card is shown when the server allows a rename, and the dialo
 });
 
 test('the card stays hidden when the server says the caller cannot rename', async ({ page }) => {
-  await openAccountsTab(page, { ok: true, can_rename: false, cooldown_applies: true, next_allowed_at: null, history: [] });
-  await expect.poll(() => page.evaluate(() => window.__renameCalls.some((c) => c.name === 'gm_guild_tag_history'))).toBe(true);
+  const calls = await openAccountsTab(page, { ok: true, can_rename: false, cooldown_applies: true, next_allowed_at: null, history: [] });
+  await expect.poll(() => calls.some((c) => c.name === 'gm_guild_tag_history')).toBe(true);
   await expect(page.locator('#guild-tag-card')).toBeHidden();
 });

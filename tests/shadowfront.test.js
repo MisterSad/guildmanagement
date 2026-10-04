@@ -2,6 +2,10 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { shadowfrontView } from '../src/modules/shadowfront/views/ShadowfrontView';
 import { showToast } from '../src/core/dom/toast';
 import { showConfirm } from '../src/modules/app/dialogs/dialogs.service';
+import { setDbClient, resetSupabaseClient } from '../src/core/api/supabase';
+import { patchAppState } from '../src/core/state/app-state';
+import { formatDiscordRoleMention } from '../src/core/integrations/discord';
+import { t } from '../src/core/i18n/i18n';
 
 // The view imports showToast / showConfirm directly (no more `window.GM.*` /
 // `window.showConfirm` reads): mock their source modules.
@@ -14,18 +18,12 @@ vi.mock('../src/modules/app/dialogs/dialogs.service', async (importOriginal) => 
     showConfirm: vi.fn()
 }));
 
-// Mirror the src/main.ts bridge so window.GM_SHADOWFRONT keeps the same public
-// API after the shadowfront.js cutover.
-window.GM_SHADOWFRONT = {
-    load: () => shadowfrontView.load(),
-    render: () => shadowfrontView.render(),
-    setStateForTest: (state) => shadowfrontView.setStateForTest(state),
-    getAssignments: () => shadowfrontView.getAssignments(),
-    getActiveSquadSession: (squadKey) => shadowfrontView.getActiveSquadSession(squadKey)
-};
+// The view singleton is driven directly; there is no window.GM_SHADOWFRONT
+// namespace any more (M4c).
+const SF = shadowfrontView;
 
-const GM = window.GM;
-const SF = window.GM_SHADOWFRONT;
+// The fake client installed for each test, the way main.ts installs the real one.
+let db = null;
 
 const MEMBERS = [
     { pseudo: 'Alpha', guild: 'ALPHA', uid: 'uid1', overall_power: 100000000 },
@@ -83,7 +81,7 @@ function stepByLabel(label) {
 beforeEach(() => {
     document.body.innerHTML = '<div id="event-shadowfront"><div class="event-participants-area"></div></div>';
     localStorage.setItem('gm_role', 'guild_admin');
-    window.currentGuildRestriction = 'ALPHA';
+    patchAppState({ currentGuildRestriction: 'ALPHA' });
     vi.mocked(showToast).mockReset();
     vi.mocked(showConfirm).mockReset();
     tables = {
@@ -104,17 +102,19 @@ beforeEach(() => {
             { pseudo: 'Delta', guild: 'ALPHA', availability: 'squad1', week_start: '2026-08-02' },
         ],
     };
-    GM.db = { from: fromMock, functions: { invoke: async () => ({ data: { ok: false, error: 'n/a' } }) } };
+    db = { from: fromMock, functions: { invoke: async () => ({ data: { ok: false, error: 'n/a' } }) } };
+    setDbClient(db);
 });
 
 afterEach(() => {
-    GM.db = null;
+    resetSupabaseClient();
+    db = null;
     document.body.innerHTML = '';
-    delete window.currentGuildRestriction;
+    patchAppState({ currentGuildRestriction: null });
     vi.unstubAllGlobals();
 });
 
-describe('GM_SHADOWFRONT UI/UX', () => {
+describe('Shadowfront view UI/UX', () => {
     it('renders a 2-step stepper without availability step or approve flow', async () => {
         await SF.load();
         const text = area().textContent;
@@ -166,7 +166,7 @@ describe('GM_SHADOWFRONT UI/UX', () => {
     it('shares the composition on Discord through the shadowfront webhook via Edge Function proxy', async () => {
         tables.guild_config = [{ key: 'webhook_shadowfront', guild: 'ALPHA', value: 'https://discord.test/hook' }];
         const invokeMock = vi.fn().mockResolvedValue({ data: { ok: true } });
-        GM.db.functions.invoke = invokeMock;
+        db.functions.invoke = invokeMock;
 
         await SF.load();
         stepByLabel('1. Squad Composition').click();
@@ -189,7 +189,7 @@ describe('GM_SHADOWFRONT UI/UX', () => {
     it('falls back to general guild event webhook when webhook_shadowfront is empty and cleans angle brackets', async () => {
         tables.guild_config = [{ key: 'webhook_armsrace', guild: 'ALPHA', value: '<https://canary.discord.com/api/webhooks/123/abc>' }];
         const invokeMock = vi.fn().mockResolvedValue({ data: { ok: true } });
-        GM.db.functions.invoke = invokeMock;
+        db.functions.invoke = invokeMock;
 
         await SF.load();
         stepByLabel('1. Squad Composition').click();
@@ -211,7 +211,7 @@ describe('GM_SHADOWFRONT UI/UX', () => {
 
     it('shares the composition on Discord through the shadowfront webhook fallback fetch', async () => {
         tables.guild_config = [{ key: 'webhook_shadowfront', guild: 'ALPHA', value: 'https://discord.test/hook' }];
-        GM.db.functions.invoke = vi.fn().mockResolvedValue({ data: { ok: false } });
+        db.functions.invoke = vi.fn().mockResolvedValue({ data: { ok: false } });
         const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ok: true }) });
         vi.stubGlobal('fetch', fetchMock);
 
@@ -269,9 +269,9 @@ describe('GM_SHADOWFRONT UI/UX', () => {
         expect(poolCol.textContent).toContain('100%');
     });
 
-    it('exports window.GM.formatDiscordRoleMention and safely pings role ID on Shadowfront share', async () => {
-        expect(typeof GM.formatDiscordRoleMention).toBe('function');
-        expect(GM.formatDiscordRoleMention('1465165299648303282')).toBe('<@&1465165299648303282>');
+    it('exports formatDiscordRoleMention and safely pings role ID on Shadowfront share', async () => {
+        expect(typeof formatDiscordRoleMention).toBe('function');
+        expect(formatDiscordRoleMention('1465165299648303282')).toBe('<@&1465165299648303282>');
 
         tables.guild_config = [
             { key: 'discord_role_id_shadowfront', value: '1465165299648303282', guild: 'ALPHA' },
@@ -286,7 +286,7 @@ describe('GM_SHADOWFRONT UI/UX', () => {
         ];
 
         const invokeMock = vi.fn().mockResolvedValue({ data: { ok: true } });
-        GM.db.functions.invoke = invokeMock;
+        db.functions.invoke = invokeMock;
 
         await SF.load();
 
@@ -305,7 +305,7 @@ describe('GM_SHADOWFRONT UI/UX', () => {
     });
 
     it('translates sf_subtitle correctly without returning raw key', () => {
-        expect(GM.t('sf_subtitle')).toBe('Squad 1 & Squad 2 - 20 participants + 10 reserves');
+        expect(t('sf_subtitle')).toBe('Squad 1 & Squad 2 - 20 participants + 10 reserves');
     });
 
     it('migrates pre-start shadowfront_squads assignments when starting a new squad session', async () => {
@@ -358,7 +358,7 @@ describe('GM_SHADOWFRONT UI/UX', () => {
 
     it('deletes a participant via the delete button without throwing (regression: db ReferenceError)', async () => {
         const deleteSpy = vi.fn();
-        GM.db.from = (table) => {
+        db.from = (table) => {
             const chain = chained(tables[table] || []);
             if (table === 'event_participants') {
                 const originalDelete = chain.delete;

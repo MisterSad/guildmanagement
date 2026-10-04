@@ -1,7 +1,8 @@
 // Regression guard for the owner-chosen release version (AGENTS.md §6):
-// the user-facing app version (APP_VERSION in gm-utils.js) must be propagated
-// systematically to the navigation bar (read dynamically via window.GM.appVersion)
-// and to the DISCORD_CHANGELOG.md title. A mismatch between the app version and
+// the user-facing app version (APP_VERSION in src/core/config/constants.ts) must
+// be propagated systematically to the navigation bar (ShellView imports the
+// constant; M4c removed the window bridge that used to carry it) and to the
+// DISCORD_CHANGELOG.md title. A mismatch between the app version and
 // the changelog version is a release blocker.
 
 import { describe, it, expect } from 'vitest';
@@ -19,18 +20,20 @@ function extractAppVersion() {
 }
 
 describe('Release version propagation (v3.5.2)', () => {
-  it('exposes the version through the GM bridge', () => {
-    const bridge = read('src/core/gm-bridge.ts');
-    expect(bridge).toContain('appVersion: APP_VERSION');
+  it('has one source for the version: the constant, not a bridge copy', () => {
+    // M4c: src/core/gm-bridge.ts, which re-exposed APP_VERSION as
+    // a global `appVersion`, is deleted. The constant is the only carrier.
+    expect(fs.existsSync(path.resolve(root, 'src/core/gm-bridge.ts'))).toBe(false);
+    const shell = read('src/modules/shell/views/ShellView.ts');
+    expect(shell).toContain("import { APP_VERSION } from '../../../core/config/constants';");
   });
 
-  it('ShellView renders the version above Terms & Conditions (sidebar + drawer) via the dynamic bridge value', () => {
+  it('ShellView renders the version above Terms & Conditions (sidebar + drawer) from the constant', () => {
     const shell = read('src/modules/shell/views/ShellView.ts');
-    // Both render sites read window.GM.appVersion dynamically (never a hardcoded copy)
+    // Both render sites read APP_VERSION (never a hardcoded copy)
     const renders = (shell.match(/gm-app-version/g) || []).length;
     expect(renders).toBeGreaterThanOrEqual(2);
-    // M4c: the version is the typed constant, not window.GM.appVersion.
-    expect(shell).toContain('APP_VERSION');
+    expect(shell).toContain('escapeHTML(APP_VERSION)');
     // Order in the sidebar footer: version, then Privacy Policy, then Terms.
     const sidebarFooter = shell.slice(shell.indexOf('gm-sidebar-legal-footer'));
     const iVersion = sidebarFooter.indexOf('gm-app-version');

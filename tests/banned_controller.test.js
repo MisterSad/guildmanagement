@@ -36,6 +36,7 @@ import { showToast, showConfirm } from '../src/modules/app/dialogs/dialogs.servi
 import { validateUid } from '../src/core/utils/text';
 import { renderGuildMembers } from '../src/modules/app/members/members.render';
 import { setVerifiedRole } from '../src/core/auth/roles';
+import { setDbClient, resetSupabaseClient } from '../src/core/api/supabase';
 
 /** Records every filter so a test can prove which tenant was addressed. */
 function fakeDb(responses = {}) {
@@ -86,7 +87,7 @@ beforeEach(() => {
   localStorage.setItem('gm_current_guild', 'ALPHA');
   setBannedPlayers([]);
   setGuildMembers([]);
-  window.GM = {};
+  resetSupabaseClient();
   validateUid.mockImplementation(() => '');
   setVerifiedRole('super_admin', 'TheAdmin');
   // Banning a roster member now asks first (it erases their history); the
@@ -97,7 +98,7 @@ beforeEach(() => {
 
 afterEach(() => {
   document.body.innerHTML = '';
-  delete window.GM;
+  resetSupabaseClient();
   delete window.__confirmRun;
   localStorage.clear();
   setBannedPlayers([]);
@@ -107,7 +108,7 @@ afterEach(() => {
 describe('fetchBannedPlayers', () => {
   it('scopes the read to the active guild and stores the rows', async () => {
     const db = fakeDb({ 'banned_players.select': { data: [{ uid: '1', pseudo: 'Cheater' }], error: null } });
-    window.GM.db = db;
+    setDbClient(db);
 
     await fetchBannedPlayers();
 
@@ -118,7 +119,7 @@ describe('fetchBannedPlayers', () => {
 
   it('surfaces a failure instead of silently emptying the list', async () => {
     setBannedPlayers([{ uid: 'keep', pseudo: 'Existing' }]);
-    window.GM.db = fakeDb({ 'banned_players.select': { data: null, error: { message: 'boom' } } });
+    setDbClient(fakeDb({ 'banned_players.select': { data: null, error: { message: 'boom' } } }));
 
     await fetchBannedPlayers();
 
@@ -128,7 +129,7 @@ describe('fetchBannedPlayers', () => {
   });
 
   it('does nothing at all without a client', async () => {
-    window.GM = {};
+    resetSupabaseClient();
     await expect(fetchBannedPlayers()).resolves.toBeUndefined();
     expect(showToast).not.toHaveBeenCalled();
   });
@@ -137,14 +138,14 @@ describe('fetchBannedPlayers', () => {
 describe('handleAddBannedPlayer', () => {
   it('refuses an empty uid without touching the database', async () => {
     const db = fakeDb();
-    window.GM.db = db;
+    setDbClient(db);
     await handleAddBannedPlayer();
     expect(db.calls).toEqual([]);
   });
 
   it('refuses a uid the validator rejects, and says why', async () => {
     const db = fakeDb();
-    window.GM = { db };
+    setDbClient(db);
     validateUid.mockImplementation(() => 'toast_invalid_uid');
     document.getElementById('banned-uid').value = '123';
 
@@ -157,7 +158,7 @@ describe('handleAddBannedPlayer', () => {
   it('refuses a duplicate rather than writing a second ban row', async () => {
     setBannedPlayers([{ uid: '900', pseudo: 'Cheater' }]);
     const db = fakeDb();
-    window.GM.db = db;
+    setDbClient(db);
     document.getElementById('banned-uid').value = '900';
 
     await handleAddBannedPlayer();
@@ -170,7 +171,7 @@ describe('handleAddBannedPlayer', () => {
   // the caller's account, read by the server -- the browser no longer sends it.
   it('bans in the active guild through one transactional call', async () => {
     const db = fakeDb();
-    window.GM.db = db;
+    setDbClient(db);
     document.getElementById('banned-uid').value = '900';
     document.getElementById('banned-pseudo').value = 'Cheater';
     document.getElementById('banned-reason').value = 'bot';
@@ -184,7 +185,7 @@ describe('handleAddBannedPlayer', () => {
 
   it('sends null rather than empty strings for the optional fields', async () => {
     const db = fakeDb();
-    window.GM.db = db;
+    setDbClient(db);
     document.getElementById('banned-uid').value = '900';
 
     await handleAddBannedPlayer();
@@ -197,7 +198,7 @@ describe('handleAddBannedPlayer', () => {
   it('kicks the player from the roster when they are a current member', async () => {
     setGuildMembers([{ uid: '900', pseudo: 'Cheater' }, { uid: '901', pseudo: 'Innocent' }]);
     const db = fakeDb({ 'rpc.gm_ban_member': { data: { ok: true, removed: 'Cheater' }, error: null } });
-    window.GM.db = db;
+    setDbClient(db);
     document.getElementById('banned-uid').value = '900';
 
     await handleAddBannedPlayer();
@@ -214,7 +215,7 @@ describe('handleAddBannedPlayer', () => {
   it('keeps the roster as it was when the ban is refused', async () => {
     setGuildMembers([{ uid: '900', pseudo: 'Cheater' }]);
     const db = fakeDb({ 'rpc.gm_ban_member': { data: null, error: { message: 'cannot delete an R5', code: 'P0001' } } });
-    window.GM.db = db;
+    setDbClient(db);
     document.getElementById('banned-uid').value = '900';
 
     await handleAddBannedPlayer();
@@ -227,7 +228,7 @@ describe('handleAddBannedPlayer', () => {
   it('bans nothing when the officer cancels the confirmation', async () => {
     setGuildMembers([{ uid: '900', pseudo: 'Cheater' }]);
     const db = fakeDb();
-    window.GM.db = db;
+    setDbClient(db);
     showConfirm.mockImplementation(() => {});
     document.getElementById('banned-uid').value = '900';
 
@@ -240,7 +241,7 @@ describe('handleAddBannedPlayer', () => {
   it('refuses to ban the R5 leader', async () => {
     setGuildMembers([{ uid: '900', pseudo: 'Boss', role: 'R5' }]);
     const db = fakeDb();
-    window.GM.db = db;
+    setDbClient(db);
     document.getElementById('banned-uid').value = '900';
 
     await handleAddBannedPlayer();
@@ -252,7 +253,7 @@ describe('handleAddBannedPlayer', () => {
   it('does not touch the roster when the banned uid is not a member', async () => {
     setGuildMembers([{ uid: '901', pseudo: 'Innocent' }]);
     const db = fakeDb();
-    window.GM.db = db;
+    setDbClient(db);
     document.getElementById('banned-uid').value = '900';
 
     await handleAddBannedPlayer();
@@ -263,7 +264,7 @@ describe('handleAddBannedPlayer', () => {
 
   it('keeps the roster intact when the kick itself fails', async () => {
     setGuildMembers([{ uid: '900', pseudo: 'Cheater' }]);
-    window.GM.db = fakeDb({ 'guild_members.delete': { error: { message: 'denied' } } });
+    setDbClient(fakeDb({ 'guild_members.delete': { error: { message: 'denied' } } }));
     document.getElementById('banned-uid').value = '900';
 
     await handleAddBannedPlayer();
@@ -275,7 +276,7 @@ describe('handleAddBannedPlayer', () => {
   });
 
   it('re-enables the submit button even when the ban fails', async () => {
-    window.GM.db = fakeDb({ 'rpc.gm_ban_member': { data: null, error: { message: 'boom' } } });
+    setDbClient(fakeDb({ 'rpc.gm_ban_member': { data: null, error: { message: 'boom' } } }));
     document.getElementById('banned-uid').value = '900';
     const btn = document.querySelector('#add-banned-form button[type="submit"]');
 
@@ -290,7 +291,7 @@ describe('deleteBannedPlayer', () => {
   it('scopes the delete to the active guild', async () => {
     setBannedPlayers([{ uid: '900', pseudo: 'Cheater' }]);
     const db = fakeDb();
-    window.GM.db = db;
+    setDbClient(db);
 
     await deleteBannedPlayer('900');
 
@@ -301,7 +302,7 @@ describe('deleteBannedPlayer', () => {
 
   it('keeps the row when the delete is refused', async () => {
     setBannedPlayers([{ uid: '900', pseudo: 'Cheater' }]);
-    window.GM.db = fakeDb({ 'banned_players.delete': { error: { message: 'denied' } } });
+    setDbClient(fakeDb({ 'banned_players.delete': { error: { message: 'denied' } } }));
 
     await deleteBannedPlayer('900');
 

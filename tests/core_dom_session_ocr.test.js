@@ -19,8 +19,6 @@ import {
 import { filterBulkEligibleMembers, getAllowedBulkRoles, isRoleAllowedForBulk, formatTicketDescription } from '../src/modules/members/members.service';
 
 beforeEach(() => {
-  delete window.GM;
-  delete window.GM_APP;
   document.body.innerHTML = '';
 });
 
@@ -38,11 +36,25 @@ describe('showToast', () => {
     expect(toast.classList.contains('success')).toBe(true);
   });
 
-  it('delegates to GM_APP.showToast when available', () => {
-    const spy = vi.fn();
-    window.GM_APP = { showToast: spy };
-    showToast('Hi', 'info');
-    expect(spy).toHaveBeenCalledWith('Hi', 'info');
+  // It used to delegate to a `GM_APP.showToast` host on window, which main.ts
+  // pointed at renderToast(msg, type, 3500). Since M4c it renders directly,
+  // so the 3500 ms default the host applied must now come from showToast.
+  it('renders directly with the 3500 ms default the app host used to apply', () => {
+    vi.useFakeTimers();
+    try {
+      document.body.innerHTML = '<div id="toast-container"></div>';
+      showToast('Hi', 'info');
+      const toast = document.querySelector('#toast-container .toast');
+      expect(toast.textContent).toContain('Hi');
+      vi.advanceTimersByTime(3499);
+      expect(toast.classList.contains('fade-out')).toBe(false);
+      vi.advanceTimersByTime(1);
+      expect(toast.classList.contains('fade-out')).toBe(true);
+      vi.advanceTimersByTime(300);
+      expect(document.querySelector('#toast-container .toast')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('is a no-op without a container', () => {

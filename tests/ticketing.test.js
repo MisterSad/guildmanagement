@@ -6,6 +6,9 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
+import { detectClientEnvironment } from '../src/core/auth/roles';
+import { formatTicketDescription } from '../src/modules/members/members.service';
+import { compressImageForUpload } from '../src/modules/ocr/ocr.service';
 
 const root = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.resolve(root, p), 'utf-8');
@@ -101,7 +104,7 @@ describe('Bug-report ticketing (V3.5.3)', () => {
   });
 
   it('detectClientEnvironment and formatTicketDescription format the structured schema correctly', () => {
-    const env = window.GM.detectClientEnvironment('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36');
+    const env = detectClientEnvironment('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36');
     // macOS/iOS deliberately report just the platform name, no version: every
     // browser freezes the "Mac OS X 10_15_7" UA token at that exact value
     // regardless of the real installed macOS version (confirmed live on
@@ -111,11 +114,11 @@ describe('Bug-report ticketing (V3.5.3)', () => {
     expect(env.browser).toContain('Chrome 128');
     expect(env.appVersion).toBeDefined();
 
-    const winEnv = window.GM.detectClientEnvironment('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36 Edg/127.0.0.0');
+    const winEnv = detectClientEnvironment('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36 Edg/127.0.0.0');
     expect(winEnv.os).toBe('Windows 10/11');
     expect(winEnv.browser).toContain('Edge 127');
 
-    const iosEnv = window.GM.detectClientEnvironment('Mozilla/5.0 (iPhone; CPU iPhone OS 17_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1');
+    const iosEnv = detectClientEnvironment('Mozilla/5.0 (iPhone; CPU iPhone OS 17_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1');
     // Same freeze applies to iOS's "OS X_Y" token (confirmed live: a real
     // iOS 26.6.1 device still reports 18_7 here) — no version shown.
     expect(iosEnv.os).toBe('iOS');
@@ -124,7 +127,7 @@ describe('Bug-report ticketing (V3.5.3)', () => {
     // UA token is shown, matching every other browser branch's convention.
     expect(iosEnv.browser).toBe('Safari 17');
 
-    const desc = window.GM.formatTicketDescription({
+    const desc = formatTicketDescription({
       currentBehavior: 'Something broke',
       expectedBehavior: 'It should work',
       steps: '1. Click A\n2. Click B',
@@ -174,7 +177,10 @@ describe('Bug-report ticketing (V3.5.3)', () => {
     expect(edge).toContain('p_attachments: attachments');
     expect(edge).toContain('payload_json');
 
-    expect(typeof window.GM.compressImageForUpload).toBe('function');
+    // The modal compresses screenshots with the shared OCR compressor, imported
+    // directly since M4c (it used to be reachable through the bridge).
+    expect(typeof compressImageForUpload).toBe('function');
+    expect(shell).toContain('compressImageForUpload(');
   });
 
   it('supports 4 ticket statuses and sends Discord status updates', () => {

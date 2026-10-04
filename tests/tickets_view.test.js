@@ -6,9 +6,10 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { TicketsView, loadingHtml } from '../src/modules/tickets/views/TicketsView';
+import { setDbClient, resetSupabaseClient } from '../src/core/api/supabase';
 
 // The view imports its collaborators directly; mock the source modules
-// rather than the legacy window.GM surface.
+// rather than a window bridge.
 const mocks = vi.hoisted(() => ({ superAdmin: true, showToast: vi.fn() }));
 
 vi.mock('../src/core/i18n/i18n', async (importOriginal) => ({
@@ -26,7 +27,7 @@ vi.mock('../src/core/dom/toast', async (importOriginal) => ({
 
 let invokeMock;
 
-function installGM({ superAdmin = true } = {}) {
+function installClient({ superAdmin = true } = {}) {
   invokeMock = vi.fn(async (_fn, opts) => {
     const action = opts && opts.body ? opts.body.action : undefined;
     if (action === 'list') {
@@ -44,8 +45,8 @@ function installGM({ superAdmin = true } = {}) {
   });
 
   mocks.superAdmin = superAdmin;
-  // Only the client lives on window.GM (getClient() reads it).
-  window.GM = { db: { functions: { invoke: invokeMock } } };
+  // Installed the way main.ts installs the real client (getClient() reads it).
+  setDbClient({ functions: { invoke: invokeMock } });
 }
 
 function mountContainer() {
@@ -54,7 +55,7 @@ function mountContainer() {
 }
 
 afterEach(() => {
-  delete window.GM;
+  resetSupabaseClient();
   document.body.innerHTML = '';
   vi.restoreAllMocks();
 });
@@ -72,7 +73,7 @@ describe('loadingHtml() module export', () => {
 
 describe('TicketsView.load()', () => {
   it('renders the ticket table on success', async () => {
-    installGM();
+    installClient();
     const container = mountContainer();
     const view = new TicketsView();
     await view.load();
@@ -84,7 +85,7 @@ describe('TicketsView.load()', () => {
   });
 
   it('renders the error screen with a working retry button', async () => {
-    installGM();
+    installClient();
     invokeMock.mockImplementation(async () => ({ data: { ok: false, error: 'list_failed' }, error: null }));
     const container = mountContainer();
     const view = new TicketsView();
@@ -100,7 +101,7 @@ describe('TicketsView.load()', () => {
   });
 
   it('renders the super-admin gate for non super admins', async () => {
-    installGM({ superAdmin: false });
+    installClient({ superAdmin: false });
     const container = mountContainer();
     const view = new TicketsView();
     await view.load();
@@ -110,7 +111,7 @@ describe('TicketsView.load()', () => {
 
   it('shows the skeleton when the db client is unavailable', async () => {
     mocks.superAdmin = true;
-    window.GM = { db: null };
+    resetSupabaseClient();
     const container = mountContainer();
     const view = new TicketsView();
     await view.load();

@@ -7,19 +7,19 @@
  *
  * The former Phase-1 suite compared live output against shadowfront.js; with
  * the legacy file gone, this pins the same expected results as golden values
- * plus the cutover guard that the view exposes no `window.GM_SHADOWFRONT`.
+ * plus the cutover guard that the view exposes no `GM_SHADOWFRONT` global.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { ShadowfrontView } from '../src/modules/shadowfront/views/ShadowfrontView';
 import { showToast } from '../src/core/dom/toast';
+import { setDbClient, resetSupabaseClient, getClient } from '../src/core/api/supabase';
+import { patchAppState } from '../src/core/state/app-state';
 
-// The view imports showToast directly (no more `window.GM.showToast` read).
+// The view imports showToast directly (no more bridge read since M4c).
 vi.mock('../src/core/dom/toast', async (importOriginal) => ({
   ...(await importOriginal()),
   showToast: vi.fn()
 }));
-
-const GM = window.GM;
 
 const MEMBERS = [
   { pseudo: 'Alpha', guild: 'ALPHA', uid: 'uid1', overall_power: 100000000 },
@@ -60,10 +60,10 @@ function chained(value) {
 }
 
 function installDb() {
-  GM.db = {
+  setDbClient({
     from: (table) => chained(tables[table] || []),
     functions: { invoke: vi.fn().mockResolvedValue({ data: { ok: false, error: 'n/a' } }) }
-  };
+  });
 }
 
 function mount() {
@@ -114,16 +114,16 @@ async function runView(interactions = [], fixture = null) {
 beforeEach(() => {
   mount();
   localStorage.setItem('gm_role', 'guild_admin');
-  window.currentGuildRestriction = 'ALPHA';
+  patchAppState({ currentGuildRestriction: 'ALPHA' });
   vi.mocked(showToast).mockReset();
   tables = baseTables();
   installDb();
 });
 
 afterEach(() => {
-  GM.db = null;
+  resetSupabaseClient();
   document.body.innerHTML = '';
-  delete window.currentGuildRestriction;
+  patchAppState({ currentGuildRestriction: null });
   vi.unstubAllGlobals();
 });
 
@@ -241,7 +241,7 @@ describe('ShadowfrontView golden results (post shadowfront.js cutover)', () => {
     tables = fixture();
     installDb();
     const invokeMock = vi.fn().mockResolvedValue({ data: { ok: true } });
-    GM.db.functions.invoke = invokeMock;
+    getClient().functions.invoke = invokeMock;
 
     const view = new ShadowfrontView();
     await view.load();
@@ -262,7 +262,7 @@ describe('ShadowfrontView golden results (post shadowfront.js cutover)', () => {
     expect(showToast).toHaveBeenCalledWith('Composition sent to Discord.', 'success');
   });
 
-  it('does not expose any window.GM_* global (cutover guard)', async () => {
+  it('does not expose any GM_* global on window (cutover guard)', async () => {
     const baseline = Object.getOwnPropertyNames(window).filter((k) => k.startsWith('GM_')).sort();
 
     const view = new ShadowfrontView();
@@ -270,6 +270,6 @@ describe('ShadowfrontView golden results (post shadowfront.js cutover)', () => {
 
     const after = Object.getOwnPropertyNames(window).filter((k) => k.startsWith('GM_')).sort();
     expect(after).toEqual(baseline);
-    expect(window.GM_SHADOWFRONT).toBeUndefined();
+    expect(Object.prototype.hasOwnProperty.call(window, 'GM_SHADOWFRONT')).toBe(false);
   });
 });

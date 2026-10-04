@@ -6,8 +6,9 @@
  * - src/core/utils/date.ts
  * - src/core/utils/text.ts
  *
- * Verifies strict typing, mathematical invariants, boundary conditions,
- * and seamless parity with window.GM bridge.
+ * Verifies strict typing, mathematical invariants and boundary conditions.
+ * (It also checked parity with the window bridge until M4c deleted that
+ * bridge; tests/gm_bridge_contract.test.js now pins its absence.)
  */
 
 import { describe, it, expect } from 'vitest';
@@ -345,49 +346,5 @@ describe('src/core/utils/text.ts', () => {
       expect(parseGeminiJson(null)).toBeNull();
       expect(() => parseGeminiJson('bad json')).toThrow();
     });
-  });
-});
-
-describe('window.GM bridge parity', () => {
-  it('exposes identical scoring, date, and text utilities on window.GM', () => {
-    const GM = window.GM;
-    expect(GM).toBeDefined();
-
-    // Scoring functions
-    expect(typeof GM.calculateCombatDensity).toBe('function');
-    expect(typeof GM.calculateRallyScore).toBe('function');
-    expect(typeof GM.calculateRallyGrade).toBe('function');
-    expect(typeof GM.calculateResidualPower).toBe('function');
-    expect(typeof GM.calculateCombativity).toBe('function');
-    expect(typeof GM.calculateWarScore).toBe('function');
-    expect(typeof GM.getRallyRoleMeta).toBe('function');
-    expect(typeof GM.getPowerTier).toBe('function');
-    expect(typeof GM.getPowerTierMeta).toBe('function');
-
-    // Date functions
-    expect(typeof GM.pad2).toBe('function');
-    expect(typeof GM.getWeekStart).toBe('function');
-    expect(typeof GM.getPrevWeekStart).toBe('function');
-    expect(typeof GM.formatWeek).toBe('function');
-    expect(typeof GM.newSessionId).toBe('function');
-    expect(typeof GM.formatChartDate).toBe('function');
-
-    // Text functions
-    expect(typeof GM.formatNumber).toBe('function');
-    expect(typeof GM.parseNumber).toBe('function');
-    expect(typeof GM.formatPower).toBe('function');
-    expect(typeof GM.avatarInit).toBe('function');
-    expect(typeof GM.cleanPlayerPseudo).toBe('function');
-    expect(typeof GM.levenshteinDistance).toBe('function');
-    expect(typeof GM.calculateStringSimilarity).toBe('function');
-    expect(typeof GM.findBestMatchingMember).toBe('function');
-    expect(typeof GM.parseGeminiJson).toBe('function');
-
-    // Mathematical equivalence through window.GM
-    const testMember = { overall_power: 100000000, fleet_rating: 2000000 };
-    expect(GM.calculateCombatDensity(testMember)).toBe(calculateCombatDensity(testMember));
-    expect(GM.calculateRallyScore(testMember)).toBe(calculateRallyScore(testMember));
-    expect(GM.formatNumber(1234567)).toBe(formatNumber(1234567));
-    expect(GM.getWeekStart('2026-09-05')).toBe(getWeekStart('2026-09-05'));
   });
 });

@@ -8,7 +8,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import * as cache from '../src/core/cache/cache';
 import * as guildConfig from '../src/core/config/guild-config';
-import { parseFunctionsInvokeResult } from '../src/core/api/supabase';
+import { parseFunctionsInvokeResult, setDbClient, resetSupabaseClient } from '../src/core/api/supabase';
+import { patchAppState, resetAppState } from '../src/core/state/app-state';
 import * as roles from '../src/core/auth/roles';
 
 function makeDb(opts = {}) {
@@ -47,10 +48,9 @@ function makeDb(opts = {}) {
 beforeEach(() => {
   localStorage.clear();
   cache.clear();
-  delete window.currentGuildRestriction;
-  delete window.currentGuild;
-  delete window.guildsData;
-  delete window.GM;
+  // After localStorage.clear(), so the default currentGuild resolves to null.
+  resetAppState();
+  resetSupabaseClient();
 });
 
 afterEach(() => {
@@ -91,12 +91,12 @@ describe('guild config — DB + localStorage', () => {
   });
 
   it('reads the DB value when available', async () => {
-    window.GM = { db: makeDb({ selectValue: '7' }) };
+    setDbClient(makeDb({ selectValue: '7' }));
     expect(await guildConfig.getGuildConfig('coeff_svs')).toBe('7');
   });
 
   it('falls back to localStorage, then to the default table', async () => {
-    window.GM = { db: makeDb({ selectValue: undefined }) };
+    setDbClient(makeDb({ selectValue: undefined }));
     localStorage.setItem('gm_config_ALPHA_coeff_svs', '9');
     expect(await guildConfig.getGuildConfig('coeff_svs')).toBe('9');
 
@@ -108,7 +108,7 @@ describe('guild config — DB + localStorage', () => {
 
   it('writes to localStorage and upserts to the DB', async () => {
     const db = makeDb();
-    window.GM = { db };
+    setDbClient(db);
     const ok = await guildConfig.setGuildConfig('coeff_svs', '12');
     expect(ok).toBe(true);
     expect(localStorage.getItem('gm_config_ALPHA_coeff_svs')).toBe('12');
@@ -117,14 +117,14 @@ describe('guild config — DB + localStorage', () => {
   });
 
   it('returns false when the DB upsert errors', async () => {
-    window.GM = { db: makeDb({ upsertError: { message: 'boom' } }) };
+    setDbClient(makeDb({ upsertError: { message: 'boom' } }));
     expect(await guildConfig.setGuildConfig('coeff_svs', '1')).toBe(false);
   });
 
   it('H2: refuses to read or write config for an unresolved tenant', async () => {
     localStorage.removeItem('gm_current_guild');
     const db = makeDb({ selectValue: '7' });
-    window.GM = { db };
+    setDbClient(db);
 
     // The static fallback, NOT the DB value and NOT another tenant's value.
     expect(await guildConfig.getGuildConfig('coeff_svs')).toBe('5');
@@ -136,7 +136,7 @@ describe('guild config — DB + localStorage', () => {
   });
 
   it('getGuildTag brackets a stored tag, else derives one from the guild id', async () => {
-    window.GM = { db: makeDb({ selectValue: 'PR1M' }) };
+    setDbClient(makeDb({ selectValue: 'PR1M' }));
     expect(await guildConfig.getGuildTag('ALPHA')).toBe('[PR1M]');
 
     // H2: `DEFAULT_GUILD_TAGS` is gone -- a hardcoded table of 7 tags for 26
@@ -144,7 +144,7 @@ describe('guild config — DB + localStorage', () => {
     // the other 19 guilds always did. Production is unaffected: guild_config
     // already holds a tag for all 7, and two of the hardcoded values were
     // actually WRONG (the DB says CLAW is [BYE] and DEMO is DEMO).
-    window.GM = { db: makeDb({ selectValue: '' }) };
+    setDbClient(makeDb({ selectValue: '' }));
     expect(await guildConfig.getGuildTag('ALPHA')).toBe('[ALPHA]');
     expect(await guildConfig.getGuildTag('UNKNOWN')).toBe('[UNKNOWN]');
   });
@@ -153,7 +153,7 @@ describe('guild config — DB + localStorage', () => {
     // getGuildConfig used to resolve the tenant itself, so getGuildTag('CLAW')
     // returned the ACTIVE guild's tag while only its fallback read the argument.
     const db = makeDb({ selectValue: 'BYE' });
-    window.GM = { db };
+    setDbClient(db);
     localStorage.setItem('gm_current_guild', 'OMEGA');
     expect(await guildConfig.getGuildTag('CLAW')).toBe('[BYE]');
     const select = db.calls.find((c) => c.op === 'select');
@@ -163,7 +163,7 @@ describe('guild config — DB + localStorage', () => {
 
   it('H2: yields no tag at all when no guild can be resolved', async () => {
     localStorage.removeItem('gm_current_guild');
-    window.GM = { db: makeDb({ selectValue: 'PR1M' }) };
+    setDbClient(makeDb({ selectValue: 'PR1M' }));
     expect(await guildConfig.getGuildTag()).toBe('');
   });
 });
@@ -218,35 +218,38 @@ describe('RBAC — roles & write access', () => {
     expect(roles.canWriteGuild('ANY')).toBe(true);
 
     localStorage.setItem('gm_role', 'guild_admin');
-    window.currentGuildRestriction = 'ALPHA';
+    patchAppState({ currentGuildRestriction: 'ALPHA' });
     expect(roles.canWriteGuild('ALPHA')).toBe(true);
     expect(roles.canWriteGuild('BETA')).toBe(false);
-    delete window.currentGuildRestriction;
+    patchAppState({ currentGuildRestriction: null });
     expect(roles.canWriteGuild('ALPHA')).toBe(false); // never fall back
   });
 
   it('canWriteGuild: server_admin limited to its server number', () => {
     localStorage.setItem('gm_role', 'member');
     localStorage.setItem('gm_server_restriction', '1234');
-    window.currentGuild = 'ALPHA';
-    window.guildsData = { ALPHA: { server_number: '1234' }, BETA: { server_number: '9999' } };
+    patchAppState({
+      currentGuild: 'ALPHA',
+      guildsData: { ALPHA: { server_number: '1234' }, BETA: { server_number: '9999' } }
+    });
     expect(roles.canWriteGuild('ALPHA')).toBe(true);
     expect(roles.canWriteGuild('BETA')).toBe(false);
   });
 
   it('members cannot write', () => {
     localStorage.setItem('gm_role', 'member');
-    window.currentGuild = 'ALPHA';
+    patchAppState({ currentGuild: 'ALPHA' });
     expect(roles.canWriteGuild('ALPHA')).toBe(false);
   });
 
   it('getActiveGuild / getCurrentPseudo / currentAccountId resolve from context', () => {
-    window.currentGuild = 'OMEGA';
+    patchAppState({ currentGuild: 'OMEGA' });
     expect(roles.getActiveGuild()).toBe('OMEGA');
     localStorage.setItem('gm_user', 'Alpha');
     expect(roles.getCurrentPseudo()).toBe('Alpha');
     expect(roles.currentAccountId()).toBe('Alpha');
-    window.GM = { currentAccountId: 'acc-9' };
+    // The verified account id (set at sign-in) wins over the stored pseudo.
+    roles.setVerifiedRole('member', 'acc-9');
     expect(roles.currentAccountId()).toBe('acc-9');
   });
 });

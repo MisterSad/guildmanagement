@@ -7,6 +7,10 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { PortalService } from '../src/modules/portal/portal.service.ts';
+import {
+    calculateCombatDensity, calculateRallyScore, calculateRallyGrade, calculateResidualPower,
+    calculateCombativity, calculateWarScore, getRallyRoleMeta
+} from '../src/core/scoring/combat';
 
 describe('Tactical Military Metrics & Calculations', () => {
     const mockMember = {
@@ -29,50 +33,50 @@ describe('Tactical Military Metrics & Calculations', () => {
         // Champs: 30M * 0.8 = 24M
         // Glory: 250M * 0.05 = 12.5M
         // Sum = 506.5M / 100M = 506.5%
-        const density = window.GM.calculateCombatDensity(mockMember);
+        const density = calculateCombatDensity(mockMember);
         expect(density).toBe(506.5);
     });
 
     it('calculates composite rally score correctly with exact hierarchy Power > Flagship > Fleet > Tech > Crew > Champs > Glory', () => {
         // 100M (Power) + 506.5M (Weighted Combat) = 606.5M
-        const rallyScore = window.GM.calculateRallyScore(mockMember);
+        const rallyScore = calculateRallyScore(mockMember);
         expect(rallyScore).toBe(606500000);
-        expect(window.GM.calculateWarScore(mockMember)).toBe(606500000);
+        expect(calculateWarScore(mockMember)).toBe(606500000);
     });
 
     it('prioritizes components in exact order (Fleet > Flagship > Crew > Tech > Champs > Glory)', () => {
         const base = { overall_power: 100000000, flagship_power: 10000000, fleet_rating: 2000000, tech_power: 10000000, crew_power: 5000000, champion_power: 20000000, glory_score: 100000000 };
-        const scoreBase = window.GM.calculateRallyScore(base);
+        const scoreBase = calculateRallyScore(base);
 
         // +1M to Fleet adds 80M
         const moreFleet = { ...base, fleet_rating: base.fleet_rating + 1000000 };
-        expect(window.GM.calculateRallyScore(moreFleet) - scoreBase).toBe(80000000);
+        expect(calculateRallyScore(moreFleet) - scoreBase).toBe(80000000);
 
         // +1M to Flagship adds 18M
         const moreFlag = { ...base, flagship_power: base.flagship_power + 1000000 };
-        expect(window.GM.calculateRallyScore(moreFlag) - scoreBase).toBe(18000000);
+        expect(calculateRallyScore(moreFlag) - scoreBase).toBe(18000000);
 
         // +1M to Crew adds 8M
         const moreCrew = { ...base, crew_power: base.crew_power + 1000000 };
-        expect(window.GM.calculateRallyScore(moreCrew) - scoreBase).toBe(8000000);
+        expect(calculateRallyScore(moreCrew) - scoreBase).toBe(8000000);
 
         // +1M to Tech adds 6M
         const moreTech = { ...base, tech_power: base.tech_power + 1000000 };
-        expect(window.GM.calculateRallyScore(moreTech) - scoreBase).toBe(6000000);
+        expect(calculateRallyScore(moreTech) - scoreBase).toBe(6000000);
 
         // +1M to Champs adds 0.8M
         const moreChamps = { ...base, champion_power: base.champion_power + 1000000 };
-        expect(window.GM.calculateRallyScore(moreChamps) - scoreBase).toBe(800000);
+        expect(calculateRallyScore(moreChamps) - scoreBase).toBe(800000);
 
         // +1M to Glory adds 0.05M (50k)
         const moreGlory = { ...base, glory_score: base.glory_score + 1000000 };
-        expect(window.GM.calculateRallyScore(moreGlory) - scoreBase).toBe(50000);
+        expect(calculateRallyScore(moreGlory) - scoreBase).toBe(50000);
     });
 
     it('handles zero or negative power in combat density gracefully', () => {
-        expect(window.GM.calculateCombatDensity({ overall_power: 0 })).toBe(0);
-        expect(window.GM.calculateCombatDensity(null)).toBe(0);
-        expect(window.GM.calculateCombatDensity({})).toBe(0);
+        expect(calculateCombatDensity({ overall_power: 0 })).toBe(0);
+        expect(calculateCombatDensity(null)).toBe(0);
+        expect(calculateCombatDensity({})).toBe(0);
     });
 
     it('treats missing, null, undefined, or empty metrics strictly as 0', () => {
@@ -88,17 +92,17 @@ describe('Tactical Military Metrics & Calculations', () => {
         };
 
         // 180M / 100M = 180.0%
-        const density = window.GM.calculateCombatDensity(partialMember);
+        const density = calculateCombatDensity(partialMember);
         expect(density).toBe(180);
 
         // 100M + 180M = 280M
-        const rallyScore = window.GM.calculateRallyScore(partialMember);
+        const rallyScore = calculateRallyScore(partialMember);
         expect(rallyScore).toBe(280000000);
     });
 
     it('calculates residual volatile troop power correctly', () => {
         // 100M - (15M + 30M + 5M) = 50M
-        const residual = window.GM.calculateResidualPower(mockMember);
+        const residual = calculateResidualPower(mockMember);
         expect(residual).toBe(50000000);
     });
 
@@ -109,12 +113,12 @@ describe('Tactical Military Metrics & Calculations', () => {
             champion_power: 10000000,
             crew_power: 5000000
         };
-        expect(window.GM.calculateResidualPower(overInvested)).toBe(0);
+        expect(calculateResidualPower(overInvested)).toBe(0);
     });
 
     it('calculates combativity ratio (glory to power) correctly', () => {
         // 250M / 100M = 2.5
-        const combativity = window.GM.calculateCombativity(mockMember);
+        const combativity = calculateCombativity(mockMember);
         expect(combativity).toBe(2.5);
     });
 
@@ -139,7 +143,7 @@ describe('Tactical Military Metrics & Calculations', () => {
         ];
 
         const sorted = members.slice().sort((a, b) => {
-            return window.GM.calculateCombatDensity(b) - window.GM.calculateCombatDensity(a);
+            return calculateCombatDensity(b) - calculateCombatDensity(a);
         });
 
         expect(sorted[0].pseudo).toBe('P2');
@@ -193,28 +197,28 @@ describe('Tactical Military Metrics & Calculations', () => {
     });
 
     it('assigns top 16 players as Rally Leaders and remaining as Rally Joiners accurately', () => {
-        expect(window.GM.getRallyRoleMeta(1, 100000000)).toEqual({
+        expect(getRallyRoleMeta(1, 100000000)).toEqual({
             isLeader: true,
             rank: 1,
             label: 'Rally Leader #1',
             type: 'leader'
         });
 
-        expect(window.GM.getRallyRoleMeta(16, 50000000)).toEqual({
+        expect(getRallyRoleMeta(16, 50000000)).toEqual({
             isLeader: true,
             rank: 16,
             label: 'Rally Leader #16',
             type: 'leader'
         });
 
-        expect(window.GM.getRallyRoleMeta(17, 45000000)).toEqual({
+        expect(getRallyRoleMeta(17, 45000000)).toEqual({
             isLeader: false,
             rank: 17,
             label: 'Rally Joiner',
             type: 'joiner'
         });
 
-        expect(window.GM.getRallyRoleMeta(1, 0)).toEqual({
+        expect(getRallyRoleMeta(1, 0)).toEqual({
             isLeader: false,
             rank: 1,
             label: 'Rally Joiner',
@@ -229,15 +233,15 @@ describe('Tactical Military Metrics & Calculations', () => {
         }));
 
         const rallyRankedList = roster.slice().sort((a, b) => {
-            const rA = window.GM.calculateRallyScore(a);
-            const rB = window.GM.calculateRallyScore(b);
+            const rA = calculateRallyScore(a);
+            const rB = calculateRallyScore(b);
             if (rB !== rA) return rB - rA;
             return (b.overall_power || 0) - (a.overall_power || 0);
         });
 
         const rallyRankMap = {};
         rallyRankedList.forEach((m, idx) => {
-            rallyRankMap[m.pseudo] = window.GM.getRallyRoleMeta(idx + 1, window.GM.calculateRallyScore(m));
+            rallyRankMap[m.pseudo] = getRallyRoleMeta(idx + 1, calculateRallyScore(m));
         });
 
         expect(rallyRankMap['Player_1'].isLeader).toBe(true);
@@ -278,14 +282,14 @@ describe('Tactical Military Metrics & Calculations', () => {
         };
 
         // Small specialist has higher percentage density (357.5% > 117.6%)
-        expect(window.GM.calculateCombatDensity(smallPlayer)).toBeGreaterThan(window.GM.calculateCombatDensity(whale));
+        expect(calculateCombatDensity(smallPlayer)).toBeGreaterThan(calculateCombatDensity(whale));
 
         // BUT the Whale has vastly superior absolute Rally Score (1.088B > 137.25M)
-        expect(window.GM.calculateRallyScore(whale)).toBeGreaterThan(window.GM.calculateRallyScore(smallPlayer));
+        expect(calculateRallyScore(whale)).toBeGreaterThan(calculateRallyScore(smallPlayer));
 
         // When sorting by Rally Score, Whale is decisively #1!
         const sorted = [smallPlayer, whale].sort((a, b) => {
-            return window.GM.calculateRallyScore(b) - window.GM.calculateRallyScore(a);
+            return calculateRallyScore(b) - calculateRallyScore(a);
         });
         expect(sorted[0].pseudo).toBe('GiganticWhale');
         expect(sorted[1].pseudo).toBe('SmallSpecialist');
@@ -305,7 +309,7 @@ describe('Tactical Military Metrics & Calculations', () => {
         ];
 
         const sorted = guildRoster.slice().sort((a, b) => {
-            return window.GM.calculateRallyScore(b) - window.GM.calculateRallyScore(a);
+            return calculateRallyScore(b) - calculateRallyScore(a);
         });
 
         expect(sorted[0].pseudo).toBe('USAFE');
@@ -321,12 +325,12 @@ describe('Tactical Military Metrics & Calculations', () => {
         const halfPlayer = { overall_power: 50000000, fleet_rating: 1000000, flagship_power: 5000000 };
         const zeroPlayer = { overall_power: 0 };
 
-        const topScore = window.GM.calculateRallyScore(topPlayer);
+        const topScore = calculateRallyScore(topPlayer);
 
-        expect(window.GM.calculateRallyGrade(topPlayer, topScore)).toBe(100);
-        expect(window.GM.calculateRallyGrade(halfPlayer, topScore)).toBe(50);
-        expect(window.GM.calculateRallyGrade(zeroPlayer, topScore)).toBe(0);
-        expect(window.GM.calculateRallyGrade(null, topScore)).toBe(0);
+        expect(calculateRallyGrade(topPlayer, topScore)).toBe(100);
+        expect(calculateRallyGrade(halfPlayer, topScore)).toBe(50);
+        expect(calculateRallyGrade(zeroPlayer, topScore)).toBe(0);
+        expect(calculateRallyGrade(null, topScore)).toBe(0);
     });
 
     it('calculates guild average scores and delta percentage benchmarks accurately', () => {

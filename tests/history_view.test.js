@@ -8,14 +8,14 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { HistoryView } from '../src/modules/history/views/HistoryView';
+import { setDbClient, resetSupabaseClient } from '../src/core/api/supabase';
 import { ALLOWED_HISTORY_FIELDS, isAllowedHistoryField, EVENT_META, FILTERS } from '../src/modules/history/history.service';
 import { isFresh, markFresh } from '../src/core/cache/cache';
 import { showToast } from '../src/core/dom/toast';
 import { showConfirm } from '../src/modules/app/dialogs/dialogs.service';
 
-// The view imports its helpers directly (no more `window.GM.*` /
-// `window.showConfirm` reads): mock the source modules with the stubs the
-// suite used to put on window.
+// The view imports its helpers directly (the window bridge is gone): mock the
+// source modules with the stubs the suite used to put on window.
 vi.mock('../src/core/i18n/i18n', async (importOriginal) => ({
   ...(await importOriginal()),
   t: (k) => k
@@ -81,13 +81,11 @@ function installGM() {
   vi.mocked(showConfirm).mockReset();
   localStorage.setItem('gm_current_guild', 'ALPHA');
   localStorage.setItem('gm_role', 'guild_admin');
-  // Only the Supabase client is still read from `window.GM` (via getClient()).
-  window.GM = {
-    db: {
-      rpc: rpcMock,
-      from: (table) => chained(table === 'event_participants' ? PARTICIPANT_ROWS : [])
-    }
-  };
+  // The Supabase client is installed with setDbClient() (read via getClient()).
+  setDbClient({
+    rpc: rpcMock,
+    from: (table) => chained(table === 'event_participants' ? PARTICIPANT_ROWS : [])
+  });
   window.requestAnimationFrame = (cb) => { cb(0); return 0; };
 }
 
@@ -107,7 +105,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  delete window.GM;
+  resetSupabaseClient();
   delete window.requestAnimationFrame;
   localStorage.clear();
   document.body.innerHTML = '';
@@ -207,9 +205,9 @@ describe('HistoryView — modal & security whitelist', () => {
 });
 
 describe('HistoryView — cutover guard', () => {
-  it('does not expose window.GM_HISTORY', async () => {
+  it('does not expose a GM_HISTORY global', async () => {
     const view = new HistoryView();
     await view.load();
-    expect(window.GM_HISTORY).toBeUndefined();
+    expect('GM_HISTORY' in window).toBe(false);
   });
 });

@@ -6,12 +6,12 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { EventsView } from '../src/modules/events/views/EventsView';
-import { resetSupabaseClient } from '../src/core/api/supabase';
+import { resetSupabaseClient, setDbClient } from '../src/core/api/supabase';
 
 const SESSION = 'SVS-2026-W32';
 
-// The view imports its helpers directly (no more `window.GM.*` reads): mock
-// the source modules with the same stubs the suite used to put on window.GM.
+// The view imports its helpers directly (no bridge reads since M4c): mock
+// the source modules with the same stubs the suite used to put on the bridge.
 const { runInChunksMock } = vi.hoisted(() => ({ runInChunksMock: vi.fn() }));
 vi.mock('../src/core/i18n/i18n', async (importOriginal) => ({
   ...(await importOriginal()),
@@ -89,17 +89,15 @@ function installDb() {
     if (name === 'gm_approve_participant_submission') return { data: { ok: true }, error: null };
     return { data: 0, error: null };
   });
-  window.GM.db = { from: (table) => chained(currentTables[table] || []), rpc: rpcMock };
+  setDbClient({ from: (table) => chained(currentTables[table] || []), rpc: rpcMock });
 }
 
-function installGM() {
+function installStubs() {
   runInChunksMock.mockReset();
   runInChunksMock.mockImplementation(async (items, size, worker) => {
     for (const it of items) await worker(it);
   });
   localStorage.setItem('gm_current_guild', 'ALPHA');
-  // Only the Supabase client is still read from `window.GM` (via getClient()).
-  window.GM = { db: null };
 }
 
 function panel(id) {
@@ -136,13 +134,13 @@ beforeEach(() => {
   resetSupabaseClient();
   mount();
   currentTables = tables(true);
-  installGM();
+  installStubs();
   installDb();
 });
 
 afterEach(() => {
   vi.useRealTimers();
-  delete window.GM;
+  resetSupabaseClient();
   document.body.innerHTML = '';
   vi.restoreAllMocks();
 });
@@ -212,10 +210,10 @@ describe('EventsView — member sync & approval', () => {
 });
 
 describe('EventsView — cutover guard', () => {
-  it('does not expose window.GM_EVENTS', async () => {
+  it('does not expose a GM_EVENTS global', async () => {
     const view = new EventsView();
     await view.loadEvent('SvS');
-    expect(window.GM_EVENTS).toBeUndefined();
+    expect(Object.prototype.hasOwnProperty.call(window, 'GM_EVENTS')).toBe(false);
   });
 });
 

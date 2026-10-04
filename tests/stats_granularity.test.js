@@ -123,9 +123,13 @@ describe('Admin Player History modal (src/modules/app/dialogs/dialogs.service.ts
   const appJs = read('src/modules/app/dialogs/dialogs.service.ts');
   const mainTs = read('src/main.ts');
 
-  it('defines showPlayerHistoryDialog and exposes it on window.GM_APP', () => {
-    expect(appJs).toMatch(/async function showPlayerHistoryDialog\(/);
-    expect(mainTs).toContain('GM_APP.showPlayerHistory = showPlayerHistoryDialog');
+  it('defines and exports showPlayerHistoryDialog, which the stats view imports directly', () => {
+    // M4c: the window.GM_APP bridge is gone; the stats view reaches the dialog
+    // by typed import, and main.ts no longer publishes it on window.
+    const statsViewTs = read('src/modules/stats/views/StatsView.ts');
+    expect(appJs).toMatch(/export async function showPlayerHistoryDialog\(/);
+    expect(statsViewTs).toMatch(/import \{[^}]*\bshowPlayerHistoryDialog\b[^}]*\} from '\.\.\/\.\.\/app\/dialogs\/dialogs\.service'/);
+    expect(mainTs).not.toMatch(/showPlayerHistory\s*=/);
   });
 
   it('calls both gm_get_player_metrics_history (previously unused) and the new gm_get_player_event_history RPC', () => {
@@ -141,14 +145,18 @@ describe('Admin Player History modal (src/modules/app/dialogs/dialogs.service.ts
 describe('Chart renderer extracted to /src and reused by the portal view', () => {
   const uiTs = read('src/core/dom/ui.ts');
   const dateTs = read('src/core/utils/date.ts');
-  const bridgeTs = read('src/core/gm-bridge.ts');
   const portalJs = read('src/modules/portal/views/PortalView.ts');
+  const dialogsTs = read('src/modules/app/dialogs/dialogs.service.ts');
 
-  it('exposes drawScoreTrendChart (ui.ts) and formatChartDate (date.ts) through the GM bridge', () => {
-    expect(uiTs).toContain('function drawScoreTrendChart(');
-    expect(dateTs).toContain('function formatChartDate(');
-    expect(bridgeTs).toContain('drawScoreTrendChart');
-    expect(bridgeTs).toContain('formatChartDate');
+  it('exports drawScoreTrendChart (ui.ts) and formatChartDate (date.ts) to their consumers by import', () => {
+    // M4c: the GM bridge (src/core/gm-bridge.ts) is deleted; the shared
+    // renderer is reached by typed import instead.
+    expect(fs.existsSync(path.resolve(__dirname, '..', 'src/core/gm-bridge.ts'))).toBe(false);
+    expect(uiTs).toContain('export function drawScoreTrendChart(');
+    expect(dateTs).toContain('export function formatChartDate(');
+    expect(uiTs).toMatch(/import \{[^}]*\bformatChartDate\b[^}]*\} from '\.\.\/utils\/date'/);
+    expect(portalJs).toMatch(/import \{[^}]*\bdrawScoreTrendChart\b[^}]*\} from '\.\.\/\.\.\/\.\.\/core\/dom\/ui'/);
+    expect(dialogsTs).toMatch(/import \{[^}]*\bdrawScoreTrendChart\b[^}]*\} from '\.\.\/\.\.\/\.\.\/core\/dom\/ui'/);
   });
 
   it('the portal view delegates its own drawChart() to the shared renderer instead of a private implementation', () => {

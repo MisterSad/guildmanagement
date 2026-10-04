@@ -11,15 +11,9 @@
 import { formatNumber, formatPower, escapeHTML } from '../utils/text';
 import { formatChartDate, pad2 } from '../utils/date';
 import { showToast } from './toast';
+import { t } from '../i18n/i18n';
 
-function winAny(): any {
-  return (typeof window !== 'undefined' ? window : {}) as any;
-}
 
-function t(key: string): string {
-  const g = winAny().GM;
-  return g && typeof g.t === 'function' ? g.t(key) : key;
-}
 
 /** Formats a text input with thousands separators, preserving the caret. */
 export function attachNumberFormatter(input: HTMLInputElement | null): void {
@@ -89,7 +83,7 @@ export function pickEventStart(opts: PickEventStartOptions | undefined, callback
       '</div>' +
     '</div>';
   document.body.appendChild(overlay);
-  winAny().requestAnimationFrame(() => { overlay.classList.add('visible'); });
+  window.requestAnimationFrame(() => { overlay.classList.add('visible'); });
 
   let done = false;
   const close = (result: string | null): void => {
@@ -123,24 +117,22 @@ export function pickEventStart(opts: PickEventStartOptions | undefined, callback
 
 export function openTermsModal(): void {
   if (typeof window !== 'undefined') {
-    (window as any).location.href = 'terms.html';
+    window.location.href = 'terms.html';
   }
 }
 
 export function closeTermsModal(): void {
   if (typeof window === 'undefined') return;
-  const w = window as any;
-  if (w.history && w.history.length > 1) w.history.back();
-  else w.location.href = '/';
+  if (window.history && window.history.length > 1) window.history.back();
+  else window.location.href = '/';
 }
 
 /** Redirects to terms.html when the URL hash is #terms (and on later changes). */
 export function initTermsModal(): void {
   if (typeof window === 'undefined') return;
-  const w = window as any;
-  if (w.location.hash === '#terms') w.location.href = 'terms.html';
-  w.addEventListener('hashchange', () => {
-    if (w.location.hash === '#terms') w.location.href = 'terms.html';
+  if (window.location.hash === '#terms') window.location.href = 'terms.html';
+  window.addEventListener('hashchange', () => {
+    if (window.location.hash === '#terms') window.location.href = 'terms.html';
   });
 }
 
@@ -149,7 +141,7 @@ export function drawScoreTrendChart(canvas: HTMLCanvasElement | null, history: a
   if (!canvas) return;
 
   const cssW = Math.max(280, (canvas.getBoundingClientRect().width || canvas.width || 1200));
-  const dpr = Math.max(1, winAny().devicePixelRatio || 1);
+  const dpr = Math.max(1, window.devicePixelRatio || 1);
   const cssH = Math.max(190, Math.min(300, Math.round(cssW * 0.30)));
   canvas.width = Math.round(cssW * dpr);
   canvas.height = Math.round(cssH * dpr);

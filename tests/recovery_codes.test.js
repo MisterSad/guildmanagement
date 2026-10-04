@@ -5,11 +5,12 @@
 //
 //   * `auth-discord` action `backup-login` — Zod-validated, throttled,
 //     super_admin only, lockout-aware, consumes the code, mints a session.
-//   * `loginWithBackupCodeDiscord()` in `session.ts`, exported and bridged.
+//   * `loginWithBackupCodeDiscord()` in `session.ts`, exported (and, until
+//     M4c removed the bridge, also put on the GM global).
 //
 // What was missing was any way to reach them. The login page's old "Use a
-// backup code instead" button called `openBackupCodeDialog()`, which is
-// exported onto the window.GM bridge and never invoked, so it did nothing when
+// backup code instead" button called `openBackupCodeDialog()`, which was
+// exported onto the (since removed) GM bridge and never invoked, so it did nothing when
 // clicked. It was removed on 2026-09-27 as dead markup, which made the gap
 // visible rather than creating it.
 //
@@ -50,7 +51,10 @@ describe('the recovery code is reachable from the login page', () => {
     const dlg = ctrl.slice(ctrl.indexOf('export function openRecoveryCodeDialog'));
     const body = dlg.slice(0, dlg.indexOf('\ninterface DiscordAccountChoice'));
     expect(body).toMatch(/loginWithBackupCodeDiscord/);
-    expect(read('src/core/gm-bridge.ts')).toContain('loginWithBackupCodeDiscord');
+    // Since M4c there is no bridge: the controller must import the real
+    // export from session.ts, or the dialog would call nothing.
+    expect(ctrl).toMatch(/import\s*\{[^}]*\bloginWithBackupCodeDiscord\b[^}]*\}\s*from\s*'\.\.\/\.\.\/\.\.\/core\/auth\/session'/);
+    expect(read('src/core/auth/session.ts')).toMatch(/export async function loginWithBackupCodeDiscord\(/);
   });
 
   it('can be dismissed', () => {

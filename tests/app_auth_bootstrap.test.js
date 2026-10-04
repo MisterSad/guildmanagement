@@ -6,15 +6,16 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
-// Phase 7: `revealPortal` imports the portal view instead of probing
-// `window.GM_PORTAL`, so the stub these tests used no longer intercepts it.
+// Phase 7: `revealPortal` imports the portal view instead of probing the
+// GM_PORTAL global, so the stub these tests used no longer intercepts it.
 vi.mock('../src/modules/portal/views/PortalView', () => ({
   portalView: { loadDashboard: vi.fn(), renderDashboard: vi.fn() }
 }));
 import { portalView } from '../src/modules/portal/views/PortalView';
 
 // Phase M4c: the controller imports its collaborators instead of reading them
-// off `window.GM` / `window.GM_APP`, so the stubs are module mocks now.
+// off the window bridge, so the stubs are module mocks now. The DB stub
+// goes through setDbClient(), the way main.ts installs the real client.
 const mocks = vi.hoisted(() => ({
   sessionInfo: vi.fn(),
   forceRefreshPortalSession: vi.fn(),
@@ -64,6 +65,8 @@ import {
 } from '../src/modules/app/auth/version-check';
 import { getAppState, patchAppState, resetAppState } from '../src/core/state/app-state';
 import { APP_VERSION } from '../src/core/config/constants';
+import { setDbClient, resetSupabaseClient } from '../src/core/api/supabase';
+import { currentAccountId, getVerifiedAccountId } from '../src/core/auth/roles';
 
 const AUTH_DOM = `
   <div id="login-view">
@@ -111,13 +114,12 @@ beforeEach(() => {
   resetAppState();
   resetVersionCheck();
 
-  window.GM = window.GM || {};
   mocks.sessionInfo.mockReset().mockImplementation(async () => null);
   mocks.forceRefreshPortalSession.mockReset().mockImplementation(async () => null);
   mocks.login.mockReset().mockImplementation(async () => ({ ok: false, error: 'invalid_credentials' }));
   mocks.logout.mockReset().mockImplementation(async () => undefined);
   mocks.ensureGuildRestriction.mockReset().mockImplementation(async () => null);
-  window.GM.db = stubDb({ guild: 'ALPHA' });
+  setDbClient(stubDb({ guild: 'ALPHA' }));
   stubHooks();
 });
 
@@ -127,7 +129,7 @@ afterEach(() => {
   resetVersionCheck();
   resetAppState();
   document.body.innerHTML = '';
-  delete window.GM_SHELL;
+  resetSupabaseClient();
   localStorage.clear();
   sessionStorage.clear();
 });
@@ -193,7 +195,7 @@ describe('restoreSession', () => {
     localStorage.setItem('gm_role', 'guild_admin');
     localStorage.setItem('gm_user', 'Alpha');
     mocks.sessionInfo.mockImplementation(async () => ({ role: 'guild_admin', accountId: 'Alpha' }));
-    window.GM.db = stubDb({ guild: 'ALPHA' });
+    setDbClient(stubDb({ guild: 'ALPHA' }));
 
     const res = await restoreSession();
 
@@ -253,7 +255,7 @@ describe('restoreSession', () => {
   it('resolves a server_admin restriction from the accounts row', async () => {
     localStorage.setItem('gm_role', 'server_admin');
     mocks.sessionInfo.mockImplementation(async () => ({ role: 'server_admin', accountId: 'Serv' }));
-    window.GM.db = stubDb({ guild: 'ALPHA', server_number: 1234 });
+    setDbClient(stubDb({ guild: 'ALPHA', server_number: 1234 }));
 
     await restoreSession();
 
@@ -272,7 +274,8 @@ describe('handleSuccessfulLogin', () => {
     expect(localStorage.getItem('gm_role')).toBe('member');
     expect(localStorage.getItem('gm_user')).toBe('Player1');
     expect(localStorage.getItem('gm_portal_session')).toBe('1');
-    expect(window.GM.currentAccountId).toBe('Player1');
+    expect(getVerifiedAccountId()).toBe('Player1');
+    expect(currentAccountId()).toBe('Player1');
     expect(mocks.showAdminDashboard).not.toHaveBeenCalled();
     expect(document.getElementById('player-portal-view').classList.contains('hidden')).toBe(false);
     expect(document.getElementById('dashboard-view').classList.contains('hidden')).toBe(true);
@@ -280,7 +283,7 @@ describe('handleSuccessfulLogin', () => {
   });
 
   it('syncs the guild restriction and routes to the admin shell', async () => {
-    window.GM.db = stubDb({ guild: 'ALPHA' });
+    setDbClient(stubDb({ guild: 'ALPHA' }));
 
     await handleSuccessfulLogin({ ok: true, role: 'guild_admin', id: 'Alpha' }, 'Alpha');
 
@@ -288,12 +291,13 @@ describe('handleSuccessfulLogin', () => {
     expect(getAppState().currentGuild).toBe('ALPHA');
     expect(localStorage.getItem('gm_role')).toBe('guild_admin');
     expect(localStorage.getItem('gm_user')).toBe('Alpha');
-    expect(window.GM.currentAccountId).toBe('Alpha');
+    expect(getVerifiedAccountId()).toBe('Alpha');
+    expect(currentAccountId()).toBe('Alpha');
     expect(mocks.showAdminDashboard).toHaveBeenCalled();
   });
 
   it('sets the server restriction for a server_admin login', async () => {
-    window.GM.db = stubDb({ guild: 'ALPHA', server_number: '4321' });
+    setDbClient(stubDb({ guild: 'ALPHA', server_number: '4321' }));
 
     await handleSuccessfulLogin({ ok: true, role: 'server_admin', id: 'Serv' }, 'Serv');
 
@@ -349,7 +353,7 @@ describe('doLogout', () => {
 describe('auth forms', () => {
   it('submits a valid login through login() and routes on success', async () => {
     mocks.login.mockImplementation(async () => ({ ok: true, role: 'guild_admin', id: 'Alpha' }));
-    window.GM.db = stubDb({ guild: 'ALPHA' });
+    setDbClient(stubDb({ guild: 'ALPHA' }));
     initAuthForms();
 
     document.getElementById('username').value = 'Alpha';

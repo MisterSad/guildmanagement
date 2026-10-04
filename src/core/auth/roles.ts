@@ -58,7 +58,7 @@ export function roleFromStorage(): AccountRole {
     if (role === 'member') {
       if (serverRestriction) return 'server_admin';
       if (guildRestriction) return 'guild_admin';
-      if (typeof window !== 'undefined' && (window as any).currentGuildRestriction) return 'guild_admin';
+      if (getAppState().currentGuildRestriction) return 'guild_admin';
     }
     return role;
   } catch (e) {
@@ -105,9 +105,6 @@ export function getRoleInfoFromStorage(): RoleInfo {
   };
 }
 
-function winAny(): any {
-  return (typeof window !== 'undefined' ? window : {}) as any;
-}
 
 function ls(): Storage | null {
   return typeof localStorage !== 'undefined' ? localStorage : null;
@@ -148,15 +145,17 @@ export function getCurrentPseudo(): string | null {
   return store.getItem('gm_user') || store.getItem('gm_pseudo') || null;
 }
 
-/** Canonical account id (verifiedAccountId → window.GM.currentAccountId → gm_user). */
+/**
+ * Canonical account id: the verified one, else the stored `gm_user`. The
+ * `window.GM.currentAccountId` step in between is gone (M4c): sign-in set it
+ * to the very id it passes to setVerifiedRole(), so it never differed.
+ */
 export function currentAccountId(): string | null {
   if (verifiedAccountId !== null) {
     return verifiedAccountId;
   }
-  const w = winAny();
-  const fromGm = w.GM && w.GM.currentAccountId;
   const store = ls();
-  return fromGm || (store ? store.getItem('gm_user') : null) || null;
+  return (store ? store.getItem('gm_user') : null) || null;
 }
 
 /** Role-based write access, mirroring gm-utils.js#canWriteGuild. */
@@ -170,7 +169,6 @@ export function canWriteGuild(guildId?: string | null): boolean {
   // blocking.
   if (!activeG) return false;
   const role = roleFromStorage();
-  const w = winAny();
   const store = ls();
 
   if (role === 'super_admin') return true;
@@ -200,7 +198,6 @@ export function canWriteGuild(guildId?: string | null): boolean {
  */
 export async function ensureGuildRestriction(): Promise<string | null> {
   const role = roleFromStorage();
-  const w = winAny();
   if (role === 'super_admin') return null;
   if (role !== 'guild_admin') return null;
   if (getAppState().currentGuildRestriction) return getAppState().currentGuildRestriction;

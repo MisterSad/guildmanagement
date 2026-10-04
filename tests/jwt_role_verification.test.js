@@ -9,9 +9,8 @@ import {
   isGuildAdmin,
   currentAccountId
 } from '../src/core/auth/roles';
-import { notifySessionVerified, sessionInfo } from '../src/core/api/supabase';
-
-const GM = window.GM;
+import { notifySessionVerified, sessionInfo, setDbClient, resetSupabaseClient } from '../src/core/api/supabase';
+import { patchAppState } from '../src/core/state/app-state';
 
 function makeJwt(appRole, accountId) {
   const enc = (obj) =>
@@ -23,14 +22,12 @@ describe('JWT & Session Role Verification (TICKET-09 / SEC-05)', () => {
   beforeEach(() => {
     localStorage.clear();
     setVerifiedRole(null, null);
-    window.currentGuildRestriction = null;
-    window.guildsData = null;
-    window.currentGuild = 'ALPHA';
+    patchAppState({ currentGuildRestriction: null, guildsData: {}, currentGuild: 'ALPHA' });
   });
 
   afterEach(() => {
     setVerifiedRole(null, null);
-    delete GM.db;
+    resetSupabaseClient();
   });
 
   describe('Privilege Escalation Defense (LocalStorage Tampering)', () => {
@@ -99,14 +96,14 @@ describe('JWT & Session Role Verification (TICKET-09 / SEC-05)', () => {
 
     it('integrates with sessionInfo() to verify role from Supabase JWT', async () => {
       const token = makeJwt('guild_admin', 'verified_officer');
-      GM.db = {
+      setDbClient({
         auth: {
           getSession: async () => ({
             data: { session: { access_token: token } },
             error: null
           })
         }
-      };
+      });
 
       const info = await sessionInfo();
       expect(info).toEqual({ role: 'guild_admin', accountId: 'verified_officer' });
@@ -119,16 +116,19 @@ describe('JWT & Session Role Verification (TICKET-09 / SEC-05)', () => {
     });
   });
 
-  describe('GM Bridge exposure', () => {
-    it('exposes setVerifiedRole, getVerifiedRole, getVerifiedAccountId on window.GM', () => {
-      expect(typeof GM.setVerifiedRole).toBe('function');
-      expect(typeof GM.getVerifiedRole).toBe('function');
-      expect(typeof GM.getVerifiedAccountId).toBe('function');
+  describe('Verified-role API surface', () => {
+    // The window bridge that used to re-export these is gone (M4c): the
+    // verified-role API is reachable only as module exports.
+    it('exposes setVerifiedRole, getVerifiedRole, getVerifiedAccountId as module exports, not on window', () => {
+      expect(typeof setVerifiedRole).toBe('function');
+      expect(typeof getVerifiedRole).toBe('function');
+      expect(typeof getVerifiedAccountId).toBe('function');
+      expect('GM' in window).toBe(false);
 
-      GM.setVerifiedRole('super_admin', 'super_user');
-      expect(GM.getVerifiedRole()).toBe('super_admin');
-      expect(GM.getVerifiedAccountId()).toBe('super_user');
-      expect(GM.roleFromStorage()).toBe('super_admin');
+      setVerifiedRole('super_admin', 'super_user');
+      expect(getVerifiedRole()).toBe('super_admin');
+      expect(getVerifiedAccountId()).toBe('super_user');
+      expect(roleFromStorage()).toBe('super_admin');
     });
   });
 });

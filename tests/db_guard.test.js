@@ -20,6 +20,7 @@ import {
   READ_ONLY_MESSAGE
 } from '../src/core/api/db-guard.ts';
 import { setVerifiedRole } from '../src/core/auth/roles.ts';
+import { patchAppState, resetAppState } from '../src/core/state/app-state.ts';
 
 /**
  * Supabase-builder stand-in that records the whole chain, including the order
@@ -48,21 +49,19 @@ function asGuildAdmin(guild) {
   setVerifiedRole('guild_admin', 'tester');
   localStorage.setItem('gm_role', 'guild_admin');
   localStorage.setItem('gm_current_guild', guild);
-  window.currentGuildRestriction = guild;
+  patchAppState({ currentGuildRestriction: guild });
 }
 
 beforeEach(() => {
   localStorage.clear();
-  delete window.currentGuildRestriction;
-  delete window.currentGuild;
-  delete window.guildsData;
+  // After the clear, so no tenant is resolved until a test establishes one.
+  resetAppState();
 });
 
 afterEach(() => {
   setVerifiedRole(null, null);
   localStorage.clear();
-  delete window.currentGuildRestriction;
-  delete window.currentGuild;
+  resetAppState();
 });
 
 describe('M6 — the guard refuses a caller who may not write', () => {

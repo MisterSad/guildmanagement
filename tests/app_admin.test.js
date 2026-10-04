@@ -31,6 +31,8 @@ import { adminAccounts } from '../src/core/auth/session';
 import { config as guildConfig, getGuildTag } from '../src/core/config/guild-config';
 import { showConfirm } from '../src/modules/app/dialogs/dialogs.service';
 import { setVerifiedRole } from '../src/core/auth/roles';
+import { setDbClient, resetSupabaseClient, getClient } from '../src/core/api/supabase';
+import { patchAppState, resetAppState, getAppState } from '../src/core/state/app-state';
 
 import {
   fetchAccounts,
@@ -110,12 +112,11 @@ beforeEach(() => {
   document.body.innerHTML = ADMIN_DOM;
   localStorage.clear();
   clearAdminStore();
-  window.GM = window.GM || {};
   setVerifiedRole('super_admin', 'Super1');
   adminAccounts.mockReset();
   adminAccounts.mockImplementation(async (action) => (action === 'list' ? { ok: true, accounts: [] } : { ok: true }));
-  window.GM.db = makeDb();
-  window.currentGuild = 'ALPHA';
+  setDbClient(makeDb());
+  patchAppState({ currentGuild: 'ALPHA' });
   showConfirm.mockReset();
   showConfirm.mockImplementation((_title, _msg, onConfirm) => { void onConfirm(); });
 });
@@ -124,8 +125,8 @@ afterEach(() => {
   vi.restoreAllMocks();
   clearAdminStore();
   document.body.innerHTML = '';
-  delete window.GM_ADMIN;
-  delete window.currentGuild;
+  resetSupabaseClient();
+  resetAppState();
   setVerifiedRole(null, null);
   localStorage.clear();
 });
@@ -172,7 +173,7 @@ describe('fetchAccounts + account cards', () => {
   });
 
   it('supports grouped super-admin rendering by server', async () => {
-    window.guildsData = { ALPHA: { server_number: '1058' } };
+    patchAppState({ guildsData: { ALPHA: { server_number: '1058' } } });
     adminAccounts.mockImplementation(async (action) => (action === 'list' ? { ok: true, accounts: ACCOUNTS } : { ok: true }));
 
     await fetchAccounts();
@@ -180,8 +181,6 @@ describe('fetchAccounts + account cards', () => {
     const grouped = document.getElementById('superadmin-account-list');
     expect(grouped.querySelector('.gm-accordion-header')).toBeTruthy();
     expect(grouped.textContent).toContain('Server #1058');
-
-    delete window.guildsData;
   });
 
   // "none of us can actually view any of the passwords we're meant to give
@@ -227,20 +226,17 @@ describe('fetchAccounts + account cards', () => {
 });
 
 describe('fetchGuilds / populateAccountGuildSelect', () => {
-  it('populates window.guildsData and the super-admin guild select', async () => {
-    window.GM.db = makeDb({ guilds: [{ id: 'ALPHA', server_number: 1058 }] });
+  it('populates the app-state guildsData and the super-admin guild select', async () => {
+    setDbClient(makeDb({ guilds: [{ id: 'ALPHA', server_number: 1058 }] }));
 
     await fetchGuilds();
     populateAccountGuildSelect();
 
-    expect(window.guildsList).toEqual(['ALPHA']);
-    expect(window.guildsData.ALPHA.server_number).toBe(1058);
+    expect(getAppState().guildsList).toEqual(['ALPHA']);
+    expect(getAppState().guildsData.ALPHA.server_number).toBe(1058);
     const select = document.getElementById('superadmin-account-guild');
     expect(select.innerHTML).toContain('ALPHA');
     expect(select.innerHTML).toContain('#1058');
-
-    delete window.guildsList;
-    delete window.guildsData;
   });
 });
 
@@ -346,10 +342,10 @@ describe('loadGuildSettings', () => {
 
 describe('migration groups', () => {
   it('renders open groups with their servers and wires close/reopen', async () => {
-    window.GM.db = makeDb({
+    setDbClient(makeDb({
       groups: [{ id: 'g1', name: 'EU Migration', status: 'open' }],
       groupServers: [{ group_id: 'g1', server_number: '1058' }, { group_id: 'g1', server_number: '1089' }]
-    });
+    }));
 
     await renderMigrationGroupsList();
 
@@ -364,11 +360,11 @@ describe('migration groups', () => {
     closeBtn.click();
     await tick();
     expect(showConfirm).toHaveBeenCalled();
-    expect(window.GM.db.__calls.update.some((c) => c.table === 'server_migration_groups')).toBe(true);
+    expect(getClient().__calls.update.some((c) => c.table === 'server_migration_groups')).toBe(true);
   });
 
   it('renders the empty state when there are no groups', async () => {
-    window.GM.db = makeDb({ groups: [] });
+    setDbClient(makeDb({ groups: [] }));
     await renderMigrationGroupsList();
     expect(document.getElementById('migration-groups-list-container').textContent).toContain('No migration groups yet');
   });
@@ -376,7 +372,7 @@ describe('migration groups', () => {
 
 describe('guilds (server numbers + deletion)', () => {
   it('renders the guild list grouped by server, with the editor and delete control', async () => {
-    window.GM.db = makeDb({ guilds: [{ id: 'ALPHA', server_number: '1058' }] });
+    setDbClient(makeDb({ guilds: [{ id: 'ALPHA', server_number: '1058' }] }));
 
     await renderGuildsList();
 
@@ -392,7 +388,7 @@ describe('guilds (server numbers + deletion)', () => {
   });
 
   it('flags a guild with no server number, since transfers depend on it', async () => {
-    window.GM.db = makeDb({ guilds: [{ id: 'BRAVO', server_number: null }] });
+    setDbClient(makeDb({ guilds: [{ id: 'BRAVO', server_number: null }] }));
     await renderGuildsList();
     const container = document.getElementById('guilds-list-container');
     expect(container.textContent).toContain('Unassigned Server');
@@ -400,7 +396,7 @@ describe('guilds (server numbers + deletion)', () => {
   });
 
   it('renders the empty state when no guild exists', async () => {
-    window.GM.db = makeDb({ guilds: [] });
+    setDbClient(makeDb({ guilds: [] }));
     await renderGuildsList();
     expect(document.getElementById('guilds-list-container').textContent).toContain('No guild found');
   });

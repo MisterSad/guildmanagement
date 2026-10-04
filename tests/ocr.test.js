@@ -2,54 +2,55 @@ import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 
-const GM = window.GM;
-expect(GM).toBeTruthy();
+import { parseGeminiJson, cleanPlayerPseudo } from '../src/core/utils/text';
+import { getGuildTag } from '../src/core/config/guild-config';
+import { ocrDownsampleEvenly, fuseOcrPlayers } from '../src/modules/ocr/ocr.service';
 
 describe('parseGeminiJson', () => {
     it('parses raw JSON objects correctly', () => {
         const input = '{"players":[{"pseudo":"HawkEye","overall_power":150000000}]}';
-        const res = GM.parseGeminiJson(input);
+        const res = parseGeminiJson(input);
         expect(res).toEqual({ players: [{ pseudo: 'HawkEye', overall_power: 150000000 }] });
     });
 
     it('parses JSON wrapped in markdown code blocks', () => {
         const input = '```json\n{\n  "players": [\n    {"pseudo": "StarWarrior99", "overall_power": 120000000}\n  ]\n}\n```';
-        const res = GM.parseGeminiJson(input);
+        const res = parseGeminiJson(input);
         expect(res).toEqual({ players: [{ pseudo: 'StarWarrior99', overall_power: 120000000 }] });
     });
 
     it('parses JSON wrapped in generic markdown code blocks', () => {
         const input = '```\n[{"pseudo": "AlphaOne", "overall_power": 90000000}]\n```';
-        const res = GM.parseGeminiJson(input);
+        const res = parseGeminiJson(input);
         expect(res).toEqual([{ pseudo: 'AlphaOne', overall_power: 90000000 }]);
     });
 
     it('extracts JSON substring when leading or trailing text is present', () => {
         const input = 'Here are the extracted roster members from the screenshot:\n{\n  "roster": [{"pseudo": "Shadow", "overall_power": 45000000}]\n}\nHope this helps!';
-        const res = GM.parseGeminiJson(input);
+        const res = parseGeminiJson(input);
         expect(res).toEqual({ roster: [{ pseudo: 'Shadow', overall_power: 45000000 }] });
     });
 
     it('returns null for empty or invalid input', () => {
-        expect(GM.parseGeminiJson('')).toBeNull();
-        expect(GM.parseGeminiJson(null)).toBeNull();
-        expect(() => GM.parseGeminiJson('Not JSON at all')).toThrow();
+        expect(parseGeminiJson('')).toBeNull();
+        expect(parseGeminiJson(null)).toBeNull();
+        expect(() => parseGeminiJson('Not JSON at all')).toThrow();
     });
 
     it('parses specialized 7-metric OCR JSON schemas (Fleet, Tech, Glory, etc.)', () => {
         const fleetJson = '```json\n{\n  "metric": "fleet",\n  "players": [\n    {"pseudo": "Vanguard99", "score": 2160000, "uid": "1001"},\n    {"pseudo": "AdmiralZ", "score": 1850000, "uid": null}\n  ]\n}\n```';
-        const resFleet = GM.parseGeminiJson(fleetJson);
+        const resFleet = parseGeminiJson(fleetJson);
         expect(resFleet.metric).toBe('fleet');
         expect(resFleet.players).toHaveLength(2);
         expect(resFleet.players[0].score).toBe(2160000);
 
         const techJson = '{"metric":"tech","players":[{"pseudo":"TechMaster","score":15400000}]}';
-        const resTech = GM.parseGeminiJson(techJson);
+        const resTech = parseGeminiJson(techJson);
         expect(resTech.metric).toBe('tech');
         expect(resTech.players[0].score).toBe(15400000);
 
         const gloryJson = '{"metric":"glory","players":[{"pseudo":"GloryKing","score":240000000}]}';
-        const resGlory = GM.parseGeminiJson(gloryJson);
+        const resGlory = parseGeminiJson(gloryJson);
         expect(resGlory.metric).toBe('glory');
         expect(resGlory.players[0].score).toBe(240000000);
     });
@@ -57,21 +58,21 @@ describe('parseGeminiJson', () => {
 
 describe('cleanPlayerPseudo and getGuildTag', () => {
     it('strips configured guild tag brackets and prefixes cleanly', () => {
-        expect(GM.cleanPlayerPseudo('[PR1M] StarWarrior99', '[PR1M]')).toBe('StarWarrior99');
-        expect(GM.cleanPlayerPseudo('PR1M StarWarrior99', 'PR1M')).toBe('StarWarrior99');
-        expect(GM.cleanPlayerPseudo('[PR1M] - StarWarrior99', '[PR1M]')).toBe('StarWarrior99');
-        expect(GM.cleanPlayerPseudo('[PR1M]_StarWarrior99', 'PR1M')).toBe('StarWarrior99');
-        expect(GM.cleanPlayerPseudo('[ALPHA] HawkEye', '[ALPHA]')).toBe('HawkEye');
+        expect(cleanPlayerPseudo('[PR1M] StarWarrior99', '[PR1M]')).toBe('StarWarrior99');
+        expect(cleanPlayerPseudo('PR1M StarWarrior99', 'PR1M')).toBe('StarWarrior99');
+        expect(cleanPlayerPseudo('[PR1M] - StarWarrior99', '[PR1M]')).toBe('StarWarrior99');
+        expect(cleanPlayerPseudo('[PR1M]_StarWarrior99', 'PR1M')).toBe('StarWarrior99');
+        expect(cleanPlayerPseudo('[ALPHA] HawkEye', '[ALPHA]')).toBe('HawkEye');
     });
 
     it('strips generic bracketed tags from foreign guild members', () => {
-        expect(GM.cleanPlayerPseudo('[BABE] OtherPlayer', '[PR1M]')).toBe('OtherPlayer');
-        expect(GM.cleanPlayerPseudo('[CLAW] RandomUser', '')).toBe('RandomUser');
+        expect(cleanPlayerPseudo('[BABE] OtherPlayer', '[PR1M]')).toBe('OtherPlayer');
+        expect(cleanPlayerPseudo('[CLAW] RandomUser', '')).toBe('RandomUser');
     });
 
     it('preserves clean player names without tags', () => {
-        expect(GM.cleanPlayerPseudo('HawkEye', '[PR1M]')).toBe('HawkEye');
-        expect(GM.cleanPlayerPseudo('Admiral_99', '[ALPHA]')).toBe('Admiral_99');
+        expect(cleanPlayerPseudo('HawkEye', '[PR1M]')).toBe('HawkEye');
+        expect(cleanPlayerPseudo('Admiral_99', '[ALPHA]')).toBe('Admiral_99');
     });
 
     it('derives a guild tag from the guild id when none is stored', async () => {
@@ -79,43 +80,43 @@ describe('cleanPlayerPseudo and getGuildTag', () => {
         // 7 tags for 26 tenants, against ADR-003. The table is gone; the real
         // tags live in guild_config, which already holds one for all 7. With no
         // stored tag the id is used, as it always was for the other 19 guilds.
-        expect(await GM.getGuildTag('ALPHA')).toBe('[ALPHA]');
-        expect(await GM.getGuildTag('OMEGA')).toBe('[OMEGA]');
-        expect(await GM.getGuildTag('BABE')).toBe('[BABE]');
+        expect(await getGuildTag('ALPHA')).toBe('[ALPHA]');
+        expect(await getGuildTag('OMEGA')).toBe('[OMEGA]');
+        expect(await getGuildTag('BABE')).toBe('[BABE]');
     });
 });
 
 describe('9 Dedicated AI Event OCR Schemas & Evaluation Logic', () => {
     it('parses SvS Day 1-5 and Day 6 OCR JSON payloads with prep/pvp scores', () => {
         const svsPrepRaw = '```json\n{\n  "metric": "svs_prep",\n  "guild_tag": "[PR1M]",\n  "players": [\n    {"pseudo": "[PR1M] CommanderAlpha", "score": 35000000},\n    {"pseudo": "EnemyPlayer", "score": 28000000}\n  ]\n}\n```';
-        const resPrep = GM.parseGeminiJson(svsPrepRaw);
+        const resPrep = parseGeminiJson(svsPrepRaw);
         expect(resPrep.metric).toBe('svs_prep');
         expect(resPrep.players).toHaveLength(2);
         expect(resPrep.players[0].score).toBe(35000000);
-        expect(GM.cleanPlayerPseudo(resPrep.players[0].pseudo, resPrep.guild_tag)).toBe('CommanderAlpha');
+        expect(cleanPlayerPseudo(resPrep.players[0].pseudo, resPrep.guild_tag)).toBe('CommanderAlpha');
 
         const svsPvpRaw = '{"metric":"svs_pvp","guild_tag":"[PR1M]","players":[{"pseudo":"[PR1M] FleetAdmiral","score":120000000}]}';
-        const resPvp = GM.parseGeminiJson(svsPvpRaw);
+        const resPvp = parseGeminiJson(svsPvpRaw);
         expect(resPvp.metric).toBe('svs_pvp');
         expect(resPvp.players[0].score).toBe(120000000);
-        expect(GM.cleanPlayerPseudo(resPvp.players[0].pseudo, resPvp.guild_tag)).toBe('FleetAdmiral');
+        expect(cleanPlayerPseudo(resPvp.players[0].pseudo, resPvp.guild_tag)).toBe('FleetAdmiral');
     });
 
     it('parses GvG Day 1-5 and Day 6 OCR JSON payloads', () => {
         const gvgPrepRaw = '{"metric":"gvg_prep","guild_tag":"[PR1M]","players":[{"pseudo":"[PR1M] ScoutOne","score":15000000}]}';
-        const resPrep = GM.parseGeminiJson(gvgPrepRaw);
+        const resPrep = parseGeminiJson(gvgPrepRaw);
         expect(resPrep.metric).toBe('gvg_prep');
         expect(resPrep.players[0].score).toBe(15000000);
 
         const gvgPvpRaw = '{"metric":"gvg_pvp","guild_tag":"[PR1M]","players":[{"pseudo":"[PR1M] BattleLord","score":85000000}]}';
-        const resPvp = GM.parseGeminiJson(gvgPvpRaw);
+        const resPvp = parseGeminiJson(gvgPvpRaw);
         expect(resPvp.metric).toBe('gvg_pvp');
         expect(resPvp.players[0].score).toBe(85000000);
     });
 
     it('evaluates Shadowfront S1 & S2 role evaluation: Main (participated) vs Reserve (sub_present + participated)', () => {
         const sfS1Raw = '{"metric":"shadowfront_s1","players":[{"pseudo":"LeaderOne","score":50000000},{"pseudo":"SubPilot99","score":30000000}]}';
-        const resS1 = GM.parseGeminiJson(sfS1Raw);
+        const resS1 = parseGeminiJson(sfS1Raw);
         expect(resS1.metric).toBe('shadowfront_s1');
         expect(resS1.players).toHaveLength(2);
 
@@ -144,7 +145,7 @@ describe('9 Dedicated AI Event OCR Schemas & Evaluation Logic', () => {
 
     it('evaluates DTR toggle rules: score > 0 -> participated, score === 0 -> appointed + participated', () => {
         const dtrRaw = '{"metric":"dtr","players":[{"pseudo":"DriverA","score":45000},{"pseudo":"EscortB","score":0}]}';
-        const resDtr = GM.parseGeminiJson(dtrRaw);
+        const resDtr = parseGeminiJson(dtrRaw);
         expect(resDtr.metric).toBe('dtr');
 
         function evaluateDtrToggles(score) {
@@ -160,19 +161,19 @@ describe('9 Dedicated AI Event OCR Schemas & Evaluation Logic', () => {
 
     it('evaluates Arms Race Stage A and Stage B participation', () => {
         const arSaRaw = '{"metric":"armsrace_sa","players":[{"pseudo":"RunnerA"},{"pseudo":"RunnerB"}]}';
-        const resSa = GM.parseGeminiJson(arSaRaw);
+        const resSa = parseGeminiJson(arSaRaw);
         expect(resSa.metric).toBe('armsrace_sa');
         expect(resSa.players).toHaveLength(2);
 
         const arSbRaw = '{"metric":"armsrace_sb","players":[{"pseudo":"RunnerC"}]}';
-        const resSb = GM.parseGeminiJson(arSbRaw);
+        const resSb = parseGeminiJson(arSbRaw);
         expect(resSb.metric).toBe('armsrace_sb');
         expect(resSb.players[0].pseudo).toBe('RunnerC');
     });
 
     it('accurately parses multiple players with identical prefixes (e.g. Trader99104, Trader99205)', () => {
         const traderRaw = '{"metric":"power","players":[{"pseudo":"Trader99104","overall_power":36409500},{"pseudo":"Trader99205","overall_power":13671300},{"pseudo":"Trader99306","overall_power":8922840}]}';
-        const res = GM.parseGeminiJson(traderRaw);
+        const res = parseGeminiJson(traderRaw);
         expect(res.players).toHaveLength(3);
         expect(res.players[0].pseudo).toBe('Trader99104');
         expect(res.players[1].pseudo).toBe('Trader99205');
@@ -204,14 +205,14 @@ describe('9 Dedicated AI Event OCR Schemas & Evaluation Logic', () => {
 describe('Screenshot cap (ocrDownsampleEvenly)', () => {
     it('leaves a list under or at the cap untouched (as a copy, not the same reference)', () => {
         const items = ['a', 'b', 'c'];
-        const result = GM.ocrDownsampleEvenly(items, 5);
+        const result = ocrDownsampleEvenly(items, 5);
         expect(result).toEqual(['a', 'b', 'c']);
         expect(result).not.toBe(items);
     });
 
     it('evenly downsamples an over-cap list instead of truncating the tail', () => {
         const items = Array.from({ length: 100 }, (_, i) => i); // 0..99, simulating 100 screenshots
-        const result = GM.ocrDownsampleEvenly(items, 25);
+        const result = ocrDownsampleEvenly(items, 25);
 
         expect(result.length).toBe(25);
         // Must always keep the very first and very last screenshot.
@@ -226,9 +227,9 @@ describe('Screenshot cap (ocrDownsampleEvenly)', () => {
     });
 
     it('handles the single-item cap and empty-input edge cases', () => {
-        expect(GM.ocrDownsampleEvenly([1, 2, 3], 1)).toEqual([1]);
-        expect(GM.ocrDownsampleEvenly([], 25)).toEqual([]);
-        expect(GM.ocrDownsampleEvenly(null, 25)).toEqual([]);
+        expect(ocrDownsampleEvenly([1, 2, 3], 1)).toEqual([1]);
+        expect(ocrDownsampleEvenly([], 25)).toEqual([]);
+        expect(ocrDownsampleEvenly(null, 25)).toEqual([]);
     });
 });
 
@@ -369,7 +370,7 @@ describe('2026 OCR Modernization: Sharpness, Fusion & Exhaustive Prompting', () 
             { pseudo: 'Garrus_Vakarian', score: 98000000, uid: '900125', rank: 'R2' }
         ];
 
-        const fused = GM.fuseOcrPlayers(rawOcrList, roster, '[PR1M]');
+        const fused = fuseOcrPlayers(rawOcrList, roster, '[PR1M]');
 
         // Exactly 3 unique players (Shepard merged, Liara merged, Garrus added)
         expect(fused).toHaveLength(3);
@@ -396,7 +397,7 @@ describe('2026 OCR Modernization: Sharpness, Fusion & Exhaustive Prompting', () 
             { pseudo: 'AcePilot', score: 75000, rank: 'R2', uid: '555666' }
         ];
 
-        const fused = GM.fuseOcrPlayers(rawOcrList, [], null);
+        const fused = fuseOcrPlayers(rawOcrList, [], null);
         expect(fused).toHaveLength(1);
         expect(fused[0].pseudo).toBe('AcePilot');
         expect(fused[0].score).toBe(75000);

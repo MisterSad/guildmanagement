@@ -1,12 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { gloryView } from '../src/modules/glory/views/GloryView';
 import { getAppState, patchAppState } from '../src/core/state/app-state';
+import { setDbClient, resetSupabaseClient } from '../src/core/api/supabase';
+import { getWeekStart, getPrevWeekStart } from '../src/core/utils/date';
+import { formatNumber } from '../src/core/utils/text';
 
-const GM = window.GM;
 const GLORY = gloryView;
 
-const W_CUR = GM.getWeekStart();
-const W_PREV = GM.getPrevWeekStart(W_CUR);
+const W_CUR = getWeekStart();
+const W_PREV = getPrevWeekStart(W_CUR);
 
 class MockBuilder {
     constructor(table, rows) {
@@ -37,6 +39,7 @@ describe('Glory Module Tests', () => {
     let mockParticipants;
     let insertTracker;
     let previousGuild;
+    let mockDb;
 
     beforeEach(() => {
         containerEl = document.createElement('div');
@@ -59,7 +62,7 @@ describe('Glory Module Tests', () => {
             { pseudo: 'Akastuki', guild: 'YARR', event_name: 'Glory', week_start: W_PREV, score: 441077726, session_id: 'GLORY-2026-W33' }
         ];
 
-        const mockDb = {
+        mockDb = {
             from: (table) => {
                 if (table === 'guild_members') {
                     return new MockBuilder(table, [
@@ -81,12 +84,11 @@ describe('Glory Module Tests', () => {
             rpc: vi.fn().mockResolvedValue({ data: [{ ok: true, error: null }], error: null })
         };
 
-        window.GM.db = mockDb;
+        setDbClient(mockDb);
         // The view resolves the tenant through getActiveGuild() (typed import),
-        // so set the real app state rather than stubbing window.GM.
+        // so set the real app state.
         previousGuild = getAppState().currentGuild;
         patchAppState({ currentGuild: 'YARR' });
-        window.GM.canWriteGuild = () => true;
     });
 
     afterEach(() => {
@@ -94,6 +96,7 @@ describe('Glory Module Tests', () => {
             containerEl.parentNode.removeChild(containerEl);
         }
         patchAppState({ currentGuild: previousGuild });
+        resetSupabaseClient();
         vi.restoreAllMocks();
     });
 
@@ -110,11 +113,11 @@ describe('Glory Module Tests', () => {
         const kassandraInput = document.querySelector('input[data-pseudo="Kassandra"]');
         expect(kassandraInput).not.toBeNull();
         // Kassandra should display 569 349 274, not 0
-        expect(kassandraInput.value).toBe(window.GM.formatNumber(569349274));
+        expect(kassandraInput.value).toBe(formatNumber(569349274));
 
         const archangelInput = document.querySelector('input[data-pseudo="Archangel"]');
         expect(archangelInput).not.toBeNull();
-        expect(archangelInput.value).toBe(window.GM.formatNumber(182728890));
+        expect(archangelInput.value).toBe(formatNumber(182728890));
 
         const akastukiInput = document.querySelector('input[data-pseudo="Akastuki"]');
         expect(akastukiInput).not.toBeNull();
@@ -132,7 +135,7 @@ describe('Glory Module Tests', () => {
 
         await new Promise((resolve) => setTimeout(resolve, 800));
 
-        expect(window.GM.db.rpc).toHaveBeenCalledWith('gm_upsert_player_glory', {
+        expect(mockDb.rpc).toHaveBeenCalledWith('gm_upsert_player_glory', {
             p_guild: 'YARR',
             p_pseudo: 'Akastuki',
             p_week_start: W_CUR,

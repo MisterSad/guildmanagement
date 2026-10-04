@@ -6,6 +6,8 @@
  */
 
 import { normalizeRole } from '../utils/text';
+import { sessionInfo } from '../api/supabase';
+import { getAppState } from '../state/app-state';
 
 export interface CombatMemberMetrics {
   overall_power?: number | string | null;
@@ -168,23 +170,23 @@ export interface RoleInfo {
 }
 
 /**
- * Current role, prioritizing the live Supabase session (window.GM.sessionInfo)
- * and falling back to the localStorage role (mirrors gm-utils.js#getRoleInfo).
+ * Current role, prioritizing the live Supabase session (sessionInfo) and
+ * falling back to the localStorage role (mirrors gm-utils.js#getRoleInfo).
+ * Until M4c it reached both through window (GM.sessionInfo,
+ * window.currentGuildRestriction).
  */
 export async function getRoleInfo(): Promise<RoleInfo> {
-  const w = (typeof window !== 'undefined' ? window : {}) as any;
   const ls = typeof localStorage !== 'undefined' ? localStorage : null;
+  const restriction = getAppState().currentGuildRestriction;
 
   let info: any = null;
-  if (w.GM && typeof w.GM.sessionInfo === 'function') {
-    try { info = await w.GM.sessionInfo(); } catch (_) { info = null; }
-  }
+  try { info = await sessionInfo(); } catch (_) { info = null; }
 
   let role = normalizeRole(ls ? ls.getItem('gm_role') : null);
   // A stored 'member' with a restriction denotes a former admin account.
   if (role === 'member') {
     if (ls && ls.getItem('gm_server_restriction')) role = 'server_admin';
-    else if (w.currentGuildRestriction) role = 'guild_admin';
+    else if (restriction) role = 'guild_admin';
   }
   if (info && info.role) role = info.role as any;
 
@@ -194,7 +196,7 @@ export async function getRoleInfo(): Promise<RoleInfo> {
     isServerAdmin: role === 'server_admin' || role === 'super_admin',
     isGuildAdmin: role === 'guild_admin' || role === 'server_admin' || role === 'super_admin',
     isAdmin: role === 'super_admin' || role === 'server_admin' || role === 'guild_admin',
-    guild: w.currentGuildRestriction || null,
+    guild: restriction || null,
     serverNumber: (ls ? ls.getItem('gm_server_restriction') : null) || null
   };
 }

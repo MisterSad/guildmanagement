@@ -14,7 +14,14 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { EventsView } from '../src/modules/events/views/EventsView';
-import { resetSupabaseClient } from '../src/core/api/supabase';
+import { resetSupabaseClient, setDbClient } from '../src/core/api/supabase';
+
+// EventsView imports showConfirm directly (it used to read a global one);
+// stub it so no confirm dialog is ever rendered by these layout tests.
+vi.mock('../src/modules/app/dialogs/dialogs.service', async (importOriginal) => ({
+  ...(await importOriginal()),
+  showConfirm: vi.fn()
+}));
 
 import { renderBadge, createBadge, renderWarStatusBadge, badgeRecipe } from '../src/components/ui/Badge';
 import { formatCompactNumber } from '../src/core/utils/numbers';
@@ -130,27 +137,6 @@ let rpcMock;
 let currentTables;
 let view;
 
-function installGM() {
-  window.GM = {
-    t: (k) => k,
-    escapeHTML: (s) => String(s ?? ''),
-    formatNumber: (n) => String(n ?? ''),
-    getActiveGuild: () => 'ALPHA',
-    getWeekStart: () => '2026-08-03',
-    buildEventSessionId: () => SESSION,
-    parseNumber: (v) => parseInt(String(v).replace(/[^0-9]/g, ''), 10) || 0,
-    attachNumberFormatter: vi.fn(),
-    avatarInit: (s) => String(s || '').slice(0, 1).toUpperCase(),
-    formatDateTimeUTC: (v) => String(v),
-    showToast: vi.fn(),
-    notifyDiscordEvent: vi.fn(),
-    pickEventStart: vi.fn(),
-    runInChunks: vi.fn(async (items, size, worker) => { for (const it of items) await worker(it); }),
-    db: null
-  };
-  window.showConfirm = vi.fn();
-}
-
 function installDb(overrides) {
   rpcMock = vi.fn(async (name, params) => {
     if (overrides && overrides[name]) return overrides[name](params);
@@ -172,7 +158,7 @@ function installDb(overrides) {
     }
     return { data: 0, error: null };
   });
-  window.GM.db = { from: (table) => chained(currentTables[table] || []), rpc: rpcMock };
+  setDbClient({ from: (table) => chained(currentTables[table] || []), rpc: rpcMock });
 }
 
 function mount() {
@@ -195,15 +181,13 @@ beforeEach(() => {
   resetSupabaseClient();
   mount();
   currentTables = tables();
-  installGM();
   installDb();
   view = new EventsView();
 });
 
 afterEach(() => {
   vi.useRealTimers();
-  delete window.GM;
-  delete window.showConfirm;
+  resetSupabaseClient();
   document.body.innerHTML = '';
   vi.restoreAllMocks();
 });
@@ -249,7 +233,7 @@ describe('EventsView — granular war retrofit (Badge + Table primitives)', () =
     await view.loadEvent('SvS');
     const chip = document.querySelector('#event-svs .gm-chip.gm-chip-accent');
     expect(chip.getAttribute('title')).toBeTruthy();
-    // M4c: EventsView translates through the typed i18n, not a window.GM.t stub.
+    // M4c: EventsView translates through the typed i18n, not a bridge t() stub.
     expect(chip.textContent).toContain(t('event_total_score'));
     expect(chip.textContent).toMatch(/\d/);
   });

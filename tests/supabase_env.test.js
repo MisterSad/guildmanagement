@@ -11,19 +11,19 @@
  *      it is in the bundle either way.
  *   2. The env path was unreachable. `main.ts` deliberately builds the client
  *      from the compile-time constants ("never import.meta.env") and wraps it in
- *      `installDbWriteGuard` before publishing it as `window.GM.db`, so the
+ *      `installDbWriteGuard` before installing it with `setDbClient()`, so the
  *      fallback never ran -- and had it run, it would have produced a client
  *      that bypassed the multi-tenant write guard entirely.
  *
  * So the env plumbing was deleted, and this suite now locks in the real
  * contract: the constants are the single source, the client is only ever the
- * guarded `window.GM.db`, and no *secret* ever gets hardcoded.
+ * guarded one main.ts installs, and no *secret* ever gets hardcoded.
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { getSupabaseClient, resetSupabaseClient } from '../src/core/api/supabase.ts';
+import { getSupabaseClient, getClient, setDbClient, resetSupabaseClient } from '../src/core/api/supabase.ts';
 
 const rootDir = path.resolve(__dirname, '..');
 const supabaseApiContent = fs.readFileSync(path.join(rootDir, 'src/core/api/supabase.ts'), 'utf-8');
@@ -61,14 +61,17 @@ describe('the connection constants live in exactly one place', () => {
   });
 
   it('builds the one client in main.ts and wraps it in the tenant write guard', () => {
-    expect(mainContent).toContain('installDbWriteGuard(rawClient)');
-    const guardIdx = mainContent.indexOf('installDbWriteGuard(rawClient)');
-    const assignIdx = mainContent.indexOf('wAny.GM.db =');
-    // The guard must be applied in the same statement that publishes GM.db,
-    // otherwise an unguarded client is briefly reachable.
-    expect(assignIdx).toBeGreaterThan(-1);
-    expect(mainContent.slice(assignIdx, assignIdx + 80)).toContain('installDbWriteGuard');
-    expect(guardIdx).toBeGreaterThan(-1);
+    // The guard must be applied in the same statement that installs the
+    // client, otherwise an unguarded client is briefly reachable.
+    expect(mainContent).toContain(
+      'setDbClient(installDbWriteGuard(createClient(SUPABASE_URL, SUPABASE_KEY)))'
+    );
+    // ...and that is the only client main.ts ever installs or builds.
+    const code = mainContent
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/\/\/.*$/gm, '');
+    expect(code.match(/setDbClient\(/g)).toHaveLength(1);
+    expect(code.match(/createClient\(/g)).toHaveLength(1);
   });
 });
 
@@ -108,31 +111,30 @@ describe('no secret is ever hardcoded in the client bundle', () => {
 });
 
 describe('getSupabaseClient only ever returns the guarded client', () => {
-  const originalGM = typeof window !== 'undefined' ? window.GM : undefined;
-
   beforeEach(() => {
     resetSupabaseClient();
   });
 
   afterEach(() => {
-    if (typeof window !== 'undefined') window.GM = originalGM;
     resetSupabaseClient();
   });
 
-  it('returns window.GM.db when main.ts has published it', () => {
+  it('returns the client main.ts installed with setDbClient()', () => {
     const fakeDb = { from: vi.fn(), rpc: vi.fn(), auth: {} };
-    if (typeof window !== 'undefined') window.GM = { db: fakeDb };
+    setDbClient(fakeDb);
     expect(getSupabaseClient()).toBe(fakeDb);
+    expect(getClient()).toBe(fakeDb);
   });
 
   it('memoises that client across calls', () => {
     const fakeDb = { from: vi.fn(), rpc: vi.fn(), auth: {} };
-    if (typeof window !== 'undefined') window.GM = { db: fakeDb };
+    setDbClient(fakeDb);
     expect(getSupabaseClient()).toBe(getSupabaseClient());
   });
 
-  it('returns null rather than fabricating an unguarded client when GM.db is absent', () => {
-    if (typeof window !== 'undefined') window.GM = { db: null };
+  it('returns null rather than fabricating an unguarded client when none is installed', () => {
+    expect(getSupabaseClient()).toBeNull();
+    setDbClient(null);
     expect(getSupabaseClient()).toBeNull();
   });
 });

@@ -12,6 +12,7 @@ import { setCurrentOcrMetric, setOcrExtractedPlayers, getOcrExtractedPlayers, ge
 import { renderOcrCoverage } from '../src/modules/app/ocr/ocr.render';
 import { setGuildMembers, clearMembersStore } from '../src/modules/app/members/members.store';
 import { patchAppState, resetAppState } from '../src/core/state/app-state';
+import { setDbClient, resetSupabaseClient } from '../src/core/api/supabase';
 
 const rootDir = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(rootDir, p), 'utf8');
@@ -44,11 +45,12 @@ function stubDb({ uploadError = null, response }) {
   const upload = vi.fn(async () => ({ data: { path: 'x' }, error: uploadError }));
   const remove = vi.fn(async () => ({ data: [], error: null }));
   const invoke = vi.fn(async () => ({ data: response, error: null }));
-  window.GM.db = {
+  const db = {
     storage: { from: vi.fn(() => ({ upload, remove })) },
     functions: { invoke },
   };
-  return { upload, remove, invoke, from: window.GM.db.storage.from };
+  setDbClient(db);
+  return { upload, remove, invoke, from: db.storage.from };
 }
 
 // jsdom loads no media, so a <video> never fires loadedmetadata or error and the
@@ -73,10 +75,9 @@ beforeEach(() => {
   setOcrExtractedPlayers([]);
   setCurrentOcrMetric('glory');
   resetAppState();
+  // The controller imports getActiveGuild/getGuildTag directly; the active
+  // guild comes from the app state.
   patchAppState({ currentGuild: 'ALPHA' });
-  window.GM = window.GM || {};
-  window.GM.getActiveGuild = () => 'ALPHA';
-  window.GM.getGuildTag = async () => 'PR1M';
 });
 
 afterEach(() => {
@@ -87,7 +88,7 @@ afterEach(() => {
   setOcrExtractedPlayers([]);
   resetAppState();
   document.body.innerHTML = '';
-  delete window.GM.db;
+  resetSupabaseClient();
 });
 
 describe('a video is staged, then read whole by the server', () => {

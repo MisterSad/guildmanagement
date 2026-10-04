@@ -38,6 +38,7 @@ import {
 import { setGuildMembers, clearMembersStore } from '../src/modules/app/members/members.store';
 import { setVerifiedRole } from '../src/core/auth/roles';
 import { patchAppState, resetAppState } from '../src/core/state/app-state';
+import { getClient, setDbClient, resetSupabaseClient } from '../src/core/api/supabase';
 
 const OCR_DOM = `
   <div id="ocr-modal-overlay" style="display:none">
@@ -113,14 +114,12 @@ beforeEach(async () => {
   setOcrExtractedPlayers([]);
   localStorage.clear();
 
-  window.GM = window.GM || {};
-  window.GM.db = makeDb();
+  setDbClient(makeDb());
   // A writer: the transactional RPCs refuse a read-only caller before any request.
   setVerifiedRole('super_admin', 't_super');
   patchAppState({ currentGuild: 'ALPHA' });
   mocks.getGuildTag.mockReset().mockImplementation(async () => '[FGF]');
   mocks.showConfirm.mockReset().mockImplementation((_t, _m, onConfirm) => { void onConfirm(); });
-  window.GM_OVERVIEW = { load: vi.fn() };
   await setOcrMetric('members');
 });
 
@@ -130,7 +129,7 @@ afterEach(() => {
   setOcrExtractedPlayers([]);
   document.body.innerHTML = '';
   resetAppState();
-  delete window.GM_OVERVIEW;
+  resetSupabaseClient();
   localStorage.clear();
 });
 
@@ -263,7 +262,7 @@ describe('commitOcrUpdates — roster flow', () => {
 
     await commitOcrUpdates();
 
-    const calls = window.GM.db.__calls;
+    const calls = getClient().__calls;
     // M4a: the whole import is ONE call to gm_commit_ocr_roster, after the
     // removals were confirmed -- no table write from the browser.
     await vi.waitFor(() => expect(calls.rpc.some((c) => c.name === 'gm_commit_ocr_roster')).toBe(true));
@@ -282,9 +281,9 @@ describe('commitOcrUpdates — roster flow', () => {
     renderOcrResults(getOcrExtractedPlayers());
     toggleAllCheckboxes(false);
 
-    window.GM.db.__calls.update.length = 0;
+    getClient().__calls.update.length = 0;
     await commitOcrUpdates();
 
-    expect(window.GM.db.__calls.update.length).toBe(0);
+    expect(getClient().__calls.update.length).toBe(0);
   });
 });

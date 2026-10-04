@@ -41,8 +41,6 @@ export class GuildWriteError extends Error {
 export async function guildWrite<T = any>(fn: string, args: Record<string, unknown>): Promise<T> {
   const guild = getActiveGuild();
   if (!guild || !canWriteGuild(guild)) throw new GuildWriteError('read_only', READ_ONLY_MESSAGE);
-  // The live client (window.GM.db) first: getSupabaseClient() caches the
-  // first one it ever saw.
   const client = getClient() || getSupabaseClient();
   if (!client) throw new GuildWriteError('no_client', 'The database is not available.');
 

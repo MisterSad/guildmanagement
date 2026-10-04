@@ -2,6 +2,26 @@
 
 ## [Unreleased]
 
+- **The window bridge is gone** (medium-term plan, phase M4c step 2; audit ARC-07, FE-07, finding M8).
+  - **What was removed.**
+    - `src/core/gm-bridge.ts` is deleted.
+    - `main.ts` no longer installs `window.GM` (about 108 members), `window.GM_I18N`, `window.showConfirm`, or any of the 23 `GM_*` namespaces.
+    - The app state no longer mirrors itself onto `window` (`window.currentGuild`, `window.GM_COLLAPSED_ROLES`…) or re-reads it on every access.
+  - **What replaces it.**
+    - The guarded Supabase client is held by `core/api/supabase.ts` (`setDbClient` / `getClient`).
+    - The state is a plain module singleton.
+    - The core toast renders directly. It used to go through `GM_APP.showToast`.
+    - `core/utils/date` and `core/dom/ui` import i18n.
+  - **The only global left** is `window.GM_E2E`, by owner decision on 2026-10-04. It is frozen and non-writable, with five entry points for the e2e suite: `showAdminDashboard`, `openOcrModal`, `loadPortalDashboard`, `openDialog`, `showConfirm`.
+  - **e2e.** The 8 specs now call `GM_E2E`. `guild-rename` records the RPC bodies at the network (`page.route`) instead of swapping in a fake `window.GM.db`.
+  - **Two fixes found on the way.**
+    - `currentAccountId()` lost its `window.GM.currentAccountId` step. Sign-in always set it to the verified id, but logout never cleared it, so it could outlive the session.
+    - `getRoleInfo()` read `window.GM.sessionInfo` and `window.currentGuildRestriction` through a local alias. It now imports both; without that fix, removing the bridge would have broken it silently.
+  - **Tests.** About 65 test files now install fakes with `setDbClient`, seed state with `patchAppState`, and import or `vi.mock` the real modules.
+    - `tests/gm_bridge_contract.test.js` pins the end state: no gm-bridge, exactly one frozen global with exactly five keys, nothing else assigned to `window` in `src/`, and no bridge use in `e2e/`.
+    - Tests whose only subject was the bridge (parity with the bridge, its installation) were removed: 2,472 tests, from 2,484.
+  - AGENTS.md describes the new rule.
+
 - **The feature modules stop reading the window bridge** (medium-term plan, phase M4c step 1; audit ARC-07, FE-07). No intended behaviour change.
   - **What was removed.** `src/modules/` had 104 reads of what the app installed on `window`. All of them now call the typed function directly:
     - `window.GM.*` through the per-view `legacy` facades and the `gm()` / `winAny()` helpers;

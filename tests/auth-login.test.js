@@ -9,6 +9,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { login } from '../src/core/auth/session';
+import { setDbClient, resetSupabaseClient } from '../src/core/api/supabase';
 
 function setClient(invokeImpl) {
   const client = {
@@ -17,8 +18,7 @@ function setClient(invokeImpl) {
       setSession: vi.fn().mockResolvedValue({ data: { session: {} }, error: null }),
     },
   };
-  const w = globalThis;
-  w.GM = { db: client };
+  setDbClient(client);
   return client;
 }
 
@@ -27,8 +27,7 @@ function invokeData(data) {
 }
 
 beforeEach(() => {
-  const w = globalThis;
-  delete w.GM;
+  resetSupabaseClient();
 });
 
 describe('login() against the auth-login Edge Function', () => {
@@ -104,7 +103,7 @@ describe('login() against the auth-login Edge Function', () => {
   });
 
   it('returns no_client when there is no Supabase client', async () => {
-    delete globalThis.GM;
+    resetSupabaseClient();
     const result = await login('ADMIN', 'secret');
     expect(result.ok).toBe(false);
     expect(result.error).toBe('no_client');

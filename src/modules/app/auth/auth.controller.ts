@@ -67,17 +67,6 @@ function db(): any {
 /** One `pageshow` listener per page, however often initAuthForms() runs. */
 let discordPageshowWired = false;
 
-/**
- * Publishes the signed-in account id for `currentAccountId()` in core/auth/roles
- * and the accounts controller, which still read it from the bridge object.
- * A WRITE kept as-is in phase M4c (no app-state key carries it yet); nothing in
- * this module reads it back.
- */
-function publishCurrentAccountId(accountId: string): void {
-  const bridge = typeof window !== 'undefined' ? (window as any).GM : null;
-  if (bridge) bridge.currentAccountId = accountId;
-}
-
 function setLoginError(message: string): void {
   const box = el('login-error');
   if (!box) return;
@@ -271,7 +260,6 @@ export async function restoreSession(): Promise<RestoreSessionResult> {
       store.removeItem('gm_guild_restriction');
       store.removeItem('gm_server_restriction');
     }
-    if (info.accountId) publishCurrentAccountId(info.accountId);
     patchAppState({ currentGuildRestriction: null, currentServerRestriction: null });
     revealPortal();
     return { restored: true, role: 'member', portal: true };
@@ -333,7 +321,6 @@ export async function restoreSession(): Promise<RestoreSessionResult> {
     store.setItem('gm_role', role);
     if (info.accountId) store.setItem('gm_user', info.accountId);
   }
-  if (info.accountId) publishCurrentAccountId(info.accountId);
 
   if (role === 'guild_admin') {
     try { await ensureGuildRestriction(); } catch (_) { /* best effort */ }
@@ -388,7 +375,6 @@ export async function handleSuccessfulLogin(resp: LoginResponse, typedUser?: str
       store.removeItem('gm_guild_restriction');
       store.removeItem('gm_server_restriction');
     }
-    publishCurrentAccountId(canonicalUser);
 
     revealPortal();
     showToast(t('toast_welcome') + ' ' + (typedUser || canonicalUser) + ' !', 'success');
@@ -446,7 +432,6 @@ export async function handleSuccessfulLogin(resp: LoginResponse, typedUser?: str
     store.setItem('gm_role', role);
     store.setItem('gm_user', canonicalUser);
   }
-  publishCurrentAccountId(canonicalUser);
 
   // An admin who can see several tenants needs one selected, or every loader
   // bails and the Command Center renders empty (reported live, 2026-09-27).

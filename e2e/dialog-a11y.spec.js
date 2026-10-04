@@ -17,7 +17,7 @@ test.beforeEach(async ({ page }) => {
 test('opens standard dialog with role="dialog" and sets aria-hidden on #app', async ({ page }) => {
   await page.goto('/');
 
-  // Open standard dialog via client-side bridge
+  // Open a standard dialog through the e2e entry point (window.GM_E2E, M4c).
   await page.evaluate(() => {
     const trigger = document.createElement('button');
     trigger.id = 'test-trigger-btn';
@@ -25,13 +25,11 @@ test('opens standard dialog with role="dialog" and sets aria-hidden on #app', as
     document.body.appendChild(trigger);
     trigger.focus();
 
-    if (window.GM?.components?.openDialog) {
-      window.GM.components.openDialog({
-        title: 'Standard Info',
-        body: '<p>This is a standard dialog body.</p>',
-        tone: 'default',
-      });
-    }
+    window.GM_E2E.openDialog({
+      title: 'Standard Info',
+      body: '<p>This is a standard dialog body.</p>',
+      tone: 'default',
+    });
   });
 
   // Verify modal exists
@@ -58,13 +56,11 @@ test('opens danger dialog with role="alertdialog"', async ({ page }) => {
   await page.goto('/');
 
   await page.evaluate(() => {
-    if (window.GM?.components?.openDialog) {
-      window.GM.components.openDialog({
-        title: 'Destructive Action',
-        body: '<p>Are you sure you want to delete this?</p>',
-        tone: 'danger',
-      });
-    }
+    window.GM_E2E.openDialog({
+      title: 'Destructive Action',
+      body: '<p>Are you sure you want to delete this?</p>',
+      tone: 'danger',
+    });
   });
 
   const alertDialog = page.locator('[role="alertdialog"][aria-modal="true"]');
@@ -75,7 +71,7 @@ test('opens danger dialog with role="alertdialog"', async ({ page }) => {
 
 test('OCR modal has valid accessible name and dialog role', async ({ page }) => {
   await page.goto('/');
-  await page.evaluate(() => window.GM_OCR.openOcrModal('members'));
+  await page.evaluate(() => window.GM_E2E.openOcrModal('members'));
 
   const overlay = page.locator('#ocr-modal-overlay');
   await expect(overlay).toBeVisible();

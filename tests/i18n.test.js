@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import { i18n as I18N } from '../src/core/i18n/i18n';
 
-const I18N = window.GM_I18N;
 expect(I18N).toBeTruthy();
 
 describe('i18n dictionary (English)', () => {

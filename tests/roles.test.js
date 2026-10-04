@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { setDbClient, resetSupabaseClient, sessionInfo } from '../src/core/api/supabase';
+import { patchAppState } from '../src/core/state/app-state';
+import { normalizeRole, roleFromStorage, canWriteGuild } from '../src/core/auth/roles';
+import { getRoleInfo } from '../src/core/scoring/combat';
 
-const GM = window.GM;
+const GM = { normalizeRole, roleFromStorage, canWriteGuild, sessionInfo, getRoleInfo };
 
 function makeJwt(appRole, accountId) {
     const enc = (obj) =>
@@ -9,22 +13,20 @@ function makeJwt(appRole, accountId) {
 }
 
 function mockSession(token) {
-    GM.db = {
+    setDbClient({
         auth: {
             getSession: async () => ({ data: { session: token ? { access_token: token } : null }, error: null })
         }
-    };
+    });
 }
 
 beforeEach(() => {
     localStorage.clear();
-    window.currentGuildRestriction = null;
-    window.guildsData = null;
-    window.currentGuild = 'ALPHA';
+    patchAppState({ currentGuildRestriction: null, guildsData: {}, currentGuild: 'ALPHA' });
 });
 
 afterEach(() => {
-    delete GM.db;
+    resetSupabaseClient();
 });
 
 describe('normalizeRole', () => {
@@ -63,9 +65,9 @@ describe('roleFromStorage', () => {
     });
     it('upgrades legacy member-with-restriction to guild_admin or server_admin', () => {
         localStorage.setItem('gm_role', 'member');
-        window.currentGuildRestriction = 'OMEGA';
+        patchAppState({ currentGuildRestriction: 'OMEGA' });
         expect(GM.roleFromStorage()).toBe('guild_admin');
-        window.currentGuildRestriction = null;
+        patchAppState({ currentGuildRestriction: null });
         localStorage.setItem('gm_server_restriction', '101');
         expect(GM.roleFromStorage()).toBe('server_admin');
         localStorage.removeItem('gm_server_restriction');
@@ -131,7 +133,7 @@ describe('getRoleInfo', () => {
     it('falls back to storage without a session', async () => {
         mockSession(null);
         localStorage.setItem('gm_role', 'guild_admin');
-        window.currentGuildRestriction = 'ALPHA';
+        patchAppState({ currentGuildRestriction: 'ALPHA' });
         const info = await GM.getRoleInfo();
         expect(info.role).toBe('guild_admin');
         expect(info.isGuildAdmin).toBe(true);
@@ -160,27 +162,29 @@ describe('canWriteGuild (server-agnostic client rules)', () => {
     it('server admin can write to any guild on their server', () => {
         localStorage.setItem('gm_role', 'server_admin');
         localStorage.setItem('gm_server_restriction', '101');
-        window.guildsData = {
-            ALPHA: { server_number: '101', type: 'Unlimited' },
-            BABE: { server_number: '101', type: 'Unlimited' },
-            OMEGA: { server_number: '202', type: 'Unlimited' }
-        };
+        patchAppState({
+            guildsData: {
+                ALPHA: { server_number: '101', type: 'Unlimited' },
+                BABE: { server_number: '101', type: 'Unlimited' },
+                OMEGA: { server_number: '202', type: 'Unlimited' }
+            }
+        });
         expect(GM.canWriteGuild('ALPHA')).toBe(true);
         expect(GM.canWriteGuild('BABE')).toBe(true);
         expect(GM.canWriteGuild('OMEGA')).toBe(false);
     });
     it('guild admin writes only to their restricted guild', () => {
         localStorage.setItem('gm_role', 'guild_admin');
-        window.currentGuildRestriction = 'OMEGA';
+        patchAppState({ currentGuildRestriction: 'OMEGA' });
         expect(GM.canWriteGuild('OMEGA')).toBe(true);
         expect(GM.canWriteGuild('ALPHA')).toBe(false);
     });
     it('guild admin can write to assigned guild (subscription expiry no longer blocks writes since v127.0)', () => {
         localStorage.setItem('gm_role', 'guild_admin');
-        window.currentGuildRestriction = 'OMEGA';
-        window.guildsData = { OMEGA: { type: 'Premium', end: '2020-01-01T00:00:00Z' } };
+        patchAppState({ currentGuildRestriction: 'OMEGA' });
+        patchAppState({ guildsData: { OMEGA: { type: 'Premium', end: '2020-01-01T00:00:00Z' } } });
         expect(GM.canWriteGuild('OMEGA')).toBe(true);
-        window.guildsData = { OMEGA: { type: 'Unlimited' } };
+        patchAppState({ guildsData: { OMEGA: { type: 'Unlimited' } } });
         expect(GM.canWriteGuild('OMEGA')).toBe(true);
     });
     it('super_admin storage value is honored', () => {

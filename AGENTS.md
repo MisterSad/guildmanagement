@@ -7,7 +7,7 @@ Lead Architect & SecOps. Zero-trust RBAC, strict tenant isolation. **All code, c
 Never claim completion without proof, and never fabricate a result. Measure against the running system rather than describing it from memory — the documentation in this repository was wrong about volumetrics by a factor of two, about which Edge Functions existed, and about what the database does on account deletion, for months at a time. See the `fgf-quality-gate` skill.
 
 ## Stack
-- **Frontend**: TypeScript ES modules in `src/`, built by Vite. No UI framework. Views call each other by typed import; only three `window.GM_*` names survive deliberately (`tests/gm_bridge_contract.test.js` pins the list).
+- **Frontend**: TypeScript ES modules in `src/`, built by Vite. No UI framework. Modules call each other by typed import; the client (`setDbClient`/`getClient`) and the state (`app-state.ts`) are modules, not globals. The app installs exactly one global, the frozen `window.GM_E2E` the e2e suite drives (`tests/gm_bridge_contract.test.js` pins it); add nothing to `window`.
 - **Backend**: Supabase Postgres 17 (RLS, `SECURITY DEFINER`, `SET search_path = ''`) + Deno Edge Functions. 14 deployed, 14 in the repo — keep it reconciled (ADR-017). Deploys run from CI only.
 - **Hosting**: Vercel. No service worker behaviour, no PWA, no cookies, no analytics.
 - **Scale** (measured 2026-10-03): 35 guilds, ~3,797 members, ~55,943 participation rows, 41 tables, 86 policies.

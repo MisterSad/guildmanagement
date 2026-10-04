@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { GVG_DAILY_TASKS, buildGvgDailyTaskEmbed } from '../src/core/config/gvg-tasks';
+import * as events from '../src/core/config/events';
+import { t } from '../src/core/i18n/i18n';
 
 describe('GvG Daily Task Reminders & Points Breakdown', () => {
     it('contains all 6 days with correct metadata and themes', () => {
@@ -106,27 +108,26 @@ describe('GvG Daily Task Reminders & Points Breakdown', () => {
     });
 
     it('verifies i18n translation key does not display time in UI tile', () => {
-        expect(window.GM_I18N.t('notify_gvg_daily_tasks_desc')).toBe('Daily Tasks breakdown');
+        expect(t('notify_gvg_daily_tasks_desc')).toBe('Daily Tasks breakdown');
     });
 
-    it('verifies window.GM.gvgTasks and window.GM_GVG_TASKS are fully initialized and accessible', () => {
-        expect(window.GM).toBeDefined();
-        expect(window.GM.gvgTasks).toBeDefined();
-        expect(typeof window.GM.gvgTasks.buildGvgDailyTaskEmbed).toBe('function');
-        expect(window.GM_GVG_TASKS).toBeDefined();
-        expect(typeof window.GM_GVG_TASKS.buildGvgDailyTaskEmbed).toBe('function');
+    // M4c: the bridge aliases (GM.gvgTasks, GM_GVG_TASKS) are gone with
+    // the bridge. They exposed the events-config builder; this pins that it
+    // still builds the same payload as the one the admin panel imports.
+    it('builds the same payload through the events config as through gvg-tasks', () => {
+        expect(events.GVG_DAILY_TASKS).toEqual(GVG_DAILY_TASKS);
+        expect(events.buildGvgDailyTaskEmbed(2, '@everyone')).toEqual(buildGvgDailyTaskEmbed(2, '@everyone'));
 
-        const gmRes = window.GM.gvgTasks.buildGvgDailyTaskEmbed(2, '@everyone');
-        expect(gmRes.content).toContain('GvG Day 2 Tasks are Live!');
-        expect(gmRes.embeds[0].title).toContain('Day 2 Tasks');
+        const day2 = events.buildGvgDailyTaskEmbed(2, '@everyone');
+        expect(day2.content).toContain('GvG Day 2 Tasks are Live!');
+        expect(day2.embeds[0].title).toContain('Day 2 Tasks');
 
-        const gvgRes = window.GM_GVG_TASKS.buildGvgDailyTaskEmbed(3, '@everyone');
-        expect(gvgRes.content).toContain('GvG Day 3 Tasks are Live!');
-        expect(gvgRes.embeds[0].title).toContain('Day 3 Tasks');
+        const day3 = buildGvgDailyTaskEmbed(3, '@everyone');
+        expect(day3.content).toContain('GvG Day 3 Tasks are Live!');
+        expect(day3.embeds[0].title).toContain('Day 3 Tasks');
     });
 
     it('verifies default fallback for notify_gvg_daily_tasks', () => {
-        const fallback = (window.GM && window.GM.config) ? null : null;
         // In localConfigFallback, notify_gvg_daily_tasks is 'true'
         expect(true).toBe(true);
     });
