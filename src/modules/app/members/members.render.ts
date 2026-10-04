@@ -21,55 +21,14 @@ import {
   findGuildMember
 } from './members.store';
 import { deleteGuildMember, showEditMemberDialog, showTransferMemberDialog, fetchGuildMembers } from './members.controller';
-import { showToast } from '../dialogs/dialogs.service';
+import { showToast, showConfirm } from '../dialogs/dialogs.service';
+import { getClient } from '../../../core/api/supabase';
+import { avatarInit, formatPower, formatNumber } from '../../../core/utils/text';
+import { getPowerTier, getPowerTierMeta } from '../../../core/utils/numbers';
+import { calculateRallyScore, calculateRallyGrade } from '../../../core/scoring/combat';
+import { getUidStatus, isInvalidOrTempUid } from '../../ocr/ocr.service';
 import { formatTimezoneDisplay, getTimezoneOffset } from '../../../utils/timezone';
 
-function g(): any {
-  return (typeof window !== 'undefined' ? (window as any).GM : null);
-}
-
-function w(): any {
-  return (typeof window !== 'undefined' ? window : {}) as any;
-}
-
-function avatarInit(value: unknown): string {
-  const x = g();
-  return x && typeof x.avatarInit === 'function' ? x.avatarInit(value) : String(value || '?').charAt(0).toUpperCase();
-}
-function formatPower(value: unknown): string {
-  const x = g();
-  return x && typeof x.formatPower === 'function' ? x.formatPower(value) : String(value ?? 0);
-}
-function formatNumber(value: unknown): string {
-  const x = g();
-  return x && typeof x.formatNumber === 'function' ? x.formatNumber(value) : String(value ?? 0);
-}
-function getPowerTier(power: unknown, maxPower: unknown): string {
-  const x = g();
-  return x && typeof x.getPowerTier === 'function' ? x.getPowerTier(power, maxPower) : 'R1';
-}
-function getPowerTierMeta(tier: string): { label: string; color: string; icon: string } {
-  const x = g();
-  return x && typeof x.getPowerTierMeta === 'function' ? x.getPowerTierMeta(tier) : { label: tier, color: '#94a3b8', icon: '' };
-}
-function getUidStatus(uid: unknown): { valid: boolean; label?: string; reason?: string } {
-  const x = g();
-  return x && typeof x.getUidStatus === 'function' ? x.getUidStatus(uid) : { valid: true };
-}
-function isInvalidOrTempUid(uid: unknown): boolean {
-  const x = g();
-  return x && typeof x.isInvalidOrTempUid === 'function' ? x.isInvalidOrTempUid(uid) : false;
-}
-function calculateRallyScore(m: any): number {
-  const x = g();
-  return x && typeof x.calculateRallyScore === 'function' ? x.calculateRallyScore(m) : 0;
-}
-function calculateRallyGrade(m: any, max: number): number {
-  const x = g();
-  if (x && typeof x.calculateRallyGrade === 'function') return x.calculateRallyGrade(m, max);
-  const score = calculateRallyScore(m);
-  return max > 0 ? Math.round((score / max) * 100) : 0;
-}
 /**
  * H2: delegates to the single canonical resolver instead of re-implementing the
  * fallback chain, and returns null rather than ALPHA when nothing resolves.
@@ -168,7 +127,7 @@ export function sortMembers(list: GuildMember[], sortVal: string, scoreMap?: Map
 // ── Chips ────────────────────────────────────────────────────────────────────
 
 export function absenceBadgeHtml(m: GuildMember): string {
-  const absences = w().guildAbsences || [];
+  const absences: any[] = getAppState().guildAbsences || [];
   if (absences.length === 0) return '';
   const now = new Date();
   const match = absences.find((a: any) => a.uid === m.uid && new Date(a.end_date + 'T23:59:59') >= now);
@@ -484,7 +443,7 @@ export function renderAbsenceSummary(): void {
   const countEl = byId('admin-absences-count');
   if (!section || !listEl || !countEl) return;
 
-  const absences = w().guildAbsences || [];
+  const absences: any[] = getAppState().guildAbsences || [];
   const now = new Date();
   const relevant = absences.filter((a: any) => new Date(a.end_date + 'T23:59:59') >= now);
   relevant.sort((a: any, b: any) => {
@@ -580,7 +539,7 @@ export function updateBulkActionBar(filteredList: GuildMember[]): void {
   const countSpan = byId('admin-bulk-selected-count');
   if (!bar || !countSpan) return;
 
-  const activeGuild = w().GM && typeof w().GM.getActiveGuild === 'function' ? w().GM.getActiveGuild() : currentGuild();
+  const activeGuild = currentGuild();
   const selected = getAppState().adminSelectedMembers;
   const rosterMap: Record<string, GuildMember> = {};
   getGuildMembers().filter((m) => (m.guild || '') === activeGuild).forEach((m) => { if (m && m.pseudo) rosterMap[m.pseudo] = m; });
@@ -628,7 +587,7 @@ export async function bulkUpdateMemberRoles(targetRole: string): Promise<boolean
     return false;
   }
 
-  const activeGuild = w().GM && typeof w().GM.getActiveGuild === 'function' ? w().GM.getActiveGuild() : currentGuild();
+  const activeGuild = currentGuild();
   const currentRoster = getGuildMembers().filter((m) => (m.guild || '') === activeGuild);
   const { eligiblePseudos, excludedR5Count } = filterBulkEligibleMembers(currentRoster, getAppState().adminSelectedMembers);
 
@@ -641,7 +600,7 @@ export async function bulkUpdateMemberRoles(targetRole: string): Promise<boolean
   }
 
   try {
-    const db = w().GM && w().GM.db ? w().GM.db : null;
+    const db = getClient();
     if (!db) throw new Error('no_client');
     const res = await bulkSetMemberRole(db, activeGuild, eligiblePseudos, targetRole);
     if (res.error) throw res.error;
@@ -853,9 +812,7 @@ function bindRosterDelegation(): void {
     const deleteBtn = target.closest<HTMLElement>('.guild-delete-btn');
     if (deleteBtn) {
       const pseudo = deleteBtn.getAttribute('data-pseudo') || '';
-      const ww = w();
-      if (!ww.showConfirm) return;
-      ww.showConfirm(
+      showConfirm(
         t('confirm_remove_member_title'),
         t('confirm_remove_member_body') + ' <strong>' + esc(pseudo) + '</strong> ' + t('confirm_remove_member_body2'),
         () => { void deleteGuildMember(pseudo); }

@@ -7,6 +7,23 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { TicketsView, loadingHtml } from '../src/modules/tickets/views/TicketsView';
 
+// The view imports its collaborators directly; mock the source modules
+// rather than the legacy window.GM surface.
+const mocks = vi.hoisted(() => ({ superAdmin: true, showToast: vi.fn() }));
+
+vi.mock('../src/core/i18n/i18n', async (importOriginal) => ({
+  ...(await importOriginal()),
+  t: (k) => k
+}));
+vi.mock('../src/core/auth/roles', async (importOriginal) => ({
+  ...(await importOriginal()),
+  isSuperAdmin: () => mocks.superAdmin
+}));
+vi.mock('../src/core/dom/toast', async (importOriginal) => ({
+  ...(await importOriginal()),
+  showToast: mocks.showToast
+}));
+
 let invokeMock;
 
 function installGM({ superAdmin = true } = {}) {
@@ -26,14 +43,9 @@ function installGM({ superAdmin = true } = {}) {
     return { data: { ok: true }, error: null };
   });
 
-  window.GM = {
-    t: (k) => k,
-    escapeHTML: (s) => String(s ?? ''),
-    formatNumber: (n) => String(n ?? ''),
-    isSuperAdmin: () => superAdmin,
-    showToast: vi.fn(),
-    db: { functions: { invoke: invokeMock } }
-  };
+  mocks.superAdmin = superAdmin;
+  // Only the client lives on window.GM (getClient() reads it).
+  window.GM = { db: { functions: { invoke: invokeMock } } };
 }
 
 function mountContainer() {
@@ -97,7 +109,8 @@ describe('TicketsView.load()', () => {
   });
 
   it('shows the skeleton when the db client is unavailable', async () => {
-    window.GM = { t: (k) => k, escapeHTML: (s) => String(s ?? ''), db: null };
+    mocks.superAdmin = true;
+    window.GM = { db: null };
     const container = mountContainer();
     const view = new TicketsView();
     await view.load();

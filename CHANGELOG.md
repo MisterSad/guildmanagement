@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+- **The feature modules stop reading the window bridge** (medium-term plan, phase M4c step 1; audit ARC-07, FE-07). No intended behaviour change.
+  - **What was removed.** `src/modules/` had 104 reads of what the app installed on `window`. All of them now call the typed function directly:
+    - `window.GM.*` through the per-view `legacy` facades and the `gm()` / `winAny()` helpers;
+    - the `GM_*` namespaces;
+    - `window.showConfirm`;
+    - the state mirrored on `window`, now read through `getAppState()` / `patchAppState()`.
+  - **Facades deleted** in 12 views and the app controllers. Their `typeof x === 'function' ? … : fallback` guards went with them, since an import always exists.
+  - **Two calls removed** that could never run: `window.GM.renderPendingRegistrations` in Overview and `window.GM.fetchGuildMembers` in Glory. Nothing ever installed those names.
+  - **One write remains**, `auth.controller`'s `window.GM.currentAccountId`, read back by `core/auth/roles`. It moves to app-state in step 2.
+  - **Not removed yet.** `main.ts` still installs the bridge, because the e2e suite drives the app through it. Step 2 removes the installation and moves the tests and e2e to typed entry points.
+  - **Tests.** About 30 test files now `vi.mock` the source module instead of stubbing `window.GM`, keeping each assertion's intent. Source-text assertions were updated to the new call sites.
+    - `tests/modules_no_window_bridge.test.js` fails on any bridge read in `src/modules/`; run on the previous code it finds 104.
+    - Full gate: 2,484 vitest tests, build, Playwright 44/44.
+
 - **Data access moves out of the views** (medium-term plan, phase M4b; audit ARC-01, FE-06). No behaviour change.
   - **Scope.** 23 views, controllers and renderers no longer build queries. 133 query sites moved, covering table reads and writes, RPCs, Edge Function calls and the OCR video storage. Each became a function of its module's service, named by intent.
     - Each function takes the caller's guarded client (`src/core/api/db-client.ts`) and returns the same query, moved verbatim.

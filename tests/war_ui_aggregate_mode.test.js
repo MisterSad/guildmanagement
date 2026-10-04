@@ -14,8 +14,38 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { EventsView } from '../src/modules/events/views/EventsView';
 import { resetSupabaseClient } from '../src/core/api/supabase';
+import { showToast } from '../src/core/dom/toast';
+import { formatNumber } from '../src/core/utils/text';
 
 const SESSION = 'SVS-2026-W32';
+
+// The view imports its helpers directly (no more `window.GM.*` /
+// `window.showConfirm` reads): mock the source modules with the stubs the
+// suite used to put on window.
+vi.mock('../src/core/i18n/i18n', async (importOriginal) => ({
+  ...(await importOriginal()),
+  t: (k) => k
+}));
+vi.mock('../src/core/config/events', async (importOriginal) => ({
+  ...(await importOriginal()),
+  buildEventSessionId: () => SESSION
+}));
+vi.mock('../src/core/utils/date', async (importOriginal) => ({
+  ...(await importOriginal()),
+  getWeekStart: () => '2026-08-03'
+}));
+vi.mock('../src/core/dom/toast', async (importOriginal) => ({
+  ...(await importOriginal()),
+  showToast: vi.fn()
+}));
+vi.mock('../src/core/integrations/discord', async (importOriginal) => ({
+  ...(await importOriginal()),
+  notifyDiscordEvent: vi.fn()
+}));
+vi.mock('../src/modules/app/dialogs/dialogs.service', async (importOriginal) => ({
+  ...(await importOriginal()),
+  showConfirm: vi.fn()
+}));
 
 let rpcMock;
 let dailyRows;
@@ -73,24 +103,10 @@ function installDb() {
 }
 
 function installGM() {
-  window.GM = {
-    t: (k) => k,
-    escapeHTML: (s) => String(s ?? ''),
-    formatNumber: (n) => String(n ?? ''),
-    getActiveGuild: () => 'ALPHA',
-    getWeekStart: () => '2026-08-03',
-    buildEventSessionId: () => SESSION,
-    parseNumber: (v) => parseInt(String(v).replace(/[^0-9]/g, ''), 10) || 0,
-    attachNumberFormatter: vi.fn(),
-    avatarInit: (s) => String(s || '').slice(0, 1).toUpperCase(),
-    formatDateTimeUTC: (v) => String(v),
-    showToast: vi.fn(),
-    notifyDiscordEvent: vi.fn(),
-    pickEventStart: vi.fn(),
-    runInChunks: vi.fn(async (items, size, worker) => { for (const it of items) await worker(it); }),
-    db: null
-  };
-  window.showConfirm = vi.fn();
+  vi.mocked(showToast).mockReset();
+  localStorage.setItem('gm_current_guild', 'ALPHA');
+  // Only the Supabase client is still read from `window.GM` (via getClient()).
+  window.GM = { db: null };
 }
 
 function mount() {
@@ -127,7 +143,6 @@ beforeEach(() => {
 afterEach(() => {
   vi.restoreAllMocks();
   delete window.GM;
-  delete window.showConfirm;
   document.body.innerHTML = '';
 });
 
@@ -193,8 +208,8 @@ describe('war aggregate grid computation', () => {
     // prep 1000000 → 2 chests ; day 6 750000 → 3 chests ; total 5.
     expect(alphaRow.querySelector('.player-chests-cell').textContent).toBe('5');
     // Inputs carry the persisted aggregate + Day 6 values.
-    expect(alphaRow.querySelector('.day-score-input[data-day="0"]').value).toBe('1000000');
-    expect(alphaRow.querySelector('.day-score-input[data-day="6"]').value).toBe('750000');
+    expect(alphaRow.querySelector('.day-score-input[data-day="0"]').value).toBe(formatNumber(1000000));
+    expect(alphaRow.querySelector('.day-score-input[data-day="6"]').value).toBe(formatNumber(750000));
   });
 
   it('computes the banner total with prepTotal + Day 6 (no double counting)', async () => {
@@ -288,7 +303,7 @@ describe('destructive conversion guard (total over existing D1..D5)', () => {
     expect(calls[0][1].p_rows).toEqual(expect.arrayContaining([
       expect.objectContaining({ pseudo: 'Alpha', day: 0, score: 5500 })
     ]));
-    expect(window.GM.showToast).toHaveBeenCalledWith('war_toast_total_replaced_days', 'success');
+    expect(showToast).toHaveBeenCalledWith('war_toast_total_replaced_days', 'success');
   });
 });
 
@@ -312,6 +327,6 @@ describe('reverse conversion (day D1..D5 over a total)', () => {
     expect(calls[0][1].p_rows).toEqual(expect.arrayContaining([
       expect.objectContaining({ pseudo: 'Alpha', day: 1, score: 1000 })
     ]));
-    expect(window.GM.showToast).toHaveBeenCalledWith('war_toast_days_replaced_total', 'info');
+    expect(showToast).toHaveBeenCalledWith('war_toast_days_replaced_total', 'info');
   });
 });

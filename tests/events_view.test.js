@@ -10,8 +10,39 @@ import { resetSupabaseClient } from '../src/core/api/supabase';
 
 const SESSION = 'SVS-2026-W32';
 
+// The view imports its helpers directly (no more `window.GM.*` reads): mock
+// the source modules with the same stubs the suite used to put on window.GM.
+const { runInChunksMock } = vi.hoisted(() => ({ runInChunksMock: vi.fn() }));
+vi.mock('../src/core/i18n/i18n', async (importOriginal) => ({
+  ...(await importOriginal()),
+  t: (k) => k
+}));
+vi.mock('../src/core/utils/async', async (importOriginal) => ({
+  ...(await importOriginal()),
+  runInChunks: runInChunksMock
+}));
+vi.mock('../src/core/config/events', async (importOriginal) => ({
+  ...(await importOriginal()),
+  buildEventSessionId: () => SESSION
+}));
+vi.mock('../src/core/utils/date', async (importOriginal) => ({
+  ...(await importOriginal()),
+  getWeekStart: () => '2026-08-03'
+}));
+vi.mock('../src/core/dom/toast', async (importOriginal) => ({
+  ...(await importOriginal()),
+  showToast: vi.fn()
+}));
+vi.mock('../src/core/integrations/discord', async (importOriginal) => ({
+  ...(await importOriginal()),
+  notifyDiscordEvent: vi.fn()
+}));
+vi.mock('../src/modules/app/dialogs/dialogs.service', async (importOriginal) => ({
+  ...(await importOriginal()),
+  showConfirm: vi.fn()
+}));
+
 let rpcMock;
-let runInChunksMock;
 
 function chained(value) {
   const filters = [];
@@ -62,27 +93,13 @@ function installDb() {
 }
 
 function installGM() {
-  runInChunksMock = vi.fn(async (items, size, worker) => {
+  runInChunksMock.mockReset();
+  runInChunksMock.mockImplementation(async (items, size, worker) => {
     for (const it of items) await worker(it);
   });
-  window.GM = {
-    t: (k) => k,
-    escapeHTML: (s) => String(s ?? ''),
-    formatNumber: (n) => String(n ?? ''),
-    getActiveGuild: () => 'ALPHA',
-    getWeekStart: () => '2026-08-03',
-    buildEventSessionId: () => SESSION,
-    parseNumber: (v) => parseInt(String(v).replace(/[^0-9]/g, ''), 10) || 0,
-    attachNumberFormatter: vi.fn(),
-    avatarInit: (s) => String(s || '').slice(0, 1).toUpperCase(),
-    formatDateTimeUTC: (v) => String(v),
-    showToast: vi.fn(),
-    notifyDiscordEvent: vi.fn(),
-    pickEventStart: vi.fn(),
-    runInChunks: runInChunksMock,
-    db: null
-  };
-  window.showConfirm = vi.fn();
+  localStorage.setItem('gm_current_guild', 'ALPHA');
+  // Only the Supabase client is still read from `window.GM` (via getClient()).
+  window.GM = { db: null };
 }
 
 function panel(id) {
@@ -126,7 +143,6 @@ beforeEach(() => {
 afterEach(() => {
   vi.useRealTimers();
   delete window.GM;
-  delete window.showConfirm;
   document.body.innerHTML = '';
   vi.restoreAllMocks();
 });
@@ -166,7 +182,7 @@ describe('EventsView — member sync & approval', () => {
     expect(area('event-svs').querySelectorAll('.participant-row').length).toBe(2);
   });
 
-  it('batches "Approve All" via GM.runInChunks(pendingPseudos, 10, ...)', async () => {
+  it('batches "Approve All" via runInChunks(pendingPseudos, 10, ...)', async () => {
     const view = new EventsView();
     await view.loadEvent('SvS');
 

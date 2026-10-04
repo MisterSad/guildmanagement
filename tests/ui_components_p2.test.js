@@ -18,6 +18,7 @@ import { resetSupabaseClient } from '../src/core/api/supabase';
 
 import { renderBadge, createBadge, renderWarStatusBadge, badgeRecipe } from '../src/components/ui/Badge';
 import { formatCompactNumber } from '../src/core/utils/numbers';
+import { t } from '../src/core/i18n/i18n';
 
 /* ─── Badge unit coverage ──────────────────────────────────────────────── */
 describe('Badge — cva recipe, escaping, helpers', () => {
@@ -248,7 +249,8 @@ describe('EventsView — granular war retrofit (Badge + Table primitives)', () =
     await view.loadEvent('SvS');
     const chip = document.querySelector('#event-svs .gm-chip.gm-chip-accent');
     expect(chip.getAttribute('title')).toBeTruthy();
-    expect(chip.textContent).toContain('event_total_score');
+    // M4c: EventsView translates through the typed i18n, not a window.GM.t stub.
+    expect(chip.textContent).toContain(t('event_total_score'));
     expect(chip.textContent).toMatch(/\d/);
   });
 });

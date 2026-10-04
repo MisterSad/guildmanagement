@@ -8,6 +8,16 @@
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
+// M4c: the controller imports the Discord session calls; they are mocked at
+// their module rather than stubbed on session.
+const session = vi.hoisted(() => ({
+  onboardWithDiscord: vi.fn(),
+  claimWithDiscord: vi.fn(),
+  redeemLinkCode: vi.fn(),
+  loginWithDiscord: vi.fn(),
+}));
+vi.mock('../src/core/auth/session', async (importOriginal) => ({ ...(await importOriginal()), ...session }));
+
 vi.mock('../src/modules/portal/views/PortalView', () => ({
   portalView: { loadDashboard: vi.fn(), renderDashboard: vi.fn() }
 }));
@@ -44,13 +54,7 @@ beforeEach(() => {
   sessionStorage.clear();
   document.body.innerHTML = LOGIN_DOM;
   resetAppState();
-  window.GM = {
-    onboardWithDiscord: vi.fn(),
-    claimWithDiscord: vi.fn(),
-    redeemLinkCode: vi.fn(),
-    loginWithDiscord: vi.fn(),
-  };
-  window.GM_APP = { fetchGuilds: vi.fn(async () => undefined), showAdminDashboard: vi.fn(), reloadActiveView: vi.fn() };
+  Object.values(session).forEach((fn) => fn.mockReset());
 });
 
 describe('step 1: who are you?', () => {
@@ -97,14 +101,14 @@ describe('step 2: correcting a mistake', () => {
     type('discord-join-uid', '12ab');
     click($('discord-link-submit'));
     await flush();
-    expect(window.GM.onboardWithDiscord).not.toHaveBeenCalled();
+    expect(session.onboardWithDiscord).not.toHaveBeenCalled();
     expect($('discord-join-uid-error').classList.contains('hidden')).toBe(false);
   });
 
   it('shows a recoverable error under its field and retries with the FRESH ticket', async () => {
     const first = 'FIRST'.padEnd(20, 'x');
     const second = 'SECOND'.padEnd(20, 'x');
-    window.GM.onboardWithDiscord
+    session.onboardWithDiscord
       .mockResolvedValueOnce({ ok: false, error: 'uid_not_in_guild', ticket: second, attemptsLeft: 2 })
       .mockResolvedValueOnce({ ok: true, state: 'pending_approval', guild: 'SIGMA', id: 'hawk' });
 
@@ -125,15 +129,15 @@ describe('step 2: correcting a mistake', () => {
     click($('discord-link-submit'));
     await flush(); await flush();
 
-    expect(window.GM.onboardWithDiscord.mock.calls[0][0]).toBe(first);
-    expect(window.GM.onboardWithDiscord.mock.calls[1][0]).toBe(second);
+    expect(session.onboardWithDiscord.mock.calls[0][0]).toBe(first);
+    expect(session.onboardWithDiscord.mock.calls[1][0]).toBe(second);
     // Pending join: a screen of its own, not an error line.
     expect($('login-pending').classList.contains('hidden')).toBe(false);
     expect($('login-pending-text').textContent).toContain('SIGMA');
   });
 
   it('offers "Restart with Discord" when the ticket is spent, and carries the non-secret fields', async () => {
-    window.GM.claimWithDiscord.mockResolvedValueOnce({ ok: false, error: 'invalid_credentials' });
+    session.claimWithDiscord.mockResolvedValueOnce({ ok: false, error: 'invalid_credentials' });
 
     openLinkAccountDialog('T1'.padEnd(20, 'x'), 'hawk');
     click(document.querySelector('[data-choice="existing"]'));
@@ -150,7 +154,7 @@ describe('step 2: correcting a mistake', () => {
     expect(intent).toMatchObject({ kind: 'claim', accountId: 'Hawk' });
     // Never the password.
     expect(JSON.stringify(sessionStorage)).not.toContain('hunter2');
-    expect(window.GM.loginWithDiscord).toHaveBeenCalled();
+    expect(session.loginWithDiscord).toHaveBeenCalled();
   });
 });
 

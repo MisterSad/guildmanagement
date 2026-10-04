@@ -7,6 +7,13 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
+// The members modules import showConfirm directly; the stub confirms at once.
+vi.mock('../src/modules/app/dialogs/dialogs.service', async (importOriginal) => ({
+  ...(await importOriginal()),
+  showConfirm: vi.fn()
+}));
+import { showConfirm } from '../src/modules/app/dialogs/dialogs.service';
+
 import { getAppState, patchAppState, resetAppState } from '../src/core/state/app-state';
 import {
   setGuildMembers,
@@ -96,10 +103,10 @@ beforeEach(() => {
   patchAppState({ adminMembersViewMode: 'cards', adminSelectedMembers: new Set(), guildAbsences: [] });
 
   window.GM = window.GM || {};
-  window.GM.getActiveGuild = () => 'ALPHA';
   window.GM.db = makeDb();
   window.currentGuild = 'ALPHA';
-  window.showConfirm = vi.fn((_title, _msg, onConfirm) => { if (onConfirm) void onConfirm(); });
+  showConfirm.mockReset();
+  showConfirm.mockImplementation((_title, _msg, onConfirm) => { if (onConfirm) void onConfirm(); });
 });
 
 afterEach(() => {
@@ -108,7 +115,6 @@ afterEach(() => {
   resetAppState();
   document.body.innerHTML = '';
   delete window.GM_MEMBERS;
-  delete window.showConfirm;
   delete window.currentGuild;
   localStorage.clear();
 });
@@ -213,7 +219,7 @@ describe('pending transfers', () => {
   it('resolves a transfer through the RPC after confirmation', async () => {
     await resolveTransfer('t1', 'approve');
     await tick();
-    expect(window.showConfirm).toHaveBeenCalled();
+    expect(showConfirm).toHaveBeenCalled();
     expect(window.GM.db.__calls.rpc.map((c) => c.name)).toContain('resolve_guild_transfer');
     expect(window.GM.db.__calls.rpc.find((c) => c.name === 'resolve_guild_transfer').args)
       .toEqual({ p_transfer_id: 't1', p_action: 'approve' });

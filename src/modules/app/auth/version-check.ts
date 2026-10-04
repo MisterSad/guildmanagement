@@ -5,19 +5,14 @@
  * Polls the build-generated `/version.json` marker (cache: 'no-store') and
  * prompts a reload when it disagrees with the version actually running here.
  *
- * `app.js` still owns its own parse-time polling; this module is the typed
- * replacement and exposes `initVersionCheck()` for the final cutover. Call-time
- * `window.GM` reads keep test stubs working.
+ * The running version is the build constant, imported (phase M4c) rather than
+ * read back from the bridge that main.ts publishes it on.
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { APP_VERSION } from '../../../core/config/constants';
 import { escapeHTML } from '../../../core/utils/text';
-
-function winAny(): any {
-  return (typeof window !== 'undefined' ? window : ({} as any)) as any;
-}
 
 function esc(value: unknown): string {
   return escapeHTML(value);
@@ -26,10 +21,9 @@ function esc(value: unknown): string {
 let newVersionBannerShown = false;
 let versionCheckInitialized = false;
 
-/** Currently-running version: window.GM.appVersion, else the build constant. */
+/** Currently-running version: the build constant baked into this bundle. */
 export function currentAppVersion(): string {
-  const w = winAny();
-  return (w.GM && w.GM.appVersion) || APP_VERSION;
+  return APP_VERSION;
 }
 
 /** Fetches /version.json (network-fresh) and prompts if it disagrees. */
@@ -87,7 +81,7 @@ export function showNewVersionBanner(newVersion: string): void {
     });
   }
   const refresh = document.getElementById('new-version-refresh');
-  if (refresh) refresh.addEventListener('click', () => { winAny().location.reload(); });
+  if (refresh) refresh.addEventListener('click', () => { window.location.reload(); });
 }
 
 /**

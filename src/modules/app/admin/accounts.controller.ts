@@ -8,21 +8,20 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { t, esc, gm, winAny, byId, getDb, ls } from './utils';
-import { getActiveGuild } from '../../../core/auth/roles';
+import { t, esc, byId, getDb, ls } from './utils';
+import { getActiveGuild, isSuperAdmin, currentAccountId } from '../../../core/auth/roles';
+import { adminAccounts, generateJoinCode } from '../../../core/auth/session';
 import { buildInviteLink } from '../../../core/auth/pending-intent';
 import { setAccounts, filterAccountsOut, unshiftAccount, getAccounts } from './admin-store';
 import { renderAccounts, revealAccountPassword } from './accounts.render';
 import { showToast } from '../dialogs/dialogs.service';
 import { shellView } from '../../shell/views/ShellView';
-import { patchAppState } from '../../../core/state/app-state';
+import { getAppState, patchAppState } from '../../../core/state/app-state';
 import { queryGuildList, insertGuild } from './admin.service';
 
 export async function fetchAccounts(): Promise<void> {
-  const g = gm();
-  if (!g || !g.adminAccounts) return;
   try {
-    const res = await g.adminAccounts('list');
+    const res = await adminAccounts('list');
     if (!res.ok) throw new Error(res.error || 'list_failed');
     setAccounts(res.accounts || []);
     renderAccounts();
@@ -33,8 +32,7 @@ export async function fetchAccounts(): Promise<void> {
 
 export async function deleteAccount(id: string): Promise<void> {
   try {
-    const g = gm();
-    const res = await g.adminAccounts('delete', { id });
+    const res = await adminAccounts('delete', { id });
     if (!res.ok) throw new Error(res.error || 'delete_failed');
     filterAccountsOut(id);
     renderAccounts();
@@ -47,7 +45,6 @@ export async function deleteAccount(id: string): Promise<void> {
 export async function fetchGuilds(): Promise<void> {
   const db = getDb();
   if (!db) return;
-  const w = winAny();
   try {
     const res = await queryGuildList(db);
     if (res.error) return;
@@ -72,7 +69,7 @@ export async function fetchGuilds(): Promise<void> {
 }
 
 export function populateAccountGuildSelect(): void {
-  const w = winAny();
+  const st = getAppState();
   const selectR4 = byId<HTMLSelectElement>('account-guild');
   if (selectR4) {
     // H2: offering 'ALPHA' here let an admin create an account in a tenant
@@ -91,15 +88,16 @@ export function populateAccountGuildSelect(): void {
   // (isGuildInScope), this only keeps the UI honest.
   const inviteGuild = byId<HTMLSelectElement>('admin-invite-guild');
   if (inviteGuild) {
-    const restriction = w.currentGuildRestriction;
+    const restriction = st.currentGuildRestriction;
     if (restriction) {
       inviteGuild.innerHTML = '<option value="' + esc(restriction) + '">' + esc(restriction) + '</option>';
       inviteGuild.value = restriction;
       inviteGuild.disabled = true;
     } else {
       inviteGuild.disabled = false;
-      inviteGuild.innerHTML = (w.guildsList || []).map((g: string) => {
-        const sNum = (w.guildsData && w.guildsData[g] && w.guildsData[g].server_number) ? ' (#' + w.guildsData[g].server_number + ')' : '';
+      inviteGuild.innerHTML = (st.guildsList || []).map((g: string) => {
+        const entry = st.guildsData ? st.guildsData[g] : undefined;
+        const sNum = (entry && entry.server_number) ? ' (#' + entry.server_number + ')' : '';
         return '<option value="' + esc(g) + '">' + esc(g) + sNum + '</option>';
       }).join('');
     }
@@ -109,8 +107,7 @@ export function populateAccountGuildSelect(): void {
   // and a server_admin may only ever mint a guild_admin.
   const inviteRole = byId<HTMLSelectElement>('admin-invite-role');
   if (inviteRole) {
-    const g2 = gm();
-    const isSuper = !!(g2 && typeof g2.isSuperAdmin === 'function' && g2.isSuperAdmin());
+    const isSuper = isSuperAdmin();
     inviteRole.innerHTML = isSuper
       ? '<option value="guild_admin">guild_admin</option>' +
         '<option value="server_admin">server_admin</option>' +
@@ -121,8 +118,9 @@ export function populateAccountGuildSelect(): void {
   const selectR5 = byId<HTMLSelectElement>('superadmin-account-guild');
   if (selectR5) {
     let html = '';
-    (w.guildsList || []).forEach((g: string) => {
-      const sNum = (w.guildsData && w.guildsData[g] && w.guildsData[g].server_number) ? ' (#' + w.guildsData[g].server_number + ')' : '';
+    (st.guildsList || []).forEach((g: string) => {
+      const entry = st.guildsData ? st.guildsData[g] : undefined;
+      const sNum = (entry && entry.server_number) ? ' (#' + entry.server_number + ')' : '';
       html += '<option value="' + esc(g) + '">' + esc(g) + sNum + '</option>';
     });
     selectR5.innerHTML = html;
@@ -153,8 +151,7 @@ export function wireAdminInvite(): void {
 
     if (submitBtn) submitBtn.disabled = true;
     try {
-      const g = gm();
-      const res = await g.adminAccounts('issue-admin-invite', { guild: guild, role: role });
+      const res = await adminAccounts('issue-admin-invite', { guild: guild, role: role });
       if (!res.ok) {
         if (res.error === 'too_many_open_codes') {
           showToast('That guild already has ' + (res.open_codes ?? 'too many') + ' unused invitations. Wait for one to be used or to expire.', 'error');
@@ -227,7 +224,6 @@ export function wireJoinCode(): void {
   const infoEl = byId('join-code-info');
   if (!resultVal) return;
 
-  const g = gm();
   let currentCode = '';
 
   function showCode(code: string): void {
@@ -258,14 +254,14 @@ export function wireJoinCode(): void {
       return;
     }
     try {
-      const res = await g.adminAccounts('get-join-code', { guild });
+      const res = await adminAccounts('get-join-code', { guild });
       if (!res.ok) throw new Error(res.error || 'get_code_failed');
       if (res.code) {
         showCode(res.code);
         setInfo("This is your guild's permanent join code. Share it with your players.");
       } else {
-        const generatedCode = g.generateJoinCode('FGF');
-        const setRes = await g.adminAccounts('set-join-code', { code: generatedCode, guild });
+        const generatedCode = generateJoinCode('FGF');
+        const setRes = await adminAccounts('set-join-code', { code: generatedCode, guild });
         if (!setRes.ok) throw new Error(setRes.error || 'set_code_failed');
         try {
           const key = joinCodeStorageKey();
@@ -333,12 +329,11 @@ async function onCreateAccountSubmit(e: Event): Promise<void> {
   if (span) span.textContent = t('btn_generating');
 
   try {
-    const g = gm();
-    const res = await g.adminAccounts('create', {
+    const res = await adminAccounts('create', {
       id: identifier,
       role: 'guild_admin',
       guild: (guildSelected === 'ALL' ? null : guildSelected),
-      created_by: g.currentAccountId
+      created_by: currentAccountId()
     });
     if (!res.ok || !res.password) throw new Error(createErrorMessage(res.error));
     unshiftAccount({
@@ -390,8 +385,7 @@ async function onCreateAdminAccountSubmit(e: Event): Promise<void> {
   if (span) span.textContent = 'Creating...';
 
   try {
-    const g = gm();
-    const res = await g.adminAccounts('create', { id: identifier, role: roleSelected, guild: guildSelected });
+    const res = await adminAccounts('create', { id: identifier, role: roleSelected, guild: guildSelected });
     if (!res.ok || !res.password) throw new Error(createErrorMessage(res.error));
     unshiftAccount({ id: identifier, role: roleSelected, guild: guildSelected, created_at: new Date().toISOString() });
     renderAccounts();
@@ -408,7 +402,6 @@ async function onCreateAdminAccountSubmit(e: Event): Promise<void> {
 
 async function onCreateGuildSubmit(e: Event): Promise<void> {
   e.preventDefault();
-  const w = winAny();
   const form = e.target as HTMLFormElement;
   const nameInput = byId<HTMLInputElement>('guild-name-input');
   const serverInput = byId<HTMLInputElement>('guild-server-input');
@@ -418,7 +411,7 @@ async function onCreateGuildSubmit(e: Event): Promise<void> {
 
   if (!/^\d{4}$/.test(serverNum)) { showToast('Server number must be exactly 4 digits (e.g. 1089).', 'error'); return; }
   if (/[^A-Z0-9_]/.test(guildName)) { showToast('Guild name must contain uppercase letters, numbers, or underscores.', 'error'); return; }
-  if ((w.guildsList || []).indexOf(guildName) !== -1) { showToast('This guild already exists!', 'error'); return; }
+  if ((getAppState().guildsList || []).indexOf(guildName) !== -1) { showToast('This guild already exists!', 'error'); return; }
 
   const btn = submitButton(form);
   if (btn) btn.disabled = true;
@@ -471,11 +464,8 @@ export async function loadRecoveryCodesCard(): Promise<void> {
   const statusEl = byId('recovery-codes-status');
   if (!card || !statusEl) return;
 
-  const g = gm();
-  if (!g || !g.adminAccounts) return;
-
   try {
-    const res = await g.adminAccounts('backup-codes-status');
+    const res = await adminAccounts('backup-codes-status');
     if (!res || !res.ok) {
       // `forbidden` is the normal answer for every role but one. Leave the card
       // hidden rather than showing an error nobody can act on.
@@ -507,8 +497,7 @@ export async function loadRecoveryCodesCard(): Promise<void> {
 async function regenerateRecoveryCodes(): Promise<void> {
   const btn = byId<HTMLButtonElement>('recovery-codes-regen-btn');
   const out = byId('recovery-codes-output');
-  const g = gm();
-  if (!g || !g.adminAccounts || !out) return;
+  if (!out) return;
 
   // Reissuing invalidates the previous set, so a code written down last year
   // stops working. Say that before doing it, not after.
@@ -519,7 +508,7 @@ async function regenerateRecoveryCodes(): Promise<void> {
 
   if (btn) btn.disabled = true;
   try {
-    const res = await g.adminAccounts('backup-codes-regenerate');
+    const res = await adminAccounts('backup-codes-regenerate');
     if (!res || !res.ok || !Array.isArray(res.codes)) {
       showToast('Could not issue new codes.', 'error');
       return;

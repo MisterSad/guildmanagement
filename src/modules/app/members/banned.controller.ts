@@ -8,7 +8,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { t, esc, winAny, byId } from '../admin/utils';
+import { t, esc, byId } from '../admin/utils';
 import {
   type BannedPlayer,
   getBannedPlayers,
@@ -18,16 +18,15 @@ import {
   filterGuildMembersOut
 } from './members.store';
 import { renderGuildMembers } from './members.render';
-import { showToast } from '../dialogs/dialogs.service';
+import { showToast, showConfirm } from '../dialogs/dialogs.service';
 import { banMember, listBannedPlayers, deleteBannedPlayerRow } from '../../members/members.service';
 import { getActiveGuild } from '../../../core/auth/roles';
+import { getClient } from '../../../core/api/supabase';
+import { getLang } from '../../../core/i18n/i18n';
+import { avatarInit, validateUid } from '../../../core/utils/text';
 
-function g(): any {
-  return winAny().GM;
-}
 function db(): any {
-  const x = g();
-  return x && x.db ? x.db : null;
+  return getClient();
 }
 /**
  * H2: one resolver, shared. This was the third of four independent copies of
@@ -35,10 +34,6 @@ function db(): any {
  */
 function activeGuild(): string | null {
   return getActiveGuild();
-}
-function avatarInit(value: unknown): string {
-  const x = g();
-  return x && typeof x.avatarInit === 'function' ? x.avatarInit(value) : String(value || '?').charAt(0).toUpperCase();
 }
 
 export async function fetchBannedPlayers(): Promise<void> {
@@ -72,7 +67,7 @@ export function renderBannedPlayers(): void {
     return;
   }
 
-  const lang = winAny().GM_I18N && winAny().GM_I18N.getLang ? winAny().GM_I18N.getLang() : 'en';
+  const lang = getLang();
   const locale = lang === 'fr' ? 'fr-FR' : 'en-GB';
   const uidPrefix = t('banned_uid_prefix');
   const reasonLabel = t('banned_reason_label');
@@ -109,8 +104,6 @@ export function renderBannedPlayers(): void {
   container.querySelectorAll('.banned-delete-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       const uid = btn.getAttribute('data-uid') || '';
-      const showConfirm = winAny().showConfirm;
-      if (!showConfirm) return;
       showConfirm(
         t('confirm_unban_title'),
         t('confirm_unban_body') + ' <strong>' + esc(uid) + '</strong> ?',
@@ -131,8 +124,7 @@ export async function handleAddBannedPlayer(): Promise<void> {
   const reasonVal = reasonInput ? reasonInput.value.trim() : '';
   if (!uidVal) return;
 
-  const gm = g();
-  const uidErr = gm && typeof gm.validateUid === 'function' ? gm.validateUid(uidVal) : '';
+  const uidErr = validateUid(uidVal);
   if (uidErr) { showToast(t(uidErr), 'error'); return; }
 
   if (getBannedPlayers().some((bp) => bp.uid === uidVal)) { showToast(t('toast_player_already_banned'), 'error'); return; }
@@ -147,9 +139,7 @@ export async function handleAddBannedPlayer(): Promise<void> {
   // carries their history (ON DELETE CASCADE). That used to happen silently.
   const onRoster = getGuildMembers().find((m) => m.uid === uidVal);
   if (onRoster) {
-    const confirm = winAny().showConfirm;
-    if (typeof confirm !== 'function') return;
-    confirm(
+    showConfirm(
       'Ban and remove from the guild',
       '<strong>' + esc(onRoster.pseudo) + '</strong> is on your member list. Banning removes them from it.<br><br>' +
         '<span style="color:#f87171;">' + esc(t('confirm_remove_member_cascade')) + '</span><br><br>' +

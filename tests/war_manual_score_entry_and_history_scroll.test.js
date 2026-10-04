@@ -17,6 +17,18 @@ import path from 'path';
 import { EventsView } from '../src/modules/events/views/EventsView';
 import { HistoryView } from '../src/modules/history/views/HistoryView';
 import { EventsService } from '../src/modules/events/events.service';
+import { showToast } from '../src/core/dom/toast';
+
+// The views import their helpers directly (no more `window.GM.*` reads): mock
+// the source modules with the stubs the suite used to put on window.GM.
+vi.mock('../src/core/i18n/i18n', async (importOriginal) => ({
+  ...(await importOriginal()),
+  t: (k) => k
+}));
+vi.mock('../src/core/dom/toast', async (importOriginal) => ({
+  ...(await importOriginal()),
+  showToast: vi.fn()
+}));
 
 const root = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.resolve(root, p), 'utf-8');
@@ -26,34 +38,25 @@ describe('War Manual Score Entry & History Modal Scroll', () => {
 
   beforeEach(() => {
     document.body.innerHTML = '';
+    vi.mocked(showToast).mockReset();
+    localStorage.setItem('gm_current_guild', 'ALPHA');
+    localStorage.setItem('gm_role', 'guild_admin');
     upsertDailyScoresSpy = vi.spyOn(EventsService, 'upsertDailyScores').mockResolvedValue({ ok: true, count: 1 });
   });
 
   afterEach(() => {
     delete window.GM;
     delete window.requestAnimationFrame;
+    localStorage.clear();
     document.body.innerHTML = '';
     vi.restoreAllMocks();
   });
 
   describe('EventsView: Manual score entry & daily upsert safety', () => {
     it('sends purely numeric scores (never null or NaN) when some day inputs are left blank', async () => {
-      const showToastMock = vi.fn();
-      window.GM = {
-        t: (k) => k,
-        escapeHTML: (s) => String(s ?? ''),
-        formatNumber: (n) => String(n ?? ''),
-        parseNumber: (v) => {
-          const s = String(v ?? '').trim();
-          if (s === '') return null; // Previous text.ts behavior
-          const n = parseInt(s.replace(/[^0-9]/g, ''), 10);
-          return isNaN(n) ? null : n;
-        },
-        getActiveGuild: () => 'ALPHA',
-        attachNumberFormatter: vi.fn(),
-        showToast: showToastMock,
-        db: null
-      };
+      const showToastMock = vi.mocked(showToast);
+      // Only the Supabase client is still read from `window.GM` (via getClient()).
+      window.GM = { db: null };
 
       const view = new EventsView();
       // Setup state for active SvS tab
@@ -107,17 +110,9 @@ describe('War Manual Score Entry & History Modal Scroll', () => {
     });
 
     it('flushes granular input save immediately on change event in wireGranularInputs', async () => {
-      const showToastMock = vi.fn();
-      window.GM = {
-        t: (k) => k,
-        escapeHTML: (s) => String(s ?? ''),
-        formatNumber: (n) => String(n ?? ''),
-        parseNumber: (v) => parseInt(String(v).replace(/[^0-9]/g, ''), 10) || 0,
-        getActiveGuild: () => 'ALPHA',
-        attachNumberFormatter: vi.fn(),
-        showToast: showToastMock,
-        db: null
-      };
+      const showToastMock = vi.mocked(showToast);
+      // Only the Supabase client is still read from `window.GM` (via getClient()).
+      window.GM = { db: null };
 
       const view = new EventsView();
       view.state['SvS'] = {
@@ -168,17 +163,8 @@ describe('War Manual Score Entry & History Modal Scroll', () => {
 
   describe('HistoryView: Granular modal layout & column synchronization', () => {
     it('includes col_participated in both header and rows for granular war sessions', () => {
-      window.GM = {
-        t: (k) => k,
-        escapeHTML: (s) => String(s ?? ''),
-        formatNumber: (n) => String(n ?? ''),
-        formatWeek: (w) => w,
-        avatarInit: (s) => 'W',
-        getActiveGuild: () => 'ALPHA',
-        roleFromStorage: () => 'guild_admin',
-        showToast: vi.fn(),
-        db: null
-      };
+      // Only the Supabase client is still read from `window.GM` (via getClient()).
+      window.GM = { db: null };
 
       const view = new HistoryView();
       const meta = { label: 'SvS War', icon: 'ph-swords', hasScore: true };

@@ -11,6 +11,37 @@ import { OverviewView } from '../src/modules/overview/views/OverviewView';
 const W_CUR = '2026-08-03';
 const W_PREV = '2026-07-27';
 
+// The view imports its collaborators directly; mock the source modules
+// rather than the legacy window.GM surface.
+const mocks = vi.hoisted(() => ({
+  showToast: vi.fn(),
+  exportGuildData: vi.fn(async () => ({ ok: true })),
+  configGet: vi.fn(async () => null),
+  configSet: vi.fn(async () => ({}))
+}));
+
+vi.mock('../src/core/auth/roles', async (importOriginal) => ({
+  ...(await importOriginal()),
+  getActiveGuild: () => 'ALPHA'
+}));
+vi.mock('../src/core/utils/date', async (importOriginal) => ({
+  ...(await importOriginal()),
+  getWeekStart: () => '2026-08-03',
+  getPrevWeekStart: () => '2026-07-27'
+}));
+vi.mock('../src/core/dom/toast', async (importOriginal) => ({
+  ...(await importOriginal()),
+  showToast: mocks.showToast
+}));
+vi.mock('../src/core/config/guild-config', async (importOriginal) => ({
+  ...(await importOriginal()),
+  config: { get: mocks.configGet, set: mocks.configSet }
+}));
+vi.mock('../src/modules/ocr/ocr.service', async (importOriginal) => ({
+  ...(await importOriginal()),
+  exportGuildData: mocks.exportGuildData
+}));
+
 const TABLES = {
   guild_members: [
     { pseudo: 'Alpha', guild: 'ALPHA', overall_power: 1000000, created_at: '2026-08-01T00:00:00Z', uid: 'u1' },
@@ -72,24 +103,8 @@ function installDb() {
 }
 
 function installGM() {
-  window.GM = {
-    t: (k) => (window.GM_I18N ? window.GM_I18N.t(k) : k),
-    escapeHTML: (s) => String(s ?? ''),
-    formatNumber: (n) => String(n ?? ''),
-    getActiveGuild: () => 'ALPHA',
-    getWeekStart: () => W_CUR,
-    getPrevWeekStart: () => W_PREV,
-    formatDateTimeUTC: (v) => String(v),
-    getEventIcon: () => 'ph-swords',
-    getEventTheme: () => 'gm-task-card-dark',
-    avatarInit: (s) => String(s || '').slice(0, 1).toUpperCase(),
-    showToast: vi.fn(),
-    renderPendingRegistrations: vi.fn(),
-    exportGuildData: vi.fn(async () => ({ ok: true })),
-    config: { get: vi.fn(async () => null), set: vi.fn(async () => ({})) },
-    db: null
-  };
-  window.GM_PUSH = { mount: vi.fn() };
+  // Only the client lives on window.GM (getClient() reads it).
+  window.GM = { db: null };
 }
 
 function mount() {
@@ -105,7 +120,6 @@ beforeEach(() => {
 afterEach(() => {
   vi.useRealTimers();
   delete window.GM;
-  delete window.GM_PUSH;
   document.body.innerHTML = '';
   vi.restoreAllMocks();
 });
@@ -119,7 +133,6 @@ describe('OverviewView.load()', () => {
     expect(panel.querySelectorAll('.gm-stat-tile').length).toBe(4);
     expect(panel.textContent).toContain('Guild Power');
     expect(panel.querySelector('#pending-accounts-card')).toBeTruthy();
-    expect(window.GM.renderPendingRegistrations).toHaveBeenCalled();
   });
 
   it('computes "Glory this week" as the weekly gain (1000 - 400 = 600)', async () => {

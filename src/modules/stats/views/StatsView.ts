@@ -11,16 +11,21 @@
  *   - Pure calculations are delegated to `StatsService` (single source of truth).
  *   - Pure typed helpers (`eventScoringKey`, `getWeekStart`, `formatWeek`,
  *     `formatNumber`, `avatarInit`, `getPowerTier`) are imported from `/src`.
- *   - Residual legacy globals (`GM.db`, `GM.config`, `GM.cache`, `GM_I18N`,
- *     `GM_APP`, `GM.ensureAuthSession`, `GM.computeShadowfrontAttendanceRate`)
- *     are wrapped in a typed internal adapter. The module never assigns any
- *     `window.GM_*` variable.
+ *   - The Supabase client, guild config, cache, i18n, auth session and the
+ *     player-history dialog are imported directly (phase M4c). The module
+ *     neither reads nor assigns any `window.GM*` variable.
  */
 
 import { eventScoringKey } from '../../../core/config/events';
 import { getWeekStart, formatWeek } from '../../../core/utils/date';
 import { formatNumber, avatarInit, escapeHTML, formatPower } from '../../../core/utils/text';
 import { getPowerTier } from '../../../core/scoring/combat';
+import { t } from '../../../core/i18n/i18n';
+import { getClient, ensureAuthSession } from '../../../core/api/supabase';
+import { isFresh as isCacheFresh, markFresh as markCacheFresh } from '../../../core/cache/cache';
+import { getGuildConfig } from '../../../core/config/guild-config';
+import { getActiveGuild } from '../../../core/auth/roles';
+import { showPlayerHistoryDialog } from '../../app/dialogs/dialogs.service';
 import {
   StatsService,
   DEFAULT_EVENT_COEFFS,
@@ -47,94 +52,7 @@ import {
   queryStatsEvents
 } from '../stats.service';
 
-// ── Legacy global adapter (typed, no writes) ──────────────────────────────────
 /* eslint-disable @typescript-eslint/no-explicit-any */
-
-type AnyWindow = Window & typeof globalThis & { [key: string]: any };
-
-function win(): AnyWindow {
-  return (typeof window !== 'undefined' ? window : ({} as AnyWindow)) as AnyWindow;
-}
-
-function gm(): any {
-  return win().GM;
-}
-
-const legacy = {
-  getDb(): any {
-    const g = gm();
-    return g && g.db ? g.db : null;
-  },
-  t(key: string): string {
-    const g = gm();
-    return g && typeof g.t === 'function' ? g.t(key) : key;
-  },
-  fmt(num: number | null | undefined): string {
-    if (num === null || num === undefined || Number.isNaN(num)) return '0';
-    const g = gm();
-    return g && typeof g.formatNumber === 'function' ? g.formatNumber(num) : formatNumber(num);
-  },
-  getWeekStart(): string {
-    const g = gm();
-    return g && typeof g.getWeekStart === 'function' ? g.getWeekStart() : getWeekStart();
-  },
-  formatWeek(ws: string): string {
-    const g = gm();
-    return g && typeof g.formatWeek === 'function' ? g.formatWeek(ws) : formatWeek(ws);
-  },
-  eventScoringKey(eventName?: string, sessionId?: string, weekStart?: string): string {
-    const g = gm();
-    return g && typeof g.eventScoringKey === 'function'
-      ? g.eventScoringKey(eventName, sessionId, weekStart)
-      : eventScoringKey(eventName, sessionId, weekStart);
-  },
-  getPowerTier(power: number | string | null | undefined, maxPower: number | string | null | undefined): string {
-    const g = gm();
-    return g && typeof g.getPowerTier === 'function'
-      ? g.getPowerTier(power, maxPower)
-      : getPowerTier(power, maxPower);
-  },
-  avatarInit(pseudo?: string | null): string {
-    const g = gm();
-    return g && typeof g.avatarInit === 'function' ? g.avatarInit(pseudo) : avatarInit(pseudo);
-  },
-  getActiveGuild(): string | null {
-    const g = gm();
-    return g && typeof g.getActiveGuild === 'function' ? g.getActiveGuild() : null;
-  },
-  ensureAuthSession(): Promise<unknown> {
-    const g = gm();
-    return g && typeof g.ensureAuthSession === 'function' ? g.ensureAuthSession() : Promise.resolve(null);
-  },
-  cacheIsFresh(key: string, ttlMs: number): boolean {
-    const g = gm();
-    return !!(g && g.cache && typeof g.cache.isFresh === 'function' && g.cache.isFresh(key, ttlMs));
-  },
-  cacheMarkFresh(key: string): void {
-    const g = gm();
-    if (g && g.cache && typeof g.cache.markFresh === 'function') g.cache.markFresh(key);
-  },
-  i18nT(key: string): string | null {
-    const i18n = win().GM_I18N;
-    return i18n && typeof i18n.t === 'function' ? i18n.t(key) : null;
-  },
-  showPlayerHistory(uid: string, pseudo: string): void {
-    const app = win().GM_APP;
-    if (app && typeof app.showPlayerHistory === 'function') app.showPlayerHistory(uid, pseudo);
-  },
-  configGet(key: string): any {
-    const g = gm();
-    return g && g.config && typeof g.config.get === 'function' ? g.config.get(key) : undefined;
-  },
-  shadowfrontRate(eventsDone: number, assignedCount: number): number {
-    const g = gm();
-    if (g && typeof g.computeShadowfrontAttendanceRate === 'function') {
-      return g.computeShadowfrontAttendanceRate(eventsDone, assignedCount);
-    }
-    if (assignedCount > 0) return eventsDone > 0 ? Math.min(1, eventsDone / assignedCount) : 0;
-    return eventsDone > 0 ? 1 : 0;
-  }
-};
 
 // ── Local helpers (mirrors of stats.js internals) ─────────────────────────────
 
@@ -145,7 +63,8 @@ function esc(str: unknown): string {
 }
 
 function fmt(num: number | null | undefined): string {
-  return legacy.fmt(num);
+  if (num === null || num === undefined || Number.isNaN(num)) return '0';
+  return formatNumber(num);
 }
 
 function getWeekNumber(ws?: string | null): number | '' {
@@ -165,7 +84,7 @@ function getWeekNumber(ws?: string | null): number | '' {
 
 function isFutureWeek(weekStart?: string | null): boolean {
   if (!weekStart) return false;
-  const cur = legacy.getWeekStart();
+  const cur = getWeekStart();
   if (!cur) return false;
   return String(weekStart).localeCompare(cur) > 0;
 }
@@ -295,25 +214,25 @@ export class StatsView {
     const state = this.state;
     if (state.isLoading) return;
 
-    const cacheKey = 'stats:' + legacy.getActiveGuild();
-    if (legacy.cacheIsFresh(cacheKey, STATS_CACHE_TTL_MS)) {
+    const cacheKey = 'stats:' + getActiveGuild();
+    if (isCacheFresh(cacheKey, STATS_CACHE_TTL_MS)) {
       return;
     }
 
     state.isLoading = true;
 
-    const db = legacy.getDb();
+    const db = getClient();
     if (!db) {
       console.warn('[GM_STATS] Base de données indisponible');
       state.isLoading = false;
       return;
     }
 
-    await legacy.ensureAuthSession();
+    await ensureAuthSession();
 
-    state.activeGuild = legacy.getActiveGuild();
+    state.activeGuild = getActiveGuild();
     if (!state.selectedWeek) {
-      state.selectedWeek = legacy.getWeekStart();
+      state.selectedWeek = getWeekStart();
     }
 
     // Restore saved mode
@@ -342,7 +261,7 @@ export class StatsView {
       } else {
         await this.fetchAndComputeLeaderboard();
       }
-      legacy.cacheMarkFresh(cacheKey);
+      markCacheFresh(cacheKey);
     } catch (err) {
       console.error('[GM_STATS] load error', err);
     } finally {
@@ -352,7 +271,7 @@ export class StatsView {
 
   private async fetchAvailableWeeks(): Promise<void> {
     const state = this.state;
-    const db = legacy.getDb();
+    const db = getClient();
     if (!db) return;
 
     try {
@@ -379,7 +298,7 @@ export class StatsView {
           state.selectedWeek = weeks[0];
         }
       } else {
-        const defW = legacy.getWeekStart();
+        const defW = getWeekStart();
         state.allWeeks = defW ? [defW] : [];
         state.selectedWeek = defW;
       }
@@ -387,7 +306,7 @@ export class StatsView {
       console.warn('[GM_STATS] Erreur fetchAvailableWeeks', err);
       let fallbackW = '';
       try {
-        fallbackW = legacy.getWeekStart();
+        fallbackW = getWeekStart();
       } catch (fallbackErr) {
         console.warn('[GM_STATS] Erreur fetchAvailableWeeks fallback', fallbackErr);
       }
@@ -410,15 +329,15 @@ export class StatsView {
       }
 
       const weekOpts = state.allWeeks.map((w) => {
-        return '<option value="' + w + '"' + (w === state.selectedWeek ? ' selected' : '') + '>' + legacy.formatWeek(w) + '</option>';
+        return '<option value="' + w + '"' + (w === state.selectedWeek ? ' selected' : '') + '>' + formatWeek(w) + '</option>';
       }).join('');
 
       const periodOpts = [
-        { key: '1w', label: legacy.t('stats_period_1w') || '1 Week' },
-        { key: '2w', label: legacy.t('stats_period_2w') || '2 Weeks' },
-        { key: '4w', label: legacy.t('stats_period_4w') || '4 Weeks' },
-        { key: '8w', label: legacy.t('stats_period_8w') || '8 Weeks' },
-        { key: 'all', label: legacy.t('stats_period_all') || 'All Time (Total)' }
+        { key: '1w', label: t('stats_period_1w') || '1 Week' },
+        { key: '2w', label: t('stats_period_2w') || '2 Weeks' },
+        { key: '4w', label: t('stats_period_4w') || '4 Weeks' },
+        { key: '8w', label: t('stats_period_8w') || '8 Weeks' },
+        { key: 'all', label: t('stats_period_all') || 'All Time (Total)' }
       ].map((p) => {
         return '<option value="' + p.key + '"' + (p.key === state.statsPeriod ? ' selected' : '') + '>' + esc(p.label) + '</option>';
       }).join('');
@@ -586,7 +505,7 @@ export class StatsView {
     const container = containers[0];
     const tabsHtml = this.getTabsHtml();
 
-    const db = legacy.getDb();
+    const db = getClient();
     if (!db || !state.activeGuild) {
       container.innerHTML = tabsHtml + '<div class="gm-empty" style="padding:3rem;"><div class="gm-empty-title">Database unavailable.</div></div>';
       this.wireModeTabs(container);
@@ -773,7 +692,7 @@ export class StatsView {
     const bars = series.map((p: HealthPowerPoint) => {
       const pct = Math.round((p.median / peak) * 100);
       return '<div class="gm-kpi-row">' +
-        '<span class="gm-kpi-label">' + esc(legacy.formatWeek(p.week_start).split(' ')[0]) + '</span>' +
+        '<span class="gm-kpi-label">' + esc(formatWeek(p.week_start).split(' ')[0]) + '</span>' +
         '<div class="gm-kpi-bar-track"><div class="gm-kpi-bar" style="width:' + pct + '%; background:#60a5fa;"></div></div>' +
         '<span class="gm-kpi-value" title="' + p.players + ' players scanned that week">' + formatPower(p.median) + '</span>' +
       '</div>';
@@ -807,7 +726,7 @@ export class StatsView {
       const share = roster > 0 ? Math.round((w.present_members / roster) * 100) : 0;
       const colour = share >= 70 ? '#34d399' : share >= 40 ? '#a78bfa' : '#f87171';
       return '<div class="gm-kpi-row">' +
-        '<span class="gm-kpi-label">' + esc(legacy.formatWeek(w.week_start).split(' ')[0]) + '</span>' +
+        '<span class="gm-kpi-label">' + esc(formatWeek(w.week_start).split(' ')[0]) + '</span>' +
         '<div class="gm-kpi-bar-track"><div class="gm-kpi-bar" style="width:' + pct + '%; background:' + colour + ';"></div></div>' +
         '<span class="gm-kpi-value" title="' + w.opportunities + ' events ran that week">' + w.present_members + '</span>' +
       '</div>';
@@ -829,7 +748,7 @@ export class StatsView {
     const maxPower = roster.reduce((a, m) => Math.max(a, parseInt(m.overall_power, 10) || 0), 0);
     const tiers: Record<string, number> = { S: 0, A: 0, B: 0, C: 0, D: 0 };
     roster.forEach((m) => {
-      const tier = legacy.getPowerTier(m.overall_power, maxPower);
+      const tier = getPowerTier(m.overall_power, maxPower);
       if (tiers[tier] !== undefined) tiers[tier]++;
     });
     const tierColours: Record<string, string> = { S: '#fbbf24', A: '#f87171', B: '#c084fc', C: '#60a5fa', D: '#34d399' };
@@ -905,7 +824,7 @@ export class StatsView {
 
   private async fetchAndComputeLeaderboard(): Promise<void> {
     const state = this.state;
-    const db = legacy.getDb();
+    const db = getClient();
     if (!db) return;
 
     const weeksToLoad = this.getWeeksToLoad();
@@ -928,7 +847,7 @@ export class StatsView {
    * for OMEGA become 142 member objects.
    */
   private async fetchStatsMembers(weeks: string[], withTrend?: boolean): Promise<StatsMembersPayload | null> {
-    const db = legacy.getDb();
+    const db = getClient();
     if (!db) return null;
     const res = await queryStatsMembers(db, this.state.activeGuild, weeks, withTrend);
     if (res.error) throw res.error;
@@ -970,16 +889,13 @@ export class StatsView {
   }
 
   private async getConfiguredCoeffs(): Promise<EventCoeffs> {
-    if (typeof legacy.configGet !== 'function') {
-      return DEFAULT_EVENT_COEFFS;
-    }
     try {
       const raw = await Promise.all([
-        legacy.configGet('coeff_svs'),
-        legacy.configGet('coeff_gvg'),
-        legacy.configGet('coeff_shadowfront'),
-        legacy.configGet('coeff_dtr'),
-        legacy.configGet('coeff_armsrace')
+        getGuildConfig('coeff_svs'),
+        getGuildConfig('coeff_gvg'),
+        getGuildConfig('coeff_shadowfront'),
+        getGuildConfig('coeff_dtr'),
+        getGuildConfig('coeff_armsrace')
       ]);
       const num = (val: unknown, fallback: number): number => {
         const n = parseFloat(String(val));
@@ -1007,7 +923,7 @@ export class StatsView {
    */
   private async loadSingleEventMode(eventName: string, explicitWeeks?: string[]): Promise<void> {
     const state = this.state;
-    const db = legacy.getDb();
+    const db = getClient();
     try {
       const weeksToLoad = explicitWeeks || this.getWeeksToLoad();
       const isAllTime = (state.statsPeriod === 'all');
@@ -1058,12 +974,12 @@ export class StatsView {
 
       if (!hasData || !hasScores) {
         const titleKey = 'stats_no_event_data_title';
-        const i18nTitle = legacy.i18nT(titleKey);
+        const i18nTitle = t(titleKey);
         const emptyTitle = (i18nTitle !== null && i18nTitle !== titleKey)
           ? i18nTitle
           : 'No event data for this period';
         const descKey = 'stats_no_event_data_desc';
-        const i18nDesc = legacy.i18nT(descKey);
+        const i18nDesc = t(descKey);
         const emptyDesc = (i18nDesc !== null && i18nDesc !== descKey)
           ? i18nDesc
           : 'No scores recorded for this event in the selected week. Try selecting another week or trigger an OCR scan.';
@@ -1111,7 +1027,7 @@ export class StatsView {
 
       // Table Headers
       let theadCols = '<th class="gm-center" style="width:65px;">#</th>' +
-                      '<th>' + (legacy.t('col_member') || 'Member') + '</th>';
+                      '<th>' + (t('col_member') || 'Member') + '</th>';
 
       // The "Late / Excused" column was removed on 2026-09-27. Measured in
       // production: `late` is set on 0.09% of the 55,739 participation rows and
@@ -1127,17 +1043,17 @@ export class StatsView {
                      '<th class="gm-center">Present (Attended)</th>' +
                      '<th class="gm-center">Substitute</th>' +
                      '<th class="gm-center">Attendance Rate</th>' +
-                     '<th class="gm-right">' + (legacy.t('stats_score_pts') || 'Score Pts') + '</th>';
+                     '<th class="gm-right">' + (t('stats_score_pts') || 'Score Pts') + '</th>';
       } else if (isArmsRaceMode) {
         theadCols += '<th class="gm-center">Stage A</th>' +
                      '<th class="gm-center">Stage B</th>' +
-                     '<th class="gm-center">' + (legacy.t('stats_events') || 'Events') + '</th>' +
-                     '<th class="gm-right">' + (legacy.t('stats_score_pts') || 'Score Pts') + '</th>';
+                     '<th class="gm-center">' + (t('stats_events') || 'Events') + '</th>' +
+                     '<th class="gm-right">' + (t('stats_score_pts') || 'Score Pts') + '</th>';
       } else if (isBattleEventMode) {
-        theadCols += '<th class="gm-center">' + (legacy.t('stats_events') || 'Events') + '</th>' +
-                     '<th class="gm-center">' + (legacy.t('col_score_prep') || 'Day 1 to 5 score') + '</th>' +
-                     '<th class="gm-center">' + (legacy.t('col_score_pvp') || 'Day 6 score') + '</th>' +
-                     '<th class="gm-right">' + (legacy.t('stats_score_pts') || 'Score Pts') + '</th>';
+        theadCols += '<th class="gm-center">' + (t('stats_events') || 'Events') + '</th>' +
+                     '<th class="gm-center">' + (t('col_score_prep') || 'Day 1 to 5 score') + '</th>' +
+                     '<th class="gm-center">' + (t('col_score_pvp') || 'Day 6 score') + '</th>' +
+                     '<th class="gm-right">' + (t('stats_score_pts') || 'Score Pts') + '</th>';
       } else {
         // Phase S3: the components of the score are columns, not a hidden
         // formula. "82%" is not an instruction; "attends every SvS, never once
@@ -1156,7 +1072,7 @@ export class StatsView {
 
       state.leaderboardData.forEach((m, idx) => {
         const rank = idx + 1;
-        const initial = legacy.avatarInit(m.pseudo);
+        const initial = avatarInit(m.pseudo);
         const rankBadge = rank === 1 ? '<span class="gm-rank-badge">🥇</span>' : rank === 2 ? '<span class="gm-rank-badge">🥈</span>' : rank === 3 ? '<span class="gm-rank-badge">🥉</span>' : '<span class="gm-rank-num">' + rank + '</span>';
 
         const scoreDisplay = (m.score > 0) ? (fmt(m.score) + ' pts') : (m.events_done > 0 ? (m.events_done + ' pts') : '0 pts');
@@ -1226,7 +1142,7 @@ export class StatsView {
           const uid = row.getAttribute('data-player-uid');
           const pseudo = row.getAttribute('data-player-pseudo');
           if (uid && pseudo) {
-            legacy.showPlayerHistory(uid, pseudo);
+            void showPlayerHistoryDialog(uid, pseudo);
           }
         });
       }
@@ -1325,7 +1241,7 @@ export class StatsView {
 
   private render3DPodiumColumn(member: any, medalClass: string, rankNum: string): string {
     if (!member) return '';
-    const initial = legacy.avatarInit(member.pseudo);
+    const initial = avatarInit(member.pseudo);
     const crownHtml = rankNum === '1' ? '<div class="gm-podium-crown-wrap"><i class="ph ph-crown gm-podium-crown"></i></div>' : '';
     return '<div class="gm-podium-column gm-' + medalClass + '">' +
       crownHtml +

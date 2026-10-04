@@ -1,24 +1,17 @@
 /**
  * src/modules/app/admin/utils.ts — tiny shared helpers for the admin modules.
- * Call-time window/localStorage access so the classic app.js and tests keep
- * working (test stubs included).
+ * Translation, escaping and the Supabase client come from their typed modules;
+ * only localStorage and the DOM are reached at call time.
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { escapeHTML } from '../../../core/utils/text';
-
-export function winAny(): any {
-  return (typeof window !== 'undefined' ? window : ({} as any)) as any;
-}
-
-export function gm(): any {
-  return winAny().GM;
-}
+import { t as translate } from '../../../core/i18n/i18n';
+import { getClient } from '../../../core/api/supabase';
 
 export function t(key: string): string {
-  const g = gm();
-  return g && typeof g.t === 'function' ? g.t(key) : key;
+  return translate(key);
 }
 
 export function esc(value: unknown): string {
@@ -26,8 +19,7 @@ export function esc(value: unknown): string {
 }
 
 export function getDb(): any {
-  const g = gm();
-  return g && g.db ? g.db : null;
+  return getClient();
 }
 
 export function ls(): Storage | null {

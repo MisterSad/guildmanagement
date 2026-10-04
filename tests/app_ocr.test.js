@@ -7,6 +7,21 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
+// Phase M4c: the OCR controller imports showConfirm and getGuildTag instead of
+// reading `window.showConfirm` / `window.GM.getGuildTag`.
+const mocks = vi.hoisted(() => ({
+  showConfirm: vi.fn(),
+  getGuildTag: vi.fn()
+}));
+vi.mock('../src/modules/app/dialogs/dialogs.service', async (importOriginal) => ({
+  ...(await importOriginal()),
+  showConfirm: mocks.showConfirm
+}));
+vi.mock('../src/core/config/guild-config', async (importOriginal) => ({
+  ...(await importOriginal()),
+  getGuildTag: mocks.getGuildTag
+}));
+
 import {
   openOcrModal,
   closeOcrModal,
@@ -22,6 +37,7 @@ import {
 } from '../src/modules/app/ocr/ocr.meta';
 import { setGuildMembers, clearMembersStore } from '../src/modules/app/members/members.store';
 import { setVerifiedRole } from '../src/core/auth/roles';
+import { patchAppState, resetAppState } from '../src/core/state/app-state';
 
 const OCR_DOM = `
   <div id="ocr-modal-overlay" style="display:none">
@@ -101,10 +117,9 @@ beforeEach(async () => {
   window.GM.db = makeDb();
   // A writer: the transactional RPCs refuse a read-only caller before any request.
   setVerifiedRole('super_admin', 't_super');
-  window.GM.getActiveGuild = () => 'ALPHA';
-  window.GM.getGuildTag = async () => '[FGF]';
-  window.currentGuild = 'ALPHA';
-  window.showConfirm = vi.fn((_t, _m, onConfirm) => { void onConfirm(); });
+  patchAppState({ currentGuild: 'ALPHA' });
+  mocks.getGuildTag.mockReset().mockImplementation(async () => '[FGF]');
+  mocks.showConfirm.mockReset().mockImplementation((_t, _m, onConfirm) => { void onConfirm(); });
   window.GM_OVERVIEW = { load: vi.fn() };
   await setOcrMetric('members');
 });
@@ -114,8 +129,7 @@ afterEach(() => {
   clearMembersStore();
   setOcrExtractedPlayers([]);
   document.body.innerHTML = '';
-  delete window.showConfirm;
-  delete window.currentGuild;
+  resetAppState();
   delete window.GM_OVERVIEW;
   localStorage.clear();
 });
@@ -259,7 +273,7 @@ describe('commitOcrUpdates — roster flow', () => {
     expect(commit.p_new).toEqual([{ pseudo: 'Newbie', uid: null, score: 50, role: 'R1' }]);
     expect(commit.p_removals).toEqual(['Ghost']);
     expect(calls.update.concat(calls.insert, calls.delete).filter((c) => c.table === 'guild_members')).toEqual([]);
-    expect(window.showConfirm).toHaveBeenCalled();
+    expect(mocks.showConfirm).toHaveBeenCalled();
   });
 
   it('blocks the commit when nothing is selected', async () => {

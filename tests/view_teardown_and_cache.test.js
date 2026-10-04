@@ -40,7 +40,7 @@ describe('derived-view cache invalidation', () => {
 
     const stats = read('src/modules/stats/views/StatsView.ts');
     const history = read('src/modules/history/views/HistoryView.ts');
-    expect(stats).toContain("'stats:' + legacy.getActiveGuild()");
+    expect(stats).toContain("'stats:' + getActiveGuild()");
     expect(history).toContain("'history:' + currentG");
   });
 

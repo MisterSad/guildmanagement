@@ -11,79 +11,23 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { escapeHTML } from '../../../core/utils/text';
 import { fetchGloryMembers, fetchGloryWeekScores, upsertPlayerGlory } from '../glory.service';
-
-function winAny(): any {
-  return (typeof window !== 'undefined' ? window : ({} as any)) as any;
-}
-
-function gm(): any {
-  return winAny().GM;
-}
-
-const legacy = {
-  getDb(): any {
-    const g = gm();
-    return g && g.db ? g.db : null;
-  },
-  t(key: string): string {
-    const g = gm();
-    return g && typeof g.t === 'function' ? g.t(key) : key;
-  },
-  esc(value: unknown): string {
-    return escapeHTML(value);
-  },
-  fmt(num: unknown): string {
-    const g = gm();
-    return g && typeof g.formatNumber === 'function' ? g.formatNumber(num) : String(num ?? '');
-  },
-  getWeekStart(): string {
-    const g = gm();
-    return g && typeof g.getWeekStart === 'function' ? g.getWeekStart() : '';
-  },
-  getPrevWeekStart(week: string): string {
-    const g = gm();
-    if (g && typeof g.getPrevWeekStart === 'function') return g.getPrevWeekStart(week);
-    const d = new Date(week + 'T12:00:00Z');
-    if (isNaN(d.getTime())) return '';
-    d.setUTCDate(d.getUTCDate() - 7);
-    return d.toISOString().slice(0, 10);
-  },
-  getActiveGuild(): string | null {
-    const g = gm();
-    return g && typeof g.getActiveGuild === 'function' ? g.getActiveGuild() : null;
-  },
-  avatarInit(value: unknown): string {
-    const g = gm();
-    return g && typeof g.avatarInit === 'function' ? g.avatarInit(value) : String(value || '').slice(0, 1).toUpperCase();
-  },
-  attachNumberFormatter(input: unknown): void {
-    const g = gm();
-    if (g && typeof g.attachNumberFormatter === 'function') g.attachNumberFormatter(input);
-  },
-  parseNumber(value: unknown): number {
-    const g = gm();
-    return g && typeof g.parseNumber === 'function' ? g.parseNumber(value) : (parseInt(String(value).replace(/[^0-9]/g, ''), 10) || 0);
-  },
-  showToast(msg: string, type: string): void {
-    const g = gm();
-    if (g && typeof g.showToast === 'function') g.showToast(msg, type);
-  },
-  fetchGuildMembers(): void {
-    const g = gm();
-    if (g && typeof g.fetchGuildMembers === 'function') g.fetchGuildMembers();
-  }
-};
+import { getClient } from '../../../core/api/supabase';
+import { getActiveGuild } from '../../../core/auth/roles';
+import { showToast } from '../../../core/dom/toast';
+import { attachNumberFormatter } from '../../../core/dom/ui';
+import { t } from '../../../core/i18n/i18n';
+import { getPrevWeekStart, getWeekStart } from '../../../core/utils/date';
+import { avatarInit, escapeHTML, formatNumber, parseNumber } from '../../../core/utils/text';
 
 export class GloryView {
   public async load(): Promise<void> {
-    const db = legacy.getDb();
+    const db = getClient();
     if (!db) return;
-    const week = legacy.getWeekStart();
+    const week = getWeekStart();
     try {
-      const prevWeek = legacy.getPrevWeekStart(week);
-      const currentG = legacy.getActiveGuild();
+      const prevWeek = getPrevWeekStart(week);
+      const currentG = getActiveGuild();
 
       const [membersRes, currRes, prevRes] = await Promise.all([
         fetchGloryMembers(db, currentG),
@@ -122,7 +66,7 @@ export class GloryView {
     if (!area) return;
 
     if (!members.length) {
-      area.innerHTML = '<div class="gm-empty"><i class="ph ph-ghost gm-icon"></i><div class="gm-empty-title">' + legacy.t('empty_members') + '</div></div>';
+      area.innerHTML = '<div class="gm-empty"><i class="ph ph-ghost gm-icon"></i><div class="gm-empty-title">' + t('empty_members') + '</div></div>';
       return;
     }
 
@@ -132,14 +76,14 @@ export class GloryView {
       '<div class="gm-stat-grid" style="margin-bottom: 1.5rem;">' +
         '<div class="gm-stat-tile stat-theme-lime">' +
           '<div class="gm-task-icon-squircle"><i class="ph ph-users"></i></div>' +
-          '<div class="gm-stat-label">' + legacy.t('event_total') + '</div>' +
-          '<div class="gm-stat-val">' + legacy.fmt(members.length) + '</div>' +
+          '<div class="gm-stat-label">' + t('event_total') + '</div>' +
+          '<div class="gm-stat-val">' + formatNumber(members.length) + '</div>' +
           '<div class="gm-stat-meta">Active Members Tracked</div>' +
         '</div>' +
         '<div class="gm-stat-tile stat-theme-mint">' +
           '<div class="gm-task-icon-squircle"><i class="ph ph-trophy"></i></div>' +
-          '<div class="gm-stat-label">' + legacy.t('glory_total') + '</div>' +
-          '<div class="gm-stat-val total-glory-val">' + legacy.fmt(totalGlory) + '</div>' +
+          '<div class="gm-stat-label">' + t('glory_total') + '</div>' +
+          '<div class="gm-stat-val total-glory-val">' + formatNumber(totalGlory) + '</div>' +
           '<div class="gm-stat-meta">Guild Total This Week</div>' +
         '</div>' +
       '</div>' +
@@ -147,45 +91,45 @@ export class GloryView {
         '<div class="gm-section-title"><i class="ph ph-list-numbers"></i> Members Glory Log</div>' +
         '<div class="gm-input-with-icon" style="min-width: 220px; max-width: 320px;">' +
           '<i class="ph ph-magnifying-glass gm-icon"></i>' +
-          '<input type="text" class="gm-input glory-search-input" placeholder="' + legacy.t('search_placeholder') + '">' +
+          '<input type="text" class="gm-input glory-search-input" placeholder="' + t('search_placeholder') + '">' +
           '<button type="button" class="gm-search-clear-btn" data-gm-search-clear aria-label="Clear search" tabindex="-1"><i class="ph ph-x-circle"></i></button>' +
         '</div>' +
       '</div>' +
       '<div class="gm-table-wrap">' +
       '<div class="gm-table-scroll">' +
       '<table class="gm-table gm-resp-table"><thead><tr>' +
-        '<th>' + legacy.t('col_member') + '</th>' +
-        '<th class="gm-right">' + legacy.t('glory_prev_week') + '</th>' +
-        '<th class="gm-right">' + legacy.t('glory_input') + '</th>' +
-        '<th class="gm-right">' + legacy.t('glory_evolution_pct') + '</th>' +
+        '<th>' + t('col_member') + '</th>' +
+        '<th class="gm-right">' + t('glory_prev_week') + '</th>' +
+        '<th class="gm-right">' + t('glory_input') + '</th>' +
+        '<th class="gm-right">' + t('glory_evolution_pct') + '</th>' +
       '</tr></thead><tbody>';
 
     members.forEach((pseudo) => {
       const curr = currMap[pseudo] != null ? currMap[pseudo] : '';
       const prev = prevMap[pseudo] != null ? prevMap[pseudo] : null;
-      const initial = legacy.avatarInit(pseudo);
+      const initial = avatarInit(pseudo);
 
       html +=
-        '<tr class="participant-row" data-pseudo="' + legacy.esc(pseudo) + '">' +
-          '<td data-label="' + legacy.t('col_member') + '">' +
+        '<tr class="participant-row" data-pseudo="' + escapeHTML(pseudo) + '">' +
+          '<td data-label="' + t('col_member') + '">' +
             '<div class="gm-member-id">' +
-              '<div class="gm-avatar gm-avatar-squircle">' + legacy.esc(initial) + '</div>' +
-              '<strong>' + legacy.esc(pseudo) + '</strong>' +
+              '<div class="gm-avatar gm-avatar-squircle">' + escapeHTML(initial) + '</div>' +
+              '<strong>' + escapeHTML(pseudo) + '</strong>' +
             '</div>' +
           '</td>' +
-          '<td class="gm-right gm-num gm-dim glory-prev-val" data-label="' + legacy.t('glory_prev_week') + '">' +
-            (prev !== null ? legacy.fmt(prev) : '-') +
+          '<td class="gm-right gm-num gm-dim glory-prev-val" data-label="' + t('glory_prev_week') + '">' +
+            (prev !== null ? formatNumber(prev) : '-') +
           '</td>' +
-          '<td class="gm-right" data-label="' + legacy.t('glory_input') + '">' +
+          '<td class="gm-right" data-label="' + t('glory_input') + '">' +
             '<div class="glory-input-wrapper" style="position:relative; display:inline-flex; align-items:center;">' +
               '<input type="text" inputmode="numeric" class="gm-glory-input glory-input"' +
-                ' value="' + (curr !== '' ? legacy.fmt(curr) : '') + '" placeholder="0"' +
-                ' data-pseudo="' + legacy.esc(pseudo) + '"' +
+                ' value="' + (curr !== '' ? formatNumber(curr) : '') + '" placeholder="0"' +
+                ' data-pseudo="' + escapeHTML(pseudo) + '"' +
                 ' data-prev="' + (prev !== null ? prev : '') + '">' +
               '<i class="ph ph-circle-notch ph-spin saving-icon hidden" style="position:absolute; right:.6rem;"></i>' +
             '</div>' +
           '</td>' +
-          '<td class="gm-right glory-pct-cell" data-label="' + legacy.t('glory_evolution_pct') + '">' +
+          '<td class="gm-right glory-pct-cell" data-label="' + t('glory_evolution_pct') + '">' +
             this.buildEvolutionPctBadge(curr, prev) +
           '</td>' +
         '</tr>';
@@ -207,16 +151,16 @@ export class GloryView {
 
     area.querySelectorAll('.glory-input').forEach((el) => {
       const inp = el as HTMLInputElement;
-      legacy.attachNumberFormatter(inp);
+      attachNumberFormatter(inp);
       let timer: ReturnType<typeof setTimeout> | undefined;
       inp.addEventListener('input', () => {
         const prev = inp.getAttribute('data-prev');
-        const curr = legacy.parseNumber(inp.value);
+        const curr = parseNumber(inp.value);
         const row = inp.closest('tr');
 
         const currCell = row ? row.querySelector('.glory-curr-val') : null;
         if (currCell) {
-          currCell.innerHTML = curr !== null ? '<span>' + legacy.fmt(curr) + '</span>' : '<span class="glory-na">-</span>';
+          currCell.innerHTML = curr !== null ? '<span>' + formatNumber(curr) + '</span>' : '<span class="glory-na">-</span>';
         }
 
         const pctCell = row ? row.querySelector('.glory-pct-cell') : null;
@@ -239,7 +183,7 @@ export class GloryView {
 
   private buildEvolutionPctBadge(curr: any, prev: any): string {
     if (curr === null || curr === '' || prev === null || prev === 0) return '<span class="gm-dim">-</span>';
-    const c = typeof curr === 'number' ? curr : legacy.parseNumber(curr);
+    const c = typeof curr === 'number' ? curr : parseNumber(curr);
     const p = typeof prev === 'number' ? prev : parseInt(prev, 10);
     if (c === null || isNaN(p) || p === 0) return '<span class="gm-dim">-</span>';
     const diff = c - p;
@@ -253,19 +197,19 @@ export class GloryView {
   private updateTotal(area: Element): void {
     let total = 0;
     area.querySelectorAll('.glory-input').forEach((el) => {
-      const n = legacy.parseNumber((el as HTMLInputElement).value);
+      const n = parseNumber((el as HTMLInputElement).value);
       total += (n || 0);
     });
     const valSpan = area.querySelector('.total-glory-val');
-    if (valSpan) valSpan.textContent = legacy.fmt(total);
+    if (valSpan) valSpan.textContent = formatNumber(total);
   }
 
   private async saveGlory(pseudo: string, value: any, week: string, icon: Element | null): Promise<void> {
-    const db = legacy.getDb();
+    const db = getClient();
     if (!db) return;
     try {
-      const currentG = legacy.getActiveGuild();
-      const scoreVal = (value === null || value === '') ? 0 : (typeof value === 'number' ? value : (legacy.parseNumber(value) || 0));
+      const currentG = getActiveGuild();
+      const scoreVal = (value === null || value === '') ? 0 : (typeof value === 'number' ? value : (parseNumber(value) || 0));
       const rpcRes = await upsertPlayerGlory(db, currentG, pseudo, week, scoreVal);
       if (rpcRes && rpcRes.error) throw rpcRes.error;
       // The RPC reports logical failures (permission_denied, ...) in its result
@@ -273,11 +217,13 @@ export class GloryView {
       const row = rpcRes && rpcRes.data ? (Array.isArray(rpcRes.data) ? rpcRes.data[0] : rpcRes.data) : null;
       if (!row || !row.ok) throw new Error((row && row.error) || 'save_failed');
       if (icon) icon.classList.add('hidden');
-      legacy.fetchGuildMembers();
+      // A `window.GM.fetchGuildMembers()` call used to follow here. Nothing ever
+      // installed that member (the roster loader lives on GM_MEMBERS), so it was
+      // a no-op and was dropped rather than turned into a new roster refetch.
     } catch (err: any) {
       console.error('saveGlory', err);
       if (icon) icon.classList.add('hidden');
-      legacy.showToast(legacy.t('toast_err_generic') + ' Glory' + (err && err.message ? ' (' + err.message + ')' : ''), 'error');
+      showToast(t('toast_err_generic') + ' Glory' + (err && err.message ? ' (' + err.message + ')' : ''), 'error');
     }
   }
 }

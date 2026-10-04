@@ -8,6 +8,26 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
+// Phase M4c: dialogs.service imports guild config and the chart renderer
+// instead of reading `window.GM.config` / `window.GM.drawScoreTrendChart`.
+// Each test assigns `mocks.config` / `mocks.drawScoreTrendChart`.
+const mocks = vi.hoisted(() => ({
+  config: { get: async () => '', set: async () => undefined },
+  drawScoreTrendChart: () => undefined
+}));
+vi.mock('../src/core/config/guild-config', async (importOriginal) => {
+  const actual = await importOriginal();
+  const config = {
+    get: (...args) => mocks.config.get(...args),
+    set: (...args) => mocks.config.set(...args)
+  };
+  return { ...actual, config, default: config };
+});
+vi.mock('../src/core/dom/ui', async (importOriginal) => ({
+  ...(await importOriginal()),
+  drawScoreTrendChart: (...args) => mocks.drawScoreTrendChart(...args)
+}));
+
 import {
   showConfirm,
   showPlayerHistoryDialog,
@@ -20,7 +40,8 @@ beforeEach(() => {
   document.body.innerHTML = '';
   if (!window.GM) window.GM = {};
   delete window.GM.db;
-  delete window.GM.config;
+  mocks.config = { get: async () => '', set: async () => undefined };
+  mocks.drawScoreTrendChart = () => undefined;
 });
 
 afterEach(() => {
@@ -102,7 +123,7 @@ describe('showPlayerHistoryDialog', () => {
     });
     const drawScoreTrendChart = vi.fn();
     window.GM.db = { rpc };
-    window.GM.drawScoreTrendChart = drawScoreTrendChart;
+    mocks.drawScoreTrendChart = drawScoreTrendChart;
 
     const pending = showPlayerHistoryDialog('123456', 'Alpha');
 
@@ -144,7 +165,7 @@ describe('showPlayerHistoryDialog', () => {
 
 describe('openCustomMsgModal', () => {
   it('renders the personalization modal for a given event prefix', async () => {
-    window.GM.config = { get: vi.fn(async () => ''), set: vi.fn(async () => undefined) };
+    mocks.config = { get: vi.fn(async () => ''), set: vi.fn(async () => undefined) };
 
     await openCustomMsgModal('armsrace');
 
@@ -158,7 +179,7 @@ describe('openCustomMsgModal', () => {
 
   it('renders the SvS reminder set and persists the edited templates', async () => {
     const set = vi.fn(async () => undefined);
-    window.GM.config = { get: vi.fn(async () => ''), set };
+    mocks.config = { get: vi.fn(async () => ''), set };
 
     await openCustomMsgModal('svs');
 
@@ -177,7 +198,7 @@ describe('openCustomMsgModal', () => {
 
   it('closes without saving when cancelled', async () => {
     const set = vi.fn(async () => undefined);
-    window.GM.config = { get: vi.fn(async () => ''), set };
+    mocks.config = { get: vi.fn(async () => ''), set };
 
     await openCustomMsgModal('gvg');
     document.getElementById('custom-msg-modal-cancel').click();
@@ -187,7 +208,7 @@ describe('openCustomMsgModal', () => {
   });
 
   it('wires [data-custom-msg] buttons via initGuildRequestsUi and opens modal on click', async () => {
-    window.GM.config = { get: vi.fn(async () => ''), set: vi.fn(async () => undefined) };
+    mocks.config = { get: vi.fn(async () => ''), set: vi.fn(async () => undefined) };
     document.body.innerHTML = '<button type="button" data-custom-msg="gvg">Edit GVG</button>';
 
     initGuildRequestsUi();
@@ -197,7 +218,7 @@ describe('openCustomMsgModal', () => {
     expect(document.getElementById('custom-msg-modal').textContent).toContain('Personalization - GvG Saturday');
   });
   it('supports tab switching, pill button insertion, reset-to-default, and live preview', async () => {
-    window.GM.config = { get: vi.fn(async () => ''), set: vi.fn(async () => undefined) };
+    mocks.config = { get: vi.fn(async () => ''), set: vi.fn(async () => undefined) };
 
     await openCustomMsgModal('armsrace');
 

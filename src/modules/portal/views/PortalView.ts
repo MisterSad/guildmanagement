@@ -6,11 +6,10 @@
  * `window.GM_PORTAL` during Phase 1 (the legacy script still owns that global
  * until cutover): it is exercised by `tests/portal_view.test.js`.
  *
- * - Network calls go through `PortalService.invokeAction` (extended to recover
- *   the real {ok,error} body via window.GM.parseFunctionsInvokeResult).
- * - All `window.GM*` / `window.GM_I18N` / `window.GM_PUSH`
- *   reads happen at call time through a typed adapter.
- * - Chart drawing stays delegated to `window.GM.drawScoreTrendChart`.
+ * - Network calls go through `PortalService.invokeAction` (which recovers the
+ *   real {ok,error} body via parseFunctionsInvokeResult).
+ * - Every helper (formatting, scoring, toasts, auth, chart drawing) is imported
+ *   directly (phase M4c); the module reads no `window.GM*` member.
  * - The global resize listener is tracked so `destroy()` cleans it up.
  * - This module never assigns any `window.GM_*` variable.
  */
@@ -18,97 +17,19 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { PortalService } from '../portal.service';
-import { escapeHTML } from '../../../core/utils/text';
+import { escapeHTML, avatarInit, formatPower, formatNumber, parseNumber } from '../../../core/utils/text';
+import { logout, loginWithDiscord } from '../../../core/auth/session';
+import { getEventIcon } from '../../../core/config/events';
+import { formatDateTimeUTC } from '../../../core/utils/date';
+import { attachNumberFormatter, drawScoreTrendChart } from '../../../core/dom/ui';
+import { showToast } from '../../../core/dom/toast';
+import {
+  calculateCombatDensity, calculateResidualPower, calculateCombativity, calculateRallyScore, calculateRallyGrade
+} from '../../../core/scoring/combat';
 import { savePendingIntent } from '../../../core/auth/pending-intent';
 import { COMMON_TIMEZONES, detectUserTimezone, getTimezoneOffset } from '../../../utils/timezone';
-import { computeBadges as computeBadgesService } from '../../badges/badges.service';
+import { computeBadges } from '../../badges/badges.service';
 import { weightedRate, round1 } from '../../../core/scoring/reliability';
-
-function winAny(): any {
-  return (typeof window !== 'undefined' ? window : ({} as any)) as any;
-}
-
-function gm(): any {
-  return winAny().GM;
-}
-
-const legacy = {
-  t(key: string): string {
-    const i18n = winAny().GM_I18N;
-    if (i18n && typeof i18n.t === 'function') return i18n.t(key);
-    return key;
-  },
-  esc(value: unknown): string {
-    return escapeHTML(value);
-  },
-  avatarInit(value: unknown): string {
-    const g = gm();
-    return g && typeof g.avatarInit === 'function' ? g.avatarInit(value) : String(value || '').slice(0, 1).toUpperCase();
-  },
-  logout(): Promise<any> {
-    const g = gm();
-    if (g && typeof g.logout === 'function') return g.logout();
-    localStorage.clear();
-    return Promise.resolve();
-  },
-  formatPower(value: unknown): string {
-    const g = gm();
-    return g && typeof g.formatPower === 'function' ? g.formatPower(value) : String(value ?? '0');
-  },
-  formatNumber(value: unknown): string {
-    const g = gm();
-    return g && typeof g.formatNumber === 'function' ? g.formatNumber(value) : String(value ?? '0');
-  },
-  getEventIcon(key: string): string {
-    const g = gm();
-    return g && typeof g.getEventIcon === 'function' ? g.getEventIcon(key) : 'ph-calendar';
-  },
-  drawScoreTrendChart(canvas: unknown, history: unknown): void {
-    const g = gm();
-    if (g && typeof g.drawScoreTrendChart === 'function') g.drawScoreTrendChart(canvas, history);
-  },
-  formatDateTimeUTC(value: unknown): string {
-    const g = gm();
-    return g && typeof g.formatDateTimeUTC === 'function' ? g.formatDateTimeUTC(value) : '';
-  },
-  attachNumberFormatter(input: unknown): void {
-    const g = gm();
-    if (g && typeof g.attachNumberFormatter === 'function') g.attachNumberFormatter(input);
-  },
-  parseNumber(value: unknown): number {
-    const g = gm();
-    return g && typeof g.parseNumber === 'function' ? g.parseNumber(value) : (parseInt(String(value).replace(/[^0-9]/g, ''), 10) || 0);
-  },
-  showToast(msg: string, type: string): void {
-    const g = gm();
-    if (g && typeof g.showToast === 'function') g.showToast(msg, type);
-  },
-  density(p: unknown): number {
-    const g = gm();
-    return g && typeof g.calculateCombatDensity === 'function' ? g.calculateCombatDensity(p) : 0;
-  },
-  residual(p: unknown): number {
-    const g = gm();
-    return g && typeof g.calculateResidualPower === 'function' ? g.calculateResidualPower(p) : 0;
-  },
-  combativity(p: unknown): number {
-    const g = gm();
-    return g && typeof g.calculateCombativity === 'function' ? g.calculateCombativity(p) : 0;
-  },
-  rallyScore(p: unknown): number {
-    const g = gm();
-    return g && typeof g.calculateRallyScore === 'function' ? g.calculateRallyScore(p) : 0;
-  },
-  rallyGrade(p: unknown, max: number): number {
-    const g = gm();
-    return g && typeof g.calculateRallyGrade === 'function' ? g.calculateRallyGrade(p, max) : 100;
-  },
-  computeBadges(payload: unknown): any {
-    // Phase 7: imported. The `window` probe returned null whenever the
-    // namespace name drifted, and the portal simply rendered no badges.
-    return computeBadgesService(payload as never);
-  }
-};
 
 /** Signs out of the Player Portal and shows the login page. */
 function exitPortalToLogin(): void {
@@ -120,7 +41,7 @@ function exitPortalToLogin(): void {
     if (portalView) portalView.classList.remove('portal-connected');
     if (loginView) { loginView.classList.remove('hidden'); loginView.classList.add('active'); }
   };
-  legacy.logout().then(finish).catch(finish);
+  logout().then(finish).catch(finish);
 }
 
 const PERIODS = [
@@ -185,7 +106,7 @@ export class PortalView {
 
   public destroy(): void {
     if (this.resizeHandler) {
-      winAny().removeEventListener('resize', this.resizeHandler);
+      window.removeEventListener('resize', this.resizeHandler);
       this.resizeHandler = undefined;
     }
     if (this.resizeTimer) {
@@ -247,7 +168,7 @@ export class PortalView {
         '<div class="gm-empty" style="padding: 3rem 1.5rem; text-align: center; max-width: 480px; margin: 2rem auto; background: var(--bg-1); border-radius: var(--radius-xl); border: 1px solid var(--border-soft);">' +
           '<i class="ph ph-warning-circle gm-icon" style="font-size: var(--fs-5xl); color: #ef4444; margin-bottom: 1rem; display: block;"></i>' +
           '<div class="gm-empty-title" style="font-size: var(--fs-xl); font-weight: 700; color: var(--fg); margin-bottom: 0.5rem;">Unable to load your portal</div>' +
-          '<div class="gm-empty-sub" style="color: var(--fg-dim); font-size: var(--fs-md); margin: 0 auto 1.5rem auto;">' + legacy.esc(displayMsg) + '</div>' +
+          '<div class="gm-empty-sub" style="color: var(--fg-dim); font-size: var(--fs-md); margin: 0 auto 1.5rem auto;">' + escapeHTML(displayMsg) + '</div>' +
           '<div style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;">' +
             '<button class="gm-btn gm-btn-primary" data-portal-error-signout><i class="ph ph-sign-out"></i> Reconnect / Sign Out</button>' +
             '<button class="gm-btn gm-btn-outline" data-portal-error-retry><i class="ph ph-arrows-clockwise"></i> Retry</button>' +
@@ -299,7 +220,7 @@ export class PortalView {
     const root = document.getElementById('portal-dashboard-root');
     if (!root) return;
     const p = this.state.player;
-    const initials = legacy.avatarInit(p.pseudo);
+    const initials = avatarInit(p.pseudo);
 
     const navItems = [
       { id: 'settings', icon: 'ph-cardholder', label: 'My Info' },
@@ -316,7 +237,7 @@ export class PortalView {
       const isActive = this.state.activeTab === item.id;
       return '<button class="gm-nav-item' + (isActive ? ' gm-active' : '') + '" data-portal-nav="' + item.id + '">' +
                   '<i class="ph ' + item.icon + '"></i>' +
-                  '<span>' + legacy.esc(item.label) + '</span>' +
+                  '<span>' + escapeHTML(item.label) + '</span>' +
                 '</button>';
     }).join('');
 
@@ -326,11 +247,11 @@ export class PortalView {
           '<div class="gm-sidebar-header">' +
             '<div class="gm-sidebar-user-row">' +
               '<div class="gm-user-avatar-ring">' +
-                '<div class="gm-user-avatar">' + legacy.esc(initials) + '</div>' +
+                '<div class="gm-user-avatar">' + escapeHTML(initials) + '</div>' +
               '</div>' +
               '<div class="gm-sidebar-user-info">' +
-                '<div class="gm-sidebar-user-name">' + legacy.esc(p.pseudo) + '</div>' +
-                '<div class="gm-sidebar-user-role">' + legacy.esc(p.guild) + ' &middot; Player</div>' +
+                '<div class="gm-sidebar-user-name">' + escapeHTML(p.pseudo) + '</div>' +
+                '<div class="gm-sidebar-user-role">' + escapeHTML(p.guild) + ' &middot; Player</div>' +
               '</div>' +
               '<button class="gm-sidebar-logout" data-portal-exit title="Sign out">' +
                 '<i class="ph ph-sign-out"></i>' +
@@ -343,7 +264,7 @@ export class PortalView {
           '</nav>' +
           '<div class="gm-sidebar-sub-card">' +
             '<div class="gm-sub-card-badge-avatar"><i class="ph ph-crosshair"></i></div>' +
-            '<div style="font-size: var(--fs-sm); font-weight:700; color:var(--fg);">' + legacy.esc(p.guild) + '</div>' +
+            '<div style="font-size: var(--fs-sm); font-weight:700; color:var(--fg);">' + escapeHTML(p.guild) + '</div>' +
             '<div style="font-size: var(--fs-xs); color:var(--fg-dim); margin-top:.25rem;">Foundation Galactic Frontier</div>' +
           '</div>' +
         '</aside>' +
@@ -351,7 +272,7 @@ export class PortalView {
         '<div class="gm-main">' +
           '<header class="gm-topbar">' +
             '<div class="gm-topbar-mobile-brand">' +
-              '<div class="gm-brand-mark">' + legacy.esc(initials) + '</div>' +
+              '<div class="gm-brand-mark">' + escapeHTML(initials) + '</div>' +
               '<div class="gm-topbar-title">Player Portal</div>' +
             '</div>' +
             '<div class="gm-topbar-actions">' +
@@ -379,7 +300,7 @@ export class PortalView {
               const isActive = this.state.activeTab === item.id;
               return '<button class="gm-bottom-nav-item' + (isActive ? ' gm-active' : '') + '" data-portal-nav="' + item.id + '">' +
                         '<i class="ph ' + item.icon + ' gm-icon"></i>' +
-                        '<span>' + legacy.esc(item.label) + '</span>' +
+                        '<span>' + escapeHTML(item.label) + '</span>' +
                       '</button>';
             }).join('') +
             '<button class="gm-bottom-nav-item' + (drawerNavIds.indexOf(this.state.activeTab) !== -1 ? ' gm-active' : '') + '" data-portal-more>' +
@@ -399,7 +320,7 @@ export class PortalView {
               const isActive = this.state.activeTab === item.id;
               return '<button class="gm-drawer-item' + (isActive ? ' gm-active' : '') + '" data-portal-nav="' + item.id + '">' +
                         '<i class="ph ' + item.icon + ' gm-icon"></i>' +
-                        '<span>' + legacy.esc(item.label) + '</span>' +
+                        '<span>' + escapeHTML(item.label) + '</span>' +
                       '</button>';
             }).join('') +
           '</div>' +
@@ -484,7 +405,7 @@ export class PortalView {
       }, 200);
     };
     this.resizeHandler = handler;
-    winAny().addEventListener('resize', handler);
+    window.addEventListener('resize', handler);
   }
 
   // ── Panel: My Progress ──────────────────────────────────────────────────
@@ -505,9 +426,9 @@ export class PortalView {
     const kpis = this.state.kpis;
     const player = this.state.player || {};
     const guildAvg = this.state.guildAverages || {};
-    const density = legacy.density(player);
-    const residual = legacy.residual(player);
-    const combativity = legacy.combativity(player);
+    const density = calculateCombatDensity(player);
+    const residual = calculateResidualPower(player);
+    const combativity = calculateCombativity(player);
 
     // The rally grade used to be measured against `player.overall_power * 1.25`
     // because `kpis` was always null -- the player was graded against
@@ -515,9 +436,9 @@ export class PortalView {
     // real maximum now.
     const guildTotals = (this.state.reliability && this.state.reliability.guild_totals) || {};
     const maxGuildPower = Number(guildTotals.max_power) || (player.overall_power * 1.25) || 100000000;
-    const playerRallyScore = legacy.rallyScore(player);
+    const playerRallyScore = calculateRallyScore(player);
     const estimatedMaxRally = Math.max(playerRallyScore, Math.round(maxGuildPower * 5.2));
-    const rallyGrade = legacy.rallyGrade(player, estimatedMaxRally);
+    const rallyGrade = calculateRallyGrade(player, estimatedMaxRally);
 
     let kpiHtml = '';
     if (this.state.reliability) {
@@ -551,7 +472,7 @@ export class PortalView {
         .map((b) => ({ bucket: b, ...(playerBuckets[b] || {}) }))
         .filter((b: any) => Number(b.opp) > 0)
         .sort((a: any, b: any) => String(a.bucket).localeCompare(String(b.bucket)))
-        .map((b: any) => legacy.esc(b.bucket) + ' ' + b.att + '/' + b.opp)
+        .map((b: any) => escapeHTML(b.bucket) + ' ' + b.att + '/' + b.opp)
         .join(' · ');
 
       const glory = this.state.gloryHistory || {};
@@ -562,48 +483,48 @@ export class PortalView {
         '<div class="portal-kpi-grid">' +
           '<div class="portal-kpi-card portal-kpi-part">' +
             '<div class="portal-kpi-icon"><i class="ph ph-calendar-check"></i></div>' +
-            '<div class="portal-kpi-value">' + legacy.esc(myPct === null ? '—' : myPct + '%') + '</div>' +
+            '<div class="portal-kpi-value">' + escapeHTML(myPct === null ? '—' : myPct + '%') + '</div>' +
             '<div class="portal-kpi-label">Your reliability</div>' +
-            '<div class="portal-kpi-rank">' + legacy.esc(breakdown || 'Nothing ran for you yet') + '</div>' +
+            '<div class="portal-kpi-rank">' + escapeHTML(breakdown || 'Nothing ran for you yet') + '</div>' +
             '<div class="portal-kpi-bar"><div class="portal-kpi-bar-fill" style="width:' + (myPct || 0) + '%;"></div></div>' +
             '<div class="portal-kpi-sub">' +
               (delta === null
-                ? 'Over the last ' + legacy.esc(rel.weeks || 0) + ' weeks'
-                : legacy.esc((delta >= 0 ? '+' : '') + delta + '% vs your guild (' + guildPct + '%)')) +
+                ? 'Over the last ' + escapeHTML(rel.weeks || 0) + ' weeks'
+                : escapeHTML((delta >= 0 ? '+' : '') + delta + '% vs your guild (' + guildPct + '%)')) +
               '<br><span style="opacity:.7;">Weighted by event type, standard weights</span>' +
             '</div>' +
           '</div>' +
           '<div class="portal-kpi-card portal-kpi-power">' +
             '<div class="portal-kpi-icon"><i class="ph ph-sword"></i></div>' +
-            '<div class="portal-kpi-value">' + legacy.esc(legacy.formatPower(player.overall_power || 0)) + '</div>' +
+            '<div class="portal-kpi-value">' + escapeHTML(formatPower(player.overall_power || 0)) + '</div>' +
             '<div class="portal-kpi-label">Combat Power</div>' +
-            '<div class="portal-kpi-rank">' + legacy.esc(powerPct) + '% of the strongest in your guild</div>' +
+            '<div class="portal-kpi-rank">' + escapeHTML(powerPct) + '% of the strongest in your guild</div>' +
             '<div class="portal-kpi-bar"><div class="portal-kpi-bar-fill" style="width:' + powerPct + '%;"></div></div>' +
-            '<div class="portal-kpi-sub">Guild average: ' + legacy.esc(legacy.formatPower(guildAvg.overall_power || 0)) + '</div>' +
+            '<div class="portal-kpi-sub">Guild average: ' + escapeHTML(formatPower(guildAvg.overall_power || 0)) + '</div>' +
           '</div>' +
           '<div class="portal-kpi-card portal-kpi-glory">' +
             '<div class="portal-kpi-icon"><i class="ph ph-trophy"></i></div>' +
-            '<div class="portal-kpi-value">' + legacy.esc(glory.best ? legacy.formatNumber(glory.best) : '—') + '</div>' +
+            '<div class="portal-kpi-value">' + escapeHTML(glory.best ? formatNumber(glory.best) : '—') + '</div>' +
             '<div class="portal-kpi-label">Best Glory week</div>' +
-            '<div class="portal-kpi-rank">' + legacy.esc((glory.weeks_recorded || 0) + ' week' + ((glory.weeks_recorded || 0) === 1 ? '' : 's') + ' recorded') + '</div>' +
+            '<div class="portal-kpi-rank">' + escapeHTML((glory.weeks_recorded || 0) + ' week' + ((glory.weeks_recorded || 0) === 1 ? '' : 's') + ' recorded') + '</div>' +
             '<div class="portal-kpi-bar"><div class="portal-kpi-bar-fill" style="width:100%;"></div></div>' +
-            '<div class="portal-kpi-sub">Guild average: ' + legacy.esc(legacy.formatNumber(guildAvg.glory_score || 0)) + '</div>' +
+            '<div class="portal-kpi-sub">Guild average: ' + escapeHTML(formatNumber(guildAvg.glory_score || 0)) + '</div>' +
           '</div>' +
           '<div class="portal-kpi-card portal-kpi-tenure">' +
             '<div class="portal-kpi-icon"><i class="ph ph-lightning"></i></div>' +
-            '<div class="portal-kpi-value" style="color:#fbbf24;">⚡ ' + legacy.esc(rallyGrade) + '/100</div>' +
+            '<div class="portal-kpi-value" style="color:#fbbf24;">⚡ ' + escapeHTML(rallyGrade) + '/100</div>' +
             '<div class="portal-kpi-label">Rally Grade</div>' +
             '<div class="portal-kpi-rank">Combat Density: ' + density + '%</div>' +
-            '<div class="portal-kpi-bar"><div class="portal-kpi-bar-fill" style="width:' + legacy.esc(rallyGrade) + '%; background:#fbbf24;"></div></div>' +
-            '<div class="portal-kpi-sub">Combativity: ' + combativity + 'x &middot; ' + legacy.esc(player.role || 'R1') + '</div>' +
+            '<div class="portal-kpi-bar"><div class="portal-kpi-bar-fill" style="width:' + escapeHTML(rallyGrade) + '%; background:#fbbf24;"></div></div>' +
+            '<div class="portal-kpi-sub">Combativity: ' + combativity + 'x &middot; ' + escapeHTML(player.role || 'R1') + '</div>' +
           '</div>' +
         '</div>';
     }
 
     const tilesHtml =
       '<div class="portal-stats">' +
-        '<div class="portal-stat"><div class="portal-stat-value">' + legacy.esc(totalCount) + '</div><div class="portal-stat-label">Events tracked</div></div>' +
-        '<div class="portal-stat"><div class="portal-stat-value">' + legacy.esc(totalAttended) + '</div><div class="portal-stat-label">Participated</div></div>' +
+        '<div class="portal-stat"><div class="portal-stat-value">' + escapeHTML(totalCount) + '</div><div class="portal-stat-label">Events tracked</div></div>' +
+        '<div class="portal-stat"><div class="portal-stat-value">' + escapeHTML(totalAttended) + '</div><div class="portal-stat-label">Participated</div></div>' +
         // This strip used to show a third figure, "Attendance rate", computed
         // as totalAttended / totalCount: a rate pooled across event types, so
         // a member's Arms Race days outweighed their wars. It sat a few
@@ -611,7 +532,7 @@ export class PortalView {
         // question differently. Two rates on one screen is how a member loses
         // confidence in both, so the counts stay and the rate is stated once.
         '' +
-        '<div class="portal-stat"><div class="portal-stat-value">' + legacy.esc(legacy.formatPower(player.overall_power)) + '</div><div class="portal-stat-label">Current power</div></div>' +
+        '<div class="portal-stat"><div class="portal-stat-value">' + escapeHTML(formatPower(player.overall_power)) + '</div><div class="portal-stat-label">Current power</div></div>' +
       '</div>';
 
     const periodHtml =
@@ -619,7 +540,7 @@ export class PortalView {
         '<span class="portal-period-label"><i class="ph ph-calendar"></i> Period</span>' +
         '<div class="portal-period-btns">' +
           PERIODS.map((per) => {
-            return '<button type="button" class="portal-period-btn' + (this.state.period === per.key ? ' active' : '') + '" data-period="' + per.key + '">' + legacy.esc(per.label) + '</button>';
+            return '<button type="button" class="portal-period-btn' + (this.state.period === per.key ? ' active' : '') + '" data-period="' + per.key + '">' + escapeHTML(per.label) + '</button>';
           }).join('') +
         '</div>' +
       '</div>';
@@ -665,7 +586,7 @@ export class PortalView {
           '<div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">' +
             '<span class="gm-chip" style="font-size: var(--fs-sm); font-weight:700; color:#a8c7fa; background:rgba(168,199,250,0.12); border:1px solid rgba(168,199,250,0.25); border-radius:var(--md-sys-shape-corner-full);"><i class="ph ph-shield-check"></i> Density: ' + Math.min(100, Math.round(density)) + '%</span>' +
             '<span class="gm-chip" style="font-size: var(--fs-sm); font-weight:700; color:#6dd58c; background:rgba(109,213,140,0.12); border:1px solid rgba(109,213,140,0.25); border-radius:var(--md-sys-shape-corner-full);"><i class="ph ph-crosshair"></i> Combativity: ' + combativity + 'x</span>' +
-            '<span class="gm-chip" style="font-size: var(--fs-sm); font-weight:700; color:#ffe088; background:rgba(255,224,136,0.12); border:1px solid rgba(255,224,136,0.25); border-radius:var(--md-sys-shape-corner-full);"><i class="ph ph-barricade"></i> Volatile: ' + legacy.esc(legacy.formatPower(residual)) + '</span>' +
+            '<span class="gm-chip" style="font-size: var(--fs-sm); font-weight:700; color:#ffe088; background:rgba(255,224,136,0.12); border:1px solid rgba(255,224,136,0.25); border-radius:var(--md-sys-shape-corner-full);"><i class="ph ph-barricade"></i> Volatile: ' + escapeHTML(formatPower(residual)) + '</span>' +
           '</div>' +
         '</div>' +
         '<div class="portal-military-grid">' +
@@ -702,7 +623,7 @@ export class PortalView {
 
     this.state.chartsDrawn = true;
     this.state.chartRegistry = chartKeys.map((key, idx) => ({ key: key, ev: hist[key], idx: idx }));
-    winAny().requestAnimationFrame(() => {
+    window.requestAnimationFrame(() => {
       chartKeys.forEach((key, idx) => {
         this.drawChart(key, hist[key], idx);
       });
@@ -721,20 +642,20 @@ export class PortalView {
         deltaHtml = '<span class="gm-chip" style="font-size: var(--fs-xs); padding:0.1rem 0.38rem; color:#ffe088; background:rgba(255,224,136,0.14); border:1px solid rgba(255,224,136,0.25); border-radius:var(--md-sys-shape-corner-full, 9999px); white-space:nowrap;">' + diffPct + '%</span>';
       }
     }
-    const avgFormatted = aVal > 0 ? legacy.formatPower(aVal) : (pVal > 0 ? legacy.formatPower(pVal) : '0');
+    const avgFormatted = aVal > 0 ? formatPower(aVal) : (pVal > 0 ? formatPower(pVal) : '0');
     return '<div class="portal-military-tile">' +
               '<div class="portal-military-tile-header">' +
                 '<div class="portal-military-tile-title">' +
                   '<span class="portal-military-tile-icon">' + icon + '</span>' +
-                  '<span class="portal-military-tile-label">' + legacy.esc(label) + '</span>' +
+                  '<span class="portal-military-tile-label">' + escapeHTML(label) + '</span>' +
                 '</div>' +
                 '<div class="portal-military-tile-delta">' + deltaHtml + '</div>' +
               '</div>' +
-              '<div class="portal-military-tile-value" style="color:' + color + ';">' + legacy.esc(legacy.formatPower(pVal)) + '</div>' +
+              '<div class="portal-military-tile-value" style="color:' + color + ';">' + escapeHTML(formatPower(pVal)) + '</div>' +
               '<div class="portal-military-tile-footer">' +
                 '<i class="ph ph-users-three"></i>' +
                 '<span class="portal-military-tile-avg-label">Guild Avg:</span>' +
-                '<span class="portal-military-tile-avg-val">' + legacy.esc(avgFormatted) + '</span>' +
+                '<span class="portal-military-tile-avg-val">' + escapeHTML(avgFormatted) + '</span>' +
               '</div>' +
             '</div>';
   }
@@ -751,23 +672,23 @@ export class PortalView {
   }
 
   private renderChartCard(eventKey: string, ev: any, idx: number): string {
-    const icon = legacy.getEventIcon(eventKey);
+    const icon = getEventIcon(eventKey);
     const accent = this.eventAccent(eventKey);
     return '<div class="portal-chart-card">' +
               '<div class="portal-chart-accent" style="background:' + accent + ';"></div>' +
               '<div class="portal-chart-head">' +
-                '<div class="portal-chart-title"><i class="ph ' + icon + '" style="color:' + accent + ';"></i> ' + legacy.esc(eventKey) + '</div>' +
+                '<div class="portal-chart-title"><i class="ph ' + icon + '" style="color:' + accent + ';"></i> ' + escapeHTML(eventKey) + '</div>' +
                 '<div class="portal-chart-legend">' +
                   '<span style="display:inline-flex; align-items:center; gap:0.4rem; color:#6dd58c; font-weight:700;"><span style="width:12px; height:3px; background:#6dd58c; border-radius:2px; display:inline-block;"></span> You</span>' +
                   '<span style="display:inline-flex; align-items:center; gap:0.4rem; color:#ffe088; font-weight:700;"><span style="width:14px; height:0; border-top:2.5px dashed #ffe088; display:inline-block;"></span> Guild Avg (dashed)</span>' +
                 '</div>' +
               '</div>' +
-              '<canvas class="portal-chart-canvas" data-chart-key="' + legacy.esc(eventKey) + '" data-chart-idx="' + idx + '" width="1200" height="200"></canvas>' +
+              '<canvas class="portal-chart-canvas" data-chart-key="' + escapeHTML(eventKey) + '" data-chart-idx="' + idx + '" width="1200" height="200"></canvas>' +
             '</div>';
   }
 
   private renderParticipationTile(eventKey: string, ev: any): string {
-    const icon = legacy.getEventIcon(eventKey);
+    const icon = getEventIcon(eventKey);
     const accent = this.eventAccent(eventKey);
     const attended = ev.attended || 0;
 
@@ -782,18 +703,18 @@ export class PortalView {
     return '<div class="portal-participation-tile">' +
               '<div class="portal-chart-accent" style="background:' + accent + ';"></div>' +
               '<div class="portal-participation-body">' +
-                '<div class="portal-participation-title"><i class="ph ' + icon + '" style="color:' + accent + ';"></i> ' + legacy.esc(eventKey) + '</div>' +
-                '<div class="portal-participation-rate">' + legacy.esc(ev.rate) + '%</div>' +
-                '<div class="portal-participation-sub">' + legacy.esc(attended) + '/' + legacy.esc(ev.count) + ' attended</div>' +
+                '<div class="portal-participation-title"><i class="ph ' + icon + '" style="color:' + accent + ';"></i> ' + escapeHTML(eventKey) + '</div>' +
+                '<div class="portal-participation-rate">' + escapeHTML(ev.rate) + '%</div>' +
+                '<div class="portal-participation-sub">' + escapeHTML(attended) + '/' + escapeHTML(ev.count) + ' attended</div>' +
                 '<div class="portal-participation-badges">' + recentBadges + '</div>' +
               '</div>' +
             '</div>';
   }
 
   private drawChart(eventKey: string, ev: any, idx: number): void {
-    const canvas = document.querySelector('.portal-chart-canvas[data-chart-idx="' + idx + '"]');
+    const canvas = document.querySelector<HTMLCanvasElement>('.portal-chart-canvas[data-chart-idx="' + idx + '"]');
     if (!canvas) return;
-    legacy.drawScoreTrendChart(canvas, ev.history || []);
+    drawScoreTrendChart(canvas, ev.history || []);
   }
 
   // ── Panel: Challenges ───────────────────────────────────────────────────
@@ -817,7 +738,7 @@ export class PortalView {
     return '<div class="' + cls + '">' +
               '<div class="portal-challenge-icon"><i class="ph ' + challenge.icon + '"></i></div>' +
               '<div class="portal-challenge-info">' +
-                '<div class="portal-challenge-name">' + legacy.esc(challenge.label) + '</div>' +
+                '<div class="portal-challenge-name">' + escapeHTML(challenge.label) + '</div>' +
                 '<div class="portal-challenge-progress"><div class="portal-challenge-progress-fill" style="width:' + pct + '%; background:' + (challenge.done ? 'var(--success)' : 'var(--accent)') + ';"></div></div>' +
               '</div>' +
               '<div class="portal-challenge-state">' +
@@ -831,7 +752,7 @@ export class PortalView {
     if (!body) return;
     const res = await this.invoke('get-weekly-challenges', {});
     if (!res.ok) {
-      body.innerHTML = '<div class="gm-empty" style="padding:2rem 0;"><i class="ph ph-warning-circle gm-icon"></i><div class="gm-empty-title">Unable to load challenges.</div><div class="gm-empty-sub">' + legacy.esc(res.error || 'unknown error') + '</div></div>';
+      body.innerHTML = '<div class="gm-empty" style="padding:2rem 0;"><i class="ph ph-warning-circle gm-icon"></i><div class="gm-empty-title">Unable to load challenges.</div><div class="gm-empty-sub">' + escapeHTML(res.error || 'unknown error') + '</div></div>';
       return;
     }
 
@@ -871,17 +792,17 @@ export class PortalView {
 
   private formatBadgeCurrent(badge: any): string {
     if (badge.category === 'rank') return 'R' + badge.current;
-    if (badge.category === 'tenure') return legacy.formatNumber(badge.current) + 'd';
-    if (badge.category === 'power') return legacy.formatPower(badge.current);
-    if (badge.category === 'glory') return legacy.formatNumber(badge.current);
-    return legacy.formatNumber(badge.current) + ' evts';
+    if (badge.category === 'tenure') return formatNumber(badge.current) + 'd';
+    if (badge.category === 'power') return formatPower(badge.current);
+    if (badge.category === 'glory') return formatNumber(badge.current);
+    return formatNumber(badge.current) + ' evts';
   }
 
   private formatBadgeTarget(badge: any): string {
     if (badge.category === 'rank') return 'R' + badge.target;
-    if (badge.category === 'tenure') return legacy.formatNumber(badge.target) + 'd';
-    if (badge.category === 'power') return legacy.formatPower(badge.target);
-    if (badge.category === 'glory') return legacy.formatNumber(badge.target);
+    if (badge.category === 'tenure') return formatNumber(badge.target) + 'd';
+    if (badge.category === 'power') return formatPower(badge.target);
+    if (badge.category === 'glory') return formatNumber(badge.target);
     return '';
   }
 
@@ -897,14 +818,14 @@ export class PortalView {
       : '<div class="portal-badge-progress"><div class="portal-badge-progress-fill" style="width:' + badge.progress + '%; background:' + badge.color + ';"></div></div>';
 
     const metricHtml = badge.earned ? '' :
-      '<div class="portal-badge-metric"><span>' + legacy.esc(this.formatBadgeCurrent(badge)) + '</span><span class="portal-badge-metric-sep">/</span><span>' + legacy.esc(this.formatBadgeTarget(badge)) + '</span></div>';
+      '<div class="portal-badge-metric"><span>' + escapeHTML(this.formatBadgeCurrent(badge)) + '</span><span class="portal-badge-metric-sep">/</span><span>' + escapeHTML(this.formatBadgeTarget(badge)) + '</span></div>';
 
     return '<div class="' + cls + '">' +
               '<div class="' + iconCls + '" style="color:' + badge.color + ';' + (badge.earned ? ' border-color:' + badge.color + '; box-shadow:0 0 18px ' + badge.color + '55;' : '') + '">' +
                 '<i class="ph ' + badge.icon + '"></i>' +
               '</div>' +
-              '<div class="portal-badge-name">' + legacy.esc(badge.name) + '</div>' +
-              '<div class="portal-badge-desc">' + legacy.esc(badge.desc) + '</div>' +
+              '<div class="portal-badge-name">' + escapeHTML(badge.name) + '</div>' +
+              '<div class="portal-badge-desc">' + escapeHTML(badge.desc) + '</div>' +
               progressHtml +
               metricHtml +
               stateHtml +
@@ -924,7 +845,7 @@ export class PortalView {
     const sections = data.categories.map((cat: any) => {
       const cards = cat.badges.map((b: any) => this.renderBadgeCard(b)).join('');
       return '<div class="portal-badge-section">' +
-                '<div class="portal-badge-section-title"><i class="ph ' + cat.icon + '" style="color:' + cat.color + ';"></i> ' + legacy.esc(cat.label) + '</div>' +
+                '<div class="portal-badge-section-title"><i class="ph ' + cat.icon + '" style="color:' + cat.color + ';"></i> ' + escapeHTML(cat.label) + '</div>' +
                 '<div class="portal-badge-grid">' + cards + '</div>' +
               '</div>';
     }).join('');
@@ -938,11 +859,11 @@ export class PortalView {
 
     const res = await this.invoke('get-badges', {});
     if (!res.ok) {
-      body.innerHTML = '<div class="gm-empty" style="padding:2rem 0;"><i class="ph ph-warning-circle gm-icon"></i><div class="gm-empty-title">Unable to load your badges.</div><div class="gm-empty-sub">' + legacy.esc(res.error || 'unknown error') + '</div></div>';
+      body.innerHTML = '<div class="gm-empty" style="padding:2rem 0;"><i class="ph ph-warning-circle gm-icon"></i><div class="gm-empty-title">Unable to load your badges.</div><div class="gm-empty-sub">' + escapeHTML(res.error || 'unknown error') + '</div></div>';
       return;
     }
 
-    const data = legacy.computeBadges({
+    const data = computeBadges({
       role: res.role,
       created_at: res.created_at,
       overall_power: res.overall_power,
@@ -994,7 +915,7 @@ export class PortalView {
     const isSvsOrGvg = eventName === 'SvS' || eventName === 'GvG';
     // Shadowfront sessions are named per squad ("Shadowfront Squad 1").
     const isShadowfront = /^Shadowfront( Squad [12])?$/.test(eventName);
-    const icon = legacy.getEventIcon(eventName);
+    const icon = getEventIcon(eventName);
     const accent = this.eventAccent(eventName);
 
     const EVENTS_WITHOUT_SCORE = ['Defend Trade Route', 'ARMS RACE STAGE A', 'ARMS RACE STAGE B'];
@@ -1018,7 +939,7 @@ export class PortalView {
           ? '<span class="portal-status portal-status-todo"><i class="ph ph-info"></i> ' + (isShadowfront ? 'Not in this squad' : 'Not in this event') + '</span>'
           : '<span class="portal-status portal-status-todo"><i class="ph ph-pencil-line"></i> Not submitted yet</span>';
 
-    const startLabel = sess.start_at ? legacy.formatDateTimeUTC(sess.start_at) : '';
+    const startLabel = sess.start_at ? formatDateTimeUTC(sess.start_at) : '';
 
     const fieldsHtml =
       '<div class="portal-participation-box">' +
@@ -1051,14 +972,14 @@ export class PortalView {
       if (isSvsOrGvg) {
         scoreHtml +=
           '<div class="portal-score-fields">' +
-            '<div class="portal-field"><label class="portal-field-label">Days 1-5 score</label><input type="text" class="gm-input gm-input-sm portal-score-prep" value="' + legacy.esc(curr.score_prep != null ? curr.score_prep : '') + '" placeholder="e.g. 150000"></div>' +
-            '<div class="portal-field"><label class="portal-field-label">Day 6 score</label><input type="text" class="gm-input gm-input-sm portal-score-pvp" value="' + legacy.esc(curr.score_pvp != null ? curr.score_pvp : '') + '" placeholder="e.g. 50000"></div>' +
+            '<div class="portal-field"><label class="portal-field-label">Days 1-5 score</label><input type="text" class="gm-input gm-input-sm portal-score-prep" value="' + escapeHTML(curr.score_prep != null ? curr.score_prep : '') + '" placeholder="e.g. 150000"></div>' +
+            '<div class="portal-field"><label class="portal-field-label">Day 6 score</label><input type="text" class="gm-input gm-input-sm portal-score-pvp" value="' + escapeHTML(curr.score_pvp != null ? curr.score_pvp : '') + '" placeholder="e.g. 50000"></div>' +
           '</div>' +
           '<div class="portal-score-total"><span class="portal-score-total-label">Total</span><span class="portal-score-total-value" data-total>0</span></div>';
       } else {
         scoreHtml +=
           '<div class="portal-score-fields">' +
-            '<div class="portal-field"><label class="portal-field-label">Score</label><input type="text" class="gm-input gm-input-sm portal-score" value="' + legacy.esc(curr.score != null ? curr.score : '') + '" placeholder="e.g. 45000"></div>' +
+            '<div class="portal-field"><label class="portal-field-label">Score</label><input type="text" class="gm-input gm-input-sm portal-score" value="' + escapeHTML(curr.score != null ? curr.score : '') + '" placeholder="e.g. 45000"></div>' +
           '</div>' +
           '<div class="portal-score-total"><span class="portal-score-total-label">Score</span><span class="portal-score-total-value" data-total>0</span></div>';
       }
@@ -1071,12 +992,12 @@ export class PortalView {
       ? '<button type="button" class="gm-btn gm-btn-success gm-btn-sm portal-submit-event-btn" disabled><i class="ph ph-check-circle"></i><span>Submitted</span></button>'
       : '<button type="button" class="gm-btn gm-btn-primary gm-btn-sm portal-submit-event-btn"><i class="ph ph-paper-plane-right"></i><span>Submit</span></button>';
 
-    return '<div class="portal-event-card' + ((isPending || isValidated) ? ' portal-event-submitted' : '') + '" data-event="' + legacy.esc(eventName) + '" data-session="' + legacy.esc(sess.session_id) + '">' +
+    return '<div class="portal-event-card' + ((isPending || isValidated) ? ' portal-event-submitted' : '') + '" data-event="' + escapeHTML(eventName) + '" data-session="' + escapeHTML(sess.session_id) + '">' +
               '<div class="portal-event-head">' +
                 '<div class="portal-event-icon" style="background:' + accent + '1f; color:' + accent + ';"><i class="ph ' + icon + '"></i></div>' +
                 '<div class="portal-event-head-info">' +
-                  '<div class="portal-event-title">' + legacy.esc(eventName) + '</div>' +
-                  (startLabel ? '<div class="portal-event-sub"><i class="ph ph-clock"></i> ' + legacy.esc(startLabel) + '</div>' : '') +
+                  '<div class="portal-event-title">' + escapeHTML(eventName) + '</div>' +
+                  (startLabel ? '<div class="portal-event-sub"><i class="ph ph-clock"></i> ' + escapeHTML(startLabel) + '</div>' : '') +
                 '</div>' +
                 statusHtml +
               '</div>' +
@@ -1087,7 +1008,7 @@ export class PortalView {
 
   private async wireEventCards(panel: Element): Promise<void> {
     panel.querySelectorAll('.portal-score, .portal-score-prep, .portal-score-pvp').forEach((inp) => {
-      legacy.attachNumberFormatter(inp);
+      attachNumberFormatter(inp as HTMLInputElement);
       inp.addEventListener('input', () => { this.updateCardTotal(inp.closest('.portal-event-card')); });
     });
 
@@ -1126,7 +1047,7 @@ export class PortalView {
           !(scoreVal && scoreVal.replace(/[^0-9]/g, '')) &&
           !(scorePrepVal && scorePrepVal.replace(/[^0-9]/g, '')) &&
           !(scorePvpVal && scorePvpVal.replace(/[^0-9]/g, ''))) {
-          legacy.showToast('Nothing to submit. Check participation or enter a score.', 'warning');
+          showToast('Nothing to submit. Check participation or enter a score.', 'warning');
           return;
         }
 
@@ -1137,9 +1058,9 @@ export class PortalView {
           appointed: appointed,
           late: late,
           excused: excused,
-          score: scoreVal !== undefined ? legacy.parseNumber(scoreVal) : undefined,
-          score_prep: scorePrepVal !== undefined ? legacy.parseNumber(scorePrepVal) : undefined,
-          score_pvp: scorePvpVal !== undefined ? legacy.parseNumber(scorePvpVal) : undefined
+          score: scoreVal !== undefined ? parseNumber(scoreVal) : undefined,
+          score_prep: scorePrepVal !== undefined ? parseNumber(scorePrepVal) : undefined,
+          score_pvp: scorePvpVal !== undefined ? parseNumber(scorePvpVal) : undefined
         };
 
         (btn as HTMLButtonElement).disabled = true;
@@ -1150,7 +1071,7 @@ export class PortalView {
         try {
           const res = await this.invoke('submit-scores', payload);
           if (!res.ok) throw new Error(res.error || 'submit_failed');
-          legacy.showToast('Submitted! An officer will confirm it shortly.', 'success');
+          showToast('Submitted! An officer will confirm it shortly.', 'success');
           const sess = (this.state.sessions || []).find((x: any) => x.event_name === eventName && x.session_id === sessionId);
           if (sess) {
             sess.is_pending = true;
@@ -1163,7 +1084,7 @@ export class PortalView {
           this.renderEventsPanel();
         } catch (err: any) {
           console.error(err);
-          legacy.showToast(submitErrorMessage(err && err.message), 'error');
+          showToast(submitErrorMessage(err && err.message), 'error');
           (btn as HTMLButtonElement).disabled = false;
           if (span) span.textContent = origText;
         }
@@ -1175,11 +1096,11 @@ export class PortalView {
     if (!card) return;
     const totalEl = card.querySelector('[data-total]');
     if (!totalEl) return;
-    const prep = legacy.parseNumber((card.querySelector('.portal-score-prep') as HTMLInputElement | null)?.value || '');
-    const pvp = legacy.parseNumber((card.querySelector('.portal-score-pvp') as HTMLInputElement | null)?.value || '');
-    const single = legacy.parseNumber((card.querySelector('.portal-score') as HTMLInputElement | null)?.value || '');
+    const prep = parseNumber((card.querySelector('.portal-score-prep') as HTMLInputElement | null)?.value || '');
+    const pvp = parseNumber((card.querySelector('.portal-score-pvp') as HTMLInputElement | null)?.value || '');
+    const single = parseNumber((card.querySelector('.portal-score') as HTMLInputElement | null)?.value || '');
     const total = (prep || 0) + (pvp || 0) + (single || 0);
-    totalEl.textContent = legacy.formatNumber(total || 0);
+    totalEl.textContent = formatNumber(total || 0);
   }
 
   // ── Panel: My Info ──────────────────────────────────────────────────────
@@ -1223,18 +1144,18 @@ export class PortalView {
             'Keep your combat metrics up to date to help your officers build optimal squads for SvS, GvG, and Shadowfront.' +
           '</div>' +
           '<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.85rem; margin-bottom: 1rem;">' +
-            '<div class="portal-field"><label for="portal-user-power" style="font-size: var(--fs-sm); font-weight:600; color:var(--fg); margin-bottom:0.25rem; display:block;">Overall Total Power</label><input type="text" id="portal-user-power" class="gm-input" placeholder="e.g. 100000000" value="' + legacy.esc(this.state.player.overall_power || '') + '"></div>' +
-            '<div class="portal-field"><label for="portal-user-fleet" style="font-size: var(--fs-sm); font-weight:600; color:#60a5fa; margin-bottom:0.25rem; display:block;">⚔️ Fleet Rating (March 1)</label><input type="text" id="portal-user-fleet" class="gm-input" placeholder="e.g. 2000000" value="' + legacy.esc(this.state.player.fleet_rating || '') + '"></div>' +
-            '<div class="portal-field"><label for="portal-user-tech" style="font-size: var(--fs-sm); font-weight:600; color:#a78bfa; margin-bottom:0.25rem; display:block;">🔬 Technology Power</label><input type="text" id="portal-user-tech" class="gm-input" placeholder="e.g. 15000000" value="' + legacy.esc(this.state.player.tech_power || '') + '"></div>' +
-            '<div class="portal-field"><label for="portal-user-flagship" style="font-size: var(--fs-sm); font-weight:600; color:#fbbf24; margin-bottom:0.25rem; display:block;">🚀 Flagship Power</label><input type="text" id="portal-user-flagship" class="gm-input" placeholder="e.g. 10000000" value="' + legacy.esc(this.state.player.flagship_power || '') + '"></div>' +
-            '<div class="portal-field"><label for="portal-user-champion" style="font-size: var(--fs-sm); font-weight:600; color:#f472b6; margin-bottom:0.25rem; display:block;">👑 Champions Total Power</label><input type="text" id="portal-user-champion" class="gm-input" placeholder="e.g. 30000000" value="' + legacy.esc(this.state.player.champion_power || '') + '"></div>' +
-            '<div class="portal-field"><label for="portal-user-crew" style="font-size: var(--fs-sm); font-weight:600; color:#38bdf8; margin-bottom:0.25rem; display:block;">👥 Crew Total Power</label><input type="text" id="portal-user-crew" class="gm-input" placeholder="e.g. 5000000" value="' + legacy.esc(this.state.player.crew_power || '') + '"></div>' +
-            '<div class="portal-field"><label for="portal-user-glory" style="font-size: var(--fs-sm); font-weight:600; color:#34d399; margin-bottom:0.25rem; display:block;">🏆 Glory Score</label><input type="text" id="portal-user-glory" class="gm-input" placeholder="e.g. 50000000" value="' + legacy.esc(this.state.player.glory_score || this.state.player.glory || '') + '"></div>' +
+            '<div class="portal-field"><label for="portal-user-power" style="font-size: var(--fs-sm); font-weight:600; color:var(--fg); margin-bottom:0.25rem; display:block;">Overall Total Power</label><input type="text" id="portal-user-power" class="gm-input" placeholder="e.g. 100000000" value="' + escapeHTML(this.state.player.overall_power || '') + '"></div>' +
+            '<div class="portal-field"><label for="portal-user-fleet" style="font-size: var(--fs-sm); font-weight:600; color:#60a5fa; margin-bottom:0.25rem; display:block;">⚔️ Fleet Rating (March 1)</label><input type="text" id="portal-user-fleet" class="gm-input" placeholder="e.g. 2000000" value="' + escapeHTML(this.state.player.fleet_rating || '') + '"></div>' +
+            '<div class="portal-field"><label for="portal-user-tech" style="font-size: var(--fs-sm); font-weight:600; color:#a78bfa; margin-bottom:0.25rem; display:block;">🔬 Technology Power</label><input type="text" id="portal-user-tech" class="gm-input" placeholder="e.g. 15000000" value="' + escapeHTML(this.state.player.tech_power || '') + '"></div>' +
+            '<div class="portal-field"><label for="portal-user-flagship" style="font-size: var(--fs-sm); font-weight:600; color:#fbbf24; margin-bottom:0.25rem; display:block;">🚀 Flagship Power</label><input type="text" id="portal-user-flagship" class="gm-input" placeholder="e.g. 10000000" value="' + escapeHTML(this.state.player.flagship_power || '') + '"></div>' +
+            '<div class="portal-field"><label for="portal-user-champion" style="font-size: var(--fs-sm); font-weight:600; color:#f472b6; margin-bottom:0.25rem; display:block;">👑 Champions Total Power</label><input type="text" id="portal-user-champion" class="gm-input" placeholder="e.g. 30000000" value="' + escapeHTML(this.state.player.champion_power || '') + '"></div>' +
+            '<div class="portal-field"><label for="portal-user-crew" style="font-size: var(--fs-sm); font-weight:600; color:#38bdf8; margin-bottom:0.25rem; display:block;">👥 Crew Total Power</label><input type="text" id="portal-user-crew" class="gm-input" placeholder="e.g. 5000000" value="' + escapeHTML(this.state.player.crew_power || '') + '"></div>' +
+            '<div class="portal-field"><label for="portal-user-glory" style="font-size: var(--fs-sm); font-weight:600; color:#34d399; margin-bottom:0.25rem; display:block;">🏆 Glory Score</label><input type="text" id="portal-user-glory" class="gm-input" placeholder="e.g. 50000000" value="' + escapeHTML(this.state.player.glory_score || this.state.player.glory || '') + '"></div>' +
           '</div>' +
           '<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">' +
             '<div id="portal-metrics-summary" style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">' +
-              '<span class="gm-chip" id="portal-density-chip" style="color:#818cf8; background:rgba(99,102,241,0.12); border:1px solid rgba(99,102,241,0.3); font-size: var(--fs-sm);"><i class="ph ph-shield-check"></i> Density: ' + legacy.density(this.state.player) + '%</span>' +
-              '<span class="gm-chip" id="portal-combativity-chip" style="color:#34d399; background:rgba(52,211,153,0.12); border:1px solid rgba(52,211,153,0.3); font-size: var(--fs-sm);"><i class="ph ph-crosshair"></i> Combativity: ' + legacy.combativity(this.state.player) + 'x</span>' +
+              '<span class="gm-chip" id="portal-density-chip" style="color:#818cf8; background:rgba(99,102,241,0.12); border:1px solid rgba(99,102,241,0.3); font-size: var(--fs-sm);"><i class="ph ph-shield-check"></i> Density: ' + calculateCombatDensity(this.state.player) + '%</span>' +
+              '<span class="gm-chip" id="portal-combativity-chip" style="color:#34d399; background:rgba(52,211,153,0.12); border:1px solid rgba(52,211,153,0.3); font-size: var(--fs-sm);"><i class="ph ph-crosshair"></i> Combativity: ' + calculateCombativity(this.state.player) + 'x</span>' +
             '</div>' +
             '<button type="button" id="portal-update-metrics-btn" class="gm-btn gm-btn-primary"><i class="ph ph-floppy-disk"></i><span>Save Military Metrics</span></button>' +
           '</div>' +
@@ -1272,7 +1193,7 @@ export class PortalView {
 
     [powerInput, fleetInput, techInput, flagshipInput, champInput, crewInput, gloryInput].forEach((inp) => {
       if (inp) {
-        legacy.attachNumberFormatter(inp);
+        attachNumberFormatter(inp);
         inp.addEventListener('input', () => {
           const curObj = {
             overall_power: parseIntVal(powerInput),
@@ -1283,8 +1204,8 @@ export class PortalView {
             crew_power: parseIntVal(crewInput),
             glory_score: parseIntVal(gloryInput)
           };
-          const d = legacy.density(curObj);
-          const c = legacy.combativity(curObj);
+          const d = calculateCombatDensity(curObj);
+          const c = calculateCombativity(curObj);
           const dChip = document.getElementById('portal-density-chip');
           const cChip = document.getElementById('portal-combativity-chip');
           if (dChip) dChip.innerHTML = '<i class="ph ph-shield-check"></i> Density: ' + d + '%';
@@ -1303,7 +1224,7 @@ export class PortalView {
       const gloryVal = parseIntVal(gloryInput);
 
       if (totalVal < 0) {
-        legacy.showToast('Please enter a valid power number.', 'error');
+        showToast('Please enter a valid power number.', 'error');
         return;
       }
 
@@ -1329,21 +1250,21 @@ export class PortalView {
         this.state.player.glory = gloryVal;
 
         const headerPower = document.querySelector('.portal-header-power-value');
-        if (headerPower) headerPower.textContent = legacy.formatPower(totalVal);
+        if (headerPower) headerPower.textContent = formatPower(totalVal);
 
         if (metricsMsg) {
           metricsMsg.textContent = 'Military force metrics saved successfully!';
           (metricsMsg as HTMLElement).style.color = 'var(--success)';
           (metricsMsg as HTMLElement).style.display = 'block';
         }
-        legacy.showToast('Your military force metrics have been updated!', 'success');
+        showToast('Your military force metrics have been updated!', 'success');
       } catch (err: any) {
         if (metricsMsg) {
           metricsMsg.textContent = 'Failed to save: ' + err.message;
           (metricsMsg as HTMLElement).style.color = 'var(--danger)';
           (metricsMsg as HTMLElement).style.display = 'block';
         }
-        legacy.showToast('Failed to update metrics: ' + err.message, 'error');
+        showToast('Failed to update metrics: ' + err.message, 'error');
       } finally {
         metricsBtn.disabled = false;
         if (span) span.textContent = origText;
@@ -1361,15 +1282,15 @@ export class PortalView {
       let tzOptions = '<option value="">-- Select your timezone --</option>';
       tzRegions.forEach((region) => {
         const zones = COMMON_TIMEZONES.filter((z) => z.region === region);
-        tzOptions += '<optgroup label="' + legacy.esc(region) + '">';
+        tzOptions += '<optgroup label="' + escapeHTML(region) + '">';
         zones.forEach((z) => {
           const selected = currentTz === z.zone ? ' selected' : '';
-          tzOptions += '<option value="' + legacy.esc(z.zone) + '"' + selected + '>' + legacy.esc(z.label) + '</option>';
+          tzOptions += '<option value="' + escapeHTML(z.zone) + '"' + selected + '>' + escapeHTML(z.label) + '</option>';
         });
         tzOptions += '</optgroup>';
       });
       if (currentTz && !COMMON_TIMEZONES.some((z) => z.zone === currentTz)) {
-        tzOptions += '<optgroup label="Custom"><option value="' + legacy.esc(currentTz) + '" selected>' + legacy.esc(currentTz) + '</option></optgroup>';
+        tzOptions += '<optgroup label="Custom"><option value="' + escapeHTML(currentTz) + '" selected>' + escapeHTML(currentTz) + '</option></optgroup>';
       }
       tzSelect.innerHTML = tzOptions;
     }
@@ -1392,7 +1313,7 @@ export class PortalView {
           opt.selected = true;
           tzSelect.appendChild(opt);
         }
-        legacy.showToast('Detected timezone: ' + detected, 'info');
+        showToast('Detected timezone: ' + detected, 'info');
       });
     }
 
@@ -1416,7 +1337,7 @@ export class PortalView {
             (tzMsg as HTMLElement).style.color = 'var(--success)';
             (tzMsg as HTMLElement).style.display = 'block';
           }
-          legacy.showToast('Timezone updated!', 'success');
+          showToast('Timezone updated!', 'success');
         } catch (err: any) {
           if (tzMsg) {
             tzMsg.textContent = 'Failed to save: ' + err.message;
@@ -1441,10 +1362,9 @@ export class PortalView {
         try { accountId = localStorage.getItem('gm_user') || ''; } catch { /* storage blocked */ }
         const go = (): void => {
           if (accountId) savePendingIntent({ kind: 'claim', accountId });
-          const g = gm();
-          if (g && typeof g.loginWithDiscord === 'function') g.loginWithDiscord();
+          loginWithDiscord();
         };
-        legacy.logout().then(go).catch(go);
+        logout().then(go).catch(go);
       });
     }
 
@@ -1474,7 +1394,7 @@ export class PortalView {
       res.guilds.forEach((g: any) => {
         let displayName = g.name ? g.name : g.id;
         if (g.is_same_server === false) displayName += ' (Server #' + g.server_number + ' — Migration Window)';
-        opts += '<option value="' + legacy.esc(g.id) + '">' + legacy.esc(displayName) + '</option>';
+        opts += '<option value="' + escapeHTML(g.id) + '">' + escapeHTML(displayName) + '</option>';
       });
       transferSelect.innerHTML = opts;
     });
@@ -1575,14 +1495,14 @@ export class PortalView {
           : (start > now ? '<span class="portal-absence-badge portal-absence-badge-upcoming">Upcoming</span>'
              : '<span class="portal-absence-badge portal-absence-badge-active">Active</span>');
         const kindLabel = a.kind === 'reduced' ? 'Reduced activity' : 'Full absence';
-        return '<div class="portal-absence-item" data-id="' + legacy.esc(a.id) + '">' +
+        return '<div class="portal-absence-item" data-id="' + escapeHTML(a.id) + '">' +
                   '<div class="portal-absence-item-head">' +
-                    '<div class="portal-absence-item-title"><i class="ph ' + (a.kind === 'reduced' ? 'ph-gauge' : 'ph-user-minus') + '"></i> ' + legacy.esc(kindLabel) + '</div>' +
+                    '<div class="portal-absence-item-title"><i class="ph ' + (a.kind === 'reduced' ? 'ph-gauge' : 'ph-user-minus') + '"></i> ' + escapeHTML(kindLabel) + '</div>' +
                     status +
                   '</div>' +
-                  '<div class="portal-absence-item-dates">' + legacy.esc(a.start_date) + ' → ' + legacy.esc(a.end_date) + '</div>' +
-                  (a.note ? '<div class="portal-absence-item-note">' + legacy.esc(a.note) + '</div>' : '') +
-                  '<button type="button" class="gm-btn gm-btn-ghost gm-btn-sm portal-absence-delete-btn" data-id="' + legacy.esc(a.id) + '"><i class="ph ph-trash"></i><span>Remove</span></button>' +
+                  '<div class="portal-absence-item-dates">' + escapeHTML(a.start_date) + ' → ' + escapeHTML(a.end_date) + '</div>' +
+                  (a.note ? '<div class="portal-absence-item-note">' + escapeHTML(a.note) + '</div>' : '') +
+                  '<button type="button" class="gm-btn gm-btn-ghost gm-btn-sm portal-absence-delete-btn" data-id="' + escapeHTML(a.id) + '"><i class="ph ph-trash"></i><span>Remove</span></button>' +
                 '</div>';
       }).join('') + '</div>';
     }
@@ -1649,7 +1569,7 @@ export class PortalView {
           if (!res.ok) throw new Error(res.error || 'delete_failed');
           this.loadAbsencePanel();
         } catch (err: any) {
-          legacy.showToast('Failed to remove: ' + err.message, 'error');
+          showToast('Failed to remove: ' + err.message, 'error');
           (btn as HTMLButtonElement).disabled = false;
         }
       });

@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import { currentAppVersion } from '../src/modules/app/auth/version-check';
+import { APP_VERSION } from '../src/core/config/constants';
 import fs from 'fs';
 import path from 'path';
 
@@ -20,7 +22,7 @@ describe('Regression: stale long-lived tabs must be detected against version.jso
 
     it('compares the fetched version against the currently-running APP_VERSION before prompting', () => {
         expect(appSrc).toContain('data.version !== currentAppVersion()');
-        expect(appSrc).toMatch(/\.GM && w\.GM\.appVersion/);
+        expect(currentAppVersion()).toBe(APP_VERSION);
     });
 
     it('checks on tab visibility regain, not just a blind interval', () => {

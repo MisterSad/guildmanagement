@@ -5,13 +5,22 @@
  * video upload (ADR-021), file handling, the ocr-guild-members Edge call, and
  * the roster/event commit flow ported from app.js. Reuses the pure helpers in
  * src/modules/ocr/ocr.service.ts. All feedback via dialogs.service; removal
- * confirmation via window.showConfirm; extracted values escaped by the renderer.
+ * confirmation via dialogs.service showConfirm; extracted values escaped by the
+ * renderer. Every collaborator is a typed import (phase M4c).
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { esc, winAny, byId, gm } from '../admin/utils';
-import { showToast } from '../dialogs/dialogs.service';
+import { esc, byId } from '../admin/utils';
+import { showToast, showConfirm } from '../dialogs/dialogs.service';
+import { getClient } from '../../../core/api/supabase';
+import { t } from '../../../core/i18n/i18n';
+import { runInChunks } from '../../../core/utils/async';
+import { getWeekStart } from '../../../core/utils/date';
+import { validateUid } from '../../../core/utils/text';
+import { cache } from '../../../core/cache/cache';
+import { getGuildTag } from '../../../core/config/guild-config';
+import { isRoleAllowedForBulk } from '../../members/members.service';
 import { getGuildMembers } from '../members/members.store';
 import { renderGuildMembers } from '../members/members.render';
 import {
@@ -74,37 +83,11 @@ function resolveWarOcrDay(metric: string): WarOcrDayTarget | null {
   return null;
 }
 
-function w(): any {
-  return winAny();
-}
 function db(): any {
-  const x = gm();
-  return x && x.db ? x.db : null;
-}
-function currentGuild(): string {
-  const x = gm();
-  return x && typeof x.getActiveGuild === 'function' ? x.getActiveGuild() : 'members';
+  return getClient();
 }
 function members(): any[] {
   return getGuildMembers();
-}
-function runInChunks<T>(items: T[], size: number, fn: (item: T) => Promise<void>): Promise<void> {
-  const x = gm();
-  if (x && typeof x.runInChunks === 'function') return x.runInChunks(items, size, fn);
-  return (async () => {
-    for (let i = 0; i < items.length; i += size) {
-      await Promise.all(items.slice(i, i + size).map((it) => fn(it)));
-    }
-  })();
-}
-function getWeekStart(d?: unknown): string {
-  const x = gm();
-  if (x && typeof x.getWeekStart === 'function') return x.getWeekStart(d);
-  const date = d ? new Date(d as any) : new Date();
-  const day = date.getUTCDay();
-  const diff = (day + 6) % 7;
-  date.setUTCDate(date.getUTCDate() - diff);
-  return date.toISOString().slice(0, 10);
 }
 
 // ── Modal lifecycle ──────────────────────────────────────────────────────────
@@ -141,8 +124,7 @@ export async function setOcrMetric(metric: string): Promise<void> {
   const tagInput = byId<HTMLInputElement>('ocr-guild-tag-input');
 
   let configuredTag = '';
-  const x = gm();
-  if (x && typeof x.getGuildTag === 'function') configuredTag = await x.getGuildTag();
+  configuredTag = await getGuildTag();
   if (tagInput && (!tagInput.value || tagInput.dataset.autoFilled === 'true')) {
     tagInput.value = configuredTag || '';
     tagInput.dataset.autoFilled = 'true';
@@ -260,8 +242,7 @@ export function initTimezoneCollapsible(): any {
     if (label) {
       const key = expanded ? 'timezone_collapse' : 'timezone_expand';
       const fallback = expanded ? 'Collapse' : 'Expand';
-      const x = gm();
-      label.textContent = ((x && typeof x.t === 'function' ? x.t(key) : fallback)) || fallback;
+      label.textContent = t(key) || fallback;
       label.setAttribute('data-i18n', key);
     }
   };
@@ -503,7 +484,7 @@ export async function handleOcrFiles(files: File[] | Blob[]): Promise<void> {
   const tagInput = byId<HTMLInputElement>('ocr-guild-tag-input');
   let activeGuildTag = '';
   if (tagInput && tagInput.value.trim()) activeGuildTag = tagInput.value.trim();
-  else { const x = gm(); if (x && typeof x.getGuildTag === 'function') activeGuildTag = await x.getGuildTag(); }
+  else activeGuildTag = await getGuildTag();
 
   // Lazy roster prefetch: if the in-memory store is empty (user opened OCR
   // from an event/GvG/SvS tab without first visiting the Members tab), we
@@ -789,7 +770,8 @@ export async function commitOcrUpdates(): Promise<void> {
 
     try {
       const client = db();
-      const currentG = currentGuild();
+      // Unresolved tenant passes through as before; the RPCs refuse it (H2).
+      const currentG = getActiveGuild() as string;
       if (meta.eventType === 'shadowfront') {
         const sqName = meta.squad === 'squad1' ? 'Shadowfront Squad 1' : 'Shadowfront Squad 2';
         const sqRes = await fetchEventSessionStatus(client, currentG, sqName);
@@ -904,8 +886,7 @@ export async function commitOcrUpdates(): Promise<void> {
   for (const np of selectedNew) {
     const uidVal = String(np.uid || '').trim();
     if (uidVal) {
-      const x = gm();
-      const uidErr = x && typeof x.validateUid === 'function' ? x.validateUid(uidVal) : null;
+      const uidErr = validateUid(uidVal);
       if (uidErr) invalidUidPseudos.push(np.pseudo + ' (' + uidVal + ')');
       else if (newUidSeen.has(uidVal)) duplicateNewUids.push(uidVal);
       else newUidSeen.add(uidVal);
@@ -983,24 +964,19 @@ export async function commitOcrUpdates(): Promise<void> {
   if (checkedRemovalPseudos.length > 0) {
     const listPreview = checkedRemovalPseudos.slice(0, 8).map((p) => esc(p)).join(', ') + (checkedRemovalPseudos.length > 8 ? ' and ' + (checkedRemovalPseudos.length - 8) + ' more' : '');
     const confirmMsg = 'Are you sure you want to permanently remove <strong>' + checkedRemovalPseudos.length + ' member(s)</strong> (' + listPreview + ')?<br><br><span style="color:#f87171; font-size: var(--fs-base);">This permanently deletes the member and their event participations, shadowfront squads, weekly scores and sanctions.</span>';
-    const confirm = w().showConfirm;
-    if (typeof confirm === 'function') {
-      if (btnCommit) btnCommit.disabled = true;
-      confirm(
-        'Confirm Roster Removals',
-        confirmMsg,
-        () => { void run(); },
-        () => {
-          if (btnCommit) {
-            btnCommit.disabled = false;
-            const span = btnCommit.querySelector('span');
-            if (span) span.textContent = 'Validate & Apply Updates';
-          }
+    if (btnCommit) btnCommit.disabled = true;
+    showConfirm(
+      'Confirm Roster Removals',
+      confirmMsg,
+      () => { void run(); },
+      () => {
+        if (btnCommit) {
+          btnCommit.disabled = false;
+          const span = btnCommit.querySelector('span');
+          if (span) span.textContent = 'Validate & Apply Updates';
         }
-      );
-    } else {
-      await run();
-    }
+      }
+    );
   } else {
     await run();
   }
@@ -1020,9 +996,8 @@ export async function executeRosterCommit(
   const meta = getOcrMeta(metric);
 
   try {
-    const x = gm();
     const bulkRank = (rank: unknown): string | undefined =>
-      (typeof rank === 'string' && x && typeof x.isRoleAllowedForBulk === 'function' && x.isRoleAllowedForBulk(rank)) ? rank : undefined;
+      (typeof rank === 'string' && isRoleAllowedForBulk(rank)) ? rank : undefined;
     const roster = members();
 
     // All of it or none of it (M4a, owner decision 2026-10-03): the import is
@@ -1088,6 +1063,5 @@ export async function executeRosterCommit(
 }
 
 function invalidateCache(): void {
-  const x = gm();
-  if (x && x.cache && typeof x.cache.invalidate === 'function') x.cache.invalidate();
+  cache.invalidate();
 }

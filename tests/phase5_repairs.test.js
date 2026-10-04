@@ -172,14 +172,16 @@ describe('B1 — the squad limits read the same way', () => {
   it('translates the refusal, like its two sibling limits already did', () => {
     const view = read('src/modules/shadowfront/views/ShadowfrontView.ts');
     expect(view).not.toContain('You can only have up to 3 commanders per squad!');
-    expect(view).toContain("legacy.t('sf_commanders_full'");
+    expect(view).toContain("t('sf_commanders_full', { n: SHADOWFRONT_COMMANDERS_MAX })");
     expect(EN.sf_commanders_full).toContain('{n}');
   });
 
-  it('passes replacements through the view shim, which used to drop them', () => {
+  it('passes replacements to t(), which the old view shim used to drop', () => {
+    // M4c: the view calls the typed i18n t() directly; there is no shim left
+    // to drop the replacements.
     const view = read('src/modules/shadowfront/views/ShadowfrontView.ts');
-    expect(view).toMatch(/t\(key: string, replacements\?: Record<string, string \| number>\)/);
-    expect(view).toContain('g.t(key, replacements)');
+    expect(view).toMatch(/import \{[^}]*\bt\b[^}]*\} from '\.\.\/\.\.\/\.\.\/core\/i18n\/i18n'/);
+    expect(view).not.toMatch(/function gm\(|const legacy = \{/);
   });
 
   it('NOT A DEFECT: the participant and reserve caps are enforced, not just shown', () => {
@@ -187,7 +189,7 @@ describe('B1 — the squad limits read the same way', () => {
     // refuses the assignment outright, with a translated message.
     const view = read('src/modules/shadowfront/views/ShadowfrontView.ts');
     expect(view).toContain('if (existing.length >= max)');
-    expect(view).toContain("legacy.t('sf_squad_full')");
+    expect(view).toContain("t('sf_squad_full')");
   });
 });
 

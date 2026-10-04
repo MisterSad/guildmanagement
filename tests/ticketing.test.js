@@ -154,7 +154,7 @@ describe('Bug-report ticketing (V3.5.3)', () => {
     expect(tickets).toContain('gm-ticket-status');
     expect(tickets).toContain('gm-ticket-thumb');
     expect(tickets).toContain('openLightbox');
-    expect(tickets).toContain('esc(');
+    expect(tickets).toContain('escapeHTML(');
   });
 
   it('supports screenshot attachments across migration, modal dropzone, and edge function', () => {

@@ -29,7 +29,8 @@ describe('Release version propagation (v3.5.2)', () => {
     // Both render sites read window.GM.appVersion dynamically (never a hardcoded copy)
     const renders = (shell.match(/gm-app-version/g) || []).length;
     expect(renders).toBeGreaterThanOrEqual(2);
-    expect(shell).toContain('g.appVersion');
+    // M4c: the version is the typed constant, not window.GM.appVersion.
+    expect(shell).toContain('APP_VERSION');
     // Order in the sidebar footer: version, then Privacy Policy, then Terms.
     const sidebarFooter = shell.slice(shell.indexOf('gm-sidebar-legal-footer'));
     const iVersion = sidebarFooter.indexOf('gm-app-version');

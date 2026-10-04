@@ -13,6 +13,25 @@ vi.mock('../src/modules/overview/views/OverviewView', () => ({
 }));
 import { overviewView } from '../src/modules/overview/views/OverviewView';
 
+// The admin modules import these directly; each test sets the behaviour it needs.
+vi.mock('../src/core/auth/session', async (importOriginal) => ({
+  ...(await importOriginal()),
+  adminAccounts: vi.fn()
+}));
+vi.mock('../src/core/config/guild-config', async (importOriginal) => ({
+  ...(await importOriginal()),
+  config: { get: vi.fn(async () => ''), set: vi.fn(async () => true) },
+  getGuildTag: vi.fn(async () => '')
+}));
+vi.mock('../src/modules/app/dialogs/dialogs.service', async (importOriginal) => ({
+  ...(await importOriginal()),
+  showConfirm: vi.fn()
+}));
+import { adminAccounts } from '../src/core/auth/session';
+import { config as guildConfig, getGuildTag } from '../src/core/config/guild-config';
+import { showConfirm } from '../src/modules/app/dialogs/dialogs.service';
+import { setVerifiedRole } from '../src/core/auth/roles';
+
 import {
   fetchAccounts,
   fetchGuilds,
@@ -92,12 +111,13 @@ beforeEach(() => {
   localStorage.clear();
   clearAdminStore();
   window.GM = window.GM || {};
-  window.GM.roleFromStorage = () => 'super_admin';
-  window.GM.getActiveGuild = () => 'ALPHA';
-  window.GM.adminAccounts = vi.fn(async (action) => (action === 'list' ? { ok: true, accounts: [] } : { ok: true }));
+  setVerifiedRole('super_admin', 'Super1');
+  adminAccounts.mockReset();
+  adminAccounts.mockImplementation(async (action) => (action === 'list' ? { ok: true, accounts: [] } : { ok: true }));
   window.GM.db = makeDb();
   window.currentGuild = 'ALPHA';
-  window.showConfirm = vi.fn((_title, _msg, onConfirm) => { void onConfirm(); });
+  showConfirm.mockReset();
+  showConfirm.mockImplementation((_title, _msg, onConfirm) => { void onConfirm(); });
 });
 
 afterEach(() => {
@@ -105,8 +125,8 @@ afterEach(() => {
   clearAdminStore();
   document.body.innerHTML = '';
   delete window.GM_ADMIN;
-  delete window.showConfirm;
   delete window.currentGuild;
+  setVerifiedRole(null, null);
   localStorage.clear();
 });
 
@@ -119,7 +139,7 @@ const ACCOUNTS = [
 
 describe('fetchAccounts + account cards', () => {
   it('renders admins, members and pending registrations by role', async () => {
-    window.GM.adminAccounts = vi.fn(async (action) => (action === 'list' ? { ok: true, accounts: ACCOUNTS } : { ok: true }));
+    adminAccounts.mockImplementation(async (action) => (action === 'list' ? { ok: true, accounts: ACCOUNTS } : { ok: true }));
 
     await fetchAccounts();
 
@@ -142,8 +162,8 @@ describe('fetchAccounts + account cards', () => {
   });
 
   it('renders role chips (no selectors) for a non-super-admin viewer', async () => {
-    window.GM.roleFromStorage = () => 'guild_admin';
-    window.GM.adminAccounts = vi.fn(async (action) => (action === 'list' ? { ok: true, accounts: ACCOUNTS } : { ok: true }));
+    setVerifiedRole('guild_admin', 'AdminA');
+    adminAccounts.mockImplementation(async (action) => (action === 'list' ? { ok: true, accounts: ACCOUNTS } : { ok: true }));
 
     await fetchAccounts();
 
@@ -153,7 +173,7 @@ describe('fetchAccounts + account cards', () => {
 
   it('supports grouped super-admin rendering by server', async () => {
     window.guildsData = { ALPHA: { server_number: '1058' } };
-    window.GM.adminAccounts = vi.fn(async (action) => (action === 'list' ? { ok: true, accounts: ACCOUNTS } : { ok: true }));
+    adminAccounts.mockImplementation(async (action) => (action === 'list' ? { ok: true, accounts: ACCOUNTS } : { ok: true }));
 
     await fetchAccounts();
 
@@ -169,8 +189,8 @@ describe('fetchAccounts + account cards', () => {
   // card masked, with its Copy button hidden. The server now issues it and the
   // card must show it.
   it('shows the server-issued password on the new card after "Generate Access"', async () => {
-    window.GM.roleFromStorage = () => 'guild_admin';
-    window.GM.adminAccounts = vi.fn(async (action) => {
+    setVerifiedRole('guild_admin', 'AdminA');
+    adminAccounts.mockImplementation(async (action) => {
       if (action === 'list') return { ok: true, accounts: [] };
       if (action === 'create') return { ok: true, password: 'Srv3rIssued!Pw' };
       return { ok: true };
@@ -184,7 +204,7 @@ describe('fetchAccounts + account cards', () => {
     document.getElementById('create-account-form').dispatchEvent(new Event('submit', { cancelable: true }));
     await tick(); await tick();
 
-    const [, payload] = window.GM.adminAccounts.mock.calls.find(([a]) => a === 'create');
+    const [, payload] = adminAccounts.mock.calls.find(([a]) => a === 'create');
     expect(payload).not.toHaveProperty('password');
     const wrap = document.querySelector('.gm-cred-pass[data-acc-id="NewOfficer"]');
     expect(wrap).toBeTruthy();
@@ -194,14 +214,14 @@ describe('fetchAccounts + account cards', () => {
   });
 
   it('removes an account through deleteAccount and re-renders', async () => {
-    window.GM.adminAccounts = vi.fn(async (action) => {
+    adminAccounts.mockImplementation(async (action) => {
       if (action === 'list') return { ok: true, accounts: ACCOUNTS };
       if (action === 'delete') return { ok: true };
       return { ok: true };
     });
     await fetchAccounts();
     await deleteAccount('AdminA');
-    expect(window.GM.adminAccounts).toHaveBeenCalledWith('delete', { id: 'AdminA' });
+    expect(adminAccounts).toHaveBeenCalledWith('delete', { id: 'AdminA' });
     expect(document.getElementById('account-list').textContent).not.toContain('AdminA');
   });
 });
@@ -226,7 +246,7 @@ describe('fetchGuilds / populateAccountGuildSelect', () => {
 
 describe('guild requests', () => {
   it('renders requests and wires approve/reject actions through showConfirm', async () => {
-    window.GM.adminAccounts = vi.fn(async (action) => {
+    adminAccounts.mockImplementation(async (action) => {
       if (action === 'list-guild-requests') {
         return { ok: true, requests: [{ id: 'req1', guild_tag: 'NEW', server_number: '1058', admin_id: 'admin1', discord_handle: 'a#1', status: 'pending', created_at: '2026-01-01' }] };
       }
@@ -244,8 +264,8 @@ describe('guild requests', () => {
     expect(approveBtn).toBeTruthy();
     approveBtn.click();
 
-    await vi.waitFor(() => expect(window.GM.adminAccounts).toHaveBeenCalledWith('approve-guild-request', { id: 'req1' }));
-    expect(window.showConfirm).toHaveBeenCalled();
+    await vi.waitFor(() => expect(adminAccounts).toHaveBeenCalledWith('approve-guild-request', { id: 'req1' }));
+    expect(showConfirm).toHaveBeenCalled();
   });
 
   it('escapes malicious guild tags and notes (XSS invariant)', () => {
@@ -269,7 +289,7 @@ describe('guild requests', () => {
 
 describe('pending registrations', () => {
   it('renders pending accounts into both containers', async () => {
-    window.GM.adminAccounts = vi.fn(async (action) => (action === 'list' ? { ok: true, accounts: ACCOUNTS } : { ok: true }));
+    adminAccounts.mockImplementation(async (action) => (action === 'list' ? { ok: true, accounts: ACCOUNTS } : { ok: true }));
     await fetchAccounts();
 
     await renderPendingRegistrations('ALPHA');
@@ -281,7 +301,7 @@ describe('pending registrations', () => {
   });
 
   it('approves a registration through resolveRegistration and refreshes', async () => {
-    window.GM.adminAccounts = vi.fn(async (action) => {
+    adminAccounts.mockImplementation(async (action) => {
       if (action === 'list') return { ok: true, accounts: ACCOUNTS };
       if (action === 'approve-registration') return { ok: true };
       return { ok: true };
@@ -291,12 +311,12 @@ describe('pending registrations', () => {
 
     document.querySelector('.gm-pending-approve').click();
 
-    await vi.waitFor(() => expect(window.GM.adminAccounts).toHaveBeenCalledWith('approve-registration', { id: 'Pending1' }));
+    await vi.waitFor(() => expect(adminAccounts).toHaveBeenCalledWith('approve-registration', { id: 'Pending1' }));
     await vi.waitFor(() => expect(overviewView.load).toHaveBeenCalled());
   });
 
   it('rejects a registration through resolveRegistration', async () => {
-    window.GM.adminAccounts = vi.fn(async (action) => {
+    adminAccounts.mockImplementation(async (action) => {
       if (action === 'list') return { ok: true, accounts: ACCOUNTS };
       if (action === 'reject-registration') return { ok: true };
       return { ok: true };
@@ -306,18 +326,16 @@ describe('pending registrations', () => {
 
     document.querySelector('.gm-pending-reject').click();
 
-    await vi.waitFor(() => expect(window.GM.adminAccounts).toHaveBeenCalledWith('reject-registration', { id: 'Pending1' }));
+    await vi.waitFor(() => expect(adminAccounts).toHaveBeenCalledWith('reject-registration', { id: 'Pending1' }));
   });
 });
 
 describe('loadGuildSettings', () => {
   it('loads config values and checkbox state into the form', async () => {
     const config = {};
-    window.GM.config = {
-      get: vi.fn(async (key) => (key in config ? config[key] : '')),
-      set: vi.fn(async (key, value) => { config[key] = value; })
-    };
-    window.GM.getGuildTag = vi.fn(async () => '[FGF]');
+    guildConfig.get.mockImplementation(async (key) => (key in config ? config[key] : ''));
+    guildConfig.set.mockImplementation(async (key, value) => { config[key] = value; });
+    getGuildTag.mockImplementation(async () => '[FGF]');
     document.getElementById('guild-settings-form').insertAdjacentHTML('beforeend', '<input id="coeff-svs" /><input id="notify-svs-pvp" type="checkbox" /><input id="guild-tag-setting" /><input id="guild-server-number-setting" />');
 
     await loadGuildSettings();
@@ -345,7 +363,7 @@ describe('migration groups', () => {
     expect(closeBtn).toBeTruthy();
     closeBtn.click();
     await tick();
-    expect(window.showConfirm).toHaveBeenCalled();
+    expect(showConfirm).toHaveBeenCalled();
     expect(window.GM.db.__calls.update.some((c) => c.table === 'server_migration_groups')).toBe(true);
   });
 

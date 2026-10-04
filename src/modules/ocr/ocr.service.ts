@@ -162,8 +162,7 @@ export async function upsertPlayerMetrics(arg1: any, arg2?: any, arg3?: any, arg
     metrics = (typeof arg3 === 'object' && arg3 !== null) ? arg3 : (arg4 || {});
   }
   if (!guild || !pseudo) return null;
-  const w = (typeof window !== 'undefined' ? window : {}) as any;
-  const supabase = (w.GM && w.GM.db) || w.supabaseClient;
+  const supabase: any = getClient();
   if (!supabase) return null;
   try {
     return await supabase.rpc('gm_upsert_player_metrics', {

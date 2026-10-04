@@ -111,10 +111,10 @@ describe('stats granularity additions (StatsView + StatsService after cutover)',
     expect(migration).toContain("'Shadowfront', 'DTR', 'Arms Race', 'Glory'");
   });
 
-  it('makes leaderboard rows clickable and dispatches to the player-history bridge', () => {
+  it('makes leaderboard rows clickable and dispatches to the player-history dialog', () => {
     expect(statsView).toContain('gm-stats-row-clickable');
     expect(statsView).toContain('data-player-uid');
-    expect(statsView).toContain('legacy.showPlayerHistory');
+    expect(statsView).toContain('showPlayerHistoryDialog(uid, pseudo)');
     expect(statsView).toContain('state.uidMap');
   });
 });

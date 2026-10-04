@@ -7,10 +7,8 @@
  *   - openCustomMsgModal()      (legacy `data-custom-msg` click handler)
  *   - showToast()               (legacy `window.GM_APP.showToast`)
  *
- * The legacy `app.js` is intentionally left in place for this lot; `src/main.ts`
- * overwrites the parse-time bridges with these typed implementations. All
- * `window.GM` reads (escapeHTML / t / db / config) happen at call time so that
- * test stubs and the classic-script → deferred-module load order keep working.
+ * escapeHTML / t / the Supabase client / guild config are typed imports
+ * (phase M4c); nothing here reads a member the app installed on `window`.
  *
  * This module never assigns any `window.GM_*` variable (bridge lives in main.ts).
  */
@@ -18,50 +16,23 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { renderToast } from '../../../core/dom/toast';
+import { drawScoreTrendChart } from '../../../core/dom/ui';
 import { escapeHTML } from '../../../core/utils/text';
-
-function winAny(): any {
-  return (typeof window !== 'undefined' ? window : ({} as any)) as any;
-}
-
-function gm(): any {
-  return winAny().GM;
-}
-
-function t(key: string): string {
-  const w = winAny();
-  const dict = w.GM_I18N;
-  if (dict && typeof dict.t === 'function') return dict.t(key);
-  const g = gm();
-  return g && typeof g.t === 'function' ? g.t(key) : key;
-}
+import { t } from '../../../core/i18n/i18n';
+import { getClient } from '../../../core/api/supabase';
+import { config } from '../../../core/config/guild-config';
 
 function esc(value: unknown): string {
   return escapeHTML(value);
 }
 
-
-function getDb(): any {
-  const g = gm();
-  return g && g.db ? g.db : null;
-}
-
 async function configGet(key: string): Promise<string> {
-  const g = gm();
-  if (g && g.config && typeof g.config.get === 'function') {
-    const value = await g.config.get(key);
-    return value === null || value === undefined ? '' : String(value);
-  }
-  return '';
+  const value = await config.get(key);
+  return value === null || value === undefined ? '' : String(value);
 }
 
 async function configSet(key: string, value: string): Promise<void> {
-  const g = gm();
-  if (g && g.config && typeof g.config.set === 'function') {
-    await g.config.set(key, value);
-    return;
-  }
-  throw new Error('config_unavailable');
+  await config.set(key, value);
 }
 
 /**
@@ -179,7 +150,7 @@ export async function showPlayerHistoryDialog(uid: string, pseudo: string): Prom
     return;
   }
 
-  const db = getDb();
+  const db: any = getClient();
   if (!db) {
     body.innerHTML = '<div class="gm-empty" style="padding:2rem;"><div class="gm-empty-title">Failed to load player history.</div></div>';
     return;
@@ -231,8 +202,7 @@ export async function showPlayerHistoryDialog(uid: string, pseudo: string): Prom
 
     body.innerHTML = sections;
 
-    const g = gm();
-    if (powerHistory.length > 0 && g && typeof g.drawScoreTrendChart === 'function') {
+    if (powerHistory.length > 0) {
       const canvas = document.getElementById('player-history-power-canvas') as HTMLCanvasElement | null;
       if (canvas) {
         const chartHistory = powerHistory.map((h) => ({
@@ -240,7 +210,7 @@ export async function showPlayerHistoryDialog(uid: string, pseudo: string): Prom
           guild_avg_score: 0,
           week_start: h.week_start
         }));
-        g.drawScoreTrendChart(canvas, chartHistory);
+        drawScoreTrendChart(canvas, chartHistory);
       }
     }
   } catch (err) {

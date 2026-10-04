@@ -18,17 +18,24 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { t, esc, winAny, byId, getDb, ls } from './utils';
+import { t, esc, byId, getDb, ls } from './utils';
 import { fetchGuilds } from './accounts.controller';
-import { showToast } from '../dialogs/dialogs.service';
+import { showToast, showConfirm } from '../dialogs/dialogs.service';
+import { getAppState, patchAppState } from '../../../core/state/app-state';
 import { openRenameGuildDialog } from './guild-rename';
 import { queryGuildList, updateGuildServerNumber, deleteGuild } from './admin.service';
+
+/** Server number the app already knows for a guild (state, then localStorage). */
+function knownServerNumber(guildId: string): any {
+  const entry = getAppState().guildsData[guildId];
+  return (entry ? entry.server_number : '')
+    || (ls() ? ls()!.getItem('gm_server_number_' + guildId) : '');
+}
 
 export async function renderGuildsList(): Promise<void> {
   const container = byId('guilds-list-container');
   const db = getDb();
   if (!container || !db) return;
-  const w = winAny();
 
   try {
     const res = await queryGuildList(db);
@@ -42,10 +49,7 @@ export async function renderGuildsList(): Promise<void> {
     const groupedByServer: Record<string, { serverKey: string; sNum: string; guilds: any[] }> = {};
     guildsListRaw.forEach((g: any) => {
       const guildId = g.id;
-      const serverNum = g.server_number
-        || (w.guildsData && w.guildsData[guildId] ? w.guildsData[guildId].server_number : '')
-        || (ls() ? ls()!.getItem('gm_server_number_' + guildId) : '')
-        || '';
+      const serverNum = g.server_number || knownServerNumber(guildId) || '';
       const sKey = serverNum ? ('Server #' + serverNum) : 'Unassigned Server';
       if (!groupedByServer[sKey]) groupedByServer[sKey] = { serverKey: sKey, sNum: serverNum, guilds: [] };
       groupedByServer[sKey].guilds.push(g);
@@ -82,10 +86,7 @@ export async function renderGuildsList(): Promise<void> {
 
       group.guilds.forEach((g: any) => {
         const guildId = g.id;
-        const serverNum = g.server_number
-          || (w.guildsData && w.guildsData[guildId] ? w.guildsData[guildId].server_number : '')
-          || (ls() ? ls()!.getItem('gm_server_number_' + guildId) : '')
-          || '';
+        const serverNum = g.server_number || knownServerNumber(guildId) || '';
 
         const serverTag = serverNum
           ? ' <span style="font-size: var(--fs-sm); font-weight:500; color:var(--fg-dim);">(Server #' + esc(serverNum) + ')</span>'
@@ -151,8 +152,10 @@ export async function renderGuildsList(): Promise<void> {
         btn.innerHTML = '<i class="ph ph-circle-notch spinner"></i>...';
 
         try { ls()?.setItem('gm_server_number_' + guildId, serverNum); } catch (_) { /* ignore */ }
-        if (w.guildsData && w.guildsData[guildId]) {
-          w.guildsData[guildId].server_number = serverNum;
+        const knownGuilds = getAppState().guildsData;
+        const knownEntry = knownGuilds[guildId];
+        if (knownEntry) {
+          patchAppState({ guildsData: { ...knownGuilds, [guildId]: { ...knownEntry, server_number: serverNum } } });
         }
 
         try {
@@ -178,7 +181,6 @@ export async function renderGuildsList(): Promise<void> {
         openRenameGuildDialog(guildId, async () => {
           await fetchGuilds();
           await renderGuildsList();
-          if (typeof w.populateGuildSelects === 'function') w.populateGuildSelects();
         });
       });
     });
@@ -186,8 +188,7 @@ export async function renderGuildsList(): Promise<void> {
     container.querySelectorAll('.delete-guild-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
         const guildId = btn.getAttribute('data-guild') || '';
-        if (!w.showConfirm) return;
-        w.showConfirm(
+        showConfirm(
           t('confirm_delete_guild_title'),
           t('confirm_delete_guild_body') + ' <strong>' + esc(guildId) + '</strong>' + t('confirm_delete_guild_body2'),
           async () => {
@@ -201,15 +202,16 @@ export async function renderGuildsList(): Promise<void> {
               if (!row.ok) throw new Error(row.error || 'Failed to delete guild');
 
               ls()?.removeItem('gm_server_number_' + guildId);
-              if (w.guildsData) delete w.guildsData[guildId];
-              if (w.guildsList) {
-                const idx = w.guildsList.indexOf(guildId);
-                if (idx !== -1) w.guildsList.splice(idx, 1);
-              }
+              const st = getAppState();
+              const remainingData = { ...st.guildsData };
+              delete remainingData[guildId];
+              patchAppState({
+                guildsData: remainingData,
+                guildsList: st.guildsList.filter((id) => id !== guildId)
+              });
               showToast('Guild ' + guildId + ' deleted successfully', 'success');
               await fetchGuilds();
               await renderGuildsList();
-              if (typeof w.populateGuildSelects === 'function') w.populateGuildSelects();
             } catch (err: any) {
               showToast('Error deleting guild: ' + err.message, 'error');
               (btn as HTMLButtonElement).disabled = false;

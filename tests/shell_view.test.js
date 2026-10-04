@@ -8,6 +8,28 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { ShellView, NAV_ITEMS, BREAKPOINT_MOBILE } from '../src/modules/shell/views/ShellView';
+import { APP_VERSION } from '../src/core/config/constants';
+import { onTabActivated } from '../src/modules/app/router';
+
+// ShellView imports its helpers directly (phase M4c): the role predicates come
+// from core/auth/roles and tab activation goes to the router. Both are mocked
+// here so the suite drives the role matrix and observes activations without
+// booting the whole router graph.
+let currentRole = 'member';
+vi.mock('../src/core/auth/roles', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    roleFromStorage: () => currentRole,
+    isSuperAdmin: () => currentRole === 'super_admin',
+    isServerAdmin: () => currentRole === 'server_admin',
+    isGuildAdmin: () => currentRole !== 'member'
+  };
+});
+vi.mock('../src/modules/app/router', () => ({
+  onTabActivated: vi.fn(async () => undefined),
+  reloadActiveView: vi.fn()
+}));
 
 const FIXTURE = `
   <div id="dashboard-view">
@@ -24,31 +46,16 @@ const FIXTURE = `
 let views = [];
 
 function installGM(role) {
-  const calls = { onTabActivated: [], reloadActiveView: [] };
+  currentRole = role;
+  vi.mocked(onTabActivated).mockClear();
+  // The router mock records every activation; tests read the tab ids from it.
+  const calls = {
+    get onTabActivated() { return vi.mocked(onTabActivated).mock.calls.map((c) => c[0]); }
+  };
+  // getClient() still reads window.GM.db, so the fake client goes there.
   window.GM = {
-    t: (k) => k,
-    escapeHTML: (s) => String(s)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;').replace(/'/g, '&#039;'),
-    roleFromStorage: () => role,
-    isSuperAdmin: () => role === 'super_admin',
-    isServerAdmin: () => role === 'server_admin',
-    isGuildAdmin: () => role !== 'member',
-    avatarInit: (s) => String(s || '').slice(0, 1).toUpperCase(),
-    appVersion: 'V-test',
-    detectClientEnvironment: () => ({ appVersion: 'V-test', os: 'TestOS', browser: 'TestBrowser' }),
-    formatTicketDescription: () => 'desc',
-    showToast: () => {},
-    db: { functions: { invoke: async () => ({ data: { ok: true, ticket_number: 7 } }) } },
-    compressImageForUpload: async () => 'data:image/png;base64,AAAA'
+    db: { functions: { invoke: async () => ({ data: { ok: true, ticket_number: 7 } }) } }
   };
-  window.GM_APP = {
-    onTabActivated: (id) => calls.onTabActivated.push(id),
-    reloadActiveView: () => calls.reloadActiveView.push(1)
-  };
-  window.GM_OVERVIEW = { load: vi.fn() };
-  window.GM_SHADOWFRONT = { load: vi.fn() };
-  window.GM_ARMSRACE = { load: vi.fn() };
   window.guildsList = ['ALPHA', 'BETA'];
   window.guildsData = {
     ALPHA: { type: 'Unlimited', server_number: 1 },
@@ -81,10 +88,6 @@ afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
   delete window.GM;
-  delete window.GM_APP;
-  delete window.GM_OVERVIEW;
-  delete window.GM_SHADOWFRONT;
-  delete window.GM_ARMSRACE;
   delete window.guildsList;
   delete window.guildsData;
   delete window.currentGuild;
@@ -127,13 +130,13 @@ describe('ShellView — renderShell()', () => {
     view.init();
     const footer = document.querySelector('[data-gm-sidebar] .gm-sidebar-legal-footer');
     expect(footer).toBeTruthy();
-    expect(footer.querySelector('.gm-app-version').textContent).toBe('V-test');
+    expect(footer.querySelector('.gm-app-version').textContent).toBe(APP_VERSION);
     expect(footer.querySelector('.gm-sidebar-legal-link')).toBeTruthy();
   });
 });
 
 describe('ShellView — gotoItem()', () => {
-  it('persists the tab, toggles .active on the matching panel and calls GM_APP.onTabActivated', () => {
+  it('persists the tab, toggles .active on the matching panel and hands the tab to the router', () => {
     const { view, calls } = boot('guild_admin');
     view.init();
 
@@ -185,8 +188,7 @@ describe('ShellView — nav visibility matrix', () => {
     expect(ids).not.toContain('settings');
     expect(ids).not.toContain('superadmin-accounts');
 
-    window.GM.roleFromStorage = () => 'server_admin';
-    window.GM.isServerAdmin = () => true;
+    currentRole = 'server_admin';
     view.renderSidebar();
     ids = sidebarIds();
     expect(ids).not.toContain('settings');

@@ -5,7 +5,7 @@
  * via the service_role authenticated member-portal Edge Function.
  */
 
-import { getSupabaseClient } from '../../core/api/supabase';
+import { getSupabaseClient, parseFunctionsInvokeResult } from '../../core/api/supabase';
 import { logger } from '../../core/logger/logger';
 
 export interface PortalResponse<T = any> {
@@ -32,7 +32,7 @@ export class PortalService {
       // Recover the real {ok, error} body even when the platform gateway
       // rejected the request with a non-2xx status (rate limit, ...). Without
       // this, supabase-js discards that body and every failure collapses into a
-      // generic "request_failed" — legacy portal.js relied on GM's helper.
+      // generic "request_failed".
       const parsed = await this.parseInvokeResult(res);
       if (!parsed || typeof parsed !== 'object') {
         return { ok: false, error: 'request_failed' };
@@ -44,13 +44,9 @@ export class PortalService {
     }
   }
 
-  /** Uses window.GM.parseFunctionsInvokeResult when available (legacy parity). */
+  /** Recovers the real {ok, error} body through the shared Functions helper. */
   private static async parseInvokeResult(result: any): Promise<any> {
-    const w = (typeof window !== 'undefined' ? window : {}) as any;
-    if (w.GM && typeof w.GM.parseFunctionsInvokeResult === 'function') {
-      return w.GM.parseFunctionsInvokeResult(result);
-    }
-    return (result && result.data) || { ok: false, error: (result && result.error && result.error.message) || 'request_failed' };
+    return parseFunctionsInvokeResult(result);
   }
 
   public static async getActiveSessions(): Promise<PortalResponse> {

@@ -64,8 +64,8 @@ describe('the Portal card replaces the code box', () => {
     expect(portal).toContain('Switch to Discord sign-in');
     const handler = portal.slice(portal.indexOf("getElementById('portal-discord-switch-btn')"));
     // logout() clears sessionStorage, so the intent must be written after it.
-    expect(handler).toMatch(/legacy\.logout\(\)\.then\(go\)\.catch\(go\)/);
-    const go = handler.slice(handler.indexOf('const go = ()'), handler.indexOf('legacy.logout()'));
+    expect(handler).toMatch(/logout\(\)\.then\(go\)\.catch\(go\)/);
+    const go = handler.slice(handler.indexOf('const go = ()'), handler.indexOf('logout().then(go)'));
     expect(go).toContain("savePendingIntent({ kind: 'claim', accountId })");
     expect(go).toContain('loginWithDiscord()');
     expect(go).not.toMatch(/password/i);

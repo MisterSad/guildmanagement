@@ -9,6 +9,30 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { HistoryView } from '../src/modules/history/views/HistoryView';
 import { ALLOWED_HISTORY_FIELDS, isAllowedHistoryField, EVENT_META, FILTERS } from '../src/modules/history/history.service';
+import { isFresh, markFresh } from '../src/core/cache/cache';
+import { showToast } from '../src/core/dom/toast';
+import { showConfirm } from '../src/modules/app/dialogs/dialogs.service';
+
+// The view imports its helpers directly (no more `window.GM.*` /
+// `window.showConfirm` reads): mock the source modules with the stubs the
+// suite used to put on window.
+vi.mock('../src/core/i18n/i18n', async (importOriginal) => ({
+  ...(await importOriginal()),
+  t: (k) => k
+}));
+vi.mock('../src/core/cache/cache', async (importOriginal) => ({
+  ...(await importOriginal()),
+  isFresh: vi.fn(),
+  markFresh: vi.fn()
+}));
+vi.mock('../src/core/dom/toast', async (importOriginal) => ({
+  ...(await importOriginal()),
+  showToast: vi.fn()
+}));
+vi.mock('../src/modules/app/dialogs/dialogs.service', async (importOriginal) => ({
+  ...(await importOriginal()),
+  showConfirm: vi.fn()
+}));
 
 const SESSIONS = [
   { event_name: 'SvS', session_id: 'SVS-2026-W32', week_start: '2026-08-03', participants: 10, participated_count: 8, total_score: 1000 },
@@ -50,21 +74,15 @@ function installGM() {
   cacheFresh = false;
   rpcMock = vi.fn(async () => ({ data: JSON.parse(JSON.stringify(SESSIONS)), error: null }));
   updateMock = vi.fn(() => chained([]));
+  vi.mocked(isFresh).mockReset();
+  vi.mocked(isFresh).mockImplementation(() => cacheFresh);
+  vi.mocked(markFresh).mockReset();
+  vi.mocked(showToast).mockReset();
+  vi.mocked(showConfirm).mockReset();
+  localStorage.setItem('gm_current_guild', 'ALPHA');
+  localStorage.setItem('gm_role', 'guild_admin');
+  // Only the Supabase client is still read from `window.GM` (via getClient()).
   window.GM = {
-    t: (k) => k,
-    escapeHTML: (s) => String(s ?? ''),
-    formatNumber: (n) => String(n ?? ''),
-    avatarInit: (s) => String(s || '').slice(0, 1).toUpperCase(),
-    attachNumberFormatter: vi.fn(),
-    parseNumber: (v) => parseInt(String(v).replace(/[^0-9]/g, ''), 10) || 0,
-    getActiveGuild: () => 'ALPHA',
-    buildEventSessionId: (ev, ws) => 'GLORY-' + ws,
-    getEventIcon: () => 'ph-swords',
-    getEventTheme: () => 'gm-task-card-dark',
-    formatWeek: (w) => w,
-    roleFromStorage: () => 'guild_admin',
-    showToast: vi.fn(),
-    cache: { isFresh: () => cacheFresh, markFresh: vi.fn() },
     db: {
       rpc: rpcMock,
       from: (table) => chained(table === 'event_participants' ? PARTICIPANT_ROWS : [])
@@ -91,6 +109,7 @@ beforeEach(() => {
 afterEach(() => {
   delete window.GM;
   delete window.requestAnimationFrame;
+  localStorage.clear();
   document.body.innerHTML = '';
   vi.restoreAllMocks();
 });
@@ -101,7 +120,7 @@ describe('HistoryView.load() & cache', () => {
     await view.load();
 
     expect(rpcMock).toHaveBeenCalledWith('gm_list_event_sessions', { p_guild: 'ALPHA' });
-    expect(window.GM.cache.markFresh).toHaveBeenCalledWith('history:ALPHA');
+    expect(markFresh).toHaveBeenCalledWith('history:ALPHA');
     expect(area().querySelectorAll('.gm-history-card').length).toBe(3);
     expect(area().querySelectorAll('.history-filter').length).toBe(FILTERS.length);
   });
@@ -146,7 +165,7 @@ describe('HistoryView — modal & security whitelist', () => {
     await tick();
 
     expect(updateMock).toHaveBeenCalledWith({ participated: 0 });
-    expect(window.GM.showToast).toHaveBeenCalledWith('Updated successfully', 'success');
+    expect(showToast).toHaveBeenCalledWith('Updated successfully', 'success');
   });
 
   it('exposes exactly the ALLOWED_HISTORY_FIELDS whitelist', () => {
@@ -165,12 +184,11 @@ describe('HistoryView — modal & security whitelist', () => {
     await view.updateParticipantField('SvS', 'SVS-2026-W32', '2026-08-03', 'Alpha', 'hacked', true);
 
     expect(updateMock).not.toHaveBeenCalled();
-    expect(window.GM.showToast).toHaveBeenCalledWith('Invalid update field', 'error');
+    expect(showToast).toHaveBeenCalledWith('Invalid update field', 'error');
   });
 
   it('requires confirmation before deleting a session from the modal', async () => {
-    const confirmMock = vi.fn();
-    window.showConfirm = confirmMock;
+    const confirmMock = vi.mocked(showConfirm);
     const view = new HistoryView();
     await view.load();
 

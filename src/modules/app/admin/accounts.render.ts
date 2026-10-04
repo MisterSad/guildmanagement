@@ -9,8 +9,12 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { t, esc, gm, winAny, byId } from './utils';
-import { getActiveGuild } from '../../../core/auth/roles';
+import { t, esc, byId } from './utils';
+import { getActiveGuild, roleFromStorage } from '../../../core/auth/roles';
+import { adminAccounts } from '../../../core/auth/session';
+import { showToast } from '../../../core/dom/toast';
+import { getAppState } from '../../../core/state/app-state';
+import { showConfirm } from '../dialogs/dialogs.service';
 import { buildInviteLink } from '../../../core/auth/pending-intent';
 import {
   type AccountRow,
@@ -26,12 +30,10 @@ import { deleteAccount, fetchAccounts } from './accounts.controller';
 import { renderPendingRegistrations } from './guild-requests.controller';
 
 function isSuperAdminUser(): boolean {
-  const g = gm();
-  return !!g && typeof g.roleFromStorage === 'function' && g.roleFromStorage() === 'super_admin';
+  return roleFromStorage() === 'super_admin';
 }
 
 export function renderAccounts(): void {
-  const w = winAny();
   // H2: no ALPHA fallback. An unresolved tenant matches no account's guild,
   // so the list shows only the super_admin (exempted below) rather than
   // presenting ALPHA's roster as if it were the caller's.
@@ -224,7 +226,7 @@ export function renderAccountCardsToContainer(
       '</select>';
 
       let options = '<option value="ALL"' + (!acc.guild ? ' selected' : '') + '>All Guilds</option>';
-      (winAny().guildsList || []).forEach((g: string) => {
+      (getAppState().guildsList || []).forEach((g: string) => {
         options += '<option value="' + esc(g) + '"' + (acc.guild === g ? ' selected' : '') + '>' + esc(g) + '</option>';
       });
       guildSelectHtml = '<select class="gm-select gm-select-sm gm-account-guild-select" data-id="' + esc(acc.id) + '" style="font-size: var(--fs-sm); padding: 0.15rem 0.4rem; height: auto; width: auto; min-width: 90px; border-radius: 4px; line-height: 1.2;">' +
@@ -294,15 +296,13 @@ export function wireAccountCardListeners(container: HTMLElement | null): void {
       if (icon) icon.className = 'ph ph-circle-notch ph-spin';
 
       try {
-        const g = gm();
-        const res = await g.adminAccounts('reset-password', { id: accId });
+        const res = await adminAccounts('reset-password', { id: accId });
         if (!res.ok) throw new Error(res.error || 'reset_failed');
         const pass = res.password;
         revealAccountPassword(accId, pass);
-        g.showToast ? g.showToast('Password renewed: ' + pass + ' (copied to clipboard)', 'success') : undefined;
+        showToast('Password renewed: ' + pass + ' (copied to clipboard)', 'success');
       } catch (err: any) {
-        const g = gm();
-        if (g && g.showToast) g.showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+        showToast(t('toast_err_generic') + ' ' + err.message, 'error');
       } finally {
         (btn as HTMLButtonElement).disabled = false;
         if (icon) icon.className = 'ph ph-arrows-clockwise';
@@ -320,9 +320,7 @@ export function wireAccountCardListeners(container: HTMLElement | null): void {
     btn.addEventListener('click', () => {
       const wrap = btn.closest('.gm-cred-pass') as HTMLElement | null;
       const accId = wrap ? wrap.getAttribute('data-acc-id') || '' : '';
-      const w = winAny();
-      if (!w.showConfirm) return;
-      w.showConfirm(
+      showConfirm(
         'Unlink Discord',
         'This detaches the Discord account currently linked to <strong>' + esc(accId) + '</strong> and ends their active sessions.' +
         '<br><br>A <strong>single-use relink code</strong> will be generated, shown once, and valid for 7 days — relay it to them so they can sign back in with Discord.' +
@@ -333,8 +331,7 @@ export function wireAccountCardListeners(container: HTMLElement | null): void {
           (btn as HTMLButtonElement).disabled = true;
           if (icon) icon.className = 'ph ph-circle-notch ph-spin';
           try {
-            const g = gm();
-            const res = await g.adminAccounts('discord-unlink', { id: accId });
+            const res = await adminAccounts('discord-unlink', { id: accId });
             if (!res.ok) throw new Error(res.error || 'unlink_failed');
 
             // Shown once. The server never stores the plaintext, so there is
@@ -354,30 +351,26 @@ export function wireAccountCardListeners(container: HTMLElement | null): void {
               if (linkCopyBtn) linkCopyBtn.addEventListener('click', () => {
                 const link = buildInviteLink(window.location.origin, 'code', res.relink_code);
                 if (navigator.clipboard) navigator.clipboard.writeText(link)
-                  .then(() => { const gg = gm(); if (gg && gg.showToast) gg.showToast('Relink link copied.', 'success'); })
+                  .then(() => { showToast('Relink link copied.', 'success'); })
                   .catch(() => undefined);
               });
               const copyBtn = holder.querySelector('.gm-relink-copy');
               if (copyBtn) copyBtn.addEventListener('click', () => {
                 if (navigator.clipboard) navigator.clipboard.writeText(res.relink_code)
-                  .then(() => { const gg = gm(); if (gg && gg.showToast) gg.showToast('Relink code copied.', 'success'); })
+                  .then(() => { showToast('Relink code copied.', 'success'); })
                   .catch(() => undefined);
               });
             }
             if (navigator.clipboard) navigator.clipboard.writeText(res.relink_code).catch(() => undefined);
 
-            const gg = gm();
-            if (gg && gg.showToast) {
-              gg.showToast(
-                res.previous_discord_user_id
-                  ? 'Discord unlinked from ' + accId + '. Relink code copied — relay it via Discord.'
-                  : accId + ' had no Discord link. A relink code was issued and copied — relay it via Discord.',
-                'success'
-              );
-            }
+            showToast(
+              res.previous_discord_user_id
+                ? 'Discord unlinked from ' + accId + '. Relink code copied — relay it via Discord.'
+                : accId + ' had no Discord link. A relink code was issued and copied — relay it via Discord.',
+              'success'
+            );
           } catch (err: any) {
-            const gg = gm();
-            if (gg && gg.showToast) gg.showToast('Could not unlink Discord: ' + err.message, 'error');
+            showToast('Could not unlink Discord: ' + err.message, 'error');
           } finally {
             (btn as HTMLButtonElement).disabled = false;
             if (icon) icon.className = originalClass;
@@ -396,8 +389,7 @@ export function wireAccountCardListeners(container: HTMLElement | null): void {
       navigator.clipboard.writeText(pass).then(() => {
         const icon = btn.querySelector('i');
         if (icon) icon.className = 'ph ph-check';
-        const g = gm();
-        if (g && g.showToast) g.showToast('Password copied to clipboard.', 'success');
+        showToast('Password copied to clipboard.', 'success');
         setTimeout(() => { if (icon) icon.className = 'ph ph-copy'; }, 2000);
       });
     });
@@ -406,9 +398,7 @@ export function wireAccountCardListeners(container: HTMLElement | null): void {
   container.querySelectorAll('.gm-cred-delete').forEach((btn) => {
     btn.addEventListener('click', () => {
       const id = btn.getAttribute('data-id') || '';
-      const w = winAny();
-      if (!w.showConfirm) return;
-      w.showConfirm(
+      showConfirm(
         t('confirm_delete_account_title'),
         t('confirm_delete_account_body') + ' <strong>' + esc(id) + '</strong>' + t('confirm_delete_account_body2'),
         () => { void deleteAccount(id); }
@@ -423,15 +413,13 @@ export function wireAccountCardListeners(container: HTMLElement | null): void {
       const acc = findAccount(id);
       (sel as HTMLSelectElement).disabled = true;
       try {
-        const g = gm();
-        const res = await g.adminAccounts('update-role', { id, role: newRole, guild: acc ? acc.guild : null });
+        const res = await adminAccounts('update-role', { id, role: newRole, guild: acc ? acc.guild : null });
         if (!res.ok) throw new Error(res.error || 'update_failed');
-        if (g.showToast) g.showToast('Role for ' + id + ' updated to ' + newRole + ' successfully!', 'success');
+        showToast('Role for ' + id + ' updated to ' + newRole + ' successfully!', 'success');
         updateAccountRole(id, newRole, res.server_number);
         renderAccounts();
       } catch (err: any) {
-        const g = gm();
-        if (g && g.showToast) g.showToast('Error updating role: ' + err.message, 'error');
+        showToast('Error updating role: ' + err.message, 'error');
         void fetchAccounts();
       } finally {
         (sel as HTMLSelectElement).disabled = false;
@@ -445,15 +433,13 @@ export function wireAccountCardListeners(container: HTMLElement | null): void {
       const newGuild = (sel as HTMLSelectElement).value;
       (sel as HTMLSelectElement).disabled = true;
       try {
-        const g = gm();
-        const res = await g.adminAccounts('update-guild', { id, guild: newGuild });
+        const res = await adminAccounts('update-guild', { id, guild: newGuild });
         if (!res.ok) throw new Error(res.error || 'update_failed');
-        if (g.showToast) g.showToast('Access for ' + id + ' updated successfully!', 'success');
+        showToast('Access for ' + id + ' updated successfully!', 'success');
         updateAccountGuild(id, newGuild === 'ALL' ? null : newGuild);
         renderAccounts();
       } catch (err: any) {
-        const g = gm();
-        if (g && g.showToast) g.showToast('Error updating: ' + err.message, 'error');
+        showToast('Error updating: ' + err.message, 'error');
         void fetchAccounts();
       } finally {
         (sel as HTMLSelectElement).disabled = false;

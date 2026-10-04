@@ -7,21 +7,22 @@
  * exercised by `tests/shell_view.test.js`.
  *
  * Architecture:
- *   - All `window.GM.*`, `window.currentGuild`, `window.guildsList`,
- *     `window.guildsData`, `window.GM_APP.*` reads happen at call time through
- *     an internal typed adapter (no capture at module load).
+ *   - Helpers (i18n, roles, toasts, the Supabase client, the tab router) are
+ *     imported directly and guild state comes from `getAppState()` (phase
+ *     M4c); the module reads no `window.GM*` member. The router imports this
+ *     module too: the cycle is call-time only on both sides.
  *   - The sibling views it drives on tab activation (Overview, Shadowfront,
- *     Arms Race), imported directly since phase 7
- *     are resolved through a lazy registry, at call time, behind the same
- *     `if (module && module.load)` guards — none of them is imported or
- *     required to migrate.
+ *     Arms Race) are imported directly since phase 7.
  *   - Side effects (MutationObserver, matchMedia listener, 30s setInterval) are
  *     tracked so `destroy()` can clean them up (no jsdom leaks).
  *   - This module never assigns any `window.GM_*` variable.
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { getActiveGuild } from '../../../core/auth/roles';
+import {
+  getActiveGuild, roleFromStorage, isSuperAdmin as isSuperAdminRole, isServerAdmin as isServerAdminRole,
+  isGuildAdmin, detectClientEnvironment
+} from '../../../core/auth/roles';
 import { getAppState, patchAppState } from '../../../core/state/app-state';
 
 export type ShellRole = 'member' | 'guild_admin' | 'server_admin' | 'super_admin' | string;
@@ -38,14 +39,6 @@ export interface ShellNavItem {
   adminOnly?: boolean;
   r5Only?: boolean;
   panels: string[];
-}
-
-function winAny(): any {
-  return (typeof window !== 'undefined' ? window : ({} as any)) as any;
-}
-
-function gm(): any {
-  return winAny().GM;
 }
 
 // ── Navigation items (verbatim from shell.js) ─────────────────────────────────
@@ -80,107 +73,37 @@ const EVENT_TABS = [
 
 // ── Legacy adapter (call-time reads, no writes) ───────────────────────────────
 
-import { escapeHTML } from '../../../core/utils/text';
+import { escapeHTML, avatarInit } from '../../../core/utils/text';
+import { t } from '../../../core/i18n/i18n';
+import { getClient } from '../../../core/api/supabase';
+import { APP_VERSION } from '../../../core/config/constants';
+import { showToast } from '../../../core/dom/toast';
+import { formatTicketDescription } from '../../members/members.service';
+import { compressImageForUpload } from '../../ocr/ocr.service';
+import { onTabActivated, reloadActiveView } from '../../app/router';
 import { createTicket } from '../shell.service';
 import { overviewView } from '../../overview/views/OverviewView';
 import { shadowfrontView } from '../../shadowfront/views/ShadowfrontView';
 import { armsRaceView } from '../../armsrace/views/ArmsRaceView';
 
-const legacy = {
-  t(key: string): string {
-    const g = gm();
-    return g && typeof g.t === 'function' ? g.t(key) : key;
-  },
-  esc(value: unknown): string {
-    return escapeHTML(value);
-  },
-  roleFromStorage(): ShellRole {
-    const g = gm();
-    return g && typeof g.roleFromStorage === 'function' ? g.roleFromStorage() : 'member';
-  },
-  isSuperAdmin(): boolean {
-    const g = gm();
-    return !!(g && typeof g.isSuperAdmin === 'function' && g.isSuperAdmin());
-  },
-  isServerAdmin(): boolean {
-    const g = gm();
-    return !!(g && typeof g.isServerAdmin === 'function' && g.isServerAdmin());
-  },
-  isGuildAdmin(): boolean {
-    const g = gm();
-    return !!(g && typeof g.isGuildAdmin === 'function' && g.isGuildAdmin());
-  },
-  avatarInit(value: string): string {
-    const g = gm();
-    return g && typeof g.avatarInit === 'function' ? g.avatarInit(value) : String(value || '').slice(0, 1).toUpperCase();
-  },
-  appVersion(): string {
-    const g = gm();
-    return g && g.appVersion ? String(g.appVersion) : '';
-  },
-  detectClientEnvironment(): any {
-    const g = gm();
-    if (g && typeof g.detectClientEnvironment === 'function') return g.detectClientEnvironment();
-    return { appVersion: legacy.appVersion() || 'V3.5.3', os: 'Unknown OS', browser: 'Unknown Browser' };
-  },
-  formatTicketDescription(payload: unknown): string {
-    const g = gm();
-    return g && typeof g.formatTicketDescription === 'function' ? g.formatTicketDescription(payload) : '';
-  },
-  showToast(msg: string, type: string): void {
-    const g = gm();
-    if (g && typeof g.showToast === 'function') g.showToast(msg, type);
-  },
-  db(): any {
-    const g = gm();
-    return g && g.db ? g.db : null;
-  },
-  getCurrentGuild(): string | null {
-    // H2: null, not ALPHA. The sidebar badge renders an explicit placeholder.
-    return getActiveGuild();
-  },
-  setCurrentGuild(guild: string): void {
-    // Through the store, which mirrors onto `window` itself. Assigning the
-    // global directly left getAppState() reporting the previous guild.
-    patchAppState({ currentGuild: guild });
-  },
-  getGuildsList(): string[] {
-    return getAppState().guildsList;
-  },
-  getGuildsData(): Record<string, any> {
-    return getAppState().guildsData;
-  },
-  guildsDataRaw(): any {
-    return getAppState().guildsData;
-  },
-  getCurrentGuildRestriction(): string | null {
-    return getAppState().currentGuildRestriction;
-  },
-  setCurrentGuildRestriction(value: string): void {
-    patchAppState({ currentGuildRestriction: value });
-  },
-  appOnTabActivated(tabId: string): void {
-    const app = winAny().GM_APP;
-    if (app && typeof app.onTabActivated === 'function') app.onTabActivated(tabId);
-  },
-  appReloadActiveView(): boolean {
-    const app = winAny().GM_APP;
-    if (app && typeof app.reloadActiveView === 'function') {
-      app.reloadActiveView();
-      return true;
-    }
-    return false;
-  },
-  matchMedia(query: string): any {
-    const w = winAny();
-    if (typeof w.matchMedia === 'function') return w.matchMedia(query);
-    return { matches: false, addEventListener: () => undefined, removeEventListener: () => undefined };
-  },
-  reload(): void {
-    const w = winAny();
-    if (w.location && typeof w.location.reload === 'function') w.location.reload();
-  }
-};
+/**
+ * Sets the active guild through the store, which mirrors onto `window` itself.
+ * Assigning the global directly left getAppState() reporting the previous guild.
+ */
+function setCurrentGuild(guild: string): void {
+  patchAppState({ currentGuild: guild });
+}
+
+/** Hands a tab activation to the router (fire-and-forget, as the bridge did). */
+function activateTab(tabId: string): void {
+  void onTabActivated(tabId);
+}
+
+/** `window.matchMedia`, or an inert stand-in where the host has none (jsdom). */
+function matchMediaOrStub(query: string): any {
+  if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') return window.matchMedia(query);
+  return { matches: false, addEventListener: () => undefined, removeEventListener: () => undefined };
+}
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -204,7 +127,7 @@ interface ShellState {
 function createState(): ShellState {
   return {
     active: 'accounts',
-    mobile: !!legacy.matchMedia('(max-width: ' + BREAKPOINT_MOBILE + 'px)').matches,
+    mobile: !!matchMediaOrStub('(max-width: ' + BREAKPOINT_MOBILE + 'px)').matches,
     drawerOpen: false
   };
 }
@@ -303,7 +226,7 @@ export class ShellView {
             void shadowfrontView.load();
           }
 
-          legacy.appOnTabActivated(tabId);
+          activateTab(tabId);
         });
       });
     });
@@ -389,14 +312,14 @@ export class ShellView {
         '<div class="gm-page">' +
           '<header class="gm-page-header">' +
             '<div>' +
-              '<h1 class="gm-page-title">' + legacy.t('gm_overview_title') + '</h1>' +
-              '<p class="gm-page-subtitle">' + legacy.t('gm_overview_sub') + '</p>' +
+              '<h1 class="gm-page-title">' + t('gm_overview_title') + '</h1>' +
+              '<p class="gm-page-subtitle">' + t('gm_overview_sub') + '</p>' +
             '</div>' +
           '</header>' +
           '<div class="gm-empty">' +
             '<i class="ph ph-rocket-launch gm-icon"></i>' +
-            '<div class="gm-empty-title">' + legacy.t('gm_overview_soon') + '</div>' +
-            '<div class="gm-empty-hint">' + legacy.t('gm_overview_soon_hint') + '</div>' +
+            '<div class="gm-empty-title">' + t('gm_overview_soon') + '</div>' +
+            '<div class="gm-empty-hint">' + t('gm_overview_soon_hint') + '</div>' +
           '</div>' +
         '</div>';
       content.appendChild(ov);
@@ -435,33 +358,34 @@ export class ShellView {
     return localStorage.getItem('gm_user') || 'Membre';
   }
   private getUserRole(): ShellRole {
-    return legacy.roleFromStorage() || 'member';
+    return roleFromStorage() || 'member';
   }
   private getUserRoleLong(): string {
     const r = this.getUserRole();
     if (r === 'super_admin') return 'Super Admin';
-    if (winAny().currentGuildRestriction) {
-      return 'Admin ' + winAny().currentGuildRestriction;
+    const restriction = getAppState().currentGuildRestriction;
+    if (restriction) {
+      return 'Admin ' + restriction;
     }
     return 'Admin';
   }
 
   private renderGuildSelectorHtml(): string {
-    const isSuperAdmin = legacy.isSuperAdmin();
-    let guilds = legacy.getGuildsList();
-    const restriction = legacy.getCurrentGuildRestriction();
-    const guildsData = legacy.getGuildsData();
+    const isSuperAdmin = isSuperAdminRole();
+    let guilds = getAppState().guildsList;
+    const restriction = getAppState().currentGuildRestriction;
+    const guildsData = getAppState().guildsData;
     if (restriction) {
       guilds = [restriction];
-      legacy.setCurrentGuild(restriction);
+      setCurrentGuild(restriction);
       localStorage.setItem('gm_current_guild', restriction);
     }
 
     if (isSuperAdmin && !restriction) {
       const guildOptions = guilds.map((g) => {
         const sVal = (guildsData[g] && guildsData[g].server_number) ? String(guildsData[g].server_number).replace(/^#+/, '') : '';
-        const sNum = sVal ? ' (#' + legacy.esc(sVal) + ')' : '';
-        return '<option value="' + legacy.esc(g) + '"' + (legacy.getCurrentGuild() === g ? ' selected' : '') + '>' + legacy.esc(g) + sNum + '</option>';
+        const sNum = sVal ? ' (#' + escapeHTML(sVal) + ')' : '';
+        return '<option value="' + escapeHTML(g) + '"' + (getActiveGuild() === g ? ' selected' : '') + '>' + escapeHTML(g) + sNum + '</option>';
       }).join('');
       return '<div class="gm-sidebar-guild-select-wrapper">' +
         '<select class="gm-sidebar-guild-select" data-gm-guild-select>' +
@@ -469,16 +393,16 @@ export class ShellView {
         '</select>' +
       '</div>';
     } else {
-      const displayGuild = restriction || legacy.getCurrentGuild();
+      const displayGuild = restriction || getActiveGuild();
       if (!displayGuild) {
         // H2: showing 'ALPHA' here told the user they were in a tenant they had
         // not selected -- the most visible face of this finding.
         return '<div class="gm-sidebar-guild-badge gm-sidebar-guild-badge--unresolved">'
-          + legacy.esc(legacy.t('guild_unresolved')) + '</div>';
+          + escapeHTML(t('guild_unresolved')) + '</div>';
       }
       const sVal = (guildsData[displayGuild] && guildsData[displayGuild].server_number) ? String(guildsData[displayGuild].server_number).replace(/^#+/, '') : '';
-      const sNum = sVal ? ' #' + legacy.esc(sVal) : '';
-      return '<div class="gm-sidebar-guild-badge">' + legacy.esc(displayGuild) + sNum + '</div>';
+      const sNum = sVal ? ' #' + escapeHTML(sVal) : '';
+      return '<div class="gm-sidebar-guild-badge">' + escapeHTML(displayGuild) + sNum + '</div>';
     }
   }
 
@@ -496,7 +420,7 @@ export class ShellView {
     const el = document.querySelector('[data-gm-sidebar]');
     if (!el) return;
 
-    const canReportBug = legacy.isGuildAdmin();
+    const canReportBug = isGuildAdmin();
 
     const visible = this.visibleNavItems();
     const playItems = visible.filter((i) => i.section === 'play');
@@ -504,19 +428,19 @@ export class ShellView {
     const superAdminItems = visible.filter((i) => i.section === 'superadmin');
     const footerItems = visible.filter((i) => i.section === 'footer');
 
-    const userAvatarInitials = legacy.esc(legacy.avatarInit(this.getUserName()));
+    const userAvatarInitials = escapeHTML(avatarInit(this.getUserName()));
 
     let navHtml = '';
     if (playItems.length > 0) {
-      navHtml += '<div class="gm-nav-section-label">' + legacy.t('gm_nav_play') + '</div>' +
+      navHtml += '<div class="gm-nav-section-label">' + t('gm_nav_play') + '</div>' +
         playItems.map((i) => this.navItemHtml(i)).join('');
     }
     if (adminItems.length > 0) {
-      navHtml += '<div class="gm-nav-section-label">' + legacy.t('gm_nav_admin') + '</div>' +
+      navHtml += '<div class="gm-nav-section-label">' + t('gm_nav_admin') + '</div>' +
         adminItems.map((i) => this.navItemHtml(i)).join('');
     }
     if (superAdminItems.length > 0) {
-      navHtml += '<div class="gm-nav-section-label">' + legacy.t('gm_nav_superadmin') + '</div>' +
+      navHtml += '<div class="gm-nav-section-label">' + t('gm_nav_superadmin') + '</div>' +
         superAdminItems.map((i) => this.navItemHtml(i)).join('');
     }
 
@@ -527,10 +451,10 @@ export class ShellView {
             '<div class="gm-user-avatar">' + userAvatarInitials + '</div>' +
           '</div>' +
           '<div class="gm-sidebar-user-info">' +
-            '<div class="gm-sidebar-user-name">' + legacy.esc(this.getUserName()) + '</div>' +
+            '<div class="gm-sidebar-user-name">' + escapeHTML(this.getUserName()) + '</div>' +
             '<div class="gm-sidebar-user-role">' + this.getUserRoleLong() + '</div>' +
           '</div>' +
-          '<button class="gm-sidebar-logout" data-gm-logout title="' + legacy.t('nav_logout_title') + '">' +
+          '<button class="gm-sidebar-logout" data-gm-logout title="' + t('nav_logout_title') + '">' +
             '<i class="ph ph-sign-out"></i>' +
           '</button>' +
         '</div>' +
@@ -542,17 +466,17 @@ export class ShellView {
       footerItems.map((item) => {
         return '<button type="button" class="gm-btn gm-btn-ghost gm-btn-sm gm-sidebar-report-bug" data-gm-nav-item="' + item.id + '">' +
           '<i class="ph ' + (item.icon || 'ph-circle') + '" style="font-size: var(--fs-xl);"></i>' +
-          '<span>' + legacy.t(item.labelKey) + '</span>' +
+          '<span>' + t(item.labelKey) + '</span>' +
         '</button>';
       }).join('') +
       (canReportBug
         ? '<button type="button" class="gm-btn gm-btn-ghost gm-btn-sm gm-sidebar-report-bug" data-gm-report-bug>' +
             '<i class="ph ph-bug" style="font-size: var(--fs-xl);"></i>' +
-            '<span>' + legacy.t('ticket_report_bug') + '</span>' +
+            '<span>' + t('ticket_report_bug') + '</span>' +
           '</button>'
         : '') +
       '<div class="gm-sidebar-legal-footer">' +
-        '<div class="gm-app-version">' + legacy.esc(legacy.appVersion()) + '</div>' +
+        '<div class="gm-app-version">' + escapeHTML(APP_VERSION) + '</div>' +
         '<a href="privacy.html" class="gm-sidebar-legal-link" data-i18n="footer_privacy">Privacy Policy</a>' +
         '<a href="terms.html" class="gm-sidebar-legal-link" data-i18n="footer_terms">Terms &amp; Conditions</a>' +
       '</div>';
@@ -573,10 +497,10 @@ export class ShellView {
       gSel.addEventListener('change', () => {
         const newGuild = gSel.value;
         localStorage.setItem('gm_current_guild', newGuild);
-        legacy.setCurrentGuild(newGuild);
+        setCurrentGuild(newGuild);
         this.renderSidebar();
         this.renderTopbar();
-        if (!legacy.appReloadActiveView()) legacy.reload();
+        reloadActiveView();
       });
     }
 
@@ -591,7 +515,7 @@ export class ShellView {
 
   private navItemHtml(item: ShellNavItem): string {
     const isActive = this.state.active === item.id;
-    const label = legacy.t(item.labelKey);
+    const label = t(item.labelKey);
     const phIcon = item.icon || 'ph-circle';
 
     return '<button class="gm-nav-item' + (isActive ? ' gm-active' : '') + '" data-gm-nav-item="' + item.id + '">' +
@@ -610,16 +534,16 @@ export class ShellView {
         '</div>'
       : '<div class="gm-topbar-brand"></div>';
 
-    const isSuperAdmin = legacy.isSuperAdmin();
-    const isServerAdmin = legacy.isServerAdmin();
+    const isSuperAdmin = isSuperAdminRole();
+    const isServerAdmin = isServerAdminRole();
     const serverRestriction = localStorage.getItem('gm_server_restriction');
 
-    let guilds = legacy.getGuildsList();
-    const guildsDataRaw = legacy.guildsDataRaw();
-    const restriction = legacy.getCurrentGuildRestriction();
+    let guilds = getAppState().guildsList;
+    const guildsDataRaw = getAppState().guildsData;
+    const restriction = getAppState().currentGuildRestriction;
     if (restriction) {
       guilds = [restriction];
-      legacy.setCurrentGuild(restriction);
+      setCurrentGuild(restriction);
       localStorage.setItem('gm_current_guild', restriction);
     } else if (isServerAdmin && serverRestriction && guildsDataRaw) {
       const guildsData = guildsDataRaw as Record<string, any>;
@@ -629,21 +553,21 @@ export class ShellView {
       // H2: an unresolved guild now also lands here and gets RESOLVED to the
       // first guild this server_admin actually governs, instead of being left
       // pointing at ALPHA.
-      const cur = legacy.getCurrentGuild();
+      const cur = getActiveGuild();
       if (guilds.length > 0 && (!cur || guilds.indexOf(cur) === -1)) {
-        legacy.setCurrentGuild(guilds[0]);
+        setCurrentGuild(guilds[0]);
         localStorage.setItem('gm_current_guild', guilds[0]);
       }
     }
     const guildOptions = guilds.map((g) => {
-      return '<option value="' + legacy.esc(g) + '"' + (legacy.getCurrentGuild() === g ? ' selected' : '') + '>' + legacy.esc(g) + '</option>';
+      return '<option value="' + escapeHTML(g) + '"' + (getActiveGuild() === g ? ' selected' : '') + '>' + escapeHTML(g) + '</option>';
     }).join('');
 
     const selectStyle = (isSuperAdmin || (isServerAdmin && guilds.length > 1))
       ? 'padding: 0.35rem 0.8rem; font-size: var(--fs-base); font-weight: 600; border-radius: 6px; background: var(--bg-soft); border: 1px solid var(--border-soft); color: var(--text-main); cursor: pointer; outline: none; transition: border-color 0.2s;'
       : 'display: none; padding: 0.35rem 0.8rem; font-size: var(--fs-base); font-weight: 600; border-radius: 6px; background: var(--bg-soft); border: 1px solid var(--border-soft); color: var(--text-main); cursor: pointer; outline: none; transition: border-color 0.2s;';
 
-    const canReportBug = legacy.isGuildAdmin();
+    const canReportBug = isGuildAdmin();
 
     const html = brandHtml +
       '<div class="gm-topbar-actions">' +
@@ -651,12 +575,12 @@ export class ShellView {
           guildOptions +
         '</select>' +
         (canReportBug
-          ? '<button class="gm-btn gm-btn-ghost gm-btn-sm" data-gm-report-bug title="' + legacy.t('ticket_report_bug') + '" style="gap:0.3rem;">' +
+          ? '<button class="gm-btn gm-btn-ghost gm-btn-sm" data-gm-report-bug title="' + t('ticket_report_bug') + '" style="gap:0.3rem;">' +
               '<i class="ph ph-bug" style="font-size: var(--fs-lg);"></i>' +
-              '<span class="gm-report-bug-label" style="font-size: var(--fs-sm); font-weight:600;">' + legacy.t('ticket_report_bug') + '</span>' +
+              '<span class="gm-report-bug-label" style="font-size: var(--fs-sm); font-weight:600;">' + t('ticket_report_bug') + '</span>' +
             '</button>'
           : '') +
-        '<button class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm" data-gm-logout title="' + legacy.t('nav_logout_title') + '">' +
+        '<button class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm" data-gm-logout title="' + t('nav_logout_title') + '">' +
           '<i class="ph ph-sign-out"></i>' +
         '</button>' +
       '</div>';
@@ -667,12 +591,12 @@ export class ShellView {
       gs.addEventListener('change', () => {
         const newGuild = gs.value;
         localStorage.setItem('gm_current_guild', newGuild);
-        legacy.setCurrentGuild(newGuild);
+        setCurrentGuild(newGuild);
 
         this.renderSidebar();
         this.renderTopbar();
 
-        if (!legacy.appReloadActiveView()) legacy.reload();
+        reloadActiveView();
       });
     }
 
@@ -688,12 +612,12 @@ export class ShellView {
 
   // ── Bug-report ticket modal ───────────────────────────────────────────────
   public openBugReportModal(): void {
-    if (!legacy.isGuildAdmin()) return;
+    if (!isGuildAdmin()) return;
     if (document.getElementById('bug-report-modal')) return;
 
-    const esc = (v: unknown) => legacy.esc(v);
-    const t_ = (k: string) => legacy.t(k);
-    const env = legacy.detectClientEnvironment();
+    const esc = (v: unknown) => escapeHTML(v);
+    const t_ = (k: string) => t(k);
+    const env = detectClientEnvironment();
 
     const overlay = document.createElement('div');
     overlay.className = 'gm-modal-overlay visible';
@@ -734,14 +658,11 @@ export class ShellView {
         const f = files[i];
         if (!f.type || !f.type.startsWith('image/')) continue;
         if (attachedScreenshots.length >= 3) {
-          legacy.showToast(t_('ticket_screenshots_max_err'), 'error');
+          showToast(t_('ticket_screenshots_max_err'), 'error');
           break;
         }
         try {
-          const gmAny = gm();
-          const dataUrl = (gmAny && typeof gmAny.compressImageForUpload === 'function')
-            ? await gmAny.compressImageForUpload(f, 1280, 0.82)
-            : await new Promise((res) => { const r = new FileReader(); r.onload = () => { res(r.result); }; r.readAsDataURL(f); });
+          const dataUrl = await compressImageForUpload(f, 1280, 0.82);
           attachedScreenshots.push(String(dataUrl));
           renderScreenshots();
         } catch (err) {
@@ -830,19 +751,13 @@ export class ShellView {
           return;
         }
 
-        const description = ((): string => {
-          const g = gm();
-          if (g && typeof g.formatTicketDescription === 'function') {
-            return g.formatTicketDescription({ currentBehavior, expectedBehavior, steps, additionalContext, env });
-          }
-          return currentBehavior + '\n\n' + expectedBehavior;
-        })();
+        const description = formatTicketDescription({ currentBehavior, expectedBehavior, steps, additionalContext, env });
 
         submit.disabled = true;
         submit.innerHTML = '<i class="ph ph-arrows-clockwise" style="font-size: var(--fs-lg);"></i> ' + t_('ticket_submitting');
         if (msgEl) msgEl.textContent = '';
         try {
-          const db = legacy.db();
+          const db = getClient() as any;
           if (!db || !db.functions) throw new Error('db unavailable');
           const res = await createTicket(db, {
             title,
@@ -865,7 +780,7 @@ export class ShellView {
             msgEl.textContent = t_('ticket_success') + ' #TICKET-' + num;
             msgEl.style.color = '#34d399';
           }
-          legacy.showToast(t_('ticket_success') + ' #TICKET-' + num, 'success');
+          showToast(t_('ticket_success') + ' #TICKET-' + num, 'success');
           setTimeout(close, 1800);
         } catch (err: any) {
           console.error('ticket submit error', err);
@@ -975,13 +890,13 @@ export class ShellView {
       const phIcon = item.icon || 'ph-circle';
       html += '<button class="gm-bottom-nav-item' + (isActive ? ' gm-active' : '') + '" data-gm-nav-item="' + id + '">' +
                   '<i class="ph ' + phIcon + ' gm-icon"></i>' +
-                  '<span>' + legacy.t(item.labelKey) + '</span>' +
+                  '<span>' + t(item.labelKey) + '</span>' +
                 '</button>';
     });
     html += '<button class="gm-bottom-nav-item" data-gm-more>' +
                 '<i class="ph ph-dots-three gm-icon"></i>' +
                 '<span class="gm-bottom-nav-unread-badge hidden" id="bottom-nav-more-badge">0</span>' +
-                '<span>' + legacy.t('gm_nav_more') + '</span>' +
+                '<span>' + t('gm_nav_more') + '</span>' +
             '</button>';
     html += '</div>';
     el.innerHTML = html;
@@ -1003,7 +918,7 @@ export class ShellView {
     let html = '<div class="gm-drawer-handle"></div><div class="gm-drawer-grid">';
     this.visibleNavItems().forEach((item) => {
       const isActive = this.state.active === item.id;
-      const label = legacy.t(item.labelKey);
+      const label = t(item.labelKey);
       const phIcon = item.icon || 'ph-circle';
 
       html += '<button class="gm-drawer-item' + (isActive ? ' gm-active' : '') + '" data-gm-nav-item="' + item.id + '">' +
@@ -1012,7 +927,7 @@ export class ShellView {
               '</button>';
     });
     html += '<div class="gm-sidebar-legal-footer" style="grid-column: 1 / -1; margin-top: 0.5rem; border-top: 1px solid var(--border-soft); padding: 0.75rem 0.5rem 0.25rem 0.5rem;">' +
-                '<div class="gm-app-version">' + legacy.esc(legacy.appVersion()) + '</div>' +
+                '<div class="gm-app-version">' + escapeHTML(APP_VERSION) + '</div>' +
                 '<a href="privacy.html" class="gm-sidebar-legal-link" data-i18n="footer_privacy">Privacy Policy</a>' +
                 '<a href="terms.html" class="gm-sidebar-legal-link" data-i18n="footer_terms">Terms &amp; Conditions</a>' +
             '</div>';
@@ -1066,7 +981,7 @@ export class ShellView {
       }
     }
 
-    legacy.appOnTabActivated(targetTabId);
+    activateTab(targetTabId);
   }
 
   // ── Observe active panel to sync the active nav item ─────────────────────
@@ -1098,7 +1013,7 @@ export class ShellView {
   }
 
   private observeViewport(): void {
-    const mq = legacy.matchMedia('(max-width: ' + BREAKPOINT_MOBILE + 'px)');
+    const mq = matchMediaOrStub('(max-width: ' + BREAKPOINT_MOBILE + 'px)');
     this.mediaQuery = mq;
     this.mediaQueryHandler = (e: any) => {
       this.state.mobile = !!e.matches;

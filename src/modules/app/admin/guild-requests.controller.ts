@@ -4,16 +4,18 @@
  * Sous-lot 6.5 (Strangler) — guild requests review, guild settings, and pending
  * player registrations ported from app.js. XSS invariant preserved: every
  * request/pseudo/tag value is passed through esc(); confirmations go through
- * window.showConfirm and feedback through dialogs showToast.
+ * showConfirm and feedback through dialogs showToast.
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { getActiveGuild } from '../../../core/auth/roles';
-import { t, esc, gm, winAny, byId, getDb } from './utils';
+import { adminAccounts } from '../../../core/auth/session';
+import { config, getGuildTag } from '../../../core/config/guild-config';
+import { t, esc, byId, getDb } from './utils';
 import { type AccountRow, getAccounts, filterAccountsOut } from './admin-store';
 import { fetchAccounts, fetchGuilds } from './accounts.controller';
-import { showToast, openCustomMsgModal } from '../dialogs/dialogs.service';
+import { showToast, showConfirm, openCustomMsgModal } from '../dialogs/dialogs.service';
 import { initChestTiersSettings, loadChestTiers } from '../../events/chest-settings';
 import { testDiscordWebhook, formatDiscordRoleMention, sendDiscordWebhookDetailed, configuredWebhooks, setDiscordWebhook } from '../../../core/integrations/discord';
 import { buildGvgDailyTaskEmbed } from '../../../core/config/gvg-tasks';
@@ -32,8 +34,7 @@ export async function fetchGuildRequests(): Promise<void> {
   const countEl = byId('guild-requests-pending-count');
   if (!listEl) return;
   try {
-    const g = gm();
-    const res = await g.adminAccounts('list-guild-requests', {});
+    const res = await adminAccounts('list-guild-requests', {});
     if (!res.ok) throw new Error(res.error || 'server_error');
     const requests = res.requests || [];
     const pendingCount = requests.filter((r: any) => r.status === 'pending').length;
@@ -104,16 +105,13 @@ export function wireGuildRequestListeners(container: HTMLElement): void {
       const card = btn.closest('[data-request-id]');
       const strong = card ? card.querySelector('strong') : null;
       const tag = strong ? strong.textContent || '' : 'this guild';
-      const w = winAny();
-      if (!w.showConfirm) return;
-      w.showConfirm(
+      showConfirm(
         'Approve Guild Request',
         'Create guild <strong>' + esc(tag) + '</strong> and its first guild_admin account? A password will be generated for you to relay via Discord.',
         async () => {
           (btn as HTMLButtonElement).disabled = true;
           try {
-            const g = gm();
-            const res = await g.adminAccounts('approve-guild-request', { id });
+            const res = await adminAccounts('approve-guild-request', { id });
             if (!res.ok) throw new Error(res.error || 'approve_failed');
             const resultEl = card ? card.querySelector('.gm-guild-req-result') : null;
             if (resultEl) {
@@ -146,16 +144,13 @@ export function wireGuildRequestListeners(container: HTMLElement): void {
       const card = btn.closest('[data-request-id]');
       const strong = card ? card.querySelector('strong') : null;
       const tag = strong ? strong.textContent || '' : 'this request';
-      const w = winAny();
-      if (!w.showConfirm) return;
-      w.showConfirm(
+      showConfirm(
         'Reject Guild Request',
         'Reject the request for <strong>' + esc(tag) + '</strong>? The tag and admin login will become available again.',
         async () => {
           (btn as HTMLButtonElement).disabled = true;
           try {
-            const g = gm();
-            const res = await g.adminAccounts('reject-guild-request', { id });
+            const res = await adminAccounts('reject-guild-request', { id });
             if (!res.ok) throw new Error(res.error || 'reject_failed');
             showToast('Guild request rejected.', 'success');
             await fetchGuildRequests();
@@ -275,8 +270,7 @@ const CHECKBOX_FIELDS: CheckboxField[] = [
 ];
 
 async function configGet(key: string): Promise<string> {
-  const g = gm();
-  return g && g.config ? await g.config.get(key) : '';
+  return await config.get(key);
 }
 
 function setChecked(id: string, value: string | null, defaultValue: boolean): void {
@@ -331,8 +325,7 @@ export async function loadGuildSettings(): Promise<void> {
 
   const tagSettingEl = byId<HTMLInputElement>('guild-tag-setting');
   if (tagSettingEl) {
-    const g = gm();
-    const currentTag = g && typeof g.getGuildTag === 'function' ? await g.getGuildTag() : '';
+    const currentTag = await getGuildTag();
     tagSettingEl.value = currentTag || '';
   }
   const serverNumSettingEl = byId<HTMLInputElement>('guild-server-number-setting');
@@ -352,7 +345,6 @@ async function onGuildSettingsSubmit(e: Event): Promise<void> {
   if (span) span.textContent = '...';
 
   try {
-    const g = gm();
     const showCalamityGvgSvs = (await configGet('gvg_svs_calamity_enabled')) !== 'false';
 
     const tagSettingEl = byId<HTMLInputElement>('guild-tag-setting');
@@ -364,13 +356,13 @@ async function onGuildSettingsSubmit(e: Event): Promise<void> {
     const serverNumVal = (byId<HTMLInputElement>('guild-server-number-setting')?.value || '').trim();
 
     const promises: Promise<boolean | void>[] = [
-      g.config.set('guild_tag', tagVal),
-      g.config.set('server_number', serverNumVal)
+      config.set('guild_tag', tagVal),
+      config.set('server_number', serverNumVal)
     ];
     for (const field of VALUE_FIELDS) {
       const el = byId<HTMLInputElement>(field.el);
       const value = el ? el.value.trim() : '';
-      promises.push(g.config.set(field.key, (field.gated && !showCalamityGvgSvs) ? '' : value));
+      promises.push(config.set(field.key, (field.gated && !showCalamityGvgSvs) ? '' : value));
     }
     const webhookWrites: Array<{ field: ConfigField; url: string }> = [];
     for (const field of WEBHOOK_FIELDS) {
@@ -393,7 +385,7 @@ async function onGuildSettingsSubmit(e: Event): Promise<void> {
     for (const field of CHECKBOX_FIELDS) {
       const el = byId<HTMLInputElement>(field.el);
       const checked = el ? el.checked : field.def;
-      promises.push(g.config.set(field.key, (checked && (!field.gated || showCalamityGvgSvs)) ? 'true' : 'false'));
+      promises.push(config.set(field.key, (checked && (!field.gated || showCalamityGvgSvs)) ? 'true' : 'false'));
     }
 
     // P0 audit RC1: never validate a save that silently failed (RLS, expired
@@ -499,8 +491,7 @@ export async function renderPendingRegistrations(activeG?: string | null): Promi
 
 export async function resolveRegistration(id: string, action: 'approve' | 'reject'): Promise<void> {
   try {
-    const g = gm();
-    const res = await g.adminAccounts(action === 'approve' ? 'approve-registration' : 'reject-registration', { id });
+    const res = await adminAccounts(action === 'approve' ? 'approve-registration' : 'reject-registration', { id });
     if (!res.ok) throw new Error(res.error || (action + '_failed'));
     filterAccountsOut(id);
     await fetchAccounts();
@@ -525,16 +516,13 @@ export function initGuildRequestsUi(): void {
   if (clearBtn && !(clearBtn as any).__gmAdminWired) {
     (clearBtn as any).__gmAdminWired = true;
     clearBtn.addEventListener('click', () => {
-      const w = winAny();
-      if (!w.showConfirm) return;
-      w.showConfirm(
+      showConfirm(
         'Clear Guild Request History',
         'Remove every already-approved or already-rejected guild request from this list? Pending requests are never affected. This cannot be undone.',
         async () => {
           clearBtn.disabled = true;
           try {
-            const g = gm();
-            const res = await g.adminAccounts('clear-resolved-guild-requests', {});
+            const res = await adminAccounts('clear-resolved-guild-requests', {});
             if (!res.ok) throw new Error(res.error || 'clear_failed');
             showToast(res.count > 0 ? ('Cleared ' + res.count + ' resolved request(s).') : 'No resolved requests to clear.', 'success');
             await fetchGuildRequests();

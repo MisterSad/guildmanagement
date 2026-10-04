@@ -14,46 +14,13 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { escapeHTML } from '../../../core/utils/text';
+import { escapeHTML, avatarInit } from '../../../core/utils/text';
+import { t } from '../../../core/i18n/i18n';
+import { getClient } from '../../../core/api/supabase';
+import { getActiveGuild } from '../../../core/auth/roles';
+import { showToast } from '../../../core/dom/toast';
+import { showConfirm } from '../../app/dialogs/dialogs.service';
 import { queryMemberPseudos, querySanctions, insertSanction, deleteSanction } from '../sanctions.service';
-
-function winAny(): any {
-  return (typeof window !== 'undefined' ? window : ({} as any)) as any;
-}
-
-function gm(): any {
-  return winAny().GM;
-}
-
-const legacy = {
-  getDb(): any {
-    const g = gm();
-    return g && g.db ? g.db : null;
-  },
-  t(key: string): string {
-    const g = gm();
-    return g && typeof g.t === 'function' ? g.t(key) : key;
-  },
-  esc(value: unknown): string {
-    return escapeHTML(value);
-  },
-  getActiveGuild(): string | null {
-    const g = gm();
-    return g && typeof g.getActiveGuild === 'function' ? g.getActiveGuild() : null;
-  },
-  avatarInit(value: unknown): string {
-    const g = gm();
-    return g && typeof g.avatarInit === 'function' ? g.avatarInit(value) : String(value || '').slice(0, 1).toUpperCase();
-  },
-  showToast(msg: string, type: string): void {
-    const g = gm();
-    if (g && typeof g.showToast === 'function') g.showToast(msg, type);
-  },
-  showConfirm(title: string, body: string, onConfirm: () => void): void {
-    const w = winAny();
-    if (typeof w.showConfirm === 'function') w.showConfirm(title, body, onConfirm);
-  }
-};
 
 interface SanctionRow {
   id?: string | number;
@@ -69,10 +36,10 @@ export class SanctionsView {
   private langChangeHandler?: () => void;
 
   public async load(): Promise<void> {
-    const db = legacy.getDb();
+    const db = getClient();
     if (!db) return;
 
-    const currentG = legacy.getActiveGuild();
+    const currentG = getActiveGuild();
     const membersQ = queryMemberPseudos(db, currentG);
     const sanctionsQ = querySanctions(db, currentG);
 
@@ -80,7 +47,7 @@ export class SanctionsView {
 
     const datalist = document.getElementById('member-list-datalist');
     if (datalist && membersRes.data) {
-      datalist.innerHTML = (membersRes.data as any[]).map((m) => '<option value="' + legacy.esc(m.pseudo) + '">').join('');
+      datalist.innerHTML = (membersRes.data as any[]).map((m) => '<option value="' + escapeHTML(m.pseudo) + '">').join('');
     }
 
     this.sanctions = (res.data || []) as SanctionRow[];
@@ -89,7 +56,6 @@ export class SanctionsView {
 
   /** Attach the form submit + language-change listeners (legacy parse-time init). */
   public init(): void {
-    const w = winAny();
     if (this.langChangeHandler) return; // idempotent
 
     const form = document.getElementById('apply-sanction-form') as HTMLFormElement | null;
@@ -108,19 +74,19 @@ export class SanctionsView {
         if (btn) btn.disabled = true;
 
         try {
-          const db = legacy.getDb();
+          const db = getClient();
           if (!db) return;
-          const currentG = legacy.getActiveGuild();
+          const currentG = getActiveGuild();
           const res = await insertSanction(db, currentG, pseudo, comment);
           if (res.error) throw res.error;
 
           pseudoInput.value = '';
           commentInput.value = '';
-          legacy.showToast(legacy.t('toast_sanction_added'), 'success');
+          showToast(t('toast_sanction_added'), 'success');
           await this.load();
           this.checkRecidivist(pseudo);
         } catch (err: any) {
-          legacy.showToast(err.message, 'error');
+          showToast(err.message, 'error');
         } finally {
           if (btn) btn.disabled = false;
         }
@@ -133,12 +99,12 @@ export class SanctionsView {
         this.render();
       }
     };
-    w.addEventListener('rad-lang-change', this.langChangeHandler);
+    window.addEventListener('rad-lang-change', this.langChangeHandler);
   }
 
   public destroy(): void {
     if (this.langChangeHandler) {
-      winAny().removeEventListener('rad-lang-change', this.langChangeHandler);
+      window.removeEventListener('rad-lang-change', this.langChangeHandler);
       this.langChangeHandler = undefined;
     }
     const form = document.getElementById('apply-sanction-form') as any;
@@ -157,7 +123,7 @@ export class SanctionsView {
     if (count) count.textContent = String(this.sanctions.length);
 
     if (this.sanctions.length === 0) {
-      list.innerHTML = '<div class="gm-empty"><i class="ph ph-ghost gm-icon"></i><div class="gm-empty-title">' + legacy.t('empty_sanctions') + '</div></div>';
+      list.innerHTML = '<div class="gm-empty"><i class="ph ph-ghost gm-icon"></i><div class="gm-empty-title">' + t('empty_sanctions') + '</div></div>';
       return;
     }
 
@@ -169,18 +135,18 @@ export class SanctionsView {
         day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
       } as any);
       const author = s.created_by || '-';
-      const initial = legacy.avatarInit(s.pseudo);
+      const initial = avatarInit(s.pseudo);
       html +=
         '<div class="gm-sanction-row">' +
           '<div class="gm-row" style="gap:.5rem;">' +
-            '<div class="gm-avatar">' + legacy.esc(initial) + '</div>' +
-            '<strong>' + legacy.esc(s.pseudo) + '</strong>' +
+            '<div class="gm-avatar">' + escapeHTML(initial) + '</div>' +
+            '<strong>' + escapeHTML(s.pseudo) + '</strong>' +
           '</div>' +
-          '<div class="gm-sanction-comment">"' + legacy.esc(s.comment) + '"</div>' +
+          '<div class="gm-sanction-comment">"' + escapeHTML(s.comment) + '"</div>' +
           '<div class="gm-sanction-meta">' +
-            legacy.t('sanction_by') + ' <strong style="color: var(--accent);">' + legacy.esc(author) + '</strong> · ' + dateStr +
+            t('sanction_by') + ' <strong style="color: var(--accent);">' + escapeHTML(author) + '</strong> · ' + dateStr +
           '</div>' +
-          '<button class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm sanction-delete-btn" data-id="' + s.id + '" title="' + legacy.t('delete_title') + '" style="color: var(--danger);">' +
+          '<button class="gm-btn gm-btn-ghost gm-btn-icon gm-btn-sm sanction-delete-btn" data-id="' + s.id + '" title="' + t('delete_title') + '" style="color: var(--danger);">' +
             '<i class="ph ph-trash"></i>' +
           '</button>' +
         '</div>';
@@ -191,9 +157,9 @@ export class SanctionsView {
     list.querySelectorAll('.sanction-delete-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
         const id = btn.getAttribute('data-id') || '';
-        legacy.showConfirm(
-          legacy.t('confirm_delete_sanction_title'),
-          legacy.t('confirm_delete_sanction_body'),
+        showConfirm(
+          t('confirm_delete_sanction_title'),
+          t('confirm_delete_sanction_body'),
           () => { void this.deleteSanction(id); }
         );
       });
@@ -204,9 +170,9 @@ export class SanctionsView {
     const count = this.sanctions.filter((s) => s.pseudo === pseudo).length;
     if (count >= 3) {
       setTimeout(() => {
-        legacy.showConfirm(
-          legacy.t('alert_recidivist'),
-          '<strong>' + legacy.esc(pseudo) + '</strong> : ' + count + ' ' + legacy.t('nav_sanctions'),
+        showConfirm(
+          t('alert_recidivist'),
+          '<strong>' + escapeHTML(pseudo) + '</strong> : ' + count + ' ' + t('nav_sanctions'),
           () => { /* informational */ }
         );
       }, 500);
@@ -214,15 +180,15 @@ export class SanctionsView {
   }
 
   private async deleteSanction(id: string): Promise<void> {
-    const db = legacy.getDb();
+    const db = getClient();
     if (!db) return;
     try {
       const res = await deleteSanction(db, id);
       if (res.error) throw res.error;
       await this.load();
-      legacy.showToast(legacy.t('toast_sanction_deleted'), 'success');
+      showToast(t('toast_sanction_deleted'), 'success');
     } catch (err: any) {
-      legacy.showToast(err.message, 'error');
+      showToast(err.message, 'error');
     }
   }
 }

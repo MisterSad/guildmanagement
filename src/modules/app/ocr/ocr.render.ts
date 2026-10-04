@@ -10,9 +10,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { shadowfrontView } from '../../shadowfront/views/ShadowfrontView';
-import { esc, byId, winAny } from '../admin/utils';
+import { esc, byId } from '../admin/utils';
+import {
+  formatNumber,
+  findBestMatchingMember as findBestMatchingMemberText,
+  cleanPlayerPseudo as cleanPlayerPseudoText,
+  validateUid
+} from '../../../core/utils/text';
 import { getGuildMembers } from '../members/members.store';
-import { categorizeOcrDiff, computeOcrRosterDelta } from '../../ocr/ocr.service';
+import { categorizeOcrDiff, computeOcrRosterDelta, getUidStatus } from '../../ocr/ocr.service';
 import {
   OCR_METRICS_META,
   getCurrentOcrMetric,
@@ -21,20 +27,14 @@ import {
   type OcrVideoCoverage
 } from './ocr.meta';
 
-function gm(): any {
-  return winAny().GM;
-}
 function fmtNum(value: unknown): string {
-  const x = gm();
-  return x && typeof x.formatNumber === 'function' ? x.formatNumber(value) : String(value ?? 0);
+  return formatNumber(value as number | string | null | undefined);
 }
 function findBestMatchingMember(pseudo: string, members: any[], tag: string | null): any {
-  const x = gm();
-  return x && typeof x.findBestMatchingMember === 'function' ? x.findBestMatchingMember(pseudo, members, tag) : null;
+  return findBestMatchingMemberText(pseudo, members, tag);
 }
 function cleanPlayerPseudo(pseudo: string, tag: string | null): string {
-  const x = gm();
-  return x && typeof x.cleanPlayerPseudo === 'function' ? x.cleanPlayerPseudo(pseudo, tag) : String(pseudo).trim();
+  return cleanPlayerPseudoText(pseudo, tag);
 }
 function activeTag(): string {
   const input = byId<HTMLInputElement>('ocr-guild-tag-input');
@@ -234,7 +234,7 @@ export function renderOcrResults(players: any[]): void {
           const uid = item.uid || (item.ocrPlayer ? item.ocrPlayer.uid : '') || '';
           const isOtherGuild = item.status === 'other_guild';
           const isChecked = !isOtherGuild;
-          const uidStat = gm() && typeof gm().getUidStatus === 'function' ? gm().getUidStatus(uid) : { valid: true };
+          const uidStat = getUidStatus(uid);
           const uidInputStyle = !uidStat.valid
             ? 'padding:0.25rem 0.5rem; font-size: var(--fs-sm); width:100%; max-width:120px; border-color:rgba(239,68,68,0.7); background:rgba(239,68,68,0.06);'
             : 'padding:0.25rem 0.5rem; font-size: var(--fs-sm); width:100%; max-width:120px;';
@@ -368,8 +368,7 @@ function bindOcrResultListeners(resultsContainer: HTMLElement | null, tbodyRemov
       const el = input as HTMLInputElement;
       const idx = parseInt(el.getAttribute('data-index') || '', 10);
       if (extracted[idx]) extracted[idx].uid = el.value.trim();
-      const x = gm();
-      const err = x && typeof x.validateUid === 'function' ? x.validateUid(el.value.trim()) : null;
+      const err = validateUid(el.value.trim());
       if (err) { el.classList.add('gm-input-error'); el.style.borderColor = '#ef4444'; }
       else { el.classList.remove('gm-input-error'); el.style.borderColor = ''; }
     });

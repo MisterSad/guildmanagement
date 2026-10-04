@@ -41,7 +41,10 @@ describe('Ticket 1.1 — ar_subtitle i18n tag and Event History modal safety', (
     const historyJs = read('src/modules/history/views/HistoryView.ts');
     expect(historyJs).toContain('confirm_delete_session_title');
     expect(historyJs).toContain('confirm_delete_session_body');
-    // Verifies defensive fallback to window.showConfirm / window.confirm
-    expect(historyJs).toMatch(/typeof\s+(?:window|w)\.showConfirm\s*===\s*'function'/);
+    // The confirmation goes through the app dialog, imported directly (the
+    // old `window.showConfirm` lookup and its `window.confirm` fallback are
+    // gone: the import always exists).
+    expect(historyJs).toMatch(/import\s*\{\s*showConfirm\s*\}\s*from\s*'\.\.\/\.\.\/app\/dialogs\/dialogs\.service'/);
+    expect(historyJs).toMatch(/showConfirm\(\s*t\('confirm_delete_session_title'\)/);
   });
 });

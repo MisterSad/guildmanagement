@@ -13,6 +13,42 @@ vi.mock('../src/modules/portal/views/PortalView', () => ({
 }));
 import { portalView } from '../src/modules/portal/views/PortalView';
 
+// Phase M4c: the controller imports its collaborators instead of reading them
+// off `window.GM` / `window.GM_APP`, so the stubs are module mocks now.
+const mocks = vi.hoisted(() => ({
+  sessionInfo: vi.fn(),
+  forceRefreshPortalSession: vi.fn(),
+  login: vi.fn(),
+  logout: vi.fn(),
+  ensureGuildRestriction: vi.fn(),
+  showAdminDashboard: vi.fn(),
+  reloadActiveView: vi.fn(),
+  fetchGuilds: vi.fn()
+}));
+vi.mock('../src/core/api/supabase', async (importOriginal) => ({
+  ...(await importOriginal()),
+  sessionInfo: mocks.sessionInfo,
+  forceRefreshPortalSession: mocks.forceRefreshPortalSession
+}));
+vi.mock('../src/core/auth/session', async (importOriginal) => ({
+  ...(await importOriginal()),
+  login: mocks.login,
+  logout: mocks.logout
+}));
+vi.mock('../src/core/auth/roles', async (importOriginal) => ({
+  ...(await importOriginal()),
+  ensureGuildRestriction: mocks.ensureGuildRestriction
+}));
+vi.mock('../src/modules/app/router', async (importOriginal) => ({
+  ...(await importOriginal()),
+  showAdminDashboard: mocks.showAdminDashboard,
+  reloadActiveView: mocks.reloadActiveView
+}));
+vi.mock('../src/modules/app/admin/accounts.controller', async (importOriginal) => ({
+  ...(await importOriginal()),
+  fetchGuilds: mocks.fetchGuilds
+}));
+
 import {
   restoreSession,
   handleSuccessfulLogin,
@@ -27,6 +63,7 @@ import {
   resetVersionCheck
 } from '../src/modules/app/auth/version-check';
 import { getAppState, patchAppState, resetAppState } from '../src/core/state/app-state';
+import { APP_VERSION } from '../src/core/config/constants';
 
 const AUTH_DOM = `
   <div id="login-view">
@@ -62,11 +99,9 @@ function stubDb(account) {
 }
 
 function stubHooks() {
-  window.GM_APP = {
-    fetchGuilds: vi.fn(async () => undefined),
-    showAdminDashboard: vi.fn(),
-    reloadActiveView: vi.fn()
-  };
+  mocks.fetchGuilds.mockReset().mockImplementation(async () => undefined);
+  mocks.showAdminDashboard.mockReset();
+  mocks.reloadActiveView.mockReset();
 }
 
 beforeEach(() => {
@@ -77,15 +112,11 @@ beforeEach(() => {
   resetVersionCheck();
 
   window.GM = window.GM || {};
-  window.GM.sessionInfo = vi.fn(async () => null);
-  window.GM.forceRefreshPortalSession = vi.fn(async () => null);
-  window.GM.login = vi.fn(async () => ({ ok: false, error: 'invalid_credentials' }));
-  window.GM.logout = vi.fn(async () => undefined);
-  window.GM.loginWithPasskey = vi.fn(async () => ({ ok: false, error: 'cancelled' }));
-  window.GM.loginWithBackupCode = vi.fn(async () => ({ ok: false, error: 'invalid' }));
-  window.GM.startConditionalPasskeyLogin = vi.fn(async () => null);
-  window.GM.abortConditionalPasskeyLogin = vi.fn();
-  window.GM.ensureGuildRestriction = vi.fn(async () => null);
+  mocks.sessionInfo.mockReset().mockImplementation(async () => null);
+  mocks.forceRefreshPortalSession.mockReset().mockImplementation(async () => null);
+  mocks.login.mockReset().mockImplementation(async () => ({ ok: false, error: 'invalid_credentials' }));
+  mocks.logout.mockReset().mockImplementation(async () => undefined);
+  mocks.ensureGuildRestriction.mockReset().mockImplementation(async () => null);
   window.GM.db = stubDb({ guild: 'ALPHA' });
   stubHooks();
 });
@@ -96,7 +127,6 @@ afterEach(() => {
   resetVersionCheck();
   resetAppState();
   document.body.innerHTML = '';
-  delete window.GM_APP;
   delete window.GM_SHELL;
   localStorage.clear();
   sessionStorage.clear();
@@ -104,7 +134,6 @@ afterEach(() => {
 
 describe('checkForNewVersion', () => {
   it('fetches version.json with cache: no-store and shows the banner on mismatch', async () => {
-    window.GM.appVersion = 'V1.0.0';
     const fetchMock = vi.fn(async () => ({ ok: true, json: async () => ({ version: 'V9.9.9' }) }));
     vi.stubGlobal('fetch', fetchMock);
 
@@ -117,8 +146,7 @@ describe('checkForNewVersion', () => {
   });
 
   it('shows no banner when the running version matches', async () => {
-    window.GM.appVersion = 'V9.9.9';
-    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => ({ version: 'V9.9.9' }) })));
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => ({ version: APP_VERSION }) })));
 
     await checkForNewVersion();
 
@@ -126,7 +154,6 @@ describe('checkForNewVersion', () => {
   });
 
   it('does not fetch twice once a banner is already shown', async () => {
-    window.GM.appVersion = 'V1.0.0';
     const fetchMock = vi.fn(async () => ({ ok: true, json: async () => ({ version: 'V2.0.0' }) }));
     vi.stubGlobal('fetch', fetchMock);
 
@@ -152,7 +179,7 @@ describe('restoreSession', () => {
     localStorage.setItem('gm_user', 'Alpha');
 
     let resolveInfo;
-    window.GM.sessionInfo = () => new Promise((r) => { resolveInfo = r; });
+    mocks.sessionInfo.mockImplementation(() => new Promise((r) => { resolveInfo = r; }));
 
     const pending = restoreSession();
 
@@ -165,7 +192,7 @@ describe('restoreSession', () => {
   it('restores a guild_admin session and syncs the store + localStorage', async () => {
     localStorage.setItem('gm_role', 'guild_admin');
     localStorage.setItem('gm_user', 'Alpha');
-    window.GM.sessionInfo = vi.fn(async () => ({ role: 'guild_admin', accountId: 'Alpha' }));
+    mocks.sessionInfo.mockImplementation(async () => ({ role: 'guild_admin', accountId: 'Alpha' }));
     window.GM.db = stubDb({ guild: 'ALPHA' });
 
     const res = await restoreSession();
@@ -175,27 +202,27 @@ describe('restoreSession', () => {
     expect(getAppState().currentGuildRestriction).toBe('ALPHA');
     expect(localStorage.getItem('gm_guild_restriction')).toBe('ALPHA');
     expect(localStorage.getItem('gm_role')).toBe('guild_admin');
-    expect(window.GM_APP.showAdminDashboard).toHaveBeenCalledWith('guild_admin');
+    expect(mocks.showAdminDashboard).toHaveBeenCalled();
   });
 
   it('logs out when a stale local session no longer resolves', async () => {
     localStorage.setItem('gm_role', 'guild_admin');
     localStorage.setItem('gm_user', 'Alpha');
-    window.GM.sessionInfo = vi.fn(async () => null);
-    window.GM.forceRefreshPortalSession = vi.fn(async () => null);
+    mocks.sessionInfo.mockImplementation(async () => null);
+    mocks.forceRefreshPortalSession.mockImplementation(async () => null);
 
     const res = await restoreSession();
 
     expect(res.restored).toBe(false);
     expect(localStorage.getItem('gm_role')).toBeNull();
-    expect(window.GM.logout).toHaveBeenCalled();
+    expect(mocks.logout).toHaveBeenCalled();
     expect(getAppState().currentGuildRestriction).toBeNull();
     expect(document.getElementById('login-view').classList.contains('hidden')).toBe(false);
   });
 
   it('restores a player-portal session straight into the portal', async () => {
     localStorage.setItem('gm_portal_session', '1');
-    window.GM.sessionInfo = vi.fn(async () => ({ role: 'member', accountId: 'Player1' }));
+    mocks.sessionInfo.mockImplementation(async () => ({ role: 'member', accountId: 'Player1' }));
 
     const res = await restoreSession();
 
@@ -208,7 +235,7 @@ describe('restoreSession', () => {
 
   it('restores a member session into the player portal even without pre-existing gm_portal_session', async () => {
     localStorage.setItem('gm_role', 'member');
-    window.GM.sessionInfo = vi.fn(async () => ({ role: 'member', accountId: 'Player2' }));
+    mocks.sessionInfo.mockImplementation(async () => ({ role: 'member', accountId: 'Player2' }));
 
     const res = await restoreSession();
 
@@ -217,7 +244,7 @@ describe('restoreSession', () => {
     expect(res.role).toBe('member');
     expect(localStorage.getItem('gm_role')).toBe('member');
     expect(localStorage.getItem('gm_portal_session')).toBe('1');
-    expect(window.GM_APP.showAdminDashboard).not.toHaveBeenCalled();
+    expect(mocks.showAdminDashboard).not.toHaveBeenCalled();
     expect(document.getElementById('player-portal-view').classList.contains('hidden')).toBe(false);
     expect(document.getElementById('dashboard-view').classList.contains('hidden')).toBe(true);
     expect(portalView.loadDashboard).toHaveBeenCalled();
@@ -225,7 +252,7 @@ describe('restoreSession', () => {
 
   it('resolves a server_admin restriction from the accounts row', async () => {
     localStorage.setItem('gm_role', 'server_admin');
-    window.GM.sessionInfo = vi.fn(async () => ({ role: 'server_admin', accountId: 'Serv' }));
+    mocks.sessionInfo.mockImplementation(async () => ({ role: 'server_admin', accountId: 'Serv' }));
     window.GM.db = stubDb({ guild: 'ALPHA', server_number: 1234 });
 
     await restoreSession();
@@ -246,7 +273,7 @@ describe('handleSuccessfulLogin', () => {
     expect(localStorage.getItem('gm_user')).toBe('Player1');
     expect(localStorage.getItem('gm_portal_session')).toBe('1');
     expect(window.GM.currentAccountId).toBe('Player1');
-    expect(window.GM_APP.showAdminDashboard).not.toHaveBeenCalled();
+    expect(mocks.showAdminDashboard).not.toHaveBeenCalled();
     expect(document.getElementById('player-portal-view').classList.contains('hidden')).toBe(false);
     expect(document.getElementById('dashboard-view').classList.contains('hidden')).toBe(true);
     expect(portalView.loadDashboard).toHaveBeenCalled();
@@ -262,7 +289,7 @@ describe('handleSuccessfulLogin', () => {
     expect(localStorage.getItem('gm_role')).toBe('guild_admin');
     expect(localStorage.getItem('gm_user')).toBe('Alpha');
     expect(window.GM.currentAccountId).toBe('Alpha');
-    expect(window.GM_APP.showAdminDashboard).toHaveBeenCalledWith('guild_admin');
+    expect(mocks.showAdminDashboard).toHaveBeenCalled();
   });
 
   it('sets the server restriction for a server_admin login', async () => {
@@ -288,7 +315,7 @@ describe('handleSuccessfulLogin', () => {
 describe('revealAdmin and revealPortal', () => {
   it('guards revealAdmin against showing admin dashboard to members', () => {
     revealAdmin('member');
-    expect(window.GM_APP.showAdminDashboard).not.toHaveBeenCalled();
+    expect(mocks.showAdminDashboard).not.toHaveBeenCalled();
     expect(document.getElementById('player-portal-view').classList.contains('hidden')).toBe(false);
     expect(document.getElementById('dashboard-view').classList.contains('hidden')).toBe(true);
     expect(portalView.loadDashboard).toHaveBeenCalled();
@@ -311,7 +338,7 @@ describe('doLogout', () => {
 
     await doLogout();
 
-    expect(window.GM.logout).toHaveBeenCalled();
+    expect(mocks.logout).toHaveBeenCalled();
     expect(localStorage.getItem('gm_role')).toBeNull();
     expect(getAppState().currentGuildRestriction).toBeNull();
     expect(getAppState().currentServerRestriction).toBeNull();
@@ -320,22 +347,22 @@ describe('doLogout', () => {
 });
 
 describe('auth forms', () => {
-  it('submits a valid login through GM.login and routes on success', async () => {
-    window.GM.login = vi.fn(async () => ({ ok: true, role: 'guild_admin', id: 'Alpha' }));
+  it('submits a valid login through login() and routes on success', async () => {
+    mocks.login.mockImplementation(async () => ({ ok: true, role: 'guild_admin', id: 'Alpha' }));
     window.GM.db = stubDb({ guild: 'ALPHA' });
     initAuthForms();
 
     document.getElementById('username').value = 'Alpha';
     document.getElementById('password').value = 'secret';
     document.getElementById('login-form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-    await vi.waitFor(() => expect(window.GM_APP.showAdminDashboard).toHaveBeenCalled());
+    await vi.waitFor(() => expect(mocks.showAdminDashboard).toHaveBeenCalled());
 
-    expect(window.GM.login).toHaveBeenCalledWith('Alpha', 'secret');
+    expect(mocks.login).toHaveBeenCalledWith('Alpha', 'secret');
     expect(document.getElementById('login-error').classList.contains('hidden')).toBe(true);
   });
 
   it('shows the invalid-credentials error without routing', async () => {
-    window.GM.login = vi.fn(async () => ({ ok: false, error: 'invalid_credentials' }));
+    mocks.login.mockImplementation(async () => ({ ok: false, error: 'invalid_credentials' }));
     initAuthForms();
 
     document.getElementById('username').value = 'Alpha';
@@ -343,7 +370,7 @@ describe('auth forms', () => {
     document.getElementById('login-form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     await vi.waitFor(() => expect(document.getElementById('login-error').classList.contains('hidden')).toBe(false));
 
-    expect(window.GM_APP.showAdminDashboard).not.toHaveBeenCalled();
+    expect(mocks.showAdminDashboard).not.toHaveBeenCalled();
     expect(document.getElementById('login-error').querySelector('span').textContent).toBeTruthy();
   });
 

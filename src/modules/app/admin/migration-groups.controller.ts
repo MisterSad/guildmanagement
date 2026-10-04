@@ -7,8 +7,8 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { esc, winAny, byId, getDb } from './utils';
-import { showToast } from '../dialogs/dialogs.service';
+import { esc, byId, getDb } from './utils';
+import { showToast, showConfirm } from '../dialogs/dialogs.service';
 import { createMigrationGroup, queryMigrationGroups, queryMigrationGroupServers, updateMigrationGroup } from '../../migration/migration.service';
 
 let migrationGroupsFormWired = false;
@@ -108,9 +108,7 @@ export async function renderMigrationGroupsList(): Promise<void> {
         const confirmMsg = action === 'close'
           ? 'Close this migration group? Admins will no longer be able to transfer players between these servers, and any pending request made under it can no longer be approved.'
           : 'Reopen this migration group? Admins on these servers will be able to transfer players between them again.';
-        const w = winAny();
-        if (!w.showConfirm) return;
-        w.showConfirm(action === 'close' ? 'Close Migration Group' : 'Reopen Migration Group', confirmMsg, async () => {
+        showConfirm(action === 'close' ? 'Close Migration Group' : 'Reopen Migration Group', confirmMsg, async () => {
           (btn as HTMLButtonElement).disabled = true;
           try {
             const updatePayload = { status: newStatus, closed_at: newStatus === 'closed' ? new Date().toISOString() : null };

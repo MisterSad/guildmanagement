@@ -1,5 +1,18 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { shadowfrontView } from '../src/modules/shadowfront/views/ShadowfrontView';
+import { showToast } from '../src/core/dom/toast';
+import { showConfirm } from '../src/modules/app/dialogs/dialogs.service';
+
+// The view imports showToast / showConfirm directly (no more `window.GM.*` /
+// `window.showConfirm` reads): mock their source modules.
+vi.mock('../src/core/dom/toast', async (importOriginal) => ({
+    ...(await importOriginal()),
+    showToast: vi.fn()
+}));
+vi.mock('../src/modules/app/dialogs/dialogs.service', async (importOriginal) => ({
+    ...(await importOriginal()),
+    showConfirm: vi.fn()
+}));
 
 // Mirror the src/main.ts bridge so window.GM_SHADOWFRONT keeps the same public
 // API after the shadowfront.js cutover.
@@ -71,7 +84,8 @@ beforeEach(() => {
     document.body.innerHTML = '<div id="event-shadowfront"><div class="event-participants-area"></div></div>';
     localStorage.setItem('gm_role', 'guild_admin');
     window.currentGuildRestriction = 'ALPHA';
-    GM.showToast = vi.fn();
+    vi.mocked(showToast).mockReset();
+    vi.mocked(showConfirm).mockReset();
     tables = {
         event_status: [
             { event_name: 'Shadowfront Squad 1', guild: 'ALPHA', is_active: true, session_id: 'S1', start_at: '2026-08-02T12:00:00Z' },
@@ -169,7 +183,7 @@ describe('GM_SHADOWFRONT UI/UX', () => {
                 })
             })
         }));
-        expect(GM.showToast).toHaveBeenCalledWith('Composition sent to Discord.', 'success');
+        expect(showToast).toHaveBeenCalledWith('Composition sent to Discord.', 'success');
     });
 
     it('falls back to general guild event webhook when webhook_shadowfront is empty and cleans angle brackets', async () => {
@@ -192,7 +206,7 @@ describe('GM_SHADOWFRONT UI/UX', () => {
                 })
             })
         }));
-        expect(GM.showToast).toHaveBeenCalledWith('Composition sent to Discord.', 'success');
+        expect(showToast).toHaveBeenCalledWith('Composition sent to Discord.', 'success');
     });
 
     it('shares the composition on Discord through the shadowfront webhook fallback fetch', async () => {
@@ -207,7 +221,7 @@ describe('GM_SHADOWFRONT UI/UX', () => {
         await new Promise((r) => setTimeout(r, 0));
 
         expect(fetchMock).toHaveBeenCalledTimes(1);
-        expect(GM.showToast).toHaveBeenCalledWith('Composition sent to Discord.', 'success');
+        expect(showToast).toHaveBeenCalledWith('Composition sent to Discord.', 'success');
         const body = JSON.parse(fetchMock.mock.calls[0][1].body);
         expect(body.embeds[0].title).toContain('Squad One');
         expect(body.embeds[0].fields).toHaveLength(2);
@@ -281,7 +295,7 @@ describe('GM_SHADOWFRONT UI/UX', () => {
         shareBtn.click();
         await new Promise((r) => setTimeout(r, 0));
 
-        expect(GM.showToast).toHaveBeenCalledWith('Composition sent to Discord.', 'success');
+        expect(showToast).toHaveBeenCalledWith('Composition sent to Discord.', 'success');
         expect(invokeMock).toHaveBeenCalledTimes(1);
         expect(invokeMock).toHaveBeenCalledWith('discord-webhook-proxy', expect.objectContaining({
             body: expect.objectContaining({
@@ -352,7 +366,7 @@ describe('GM_SHADOWFRONT UI/UX', () => {
             }
             return chain;
         };
-        window.showConfirm = (title, message, onConfirm) => onConfirm();
+        vi.mocked(showConfirm).mockImplementation((title, message, onConfirm) => onConfirm());
 
         await SF.load();
         stepByLabel('2. Participation Tracking').click();
@@ -362,7 +376,6 @@ describe('GM_SHADOWFRONT UI/UX', () => {
         await new Promise((r) => setTimeout(r, 0));
 
         expect(deleteSpy).toHaveBeenCalled();
-        delete window.showConfirm;
     });
 
     it('renders zero elements for the removed dead availability-signup controls', async () => {

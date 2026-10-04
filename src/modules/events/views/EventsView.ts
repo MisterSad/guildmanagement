@@ -39,85 +39,18 @@ import { renderBadge, renderWarStatusBadge } from '../../../components/ui/Badge'
 import { formatCompactNumber, formatNumber } from '../../../core/utils/numbers';
 import { openDialog } from '../../../components/ui/Dialog';
 import { getGuildConfig, setGuildConfig } from '../../../core/config/guild-config';
-import { escapeHTML } from '../../../core/utils/text';
 import { paintEventCoeffLabels } from '../../../core/config/event-coeff-labels';
-
-function winAny(): any {
-  return (typeof window !== 'undefined' ? window : ({} as any)) as any;
-}
-
-function gm(): any {
-  return winAny().GM;
-}
-
-const legacy = {
-  getDb(): any {
-    const g = gm();
-    return g && g.db ? g.db : null;
-  },
-  t(key: string): string {
-    const g = gm();
-    return g && typeof g.t === 'function' ? g.t(key) : key;
-  },
-  esc(value: unknown): string {
-    return escapeHTML(value);
-  },
-  fmt(num: unknown): string {
-    const g = gm();
-    return g && typeof g.formatNumber === 'function' ? g.formatNumber(num) : String(num ?? '');
-  },
-  getActiveGuild(): string | null {
-    const g = gm();
-    return g && typeof g.getActiveGuild === 'function' ? g.getActiveGuild() : null;
-  },
-  getWeekStart(dateArg?: unknown): string {
-    const g = gm();
-    if (!g || typeof g.getWeekStart !== 'function') return '';
-    return dateArg === undefined ? g.getWeekStart() : g.getWeekStart(dateArg);
-  },
-  buildEventSessionId(eventName: string, when: unknown, existingIds?: unknown): string {
-    const g = gm();
-    return g && typeof g.buildEventSessionId === 'function' ? g.buildEventSessionId(eventName, when, existingIds as any) : '';
-  },
-  parseNumber(value: unknown): number {
-    const g = gm();
-    const parsed = g && typeof g.parseNumber === 'function' ? g.parseNumber(value) : (parseInt(String(value).replace(/[^0-9]/g, ''), 10) || 0);
-    return typeof parsed === 'number' && !isNaN(parsed) ? parsed : 0;
-  },
-  attachNumberFormatter(input: unknown): void {
-    const g = gm();
-    if (g && typeof g.attachNumberFormatter === 'function') g.attachNumberFormatter(input);
-  },
-  avatarInit(value: unknown): string {
-    const g = gm();
-    return g && typeof g.avatarInit === 'function' ? g.avatarInit(value) : String(value || '').slice(0, 1).toUpperCase();
-  },
-  formatDateTimeUTC(value: unknown): string {
-    const g = gm();
-    return g && typeof g.formatDateTimeUTC === 'function' ? g.formatDateTimeUTC(value) : String(value ?? '');
-  },
-  showToast(msg: string, type: string): void {
-    const g = gm();
-    if (g && typeof g.showToast === 'function') g.showToast(msg, type);
-  },
-  notifyDiscordEvent(eventName: string, when: unknown, kind: string): void {
-    const g = gm();
-    if (g && typeof g.notifyDiscordEvent === 'function') g.notifyDiscordEvent(eventName, when, kind);
-  },
-  pickEventStart(opts: unknown, cb: (startAt: string | null) => void): void {
-    const g = gm();
-    if (g && typeof g.pickEventStart === 'function') g.pickEventStart(opts, cb);
-  },
-  runInChunks(items: string[], size: number, worker: (item: string) => Promise<void>): Promise<void> {
-    const g = gm();
-    if (g && typeof g.runInChunks === 'function') return g.runInChunks(items, size, worker);
-    return (async () => { for (const it of items) await worker(it); })();
-  },
-  showConfirm(title: string, body: string, onConfirm: () => void): void {
-    const w = winAny();
-    if (typeof w.showConfirm === 'function') w.showConfirm(title, body, onConfirm);
-  }
-};
+import { getClient } from '../../../core/api/supabase';
+import { getActiveGuild } from '../../../core/auth/roles';
+import { buildEventSessionId } from '../../../core/config/events';
+import { showToast } from '../../../core/dom/toast';
+import { attachNumberFormatter, pickEventStart } from '../../../core/dom/ui';
+import { t } from '../../../core/i18n/i18n';
+import { notifyDiscordEvent } from '../../../core/integrations/discord';
+import { runInChunks } from '../../../core/utils/async';
+import { formatDateTimeUTC, getWeekStart } from '../../../core/utils/date';
+import { avatarInit, escapeHTML, parseNumber } from '../../../core/utils/text';
+import { showConfirm } from '../../app/dialogs/dialogs.service';
 
 interface WarDayScore {
   day: number;
@@ -156,13 +89,13 @@ export class EventsView {
   }
 
   private currentGuild(): string | null {
-    return this.guildOverride || legacy.getActiveGuild();
+    return this.guildOverride || getActiveGuild();
   }
 
   // ── Load event (called when a tab is clicked) ─────────────────────────────
   public async loadEvent(tabKey: string, customGuildId?: string): Promise<void> {
     if (customGuildId) this.guildOverride = customGuildId;
-    const db = legacy.getDb();
+    const db = getClient();
     if (!db || !TAB_TO_DB_EVENTS[tabKey]) return;
     void paintEventCoeffLabels();
     try {
@@ -201,22 +134,22 @@ export class EventsView {
 
   // ── Start a new session ───────────────────────────────────────────────────
   private async startEvent(tabKey: string, dbEventName: string, stage: string | null, startAt?: string | null): Promise<void> {
-    const db = legacy.getDb();
+    const db = getClient();
     if (!db) return;
     const currentG = this.currentGuild();
     const ref = startAt || new Date();
     if (!currentG) {
-      legacy.showToast(legacy.t('guild_unresolved'), 'error');
+      showToast(t('guild_unresolved'), 'error');
       return;
     }
     // Today's taken session ids, to resolve same-day collisions.
     const taken = await EventsService.takenSessionIdsToday(currentG, dbEventName, dbEventName, ref);
     if (!taken.ok) {
       // Unknown ids could mean a duplicate: refuse rather than merge sessions.
-      legacy.showToast(legacy.t('toast_err_generic') + ' ' + taken.error, 'error');
+      showToast(t('toast_err_generic') + ' ' + taken.error, 'error');
       return;
     }
-    const sessionId = legacy.buildEventSessionId(dbEventName, ref, taken.ids);
+    const sessionId = buildEventSessionId(dbEventName, ref, taken.ids);
     try {
       const statusRes = await upsertEventStatus(db,
         {
@@ -230,18 +163,18 @@ export class EventsView {
         }
       );
       if (statusRes.error) throw statusRes.error;
-      legacy.showToast(legacy.t('event_session_started'), 'success');
-      legacy.notifyDiscordEvent(dbEventName, startAt || sessionId, 'start');
+      showToast(t('event_session_started'), 'success');
+      notifyDiscordEvent(dbEventName, startAt || sessionId, 'start');
     } catch (err: any) {
       console.error('startEvent', err);
-      legacy.showToast(legacy.t('toast_err_generic') + ' ' + err.message, 'error');
+      showToast(t('toast_err_generic') + ' ' + err.message, 'error');
     }
     await this.loadEvent(tabKey);
   }
 
   // ── End current session ───────────────────────────────────────────────────
   private async endEvent(tabKey: string): Promise<void> {
-    const db = legacy.getDb();
+    const db = getClient();
     if (!db) return;
     const s = this.state[tabKey];
     if (!s.activeEventName) return;
@@ -264,38 +197,38 @@ export class EventsView {
       s.isActive = false;
       this.renderStatus(tabKey);
       this.renderInactive(tabKey);
-      legacy.showToast(legacy.t('event_session_ended'), 'success');
+      showToast(t('event_session_ended'), 'success');
     } catch (err: any) {
       console.error('endEvent', err);
-      legacy.showToast(legacy.t('toast_err_generic') + ' ' + err.message, 'error');
+      showToast(t('toast_err_generic') + ' ' + err.message, 'error');
     }
   }
 
   // ── Auto-populate members for a new session (SECURITY DEFINER RPC) ────────
   private async populateParticipants(tabKey: string): Promise<void> {
-    const db = legacy.getDb();
+    const db = getClient();
     if (!db) return;
     const s = this.state[tabKey];
     if (!s.activeEventName || !s.sessionId) return;
 
-    const week = legacy.getWeekStart(s.startAt);
+    const week = getWeekStart(s.startAt);
     const currentG = this.currentGuild();
     const rpcRes = await populateEventParticipants(db, s.activeEventName, s.sessionId, week, currentG);
 
     if (rpcRes.error) {
       console.error('populateParticipants: rpc error', rpcRes.error);
-      legacy.showToast(legacy.t('toast_err_import_participants') + ' ' + rpcRes.error.message, 'error');
+      showToast(t('toast_err_import_participants') + ' ' + rpcRes.error.message, 'error');
       return;
     }
 
     const inserted = (typeof rpcRes.data === 'number') ? rpcRes.data : 0;
-    if (inserted > 0) legacy.showToast(inserted + ' ' + legacy.t('toast_members_imported'), 'success');
+    if (inserted > 0) showToast(inserted + ' ' + t('toast_members_imported'), 'success');
     await this.fetchParticipants(tabKey);
   }
 
   // ── In-memory sync of a newly added member ────────────────────────────────
   public async addMemberToActiveEvents(pseudo: string): Promise<number> {
-    const db = legacy.getDb();
+    const db = getClient();
     if (!db || !pseudo) return 0;
 
     const dbEventNames: string[] = [];
@@ -318,7 +251,7 @@ export class EventsView {
         s.participants.push({
           event_name: s.activeEventName,
           session_id: s.sessionId,
-          week_start: legacy.getWeekStart(matched.start_at || new Date()),
+          week_start: getWeekStart(matched.start_at || new Date()),
           pseudo,
           participated: 0,
           score: null
@@ -349,12 +282,12 @@ export class EventsView {
 
   // ── Fetch participants of the active session ──────────────────────────────
   private async fetchParticipants(tabKey: string): Promise<void> {
-    const db = legacy.getDb();
+    const db = getClient();
     if (!db) return;
     const s = this.state[tabKey];
     if (!s.activeEventName || !s.sessionId) return;
     const currentG = this.currentGuild();
-    const week = legacy.getWeekStart(s.startAt);
+    const week = getWeekStart(s.startAt);
 
     // Auto-sync missing/transferred guild members before fetching.
     try {
@@ -507,41 +440,41 @@ export class EventsView {
       const result: 'won' | 'lost' | null = war.session ? (war.session as any)['day' + d + '_result'] || null : null;
       const statusBadge = renderWarStatusBadge(
         result === 'won' ? 'W' : result === 'lost' ? 'L' : 'neutral',
-        { won: legacy.t('war_day_won'), lost: legacy.t('war_day_lost'), pending: legacy.t('war_day_pending') }
+        { won: t('war_day_won'), lost: t('war_day_lost'), pending: t('war_day_pending') }
       );
       const cls = result === 'won' ? 'war-day-won' : result === 'lost' ? 'war-day-lost' : 'war-day-neutral';
       const tooltip = this.warDayTooltip(d, result);
-      return '<button type="button" class="war-day-toggle ' + cls + '" data-day="' + d + '" data-result="' + (result || 'neutral') + '" title="' + legacy.esc(tooltip) + '" aria-label="' + legacy.esc(tooltip) + '">' +
+      return '<button type="button" class="war-day-toggle ' + cls + '" data-day="' + d + '" data-result="' + (result || 'neutral') + '" title="' + escapeHTML(tooltip) + '" aria-label="' + escapeHTML(tooltip) + '">' +
         '<span class="war-day-num">D' + d + '</span>' +
         '<span class="war-day-state">' + statusBadge + '</span>' +
       '</button>';
     }).join('');
 
     const options = war.opponents.map((o) =>
-      '<option value="' + legacy.esc(o.name) + '"></option>'
+      '<option value="' + escapeHTML(o.name) + '"></option>'
     ).join('');
 
     const mode = this.warMode(tabKey);
     const modeSwitch =
-      '<div class="gm-row war-mode-switch" role="group" aria-label="' + legacy.esc(legacy.t('war_mode_detailed')) + '/' + legacy.esc(legacy.t('war_mode_aggregate')) + '" style="gap:.5rem; flex-wrap:wrap; align-items:center; justify-content:flex-end;">' +
-        '<span class="gm-chip" style="white-space:nowrap;">' + legacy.t('war_day_total_prep') + '</span>' +
-        '<button type="button" class="war-mode-btn gm-btn gm-btn-sm' + (mode === 'detailed' ? ' gm-active' : '') + '" data-war-mode="detailed" style="padding:0.3rem 0.6rem;"><i class="ph ph-list-numbers"></i> ' + legacy.esc(legacy.t('war_mode_detailed')) + '</button>' +
-        '<button type="button" class="war-mode-btn gm-btn gm-btn-sm' + (mode === 'aggregate' ? ' gm-active' : '') + '" data-war-mode="aggregate" style="padding:0.3rem 0.6rem;"><i class="ph ph-plus-minus"></i> ' + legacy.esc(legacy.t('war_mode_aggregate')) + '</button>' +
+      '<div class="gm-row war-mode-switch" role="group" aria-label="' + escapeHTML(t('war_mode_detailed')) + '/' + escapeHTML(t('war_mode_aggregate')) + '" style="gap:.5rem; flex-wrap:wrap; align-items:center; justify-content:flex-end;">' +
+        '<span class="gm-chip" style="white-space:nowrap;">' + t('war_day_total_prep') + '</span>' +
+        '<button type="button" class="war-mode-btn gm-btn gm-btn-sm' + (mode === 'detailed' ? ' gm-active' : '') + '" data-war-mode="detailed" style="padding:0.3rem 0.6rem;"><i class="ph ph-list-numbers"></i> ' + escapeHTML(t('war_mode_detailed')) + '</button>' +
+        '<button type="button" class="war-mode-btn gm-btn gm-btn-sm' + (mode === 'aggregate' ? ' gm-active' : '') + '" data-war-mode="aggregate" style="padding:0.3rem 0.6rem;"><i class="ph ph-plus-minus"></i> ' + escapeHTML(t('war_mode_aggregate')) + '</button>' +
       '</div>';
 
     host.innerHTML =
       '<div class="gm-card gm-card-padded" style="margin-bottom:1rem;">' +
         '<div class="gm-row" style="gap:1rem; flex-wrap:wrap; align-items:center; justify-content:space-between;">' +
           '<div class="gm-row" style="gap:.5rem; align-items:center; flex:1 1 260px; min-width:220px;">' +
-            '<span class="gm-chip" style="white-space:nowrap;">' + legacy.t('war_opponent_label') + '</span>' +
+            '<span class="gm-chip" style="white-space:nowrap;">' + t('war_opponent_label') + '</span>' +
             '<input type="text" class="gm-input war-opponent-input" list="' + datalistId + '" placeholder="' +
-              legacy.esc(isSvs ? legacy.t('war_opponent_placeholder_svs') : legacy.t('war_opponent_placeholder_gvg')) + '" value="' + legacy.esc(current) + '">' +
+              escapeHTML(isSvs ? t('war_opponent_placeholder_svs') : t('war_opponent_placeholder_gvg')) + '" value="' + escapeHTML(current) + '">' +
             '<datalist id="' + datalistId + '">' + options + '</datalist>' +
           '</div>' +
-          '<div class="gm-row war-day-results" style="gap:.45rem; flex-wrap:wrap;" data-event="' + legacy.esc(s.activeEventName || '') + '">' + dayChips + '</div>' +
+          '<div class="gm-row war-day-results" style="gap:.45rem; flex-wrap:wrap;" data-event="' + escapeHTML(s.activeEventName || '') + '">' + dayChips + '</div>' +
         '</div>' +
         '<div class="gm-row" style="gap:.5rem; flex-wrap:wrap; align-items:center; justify-content:space-between; margin-top:.6rem;">' +
-          '<span class="gm-dim" style="font-size:var(--fs-2xs);">' + legacy.esc(legacy.t(mode === 'aggregate' ? 'war_col_total_d15' : 'war_ocr_granular_hint')) + '</span>' +
+          '<span class="gm-dim" style="font-size:var(--fs-2xs);">' + escapeHTML(t(mode === 'aggregate' ? 'war_col_total_d15' : 'war_ocr_granular_hint')) + '</span>' +
           modeSwitch +
         '</div>' +
       '</div>';
@@ -581,7 +514,7 @@ export class EventsView {
     const known = war.opponents.find((o) => o && String(o.name).toLowerCase() === name.toLowerCase());
     const guild = this.currentGuild();
     if (!guild) {
-      legacy.showToast(legacy.t('guild_unresolved'), 'error');
+      showToast(t('guild_unresolved'), 'error');
       return;
     }
     const res = await EventsService.upsertWarSession({
@@ -599,7 +532,7 @@ export class EventsView {
       if (res.session) war.session = res.session;
       this.renderWarBanner(tabKey);
     } else {
-      legacy.showToast(legacy.t('war_opponent_save_error'), 'error');
+      showToast(t('war_opponent_save_error'), 'error');
       this.renderWarBanner(tabKey);
     }
   }
@@ -620,7 +553,7 @@ export class EventsView {
     // H2: guard BEFORE the optimistic UI update, so the button cannot show a
     // result that was never persisted (and never persisted into ALPHA).
     if (!guild) {
-      legacy.showToast(legacy.t('guild_unresolved'), 'error');
+      showToast(t('guild_unresolved'), 'error');
       return;
     }
     const war = this.getWar(tabKey);
@@ -655,7 +588,7 @@ export class EventsView {
     if (stateSpan) {
       stateSpan.innerHTML = renderWarStatusBadge(
         next === 'won' ? 'W' : next === 'lost' ? 'L' : 'neutral',
-        { won: legacy.t('war_day_won'), lost: legacy.t('war_day_lost'), pending: legacy.t('war_day_pending') }
+        { won: t('war_day_won'), lost: t('war_day_lost'), pending: t('war_day_pending') }
       );
     }
 
@@ -668,7 +601,7 @@ export class EventsView {
       if (res.ok && res.session) {
         war.session = { ...war.session, ...res.session, [key]: next };
       } else {
-        legacy.showToast(legacy.t('war_opponent_save_error') || 'Failed to save day result', 'error');
+        showToast(t('war_opponent_save_error') || 'Failed to save day result', 'error');
         this.renderWarBanner(tabKey);
       }
     });
@@ -677,7 +610,7 @@ export class EventsView {
   private wireGranularInputs(el: Element, tabKey: string): void {
     el.querySelectorAll('.day-score-input').forEach((node) => {
       const inp = node as HTMLInputElement;
-      legacy.attachNumberFormatter(inp);
+      attachNumberFormatter(inp);
       const pseudo = inp.getAttribute('data-pseudo') || '';
       const triggerSave = (): void => {
         const row = inp.closest('.participant-row');
@@ -711,14 +644,14 @@ export class EventsView {
     if (this.warMode(tabKey) === 'aggregate') {
       const aggInp = row.querySelector<HTMLInputElement>('.day-score-input[data-day="' + WAR_AGGREGATE_DAY + '"]');
       const d6Inp = row.querySelector<HTMLInputElement>('.day-score-input[data-day="6"]');
-      const agg = aggInp ? legacy.parseNumber(aggInp.value) : 0;
-      const d6 = d6Inp ? legacy.parseNumber(d6Inp.value) : 0;
+      const agg = aggInp ? (parseNumber(aggInp.value) ?? 0) : 0;
+      const d6 = d6Inp ? (parseNumber(d6Inp.value) ?? 0) : 0;
       total = resolvePrepChests(grid, null, agg) +
         resolveChestsForScore(grid.filter((g) => g.day === 6), d6);
     } else {
       for (let d = 1; d <= 6; d++) {
         const inp = row.querySelector<HTMLInputElement>('.day-score-input[data-day="' + d + '"]');
-        const score = inp ? legacy.parseNumber(inp.value) : 0;
+        const score = inp ? (parseNumber(inp.value) ?? 0) : 0;
         total += resolveChestsForScore(grid.filter((g) => g.day === d), score);
       }
     }
@@ -733,13 +666,13 @@ export class EventsView {
   private async confirmAggregateConversion(_tabKey: string, pseudo: string): Promise<boolean> {
     return new Promise<boolean>((resolve) => {
       openDialog({
-        title: legacy.t('war_confirm_total_replaces_days'),
+        title: t('war_confirm_total_replaces_days'),
         iconClass: 'ph-warning',
         tone: 'danger',
-        subtitle: legacy.esc(pseudo),
-        body: '<strong>' + legacy.esc(pseudo) + '</strong><br>' + legacy.esc(legacy.t('war_col_total_d15')),
-        confirmLabel: legacy.t('confirm_ok'),
-        cancelLabel: legacy.t('confirm_cancel'),
+        subtitle: escapeHTML(pseudo),
+        body: '<strong>' + escapeHTML(pseudo) + '</strong><br>' + escapeHTML(t('war_col_total_d15')),
+        confirmLabel: t('confirm_ok'),
+        cancelLabel: t('confirm_cancel'),
         onConfirm: () => resolve(true),
         onCancel: () => resolve(false),
         onClose: () => resolve(false),
@@ -787,7 +720,7 @@ export class EventsView {
       const raw = (inp.value || '').trim();
       const hadPrevious = existing.some((e) => e.day === day && (Number(e.score) || 0) > 0);
       if (raw !== '') {
-        const score = Number(legacy.parseNumber(raw) || 0);
+        const score = Number(parseNumber(raw) || 0);
         rows.push({ pseudo, day, score });
       } else if (hadPrevious) {
         rows.push({ pseudo, day, score: 0 });
@@ -812,7 +745,7 @@ export class EventsView {
 
     const rowGuild = this.currentGuild();
     if (!rowGuild) {
-      legacy.showToast(legacy.t('guild_unresolved'), 'error');
+      showToast(t('guild_unresolved'), 'error');
       return;
     }
     const res = await EventsService.upsertDailyScores(
@@ -822,7 +755,7 @@ export class EventsView {
       rows
     );
     if (!res.ok) {
-      legacy.showToast(legacy.t('war_save_tiers_error') + (res.error && res.error !== 'rpc_failed' ? ' ' + res.error : ''), 'error');
+      showToast(t('war_save_tiers_error') + (res.error && res.error !== 'rpc_failed' ? ' ' + res.error : ''), 'error');
       return;
     }
 
@@ -869,11 +802,11 @@ export class EventsView {
     }
 
     if (wroteAgg && prevHasDaily) {
-      legacy.showToast(legacy.t('war_toast_total_replaced_days'), 'success');
+      showToast(t('war_toast_total_replaced_days'), 'success');
     } else if (wroteDaily && prevHasAgg) {
-      legacy.showToast(legacy.t('war_toast_days_replaced_total'), 'info');
+      showToast(t('war_toast_days_replaced_total'), 'info');
     } else {
-      legacy.showToast(legacy.t('war_save_daily_success'), 'success');
+      showToast(t('war_save_daily_success'), 'success');
     }
 
     const contentEl = this.getContentEl(tabKey);
@@ -883,7 +816,7 @@ export class EventsView {
 
   // ── Save participation / score ────────────────────────────────────────────
   private async saveParticipation(tabKey: string, pseudo: string, value: number): Promise<void> {
-    const db = legacy.getDb();
+    const db = getClient();
     if (!db) return;
     const s = this.state[tabKey];
     const currentG = this.currentGuild();
@@ -891,7 +824,7 @@ export class EventsView {
   }
 
   private async saveAppointed(tabKey: string, pseudo: string, value: boolean): Promise<void> {
-    const db = legacy.getDb();
+    const db = getClient();
     if (!db) return;
     const s = this.state[tabKey];
     const currentG = this.currentGuild();
@@ -899,11 +832,11 @@ export class EventsView {
   }
 
   private async saveScoreField(tabKey: string, pseudo: string, field: string, value: unknown): Promise<void> {
-    const db = legacy.getDb();
+    const db = getClient();
     if (!db) return;
     const s = this.state[tabKey];
     const currentG = this.currentGuild();
-    const num = Number(legacy.parseNumber(value) || 0);
+    const num = Number(parseNumber(value as string | number | null | undefined) || 0);
     const update: Record<string, unknown> = {};
     update[field] = num;
     if (num > 0) {
@@ -911,9 +844,9 @@ export class EventsView {
     }
     const updateRes = await updateParticipantScore(db, currentG, s.activeEventName, s.sessionId, pseudo, update);
     if (updateRes.error) {
-      legacy.showToast('Error: ' + updateRes.error.message, 'error');
+      showToast('Error: ' + updateRes.error.message, 'error');
     } else {
-      legacy.showToast(legacy.t('toast_member_updated') || 'Updated successfully', 'success');
+      showToast(t('toast_member_updated') || 'Updated successfully', 'success');
     }
   }
 
@@ -927,7 +860,7 @@ export class EventsView {
   }
 
   private async editEventSchedule(tabKey: string): Promise<void> {
-    const db = legacy.getDb();
+    const db = getClient();
     if (!db) return;
     const s = this.state[tabKey];
     if (!s.activeEventName || !s.sessionId) return;
@@ -939,8 +872,8 @@ export class EventsView {
 
       const currentStartAt = res.data ? res.data.start_at : null;
 
-      legacy.pickEventStart({
-        eventLabel: s.activeEventName + ' - ' + legacy.t('edit_title'),
+      pickEventStart({
+        eventLabel: s.activeEventName + ' - ' + t('edit_title'),
         defaultVal: currentStartAt
       }, async (startAt: string | null) => {
         if (!startAt) return;
@@ -948,39 +881,39 @@ export class EventsView {
           // One transaction (M4a): status and participants move together, and
           // an SvS/GvG war session with its daily scores follows a change of
           // week (they used to stay behind on the old session id).
-          const newSessionId = legacy.buildEventSessionId(s.activeEventName as string, new Date(startAt), []);
+          const newSessionId = buildEventSessionId(s.activeEventName as string, new Date(startAt), []);
           const moved = await EventsService.rescheduleSession(s.activeEventName as string, s.sessionId, newSessionId, startAt);
           s.sessionId = moved.session_id;
 
-          legacy.showToast(legacy.t('toast_member_updated'), 'success');
-          legacy.notifyDiscordEvent(s.activeEventName as string, startAt, 'edit');
+          showToast(t('toast_member_updated'), 'success');
+          notifyDiscordEvent(s.activeEventName as string, startAt, 'edit');
           await this.loadEvent(tabKey);
         } catch (err: any) {
           console.error('editEventSchedule update', err);
-          legacy.showToast(legacy.t('toast_err_generic') + ' ' + err.message, 'error');
+          showToast(t('toast_err_generic') + ' ' + err.message, 'error');
         }
       });
     } catch (err: any) {
       console.error('editEventSchedule fetch', err);
-      legacy.showToast(legacy.t('toast_err_generic') + ' ' + err.message, 'error');
+      showToast(t('toast_err_generic') + ' ' + err.message, 'error');
     }
   }
 
   private deleteEventSession(tabKey: string): void {
-    const db = legacy.getDb();
+    const db = getClient();
     if (!db) return;
     const s = this.state[tabKey];
     if (!s.activeEventName || !s.sessionId) return;
 
-    legacy.showConfirm(
-      legacy.t('confirm_delete_session_title'),
-      '<strong>' + legacy.esc(s.activeEventName) + '</strong><br>' + legacy.t('confirm_delete_session_body'),
+    showConfirm(
+      t('confirm_delete_session_title'),
+      '<strong>' + escapeHTML(s.activeEventName) + '</strong><br>' + t('confirm_delete_session_body'),
       async () => {
         try {
           // Participants and status, in one transaction (M4a).
           await EventsService.deleteSession(s.activeEventName as string, s.sessionId);
 
-          legacy.showToast(legacy.t('toast_session_deleted'), 'success');
+          showToast(t('toast_session_deleted'), 'success');
           s.activeEventName = null;
           s.sessionId = null;
           s.stage = null;
@@ -989,7 +922,7 @@ export class EventsView {
           this.renderInactive(tabKey);
         } catch (err: any) {
           console.error('deleteEventSession', err);
-          legacy.showToast(legacy.t('toast_err_generic') + ' ' + err.message, 'error');
+          showToast(t('toast_err_generic') + ' ' + err.message, 'error');
         }
       }
     );
@@ -1005,7 +938,7 @@ export class EventsView {
 
     if (badge) {
       badge.className = 'event-status-badge gm-chip' + (s.isActive ? ' gm-chip-success active' : '');
-      badge.innerHTML = '<span class="gm-dot"></span> ' + (s.isActive ? legacy.t('event_active') : legacy.t('event_inactive'));
+      badge.innerHTML = '<span class="gm-dot"></span> ' + (s.isActive ? t('event_active') : t('event_inactive'));
     }
 
     const statusLine = panel.querySelector('.gm-event-status-line');
@@ -1019,16 +952,16 @@ export class EventsView {
         dimSpan.style.marginLeft = '0.5rem';
         statusLine.appendChild(dimSpan);
       }
-      dimSpan.textContent = (s.isActive && s.startAt) ? ' · ' + legacy.formatDateTimeUTC(s.startAt) : '';
+      dimSpan.textContent = (s.isActive && s.startAt) ? ' · ' + formatDateTimeUTC(s.startAt) : '';
     }
 
     if (actionsDiv) {
       const eventNameAttr = tabKey;
       if (s.isActive) {
         actionsDiv.innerHTML =
-          '<button class="gm-btn gm-btn-danger event-end-btn" data-event="' + legacy.esc(eventNameAttr) + '" style="margin-right: 0.25rem;"><i class="ph ph-stop-circle"></i> <span>' + legacy.t('event_end') + '</span></button>' +
-          '<button class="gm-btn event-edit-sched-btn" style="background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.3); color: #a5b4fc; margin-right: 0.25rem;" data-event="' + legacy.esc(eventNameAttr) + '" title="' + legacy.t('edit_title') + '"><i class="ph ph-calendar"></i> <span>' + legacy.t('edit_title') + '</span></button>' +
-          '<button class="gm-btn event-delete-session-btn" style="background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.25); color: var(--error);" data-event="' + legacy.esc(eventNameAttr) + '" title="' + legacy.t('delete_title') + '"><i class="ph ph-trash"></i></button>';
+          '<button class="gm-btn gm-btn-danger event-end-btn" data-event="' + escapeHTML(eventNameAttr) + '" style="margin-right: 0.25rem;"><i class="ph ph-stop-circle"></i> <span>' + t('event_end') + '</span></button>' +
+          '<button class="gm-btn event-edit-sched-btn" style="background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.3); color: #a5b4fc; margin-right: 0.25rem;" data-event="' + escapeHTML(eventNameAttr) + '" title="' + t('edit_title') + '"><i class="ph ph-calendar"></i> <span>' + t('edit_title') + '</span></button>' +
+          '<button class="gm-btn event-delete-session-btn" style="background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.25); color: var(--error);" data-event="' + escapeHTML(eventNameAttr) + '" title="' + t('delete_title') + '"><i class="ph ph-trash"></i></button>';
 
         const endBtnDyn = actionsDiv.querySelector('.event-end-btn');
         if (endBtnDyn) endBtnDyn.addEventListener('click', () => { void this.endEvent(tabKey); });
@@ -1038,14 +971,14 @@ export class EventsView {
         if (deleteBtnDyn) deleteBtnDyn.addEventListener('click', () => { this.deleteEventSession(tabKey); });
       } else {
         actionsDiv.innerHTML =
-          '<button class="gm-btn gm-btn-success event-start-btn" data-event="' + legacy.esc(eventNameAttr) + '" style="margin-right: 0.25rem;"><i class="ph ph-play"></i> <span>' + legacy.t('event_start') + '</span></button>' +
-          '<button class="gm-btn gm-btn-danger event-end-btn" data-event="' + legacy.esc(eventNameAttr) + '" disabled><i class="ph ph-stop-circle"></i> <span>' + legacy.t('event_end') + '</span></button>';
+          '<button class="gm-btn gm-btn-success event-start-btn" data-event="' + escapeHTML(eventNameAttr) + '" style="margin-right: 0.25rem;"><i class="ph ph-play"></i> <span>' + t('event_start') + '</span></button>' +
+          '<button class="gm-btn gm-btn-danger event-end-btn" data-event="' + escapeHTML(eventNameAttr) + '" disabled><i class="ph ph-stop-circle"></i> <span>' + t('event_end') + '</span></button>';
 
         const startBtnDyn = actionsDiv.querySelector('.event-start-btn');
         if (startBtnDyn) {
           startBtnDyn.addEventListener('click', () => {
             if (SCHEDULED_TABS.indexOf(tabKey) !== -1) {
-              legacy.pickEventStart({ eventLabel: tabKey }, (startAt: string | null) => {
+              pickEventStart({ eventLabel: tabKey }, (startAt: string | null) => {
                 if (!startAt) return;
                 void this.startEvent(tabKey, tabKey, null, startAt);
               });
@@ -1069,8 +1002,8 @@ export class EventsView {
     el.innerHTML =
       '<div class="gm-empty">' +
         '<i class="ph ph-rocket-launch gm-icon"></i>' +
-        '<div class="gm-empty-title">' + legacy.t('event_not_active') + '</div>' +
-        '<div class="gm-empty-hint">' + legacy.t('event_not_active_hint') + '</div>' +
+        '<div class="gm-empty-title">' + t('event_not_active') + '</div>' +
+        '<div class="gm-empty-hint">' + t('event_not_active_hint') + '</div>' +
       '</div>';
   }
 
@@ -1082,7 +1015,7 @@ export class EventsView {
     const dbEventName = s.activeEventName;
 
     if (!participants.length) {
-      el.innerHTML = '<div class="gm-empty"><i class="ph ph-ghost gm-icon"></i><div class="gm-empty-title">' + legacy.t('empty_members') + '</div></div>';
+      el.innerHTML = '<div class="gm-empty"><i class="ph ph-ghost gm-icon"></i><div class="gm-empty-title">' + t('empty_members') + '</div></div>';
       return;
     }
 
@@ -1107,42 +1040,42 @@ export class EventsView {
     let html =
       '<div class="gm-row" style="gap:.5rem; margin-bottom:1rem; flex-wrap:wrap; justify-content:space-between; align-items: center;">' +
         '<div class="gm-row event-stats" style="gap:.5rem; flex-wrap:wrap; align-items: center; flex: 1;">' +
-          '<span class="gm-chip"><i class="ph ph-users"></i> ' + participants.length + ' ' + legacy.t('event_total') + '</span>' +
-          '<span class="gm-chip gm-chip-success"><i class="ph ph-check-circle"></i> ' + done + ' ' + legacy.t('event_participated') + '</span>' +
-          '<span class="gm-chip"><i class="ph ph-x-circle"></i> ' + (participants.length - done) + ' ' + legacy.t('event_absent') + '</span>' +
+          '<span class="gm-chip"><i class="ph ph-users"></i> ' + participants.length + ' ' + t('event_total') + '</span>' +
+          '<span class="gm-chip gm-chip-success"><i class="ph ph-check-circle"></i> ' + done + ' ' + t('event_participated') + '</span>' +
+          '<span class="gm-chip"><i class="ph ph-x-circle"></i> ' + (participants.length - done) + ' ' + t('event_absent') + '</span>' +
           (isDtr ? '<span class="gm-chip gm-chip-accent"><i class="ph ph-check-square"></i> ' + appointedCount + ' Appointed</span>' : '') +
-          (hasScore ? '<span class="gm-chip gm-chip-accent" title="' + legacy.esc(formatNumber(totalScore)) + '"><i class="ph ph-trophy"></i> ' + legacy.t('event_total_score') + ' ' + formatCompactNumber(totalScore) + '</span>' : '') +
+          (hasScore ? '<span class="gm-chip gm-chip-accent" title="' + escapeHTML(formatNumber(totalScore)) + '"><i class="ph ph-trophy"></i> ' + t('event_total_score') + ' ' + formatCompactNumber(totalScore) + '</span>' : '') +
           approveAllBtn +
         '</div>' +
         '<div class="gm-input-with-icon" style="min-width: 220px; max-width: 320px;">' +
           '<i class="ph ph-magnifying-glass gm-icon"></i>' +
-          '<input type="text" class="gm-input event-search-input" placeholder="' + legacy.t('search_placeholder') + '">' +
+          '<input type="text" class="gm-input event-search-input" placeholder="' + t('search_placeholder') + '">' +
           '<button type="button" class="gm-search-clear-btn" data-gm-search-clear aria-label="Clear search" tabindex="-1"><i class="ph ph-x-circle"></i></button>' +
         '</div>' +
         '</div>' +
       '<div class="gm-table-wrap gm-ui-table-wrap"><div class="gm-table-scroll">' +
       '<table class="gm-table gm-resp-table gm-ui-table-el gm-ui-table-sticky">' +
         '<thead><tr>' +
-          '<th>' + legacy.t('col_member') + '</th>' +
-          '<th class="gm-center">' + legacy.t('col_participated') + '</th>' +
+          '<th>' + t('col_member') + '</th>' +
+          '<th class="gm-center">' + t('col_participated') + '</th>' +
           (isDtr ? '<th class="gm-center">Appointed</th>' : '') +
           (granular
             ? (prepMode === 'aggregate'
-                ? '<th class="gm-right">' + legacy.t('war_col_total_d15') + '</th><th class="gm-right">' + legacy.t('war_day_n').replace('{day}', '6') + '</th>'
+                ? '<th class="gm-right">' + t('war_col_total_d15') + '</th><th class="gm-right">' + t('war_day_n').replace('{day}', '6') + '</th>'
                 : [1, 2, 3, 4, 5, 6].map((d) =>
-                    '<th class="gm-right">' + legacy.t('war_day_n').replace('{day}', String(d)) + '</th>'
+                    '<th class="gm-right">' + t('war_day_n').replace('{day}', String(d)) + '</th>'
                   ).join('')) +
-              '<th class="gm-right">' + legacy.t('war_col_chests') + '</th>'
+              '<th class="gm-right">' + t('war_col_chests') + '</th>'
             : (isSvsOrGvg
-              ? '<th class="gm-right">' + legacy.t('col_score_prep') + '</th><th class="gm-right">' + legacy.t('col_score_pvp') + '</th>'
-              : (hasScore ? '<th class="gm-right">' + legacy.t('col_score') + '</th>' : ''))) +
+              ? '<th class="gm-right">' + t('col_score_prep') + '</th><th class="gm-right">' + t('col_score_pvp') + '</th>'
+              : (hasScore ? '<th class="gm-right">' + t('col_score') + '</th>' : ''))) +
           (pendingCount > 0 ? '<th class="gm-center">Actions</th>' : '') +
         '</tr></thead><tbody>';
 
     participants.forEach((p) => {
       const isChecked = p.participated > 0;
       const isAppointedChecked = !!p.appointed;
-      const initial = legacy.avatarInit(p.pseudo);
+      const initial = avatarInit(p.pseudo);
 
       let granularCells = '';
       if (granular) {
@@ -1154,11 +1087,11 @@ export class EventsView {
         if (prepMode === 'aggregate') {
           const agg = dayScores[WAR_AGGREGATE_DAY];
           const d6 = dayScores[6];
-          granularCells += '<td class="gm-right" data-label="' + legacy.t('war_col_total_d15') + '">' +
-            '<input type="text" inputmode="numeric" class="gm-score-input day-score-input" data-pseudo="' + legacy.esc(p.pseudo) + '" data-day="0" value="' + (agg != null ? legacy.fmt(agg) : '') + '" placeholder="-">' +
+          granularCells += '<td class="gm-right" data-label="' + t('war_col_total_d15') + '">' +
+            '<input type="text" inputmode="numeric" class="gm-score-input day-score-input" data-pseudo="' + escapeHTML(p.pseudo) + '" data-day="0" value="' + (agg != null ? formatNumber(agg) : '') + '" placeholder="-">' +
           '</td>';
           granularCells += '<td class="gm-right" data-label="Day 6">' +
-            '<input type="text" inputmode="numeric" class="gm-score-input day-score-input" data-pseudo="' + legacy.esc(p.pseudo) + '" data-day="6" value="' + (d6 != null ? legacy.fmt(d6) : '') + '" placeholder="-">' +
+            '<input type="text" inputmode="numeric" class="gm-score-input day-score-input" data-pseudo="' + escapeHTML(p.pseudo) + '" data-day="6" value="' + (d6 != null ? formatNumber(d6) : '') + '" placeholder="-">' +
           '</td>';
           chestTotal = resolvePrepChests(grid, dayScores, agg) +
             resolveChestsForScore(grid.filter((g) => g.day === 6), d6);
@@ -1166,14 +1099,14 @@ export class EventsView {
           for (let d = 1; d <= 6; d++) {
             const v = dayScores[d];
             granularCells += '<td class="gm-right" data-label="Day ' + d + '">' +
-              '<input type="text" inputmode="numeric" class="gm-score-input day-score-input" data-pseudo="' + legacy.esc(p.pseudo) + '" data-day="' + d + '" value="' + (v != null ? legacy.fmt(v) : '') + '" placeholder="-">' +
+              '<input type="text" inputmode="numeric" class="gm-score-input day-score-input" data-pseudo="' + escapeHTML(p.pseudo) + '" data-day="' + d + '" value="' + (v != null ? formatNumber(v) : '') + '" placeholder="-">' +
             '</td>';
           }
           for (let d = 1; d <= 6; d++) {
             chestTotal += resolveChestsForScore(grid.filter((g) => g.day === d), dayScores[d]);
           }
         }
-        granularCells += '<td class="gm-right player-chests-cell" title="' + legacy.esc(formatNumber(chestTotal || 0)) + '">' +
+        granularCells += '<td class="gm-right player-chests-cell" title="' + escapeHTML(formatNumber(chestTotal || 0)) + '">' +
           (chestTotal
             ? renderBadge({ text: formatNumber(chestTotal), tone: 'glory', style: 'soft', size: 'sm', title: formatNumber(chestTotal) })
             : '-') +
@@ -1184,30 +1117,30 @@ export class EventsView {
       const rowStyle = p.is_pending ? 'background: rgba(245, 158, 11, 0.05); border-left: 3px solid var(--warning);' : '';
 
       const actionBtn = p.is_pending
-        ? '<button type="button" class="gm-btn gm-btn-success approve-single-btn" data-pseudo="' + legacy.esc(p.pseudo) + '" style="font-size: var(--fs-sm); padding:0.2rem 0.4rem; display:inline-flex; align-items:center; gap:0.25rem;"><i class="ph ph-check"></i> Approve</button>'
+        ? '<button type="button" class="gm-btn gm-btn-success approve-single-btn" data-pseudo="' + escapeHTML(p.pseudo) + '" style="font-size: var(--fs-sm); padding:0.2rem 0.4rem; display:inline-flex; align-items:center; gap:0.25rem;"><i class="ph ph-check"></i> Approve</button>'
         : '';
 
       html +=
-        '<tr class="' + rowClass + '" style="' + rowStyle + '" data-pseudo="' + legacy.esc(p.pseudo) + '">' +
-          '<td data-label="' + legacy.t('col_member') + '">' +
+        '<tr class="' + rowClass + '" style="' + rowStyle + '" data-pseudo="' + escapeHTML(p.pseudo) + '">' +
+          '<td data-label="' + t('col_member') + '">' +
             '<div class="gm-row" style="gap:.6rem;">' +
-              '<div class="gm-avatar">' + legacy.esc(initial) + '</div>' +
+              '<div class="gm-avatar">' + escapeHTML(initial) + '</div>' +
               '<strong style="display:inline-flex; align-items:center; gap:0.4rem;">' +
-                legacy.esc(p.pseudo) +
+                escapeHTML(p.pseudo) +
                 (p.is_pending ? '<span class="gm-chip" style="font-size: var(--fs-2xs); padding:0.05rem 0.25rem; background:rgba(245,158,11,0.1); color:var(--warning); border:1px solid rgba(245,158,11,0.25);">Pending</span>' : '') +
               '</strong>' +
             '</div>' +
           '</td>' +
-          '<td class="gm-center" data-label="' + legacy.t('col_participated') + '">' +
+          '<td class="gm-center" data-label="' + t('col_participated') + '">' +
             '<label class="check-toggle">' +
-              '<input type="checkbox" class="participation-checkbox" data-pseudo="' + legacy.esc(p.pseudo) + '"' + (isChecked ? ' checked' : '') + '>' +
+              '<input type="checkbox" class="participation-checkbox" data-pseudo="' + escapeHTML(p.pseudo) + '"' + (isChecked ? ' checked' : '') + '>' +
               '<span class="check-slider"></span>' +
             '</label>' +
           '</td>' +
           (isDtr
             ? '<td class="gm-center" data-label="Appointed">' +
                 '<label class="check-toggle">' +
-                  '<input type="checkbox" class="participation-checkbox appointed-checkbox" data-pseudo="' + legacy.esc(p.pseudo) + '"' + (isAppointedChecked ? ' checked' : '') + '>' +
+                  '<input type="checkbox" class="participation-checkbox appointed-checkbox" data-pseudo="' + escapeHTML(p.pseudo) + '"' + (isAppointedChecked ? ' checked' : '') + '>' +
                   '<span class="check-slider"></span>' +
                 '</label>' +
               '</td>'
@@ -1215,14 +1148,14 @@ export class EventsView {
           (granular
             ? granularCells
             : (isSvsOrGvg
-              ? '<td class="gm-right" data-label="' + legacy.t('col_score_prep') + '">' +
-                  '<input type="text" inputmode="numeric" class="gm-score-input score-input-prep" value="' + (p.score_prep != null ? legacy.fmt(p.score_prep) : '') + '" placeholder="-" data-pseudo="' + legacy.esc(p.pseudo) + '">' +
+              ? '<td class="gm-right" data-label="' + t('col_score_prep') + '">' +
+                  '<input type="text" inputmode="numeric" class="gm-score-input score-input-prep" value="' + (p.score_prep != null ? formatNumber(p.score_prep) : '') + '" placeholder="-" data-pseudo="' + escapeHTML(p.pseudo) + '">' +
                 '</td>' +
-                '<td class="gm-right" data-label="' + legacy.t('col_score_pvp') + '">' +
-                  '<input type="text" inputmode="numeric" class="gm-score-input score-input-pvp" value="' + (p.score_pvp != null ? legacy.fmt(p.score_pvp) : '') + '" placeholder="-" data-pseudo="' + legacy.esc(p.pseudo) + '">' +
+                '<td class="gm-right" data-label="' + t('col_score_pvp') + '">' +
+                  '<input type="text" inputmode="numeric" class="gm-score-input score-input-pvp" value="' + (p.score_pvp != null ? formatNumber(p.score_pvp) : '') + '" placeholder="-" data-pseudo="' + escapeHTML(p.pseudo) + '">' +
                 '</td>'
-              : (hasScore ? '<td class="gm-right" data-label="' + legacy.t('col_score') + '">' +
-                  '<input type="text" inputmode="numeric" class="gm-score-input score-input" value="' + (p.score != null ? legacy.fmt(p.score) : '') + '" placeholder="-" data-pseudo="' + legacy.esc(p.pseudo) + '">' +
+              : (hasScore ? '<td class="gm-right" data-label="' + t('col_score') + '">' +
+                  '<input type="text" inputmode="numeric" class="gm-score-input score-input" value="' + (p.score != null ? formatNumber(p.score) : '') + '" placeholder="-" data-pseudo="' + escapeHTML(p.pseudo) + '">' +
                 '</td>' : ''))) +
           (pendingCount > 0 ? '<td class="gm-center" data-label="Actions">' + actionBtn + '</td>' : '') +
         '</tr>';
@@ -1272,14 +1205,14 @@ export class EventsView {
     const wireScoreInputs = (selector: string, field: string, stateKey: string): void => {
       el.querySelectorAll(selector).forEach((el2) => {
         const inp = el2 as HTMLInputElement;
-        legacy.attachNumberFormatter(inp);
+        attachNumberFormatter(inp);
         let timer: ReturnType<typeof setTimeout> | undefined;
         const triggerSave = (): void => {
           clearTimeout(timer);
           const pseudo = inp.getAttribute('data-pseudo') || '';
           void this.saveScoreField(tabKey, pseudo, field, inp.value).then(() => {
             const pp = this.state[tabKey].participants.find((x) => x.pseudo === pseudo);
-            const num = Number(legacy.parseNumber(inp.value) || 0);
+            const num = Number(parseNumber(inp.value) || 0);
             if (pp) {
               pp[stateKey] = num;
               if (num > 0) pp.participated = 1;
@@ -1334,7 +1267,7 @@ export class EventsView {
         btn.disabled = true;
         btn.textContent = '...';
         try {
-          const db = legacy.getDb();
+          const db = getClient();
           const rpcRes = await approveParticipantSubmission(db, this.currentGuild(), s.activeEventName, s.sessionId, pseudo);
           if (rpcRes.error) throw rpcRes.error;
           const data = rpcRes.data;
@@ -1347,7 +1280,7 @@ export class EventsView {
           await this.fetchParticipants(tabKey);
         } catch (err) {
           console.error('approve single', err);
-          legacy.showToast('Failed to approve submission.', 'error');
+          showToast('Failed to approve submission.', 'error');
           btn.disabled = false;
           btn.textContent = 'Approve';
         }
@@ -1364,8 +1297,8 @@ export class EventsView {
           // Approve every pending player via the SECURITY DEFINER RPC, in
           // parallel batches instead of one request at a time.
           const activeGuildForApproval = this.currentGuild();
-          await legacy.runInChunks(pendingPseudos, 10, async (pseudo: string) => {
-            const db = legacy.getDb();
+          await runInChunks(pendingPseudos, 10, async (pseudo: string) => {
+            const db = getClient();
             const rpcRes = await approveParticipantSubmission(db, activeGuildForApproval, s.activeEventName, s.sessionId, pseudo);
             if (rpcRes.error) throw rpcRes.error;
           });
@@ -1374,7 +1307,7 @@ export class EventsView {
           await this.fetchParticipants(tabKey);
         } catch (err) {
           console.error('approve all', err);
-          legacy.showToast('Failed to approve all submissions.', 'error');
+          showToast('Failed to approve all submissions.', 'error');
           approveAllBtnEl.disabled = false;
           approveAllBtnEl.textContent = 'Approve All (' + pendingCount + ')';
         }
@@ -1393,8 +1326,8 @@ export class EventsView {
         ? participants.reduce((a, p) => a + (p.score_prep || 0) + (p.score_pvp || 0) + (p.score || 0), 0)
         : participants.reduce((a, p) => a + (p.score || 0), 0);
     const chips = el.querySelectorAll('.event-stats .gm-chip');
-    if (chips[1]) chips[1].innerHTML = '<i class="ph ph-check-circle"></i> ' + done + ' ' + legacy.t('event_participated');
-    if (chips[2]) chips[2].innerHTML = '<i class="ph ph-x-circle"></i> ' + (participants.length - done) + ' ' + legacy.t('event_absent');
+    if (chips[1]) chips[1].innerHTML = '<i class="ph ph-check-circle"></i> ' + done + ' ' + t('event_participated');
+    if (chips[2]) chips[2].innerHTML = '<i class="ph ph-x-circle"></i> ' + (participants.length - done) + ' ' + t('event_absent');
 
     const isDtr = this.state[tabKey].activeEventName === 'Defend Trade Route';
     if (isDtr) {
@@ -1403,7 +1336,7 @@ export class EventsView {
     } else {
       const hasScore = EVENTS_WITHOUT_SCORE.indexOf(this.state[tabKey].activeEventName as string) === -1;
       if (hasScore && chips[3]) {
-        chips[3].innerHTML = '<i class="ph ph-trophy"></i> ' + legacy.t('event_total_score') + ' ' + legacy.fmt(totalScore);
+        chips[3].innerHTML = '<i class="ph ph-trophy"></i> ' + t('event_total_score') + ' ' + formatNumber(totalScore);
       }
     }
   }

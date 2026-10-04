@@ -3,8 +3,8 @@
  *
  * Sous-lot 6.4/6.8 (Strangler) — tab router / view switching. After the final
  * cutover the legacy `app.js` IIFE is gone, so `triggerTabDataLoad` routes every
- * tab directly to the typed /src domain controllers through the `window.GM_*`
- * bridges assembled in main.ts (GM_MEMBERS / GM_ADMIN / GM_EVENTS / …).
+ * tab directly to the typed /src domain controllers by import; nothing here
+ * reads a member the app installed on `window`.
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -43,10 +43,6 @@ import { historyView } from '../history/views/HistoryView';
 import { statsView } from '../stats/views/StatsView';
 import { portalView } from '../portal/views/PortalView';
 import { shellView } from '../shell/views/ShellView';
-
-function w(): any {
-  return (typeof window !== 'undefined' ? window : ({} as any)) as any;
-}
 
 function ls(): Storage | null {
   return typeof localStorage !== 'undefined' ? localStorage : null;

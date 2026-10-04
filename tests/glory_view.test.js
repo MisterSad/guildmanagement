@@ -6,6 +6,27 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { GloryView } from '../src/modules/glory/views/GloryView';
+import { showToast } from '../src/core/dom/toast';
+
+// The view imports its helpers directly (no more `window.GM.*` reads): mock
+// the source modules with the stubs the suite used to put on window.GM.
+vi.mock('../src/core/i18n/i18n', async (importOriginal) => ({
+  ...(await importOriginal()),
+  t: (k) => k
+}));
+vi.mock('../src/core/utils/date', async (importOriginal) => ({
+  ...(await importOriginal()),
+  getWeekStart: () => '2026-08-03',
+  getPrevWeekStart: () => '2026-07-27'
+}));
+vi.mock('../src/core/utils/text', async (importOriginal) => ({
+  ...(await importOriginal()),
+  formatNumber: (n) => String(n ?? '')
+}));
+vi.mock('../src/core/dom/toast', async (importOriginal) => ({
+  ...(await importOriginal()),
+  showToast: vi.fn()
+}));
 
 let rpcMock;
 
@@ -33,20 +54,9 @@ function chained(value) {
 
 function installGM(tables) {
   rpcMock = vi.fn(async () => ({ data: [{ ok: true }], error: null }));
-  window.GM = {
-    t: (k) => k,
-    escapeHTML: (s) => String(s ?? ''),
-    formatNumber: (n) => String(n ?? ''),
-    getWeekStart: () => '2026-08-03',
-    getPrevWeekStart: () => '2026-07-27',
-    getActiveGuild: () => 'ALPHA',
-    avatarInit: (s) => String(s || '').slice(0, 1).toUpperCase(),
-    attachNumberFormatter: vi.fn(),
-    parseNumber: (v) => parseInt(String(v).replace(/[^0-9]/g, ''), 10) || 0,
-    showToast: vi.fn(),
-    fetchGuildMembers: vi.fn(),
-    db: { from: (table) => chained(tables[table] || []), rpc: rpcMock }
-  };
+  localStorage.setItem('gm_current_guild', 'ALPHA');
+  // Only the Supabase client is still read from `window.GM` (via getClient()).
+  window.GM = { db: { from: (table) => chained(tables[table] || []), rpc: rpcMock } };
 }
 
 function mount() {
@@ -71,6 +81,7 @@ const TABLES = {
 };
 
 beforeEach(() => {
+  vi.mocked(showToast).mockClear();
   mount();
   installGM(JSON.parse(JSON.stringify(TABLES)));
 });
@@ -119,7 +130,10 @@ describe('GloryView — search & save', () => {
     expect(rows[1].style.display).toBe('');       // Bravo shown
   });
 
-  it('debounces and upserts via gm_upsert_player_glory, then refreshes members', async () => {
+  // The old title ended "then refreshes members": the view called
+  // window.GM.fetchGuildMembers(), which only this suite ever defined -- in the
+  // app it was a no-op, and the call is gone.
+  it('debounces and upserts via gm_upsert_player_glory', async () => {
     vi.useFakeTimers();
     const view = new GloryView();
     await view.load();
@@ -137,7 +151,6 @@ describe('GloryView — search & save', () => {
       p_week_start: '2026-08-03',
       p_glory: 6000
     });
-    expect(window.GM.fetchGuildMembers).toHaveBeenCalled();
   });
 
   it('surfaces an RPC logical failure as a toast', async () => {
@@ -151,7 +164,7 @@ describe('GloryView — search & save', () => {
     alphaInput.dispatchEvent(new Event('input', { bubbles: true }));
     await vi.advanceTimersByTimeAsync(700);
 
-    expect(window.GM.showToast).toHaveBeenCalledWith(expect.stringContaining('permission_denied'), 'error');
+    expect(showToast).toHaveBeenCalledWith(expect.stringContaining('permission_denied'), 'error');
   });
 });
 

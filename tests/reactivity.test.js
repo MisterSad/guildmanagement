@@ -62,14 +62,14 @@ describe('StatsView / HistoryView TTL freshness gating', () => {
 
   it('initAndLoad() checks the cache freshness before re-fetching, keyed per guild', () => {
     expect(statsJs).toContain("const cacheKey = 'stats:'");
-    expect(statsJs).toContain('legacy.cacheIsFresh(cacheKey, STATS_CACHE_TTL_MS)');
-    expect(statsJs).toContain('legacy.cacheMarkFresh(cacheKey)');
+    expect(statsJs).toContain('isCacheFresh(cacheKey, STATS_CACHE_TTL_MS)');
+    expect(statsJs).toContain('markCacheFresh(cacheKey)');
   });
 
   it('loadHistory() has the same freshness gate plus a re-entrancy guard (previously had neither)', () => {
     expect(historyJs).toContain("const cacheKey = 'history:'");
-    expect(historyJs).toContain('legacy.cacheIsFresh(cacheKey, HISTORY_CACHE_TTL_MS)');
-    expect(historyJs).toContain('legacy.cacheMarkFresh(cacheKey)');
+    expect(historyJs).toContain('isFresh(cacheKey, HISTORY_CACHE_TTL_MS)');
+    expect(historyJs).toContain('markFresh(cacheKey)');
     expect(historyJs).toContain('historyLoading');
   });
 });
@@ -88,7 +88,7 @@ describe('member mutations invalidate the cache the Stats/History pages depend o
     const addFn = membersCtrl.slice(addStart, addNextFn > addStart ? addNextFn : addStart + 6000);
     expect(addFn).toContain('cache.invalidate()');
 
-    expect(membersCtrl).toMatch(/showToast\(t\('toast_member_updated'\), 'success'\);\s*if \(gm && gm\.cache && typeof gm\.cache\.invalidate === 'function'\) gm\.cache\.invalidate\(\);/);
+    expect(membersCtrl).toMatch(/showToast\(t\('toast_member_updated'\), 'success'\);\s*cache\.invalidate\(\);/);
   });
 
   it('invalidates after both OCR commit branches (event participation + roster metrics)', () => {

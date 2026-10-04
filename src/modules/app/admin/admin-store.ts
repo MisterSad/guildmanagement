@@ -9,6 +9,8 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { getAppState } from '../../../core/state/app-state';
+
 export interface AccountRow {
   id: string;
   role?: string;
@@ -68,9 +70,10 @@ export function getPendingPassword(id: string): string | undefined {
 /** Server number resolution used by grouped renderers. */
 export function getServerNumberForGuild(guildId: string): string {
   if (!guildId) return '';
-  const w: any = typeof window !== 'undefined' ? window : {};
-  if (w.guildsData && w.guildsData[guildId] && w.guildsData[guildId].server_number) {
-    return String(w.guildsData[guildId].server_number);
+  const guildsData = getAppState().guildsData;
+  const entry = guildsData ? guildsData[guildId] : undefined;
+  if (entry && entry.server_number) {
+    return String(entry.server_number);
   }
   try {
     const ls = typeof localStorage !== 'undefined' ? localStorage.getItem('gm_server_number_' + guildId) : null;

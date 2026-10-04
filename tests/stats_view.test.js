@@ -10,7 +10,13 @@
  * values (captured from the pre-cutover parity run) plus the cutover guard
  * that StatsView exposes no new `window.GM_*` global.
  */
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+// StatsView imports ensureAuthSession directly (phase M4c): neutralise it at
+// its source module rather than through window.GM.
+vi.mock('../src/core/api/supabase', async (importOriginal) => {
+  const actual = await importOriginal();
+  return { ...actual, ensureAuthSession: async () => null };
+});
 import { StatsView } from '../src/modules/stats/views/StatsView';
 import { mockStatsMembers, mockStatsEvents } from './helpers/stats-aggregate.js';
 
@@ -148,13 +154,11 @@ describe('StatsView golden results (post stats.js cutover)', () => {
   beforeEach(() => {
     mountContainers();
     window.GM.db = buildDb();
-    window.GM.ensureAuthSession = async () => null;
     if (window.GM.cache) window.GM.cache.invalidate();
   });
 
   afterEach(() => {
     delete window.GM.db;
-    window.GM.ensureAuthSession = undefined;
     document.body.innerHTML = '';
     localStorage.removeItem('gm_stats_mode');
   });

@@ -9,6 +9,13 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { ArmsRaceView } from '../src/modules/armsrace/views/ArmsRaceView';
 
+// The view imports its helpers directly (no more `window.GM.*` reads). Keep
+// i18n as the identity so assertions can match translation keys.
+vi.mock('../src/core/i18n/i18n', async (importOriginal) => ({
+  ...(await importOriginal()),
+  t: (k) => k
+}));
+
 const STAGE_A = 'ARMS RACE STAGE A';
 const STAGE_B = 'ARMS RACE STAGE B';
 const SESSION_A = 'ARA-20260802-1';
@@ -67,22 +74,8 @@ function baseTables() {
 }
 
 function installGM() {
-  window.GM = {
-    t: (k) => k,
-    escapeHTML: (s) => String(s ?? '')
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;').replace(/'/g, '&#039;'),
-    db: null,
-    getActiveGuild: () => 'ALPHA',
-    getWeekStart: () => '2026-08-02',
-    buildEventSessionId: () => SESSION_A,
-    formatDateTimeUTC: (v) => String(v),
-    avatarInit: (s) => String(s || '').slice(0, 1).toUpperCase(),
-    showToast: vi.fn(),
-    notifyDiscordEvent: vi.fn(),
-    pickEventStart: vi.fn(),
-    escapeHTML2: undefined
-  };
+  // Only the Supabase client is still read from `window.GM` (via getClient()).
+  window.GM = { db: null };
 }
 
 function mount() {

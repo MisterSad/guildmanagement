@@ -3,18 +3,22 @@
  *
  * Sous-lot 6.6 (Strangler) — member CRUD, pending transfers, UID-taken dialog,
  * transfer request and edit-member dialog ported from app.js. Strict escaping
- * on pseudos/UIDs/notes; confirmations via window.showConfirm; toasts via the
+ * on pseudos/UIDs/notes; confirmations via showConfirm; toasts via the
  * dialogs service.
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { t, esc, winAny, byId } from '../admin/utils';
+import { t, esc, byId } from '../admin/utils';
 import { getActiveGuild } from '../../../core/auth/roles';
 import { patchAppState } from '../../../core/state/app-state';
 import { getGuildMembers, setGuildMembers, pushGuildMember, filterGuildMembersOut, findGuildMember, getPendingTransfers, setPendingTransfers, transferActionFor } from './members.store';
 import { renderGuildMembers, membersSkeletonHtml } from './members.render';
-import { showToast } from '../dialogs/dialogs.service';
+import { showToast, showConfirm } from '../dialogs/dialogs.service';
+import { getClient } from '../../../core/api/supabase';
+import { cache } from '../../../core/cache/cache';
+import { avatarInit, formatPower, validatePseudo, validateUid } from '../../../core/utils/text';
+import { getUidStatus } from '../../ocr/ocr.service';
 import {
   addMember, updateMember,
   listGuildMembers, listPendingTransfers, listPlayerAbsences, fetchLatestGloryScores,
@@ -28,15 +32,8 @@ import { shadowfrontView } from '../../shadowfront/views/ShadowfrontView';
 import { toastFetchError, isAbortError } from '../../../core/api/fetch-errors';
 import { COMMON_TIMEZONES, detectUserTimezone, getTimezoneOffset } from '../../../utils/timezone';
 
-function g(): any {
-  return winAny().GM;
-}
-function w(): any {
-  return winAny();
-}
 function db(): any {
-  const x = g();
-  return x && x.db ? x.db : null;
+  return getClient();
 }
 /**
  * H2: one resolver, shared. This used to re-implement the restriction →
@@ -45,10 +42,6 @@ function db(): any {
  */
 function activeGuild(): string | null {
   return getActiveGuild();
-}
-function avatarInit(value: unknown): string {
-  const x = g();
-  return x && typeof x.avatarInit === 'function' ? x.avatarInit(value) : String(value || '?').charAt(0).toUpperCase();
 }
 /*
  * PHASE 7. `maybeInitOcr()` lived here and probed `GM_OCR.initGeminiModule`.
@@ -249,10 +242,7 @@ export async function resolveTransfer(transferId: string, action: string, dir: s
         ? 'Another guild asked to take this player. Approve, and the player leaves your guild with their history?'
         : 'Approve this transfer and add the player to your guild?')
       : 'Reject this transfer request?';
-  const confirm = winAny().showConfirm;
-  if (!confirm) return;
-
-  confirm(title, message, async () => {
+  showConfirm(title, message, async () => {
     try {
       const { data, error } = await resolveGuildTransfer(client, transferId, action);
       if (error || !data || !data.ok) {
@@ -263,7 +253,7 @@ export async function resolveTransfer(transferId: string, action: string, dir: s
       } else {
         showToast('Transfer ' + action + 'd successfully.', 'success');
         void fetchGuildMembers();
-        if (g() && g().cache && typeof g().cache.invalidate === 'function') g().cache.invalidate();
+        cache.invalidate();
       }
     } catch (err: any) {
       if (isAbortError(err)) return;
@@ -327,7 +317,7 @@ export async function showUidTakenDialog(typedPseudo: string, uid: string, info:
       detailRow('Current Name', existingPseudo, true) + detailRow('New Name', typedPseudo, true) +
       detailRow('Player ID', uid) + detailRow('Guild', p.guild || currentG, true) +
       detailRow('Server', server) + detailRow('Rank', displayRole) +
-      detailRow('Power', g() && g().formatPower ? g().formatPower(displayPower) : String(displayPower)) + historyHtml +
+      detailRow('Power', formatPower(displayPower)) + historyHtml +
     '</div>';
     noticeHtml = '<div style="background: var(--info-soft); color: var(--info); padding:0.75rem; border-radius:6px; font-size: var(--fs-sm); line-height:1.45; margin-top:0.85rem;">' +
       '<i class="ph ph-info" style="margin-right:4px;"></i>This player (<strong>' + esc(existingPseudo) + '</strong>) already belongs to <strong>' + esc(p.guild || currentG) + '</strong>. Would you like to update their name to <strong>' + esc(typedPseudo) + '</strong>?' +
@@ -430,7 +420,6 @@ export async function showUidTakenDialog(typedPseudo: string, uid: string, info:
 export async function handleAddMember(inputId: string, uidInputId: string, powerInputId: string, roleInputId: string): Promise<void> {
   const client = db();
   if (!client) return;
-  const gm = g();
   const input = byId<HTMLInputElement>(inputId);
   const pseudo = input ? input.value.trim() : '';
   const uidInput = byId<HTMLInputElement>(uidInputId);
@@ -441,9 +430,9 @@ export async function handleAddMember(inputId: string, uidInputId: string, power
   const roleVal = roleInput ? roleInput.value : 'R1';
 
   if (!pseudo || !uidVal || isNaN(powerVal) || powerVal < 0) { showToast('Please enter a valid power value.', 'error'); return; }
-  const pseudoErr = gm && typeof gm.validatePseudo === 'function' ? gm.validatePseudo(pseudo) : '';
+  const pseudoErr = validatePseudo(pseudo);
   if (pseudoErr) { showToast(t(pseudoErr), 'error'); return; }
-  const uidErr = gm && typeof gm.validateUid === 'function' ? gm.validateUid(uidVal) : '';
+  const uidErr = validateUid(uidVal);
   if (uidErr) { showToast(t(uidErr), 'error'); return; }
 
   const members = getGuildMembers();
@@ -509,7 +498,7 @@ export async function handleAddMember(inputId: string, uidInputId: string, power
 
     renderGuildMembers();
     showToast(pseudo + ' ' + t('toast_member_added'), 'success');
-    if (gm && gm.cache && typeof gm.cache.invalidate === 'function') gm.cache.invalidate();
+    cache.invalidate();
 
     const addedEvents = added.added_events || 0;
 
@@ -540,8 +529,7 @@ export async function deleteGuildMember(pseudo: string): Promise<void> {
     filterGuildMembersOut((m) => m.pseudo === pseudo);
     renderGuildMembers();
     showToast(t('toast_member_removed'), 'success');
-    const gm = g();
-    if (gm && gm.cache && typeof gm.cache.invalidate === 'function') gm.cache.invalidate();
+    cache.invalidate();
 
     eventsView.removeMemberFromActiveEvents(pseudo);
     armsRaceView.removeMemberFromActiveEvents(pseudo);
@@ -558,16 +546,15 @@ export async function renameGuildMember(
 ): Promise<boolean> {
   const client = db();
   if (!client) return false;
-  const gm = g();
   const newPseudo = (newPseudoInput || '').trim();
   const newUid = (newUidInput || '').trim();
   const powerVal = parseInt(String(newPower)) || 0;
   const roleVal = newRole || 'R1';
   extraMetrics = extraMetrics || {};
 
-  const pseudoErr = gm && typeof gm.validatePseudo === 'function' ? gm.validatePseudo(newPseudo) : '';
+  const pseudoErr = validatePseudo(newPseudo);
   if (pseudoErr) { showToast(t(pseudoErr), 'error'); return false; }
-  const uidErr = gm && typeof gm.validateUid === 'function' ? gm.validateUid(newUid) : '';
+  const uidErr = validateUid(newUid);
   if (uidErr) { showToast(t(uidErr), 'error'); return false; }
 
   const members = getGuildMembers();
@@ -628,7 +615,7 @@ export async function renameGuildMember(
 
     await fetchGuildMembers();
     showToast(t('toast_member_updated'), 'success');
-    if (gm && gm.cache && typeof gm.cache.invalidate === 'function') gm.cache.invalidate();
+    cache.invalidate();
     return true;
   } catch (err: any) {
     showToast(t('toast_err_generic') + ' ' + err.message, 'error');
@@ -724,8 +711,7 @@ export async function showTransferMemberDialog(member: any): Promise<void> {
       const targetServer = targetOption ? targetOption.getAttribute('data-server') : currentServer;
       closeModal();
       showToast(member.pseudo + ' transferred to ' + targetGuild + ' on Server #' + targetServer + '!', 'success');
-      const gm = g();
-      if (gm && gm.cache && typeof gm.cache.invalidate === 'function') gm.cache.invalidate();
+      cache.invalidate();
       await fetchGuildMembers();
     } catch (err: any) {
       showToast('Error transferring member: ' + err.message, 'error');
@@ -769,8 +755,7 @@ export async function showEditMemberDialog(member: any): Promise<void> {
         '</div></div>'
     : '';
 
-  const gm = g();
-  const uidStat = gm && typeof gm.getUidStatus === 'function' ? gm.getUidStatus(member.uid) : { valid: true };
+  const uidStat = getUidStatus(member.uid);
   const isTempUid = !uidStat.valid;
   const uidHelperHtml = isTempUid
     ? '<div id="edit-uid-helper" style="font-size: var(--fs-sm); color:#f87171; margin-top:0.35rem; display:flex; align-items:center; gap:0.25rem;"><i class="ph ph-warning"></i> ' + esc(uidStat.label || '') + ' (' + esc(uidStat.reason || 'Enter real 6-10 digit game UID') + ')</div>'
@@ -852,7 +837,7 @@ export async function showEditMemberDialog(member: any): Promise<void> {
   const editUidInput = byId<HTMLInputElement>('edit-uid');
   if (editUidInput) {
     editUidInput.addEventListener('input', () => {
-      const st = gm && typeof gm.getUidStatus === 'function' ? gm.getUidStatus(editUidInput.value.trim()) : { valid: true };
+      const st = getUidStatus(editUidInput.value.trim());
       const helper = byId('edit-uid-helper');
       if (!st.valid) {
         editUidInput.style.borderColor = 'rgba(239,68,68,0.7)';

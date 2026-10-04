@@ -24,6 +24,16 @@ import {
   initTooltips
 } from '../src/components/ui/Tooltip';
 import { HistoryView } from '../src/modules/history/views/HistoryView';
+import { t } from '../src/core/i18n/i18n';
+import { clear as clearCache } from '../src/core/cache/cache';
+import { setVerifiedRole } from '../src/core/auth/roles';
+import { showConfirm } from '../src/modules/app/dialogs/dialogs.service';
+
+// M4c: HistoryView imports showConfirm; it is mocked at its module.
+vi.mock('../src/modules/app/dialogs/dialogs.service', async (importOriginal) => ({
+  ...(await importOriginal()),
+  showConfirm: vi.fn(),
+}));
 
 /* ─── Dialog — cva recipe & variants ──────────────────────────────────── */
 describe('Dialog — cva recipe, tone & size variants', () => {
@@ -292,12 +302,16 @@ describe('HistoryView — Dialog retrofit contract', () => {
         from: (table) => chained(table === 'event_participants' ? PARTICIPANT_ROWS : [], updateMock)
       }
     };
-    window.showConfirm = vi.fn();
+    // The view reads the real cache, guild and role now, not window.GM stubs.
+    clearCache();
+    localStorage.setItem('gm_current_guild', 'ALPHA');
+    setVerifiedRole('guild_admin', 't_admin');
+    vi.mocked(showConfirm).mockClear();
   });
 
   afterEach(() => {
     delete window.GM;
-    delete window.showConfirm;
+    localStorage.clear();
     document.body.innerHTML = '';
     vi.restoreAllMocks();
   });
@@ -333,6 +347,6 @@ describe('HistoryView — Dialog retrofit contract', () => {
     document.querySelector('.gm-history-card[data-event="SvS"]').click();
     await tick();
     document.getElementById('history-modal-delete').click();
-    expect(window.showConfirm).toHaveBeenCalledWith('confirm_delete_session_title', expect.any(String), expect.any(Function));
+    expect(showConfirm).toHaveBeenCalledWith(t('confirm_delete_session_title'), expect.any(String), expect.any(Function));
   });
 });

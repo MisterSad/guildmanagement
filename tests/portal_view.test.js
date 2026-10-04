@@ -15,7 +15,19 @@ vi.mock('../src/modules/badges/badges.service', async (importOriginal) => {
   const actual = await importOriginal();
   return { ...actual, computeBadges: vi.fn() };
 });
+// Phase M4c: PortalView imports its helpers instead of reading `window.GM`.
+// Chart drawing (canvas, absent in jsdom), the number formatter and the auth
+// calls are mocked at their source module.
+vi.mock('../src/core/dom/ui', async (importOriginal) => {
+  const actual = await importOriginal();
+  return { ...actual, drawScoreTrendChart: vi.fn(), attachNumberFormatter: vi.fn() };
+});
+vi.mock('../src/core/auth/session', async (importOriginal) => {
+  const actual = await importOriginal();
+  return { ...actual, logout: vi.fn(async () => undefined), loginWithDiscord: vi.fn() };
+});
 import { computeBadges } from '../src/modules/badges/badges.service';
+import { drawScoreTrendChart } from '../src/core/dom/ui';
 import { PortalView, submitErrorMessage } from '../src/modules/portal/views/PortalView';
 import { resetSupabaseClient } from '../src/core/api/supabase';
 
@@ -60,23 +72,8 @@ function installDb() {
 }
 
 function installGlobals() {
-  const g = (window.GM = window.GM || {});
-  g.escapeHTML = (s) => String(s ?? '');
-  g.avatarInit = (s) => String(s || '').slice(0, 1).toUpperCase();
-  g.logout = vi.fn().mockResolvedValue(undefined);
-  g.formatPower = (v) => String(v ?? 0);
-  g.formatNumber = (v) => String(v ?? 0);
-  g.getEventIcon = () => 'ph-calendar';
-  g.drawScoreTrendChart = vi.fn();
-  g.attachNumberFormatter = vi.fn();
-  g.parseNumber = (v) => parseInt(String(v).replace(/[^0-9]/g, ''), 10) || 0;
-  g.showToast = vi.fn();
-  g.calculateCombatDensity = () => 80;
-  g.calculateResidualPower = () => 1000;
-  g.calculateCombativity = () => 3;
-  g.calculateRallyScore = () => 100;
-  g.calculateRallyGrade = () => 90;
-  g.webauthn = { mountPasskeysPanel: vi.fn(() => ({ reload: vi.fn() })) };
+  window.GM = window.GM || {};
+  vi.mocked(drawScoreTrendChart).mockClear();
 
   vi.mocked(computeBadges).mockReturnValue({
     earned: 1,
@@ -195,7 +192,7 @@ describe('PortalView — gotoTab() lazy panels', () => {
 });
 
 describe('PortalView — chart delegation & cleanup', () => {
-  it('delegates chart drawing to window.GM.drawScoreTrendChart', async () => {
+  it('delegates chart drawing to drawScoreTrendChart', async () => {
     FIXTURES['get-history'] = {
       ok: true,
       events: { 'SvS': { has_score: true, history: [{ week_start: '2026-08-03', score: 100 }] } }
@@ -204,7 +201,7 @@ describe('PortalView — chart delegation & cleanup', () => {
     await view.loadDashboard();
 
     expect(root().querySelector('.portal-chart-canvas')).toBeTruthy();
-    expect(window.GM.drawScoreTrendChart).toHaveBeenCalled();
+    expect(drawScoreTrendChart).toHaveBeenCalled();
   });
 
   it('destroy() removes the resize listener and is safe before any render', () => {

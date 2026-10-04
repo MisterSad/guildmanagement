@@ -12,7 +12,13 @@ vi.mock('../src/modules/app/members/members.render', () => ({
   renderGuildMembers: vi.fn(),
   membersSkeletonHtml: () => ''
 }));
-vi.mock('../src/modules/app/dialogs/dialogs.service', () => ({ showToast: vi.fn() }));
+vi.mock('../src/modules/app/dialogs/dialogs.service', () => ({ showToast: vi.fn(), showConfirm: vi.fn() }));
+// The controller imports validateUid directly; the stub lets a test choose the
+// validator's verdict without depending on the real UID rules.
+vi.mock('../src/core/utils/text', async (importOriginal) => ({
+  ...(await importOriginal()),
+  validateUid: vi.fn(() => '')
+}));
 
 import {
   fetchBannedPlayers,
@@ -26,7 +32,8 @@ import {
   setGuildMembers,
   getGuildMembers
 } from '../src/modules/app/members/members.store';
-import { showToast } from '../src/modules/app/dialogs/dialogs.service';
+import { showToast, showConfirm } from '../src/modules/app/dialogs/dialogs.service';
+import { validateUid } from '../src/core/utils/text';
 import { renderGuildMembers } from '../src/modules/app/members/members.render';
 import { setVerifiedRole } from '../src/core/auth/roles';
 
@@ -79,18 +86,18 @@ beforeEach(() => {
   localStorage.setItem('gm_current_guild', 'ALPHA');
   setBannedPlayers([]);
   setGuildMembers([]);
-  window.GM = { validateUid: () => '', currentAccountId: 'TheAdmin' };
+  window.GM = {};
+  validateUid.mockImplementation(() => '');
   setVerifiedRole('super_admin', 'TheAdmin');
   // Banning a roster member now asks first (it erases their history); the
   // stub confirms and records what was shown.
-  window.showConfirm = vi.fn((_title, _body, onConfirm) => { window.__confirmRun = Promise.resolve(onConfirm()); });
   vi.clearAllMocks();
+  showConfirm.mockImplementation((_title, _body, onConfirm) => { window.__confirmRun = Promise.resolve(onConfirm()); });
 });
 
 afterEach(() => {
   document.body.innerHTML = '';
   delete window.GM;
-  delete window.showConfirm;
   delete window.__confirmRun;
   localStorage.clear();
   setBannedPlayers([]);
@@ -137,7 +144,8 @@ describe('handleAddBannedPlayer', () => {
 
   it('refuses a uid the validator rejects, and says why', async () => {
     const db = fakeDb();
-    window.GM = { db, validateUid: () => 'toast_invalid_uid' };
+    window.GM = { db };
+    validateUid.mockImplementation(() => 'toast_invalid_uid');
     document.getElementById('banned-uid').value = '123';
 
     await handleAddBannedPlayer();
@@ -196,8 +204,8 @@ describe('handleAddBannedPlayer', () => {
     await window.__confirmRun;
 
     // It asked first, and said what the removal costs.
-    expect(window.showConfirm).toHaveBeenCalledTimes(1);
-    expect(window.showConfirm.mock.calls[0][1]).toContain('Cheater');
+    expect(showConfirm).toHaveBeenCalledTimes(1);
+    expect(showConfirm.mock.calls[0][1]).toContain('Cheater');
     expect(db.calls.some((c) => c.rpc === 'gm_ban_member'), 'the ban and the removal are one call').toBe(true);
     expect(getGuildMembers().map((m) => m.uid)).toEqual(['901']);
     expect(renderGuildMembers).toHaveBeenCalled();
@@ -220,7 +228,7 @@ describe('handleAddBannedPlayer', () => {
     setGuildMembers([{ uid: '900', pseudo: 'Cheater' }]);
     const db = fakeDb();
     window.GM.db = db;
-    window.showConfirm = vi.fn();
+    showConfirm.mockImplementation(() => {});
     document.getElementById('banned-uid').value = '900';
 
     await handleAddBannedPlayer();
@@ -238,7 +246,7 @@ describe('handleAddBannedPlayer', () => {
     await handleAddBannedPlayer();
 
     expect(db.calls).toHaveLength(0);
-    expect(window.showConfirm).not.toHaveBeenCalled();
+    expect(showConfirm).not.toHaveBeenCalled();
   });
 
   it('does not touch the roster when the banned uid is not a member', async () => {

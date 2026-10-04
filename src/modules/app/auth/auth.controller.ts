@@ -6,11 +6,10 @@
  * Discord sign-in. Passkeys were removed entirely (2026-10-03).
  *
  * Runtime notes:
- *  - `app.js` is still the authoritative parser-time wiring; this module is the
- *    typed replacement exposed on `window.GM_AUTH` (no auto-init yet, to avoid
- *    double listeners).
- *  - Restrictions are written through `patchAppState`, so `/src` modules and
- *    `app.js` stay coherent via the window mirror.
+ *  - Every collaborator (session calls, role helpers, the router, i18n, the
+ *    Supabase client) is a typed import (phase M4c); nothing here reads a
+ *    member the app installed on `window`.
+ *  - Restrictions are written through `patchAppState`.
  *  - User feedback delegates to dialogs.service.
  */
 
@@ -19,7 +18,15 @@
 import { fetchAccountGuild, fetchAccountGuildAndServer, fetchGuildServerNumber } from './auth.service';
 import { getAppState, patchAppState, resetAppState } from '../../../core/state/app-state';
 import { showToast } from '../dialogs/dialogs.service';
-import { setVerifiedRole } from '../../../core/auth/roles';
+import { setVerifiedRole, normalizeRole, ensureGuildRestriction } from '../../../core/auth/roles';
+import {
+  login, logout, loginWithDiscord, redeemDiscordTicket, chooseDiscordAccount,
+  redeemLinkCode, claimWithDiscord, onboardWithDiscord, loginWithBackupCodeDiscord
+} from '../../../core/auth/session';
+import { getClient, sessionInfo, forceRefreshPortalSession } from '../../../core/api/supabase';
+import { t } from '../../../core/i18n/i18n';
+import { showAdminDashboard, reloadActiveView } from '../router';
+import { fetchGuilds } from '../admin/accounts.controller';
 import { shellView } from '../../shell/views/ShellView';
 import { portalView } from '../../portal/views/PortalView';
 import { clearPendingIntent, peekPendingIntent, savePendingIntent } from '../../../core/auth/pending-intent';
@@ -40,10 +47,6 @@ export interface RestoreSessionResult {
   portal?: boolean;
 }
 
-function w(): any {
-  return (typeof window !== 'undefined' ? window : ({} as any)) as any;
-}
-
 function ls(): Storage | null {
   return typeof localStorage !== 'undefined' ? localStorage : null;
 }
@@ -57,27 +60,22 @@ function el<T extends HTMLElement = HTMLElement>(id: string): T | null {
   return document.getElementById(id) as T | null;
 }
 
-function g(): any {
-  return w().GM;
-}
-
 function db(): any {
-  const x = g();
-  return x && x.db ? x.db : null;
+  return getClient();
 }
 
-function normalizeRole(role: unknown): string {
-  const x = g();
-  if (x && typeof x.normalizeRole === 'function') return x.normalizeRole(role);
-  if (role === 'R5' || role === 'admin' || role === 'super_admin') return 'super_admin';
-  if (role === 'server_admin') return 'server_admin';
-  if (role === 'R4' || role === 'guild_admin') return 'guild_admin';
-  return 'member';
-}
+/** One `pageshow` listener per page, however often initAuthForms() runs. */
+let discordPageshowWired = false;
 
-function t(key: string): string {
-  const x = g();
-  return x && typeof x.t === 'function' ? x.t(key) : key;
+/**
+ * Publishes the signed-in account id for `currentAccountId()` in core/auth/roles
+ * and the accounts controller, which still read it from the bridge object.
+ * A WRITE kept as-is in phase M4c (no app-state key carries it yet); nothing in
+ * this module reads it back.
+ */
+function publishCurrentAccountId(accountId: string): void {
+  const bridge = typeof window !== 'undefined' ? (window as any).GM : null;
+  if (bridge) bridge.currentAccountId = accountId;
 }
 
 function setLoginError(message: string): void {
@@ -182,11 +180,6 @@ function resetDiscordButton(): void {
 
 /** Starts the Discord redirect, with visible feedback while the page leaves. */
 export function startDiscordSignIn(): void {
-  const x = g();
-  if (!x || typeof x.loginWithDiscord !== 'function') {
-    setDiscordStatus('Discord sign-in is unavailable in this build.');
-    return;
-  }
   const btn = el<HTMLButtonElement>('login-discord-btn');
   if (btn) {
     btn.disabled = true;
@@ -196,7 +189,7 @@ export function startDiscordSignIn(): void {
   }
   clearDiscordStatus();
   rememberSignInMethod('discord');
-  x.loginWithDiscord();
+  loginWithDiscord();
 }
 
 // ── UI reveal helpers ────────────────────────────────────────────────────────
@@ -225,37 +218,18 @@ export function revealAdmin(role: string): void {
     revealPortal();
     return;
   }
-  const app = w().GM_APP;
-  if (app && typeof app.showAdminDashboard === 'function') {
-    app.showAdminDashboard(role);
-    // The sidebar is rendered at boot, BEFORE sign-in resolves the tenant, and
-    // this early return used to skip every re-render -- so the guild badge kept
-    // whatever it showed at boot. That was invisible while an unresolved guild
-    // silently read 'ALPHA' (finding H2): the badge displayed a plausible guild
-    // name and nobody noticed it was the wrong one. Now that an unresolved
-    // tenant says so out loud, the staleness is plain, so re-render here.
-    shellView.renderSidebar();
-    return;
-  }
-  const loginView = el('login-view');
-  if (loginView) loginView.classList.add('hidden');
-  const playerPortalView = el('player-portal-view');
-  if (playerPortalView) { playerPortalView.classList.add('hidden'); playerPortalView.classList.remove('portal-connected'); }
-  const dashboardView = el('dashboard-view');
-  if (dashboardView) { dashboardView.classList.remove('hidden'); dashboardView.classList.add('active'); }
-  shellView.renderShell();
-}
-
-function reloadActiveView(): void {
-  const app = w().GM_APP;
-  if (app && typeof app.reloadActiveView === 'function') app.reloadActiveView();
+  showAdminDashboard();
+  // The sidebar is rendered at boot, BEFORE sign-in resolves the tenant, and
+  // this early return used to skip every re-render -- so the guild badge kept
+  // whatever it showed at boot. That was invisible while an unresolved guild
+  // silently read 'ALPHA' (finding H2): the badge displayed a plausible guild
+  // name and nobody noticed it was the wrong one. Now that an unresolved
+  // tenant says so out loud, the staleness is plain, so re-render here.
+  shellView.renderSidebar();
 }
 
 async function fetchGuildsIfAvailable(): Promise<void> {
-  const app = w().GM_APP;
-  if (app && typeof app.fetchGuilds === 'function') {
-    try { await app.fetchGuilds(); } catch (_) { /* best effort */ }
-  }
+  try { await fetchGuilds(); } catch (_) { /* best effort */ }
 }
 
 // ── Session restore ──────────────────────────────────────────────────────────
@@ -276,10 +250,9 @@ export async function restoreSession(): Promise<RestoreSessionResult> {
     if (loginView) loginView.classList.add('hidden');
   }
 
-  const x = g();
-  let info: any = x && typeof x.sessionInfo === 'function' ? await x.sessionInfo() : null;
-  if (!info && x && typeof x.forceRefreshPortalSession === 'function') {
-    info = await x.forceRefreshPortalSession();
+  let info: any = await sessionInfo();
+  if (!info) {
+    info = await forceRefreshPortalSession();
   }
 
   if (!info) {
@@ -298,7 +271,7 @@ export async function restoreSession(): Promise<RestoreSessionResult> {
       store.removeItem('gm_guild_restriction');
       store.removeItem('gm_server_restriction');
     }
-    if (x && info.accountId) x.currentAccountId = info.accountId;
+    if (info.accountId) publishCurrentAccountId(info.accountId);
     patchAppState({ currentGuildRestriction: null, currentServerRestriction: null });
     revealPortal();
     return { restored: true, role: 'member', portal: true };
@@ -360,10 +333,10 @@ export async function restoreSession(): Promise<RestoreSessionResult> {
     store.setItem('gm_role', role);
     if (info.accountId) store.setItem('gm_user', info.accountId);
   }
-  if (x && info.accountId) x.currentAccountId = info.accountId;
+  if (info.accountId) publishCurrentAccountId(info.accountId);
 
-  if (role === 'guild_admin' && x && typeof x.ensureGuildRestriction === 'function') {
-    try { await x.ensureGuildRestriction(); } catch (_) { /* best effort */ }
+  if (role === 'guild_admin') {
+    try { await ensureGuildRestriction(); } catch (_) { /* best effort */ }
   }
 
   await fetchGuildsIfAvailable();
@@ -380,8 +353,6 @@ export async function restoreSession(): Promise<RestoreSessionResult> {
 
 /** Shared post-login path (password, backup code, Discord). */
 export async function handleSuccessfulLogin(resp: LoginResponse, typedUser?: string): Promise<void> {
-  const x = g();
-
   const canonicalUser = resp.id || typedUser || '';
   const loginError = el('login-error');
   if (loginError) loginError.classList.add('hidden');
@@ -417,7 +388,7 @@ export async function handleSuccessfulLogin(resp: LoginResponse, typedUser?: str
       store.removeItem('gm_guild_restriction');
       store.removeItem('gm_server_restriction');
     }
-    if (x) x.currentAccountId = canonicalUser;
+    publishCurrentAccountId(canonicalUser);
 
     revealPortal();
     showToast(t('toast_welcome') + ' ' + (typedUser || canonicalUser) + ' !', 'success');
@@ -475,7 +446,7 @@ export async function handleSuccessfulLogin(resp: LoginResponse, typedUser?: str
     store.setItem('gm_role', role);
     store.setItem('gm_user', canonicalUser);
   }
-  if (x) x.currentAccountId = canonicalUser;
+  publishCurrentAccountId(canonicalUser);
 
   // An admin who can see several tenants needs one selected, or every loader
   // bails and the Command Center renders empty (reported live, 2026-09-27).
@@ -562,13 +533,9 @@ async function ensureInitialGuildSelection(accountId: string | null): Promise<vo
 
 export async function doLogout(): Promise<void> {
   setVerifiedRole(null, null);
-  const x = g();
-  if (x && typeof x.logout === 'function') {
-    try {
-      const r = x.logout();
-      if (r && typeof r.then === 'function') await r;
-    } catch (_) { /* ignore */ }
-  }
+  try {
+    await logout();
+  } catch (_) { /* ignore */ }
 
   const store = ls();
   if (store) {
@@ -634,20 +601,16 @@ export async function handleDiscordCallback(): Promise<boolean> {
     window.history.replaceState({}, '', window.location.pathname + (qs ? '?' + qs : '') + window.location.hash);
   } catch { /* replaceState is unavailable in some embedded webviews */ }
 
-  if (errorCode) {
-    setDiscordStatus(discordErrorMessage(errorCode), errorCode === 'cancelled' ? 'info' : 'error');
-    return true;
-  }
-
-  const x = g();
-  if (!x || typeof x.redeemDiscordTicket !== 'function') {
-    setDiscordStatus('Discord sign-in is unavailable in this build.');
+  // No ticket implies an error code here (the guard above), so this also
+  // narrows `ticket` to a string for the redemption below.
+  if (errorCode || !ticket) {
+    setDiscordStatus(discordErrorMessage(errorCode || ''), errorCode === 'cancelled' ? 'info' : 'error');
     return true;
   }
 
   setLoginBusy(true);
   try {
-    const resp: LoginResponse = await x.redeemDiscordTicket(ticket);
+    const resp: LoginResponse = await redeemDiscordTicket(ticket);
     if (resp.ok && resp.state === 'choose') {
       // One person, several accounts. Ask which, rather than picking for them:
       // an administrator who is also a player wants both, at different times.
@@ -780,13 +743,8 @@ export function openRecoveryCodeDialog(): void {
     if (!id || !code) { fail('Enter your identifier and a recovery code.'); return; }
 
     if (submit) submit.disabled = true;
-    const x = g();
-    if (!x || typeof x.loginWithBackupCodeDiscord !== 'function') {
-      fail('Recovery is unavailable in this build.');
-      return;
-    }
     try {
-      const resp: LoginResponse = await x.loginWithBackupCodeDiscord(id, code);
+      const resp: LoginResponse = await loginWithBackupCodeDiscord(id, code);
       if (resp.ok) {
         close();
         await handleSuccessfulLogin(resp, resp.id || id);
@@ -924,14 +882,9 @@ export function openAccountChooser(
     // already gone and fail with a confusing error.
     overlay.querySelectorAll('button').forEach((b) => { (b as HTMLButtonElement).disabled = true; });
 
-    const x = g();
-    if (!x || typeof x.chooseDiscordAccount !== 'function') {
-      fail('Account selection is unavailable in this build.');
-      return;
-    }
     void (async () => {
       try {
-        const resp: LoginResponse = await x.chooseDiscordAccount(ticket, accountId);
+        const resp: LoginResponse = await chooseDiscordAccount(ticket, accountId);
         if (resp.ok) {
           overlay.remove();
           await handleSuccessfulLogin(resp, resp.id || accountId);
@@ -1268,7 +1221,6 @@ export function openLinkAccountDialog(
 
   const submit = async (): Promise<void> => {
     if (!path || !ticket || busy) return;
-    const x = g();
     let resp: LoginResponse;
     clearErrors();
 
@@ -1292,23 +1244,17 @@ export function openLinkAccountDialog(
       if (path === 'claim') {
         const id = val('discord-link-id');
         const password = ($<HTMLInputElement>('discord-link-password') || ({} as any)).value || '';
-        resp = x && typeof x.claimWithDiscord === 'function'
-          ? await x.claimWithDiscord(ticket, id, password) : { ok: false, error: 'unavailable' };
+        resp = await claimWithDiscord(ticket, id, password);
       } else if (path === 'code') {
         const code = val('discord-link-code');
-        resp = x && typeof x.redeemLinkCode === 'function'
-          ? await x.redeemLinkCode(ticket, code) : { ok: false, error: 'unavailable' };
+        resp = await redeemLinkCode(ticket, code);
       } else if (path === 'join') {
-        resp = x && typeof x.onboardWithDiscord === 'function'
-          ? await x.onboardWithDiscord(ticket, 'join', { join_code: val('discord-join-code'), uid: val('discord-join-uid') })
-          : { ok: false, error: 'unavailable' };
+        resp = await onboardWithDiscord(ticket, 'join', { join_code: val('discord-join-code'), uid: val('discord-join-uid') });
       } else {
-        resp = x && typeof x.onboardWithDiscord === 'function'
-          ? await x.onboardWithDiscord(ticket, 'create', {
-            guild_tag: val('discord-create-tag').toUpperCase(),
-            server_number: val('discord-create-server'),
-          })
-          : { ok: false, error: 'unavailable' };
+        resp = await onboardWithDiscord(ticket, 'create', {
+          guild_tag: val('discord-create-tag').toUpperCase(),
+          server_number: val('discord-create-server'),
+        });
       }
 
       if (!resp.ok) {
@@ -1546,10 +1492,7 @@ async function onLoginSubmit(e: Event): Promise<void> {
   if (span) span.textContent = t('login_btn_loading');
 
   try {
-    const x = g();
-    const resp: LoginResponse = x && typeof x.login === 'function'
-      ? await x.login(user, pass)
-      : { ok: false, error: 'no_client' };
+    const resp: LoginResponse = await login(user, pass);
 
     if (resp.ok) {
       rememberSignInMethod('password');
@@ -1612,8 +1555,8 @@ export function initAuthForms(): void {
   // Back from Discord's consent screen with the browser's Back button: the
   // page can come out of the bfcache with the button still saying "Opening
   // Discord…" and disabled.
-  if (typeof window !== 'undefined' && !(window as any).__gmDiscordPageshowWired) {
-    (window as any).__gmDiscordPageshowWired = true;
+  if (typeof window !== 'undefined' && !discordPageshowWired) {
+    discordPageshowWired = true;
     window.addEventListener('pageshow', (e: PageTransitionEvent) => { if (e.persisted) resetDiscordButton(); });
   }
 

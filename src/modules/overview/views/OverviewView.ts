@@ -35,7 +35,15 @@ import {
   queryGuildOfficerTimezones,
   fetchConfiguredWebhooks
 } from '../overview.service';
-import { escapeHTML } from '../../../core/utils/text';
+import { escapeHTML, formatNumber, avatarInit } from '../../../core/utils/text';
+import { t } from '../../../core/i18n/i18n';
+import { getClient } from '../../../core/api/supabase';
+import { getActiveGuild } from '../../../core/auth/roles';
+import { getWeekStart, getPrevWeekStart, formatDateTimeUTC } from '../../../core/utils/date';
+import { getEventIcon, getEventTheme } from '../../../core/config/events';
+import { showToast } from '../../../core/dom/toast';
+import { config } from '../../../core/config/guild-config';
+import { exportGuildData } from '../../ocr/ocr.service';
 import {
   COMMON_TIMEZONES,
   formatOffsetLabel,
@@ -43,86 +51,6 @@ import {
   isValidTimezone,
   getTimezoneOffset
 } from '../../../utils/timezone';
-
-function winAny(): any {
-  return (typeof window !== 'undefined' ? window : ({} as any)) as any;
-}
-
-function gm(): any {
-  return winAny().GM;
-}
-
-const legacy = {
-  getDb(): any {
-    const g = gm();
-    return g && g.db ? g.db : null;
-  },
-  t(key: string): string {
-    const g = gm();
-    return g && typeof g.t === 'function' ? g.t(key) : key;
-  },
-  esc(value: unknown): string {
-    return escapeHTML(value);
-  },
-  fmt(num: unknown): string {
-    const g = gm();
-    return g && typeof g.formatNumber === 'function' ? g.formatNumber(num) : String(num ?? '');
-  },
-  getActiveGuild(): string | null {
-    const g = gm();
-    return g && typeof g.getActiveGuild === 'function' ? g.getActiveGuild() : null;
-  },
-  getWeekStart(): string {
-    const g = gm();
-    return g && typeof g.getWeekStart === 'function' ? g.getWeekStart() : '';
-  },
-  getPrevWeekStart(week: string): string {
-    const g = gm();
-    if (g && typeof g.getPrevWeekStart === 'function') return g.getPrevWeekStart(week);
-    const d = new Date(week + 'T12:00:00Z');
-    if (isNaN(d.getTime())) return '';
-    d.setUTCDate(d.getUTCDate() - 7);
-    return d.toISOString().slice(0, 10);
-  },
-  formatDateTimeUTC(value: unknown): string {
-    const g = gm();
-    return g && typeof g.formatDateTimeUTC === 'function' ? g.formatDateTimeUTC(value) : String(value ?? '');
-  },
-  getEventIcon(name: string): string {
-    const g = gm();
-    return g && typeof g.getEventIcon === 'function' ? g.getEventIcon(name) : '';
-  },
-  getEventTheme(name: string): string {
-    const g = gm();
-    return g && typeof g.getEventTheme === 'function' ? g.getEventTheme(name) : 'gm-task-card-dark';
-  },
-  avatarInit(value: unknown): string {
-    const g = gm();
-    return g && typeof g.avatarInit === 'function' ? g.avatarInit(value) : String(value || '').slice(0, 1).toUpperCase();
-  },
-  showToast(msg: string, type: string): void {
-    const g = gm();
-    if (g && typeof g.showToast === 'function') g.showToast(msg, type);
-  },
-  configGet(key: string): any {
-    const g = gm();
-    return g && g.config && typeof g.config.get === 'function' ? g.config.get(key) : undefined;
-  },
-  configSet(key: string, value: string): Promise<any> {
-    const g = gm();
-    if (g && g.config && typeof g.config.set === 'function') return g.config.set(key, value);
-    return Promise.resolve();
-  },
-  renderPendingRegistrations(): void {
-    const g = gm();
-    if (g && typeof g.renderPendingRegistrations === 'function') g.renderPendingRegistrations();
-  },
-  exportGuildData(guild: string): Promise<any> {
-    const g = gm();
-    if (g && typeof g.exportGuildData === 'function') return g.exportGuildData(guild);
-    return Promise.reject(new Error('exportGuildData unavailable'));
-  }
-};
 
 export class OverviewView {
   private countdownTimer: ReturnType<typeof setInterval> | null = null;
@@ -143,7 +71,7 @@ export class OverviewView {
     if (!panel) return;
 
     try {
-      const clocksStr = await legacy.configGet('timezone_clocks');
+      const clocksStr = await config.get('timezone_clocks');
       this.clockMembers = clocksStr ? parseTimezoneClocks(clocksStr) : getDefaultClocks();
     } catch (e) {
       console.error('Failed to load timezone clocks', e);
@@ -152,15 +80,15 @@ export class OverviewView {
 
     this.renderShell(panel);
 
-    const db = legacy.getDb();
+    const db = getClient();
     if (!db) return;
 
     void this.renderDiscordSetupCallout(panel, db);
 
     try {
-      const week = legacy.getWeekStart();
-      const prevWeek = legacy.getPrevWeekStart(week);
-      const currentG = legacy.getActiveGuild();
+      const week = getWeekStart();
+      const prevWeek = getPrevWeekStart(week);
+      const currentG = getActiveGuild();
 
       let memCountQ = queryMemberCount(db);
       let statusQ = queryEventStatus(db);
@@ -225,7 +153,7 @@ export class OverviewView {
         activity.push({
           icon: s.is_active ? 'ph-play' : 'ph-stop-circle',
           color: s.is_active ? 'success' : 'info',
-          text: prettyEventName(s.event_name) + ' ' + legacy.t(s.is_active ? 'overview_event_started' : 'overview_event_ended'),
+          text: prettyEventName(s.event_name) + ' ' + t(s.is_active ? 'overview_event_started' : 'overview_event_ended'),
           when: s.updated_at
         });
       });
@@ -233,12 +161,12 @@ export class OverviewView {
         activity.push({
           icon: 'ph-warning-octagon',
           color: 'danger',
-          text: legacy.t('overview_sanction_for') + ' ' + s.pseudo + (s.created_by ? ' (' + s.created_by + ')' : ''),
+          text: t('overview_sanction_for') + ' ' + s.pseudo + (s.created_by ? ' (' + s.created_by + ')' : ''),
           when: s.created_at
         });
       });
       ((recentMembers.data || []) as any[]).forEach((m) => {
-        activity.push({ icon: 'ph-user-plus', color: 'success', text: m.pseudo + ' ' + legacy.t('overview_member_added'), when: m.created_at });
+        activity.push({ icon: 'ph-user-plus', color: 'success', text: m.pseudo + ' ' + t('overview_member_added'), when: m.created_at });
       });
       ((transfersRows.data || []) as any[]).forEach((t) => {
         const isIncoming = t.target_guild === currentG;
@@ -257,7 +185,7 @@ export class OverviewView {
       this.renderPage(panel, stats, activity, upcoming);
     } catch (err: any) {
       console.error('overview load', err);
-      legacy.showToast(legacy.t('toast_err_generic') + ' ' + err.message, 'error');
+      showToast(t('toast_err_generic') + ' ' + err.message, 'error');
     }
   }
 
@@ -269,7 +197,7 @@ export class OverviewView {
    */
   private async renderDiscordSetupCallout(panel: HTMLElement, db: any): Promise<void> {
     const slot = panel.querySelector('[data-gm-discord-setup]') as HTMLElement | null;
-    const guild = legacy.getActiveGuild();
+    const guild = getActiveGuild();
     if (!slot || !guild) return;
     try {
       const res = await fetchConfiguredWebhooks(db, guild);
@@ -304,17 +232,17 @@ export class OverviewView {
       '<div class="gm-page">' +
         '<header class="gm-page-header">' +
           '<div>' +
-            '<h1 class="gm-page-title">' + legacy.t('gm_overview_title') + '</h1>' +
-            '<p class="gm-page-subtitle">' + legacy.t('gm_overview_sub_real') + '</p>' +
+            '<h1 class="gm-page-title">' + t('gm_overview_title') + '</h1>' +
+            '<p class="gm-page-subtitle">' + t('gm_overview_sub_real') + '</p>' +
           '</div>' +
           '<button type="button" class="gm-btn gm-btn-ghost" id="gm-export-guild-data-btn">' +
-            '<i class="ph ph-download-simple"></i> <span>' + legacy.t('overview_export_guild_data') + '</span>' +
+            '<i class="ph ph-download-simple"></i> <span>' + t('overview_export_guild_data') + '</span>' +
           '</button>' +
         '</header>' +
         '<div data-gm-discord-setup></div>' +
         '<div class="gm-section-head" style="margin-bottom: 0.75rem; align-items: center;">' +
           '<h3 style="font-family: var(--font-display); font-size: var(--fs-xl); font-weight: 600; display: flex; align-items: center; gap: 0.5rem; margin: 0;"><i class="ph ph-clock"></i> Clocks</h3>' +
-          '<button class="gm-mini-btn" id="gm-manage-clocks-btn"><i class="ph ph-gear"></i> ' + legacy.t('manage_clocks') + '</button>' +
+          '<button class="gm-mini-btn" id="gm-manage-clocks-btn"><i class="ph ph-gear"></i> ' + t('manage_clocks') + '</button>' +
         '</div>' +
         '<div class="gm-overview-clocks" id="gm-overview-clocks" style="margin-bottom: 2rem;"></div>' +
         '<div data-gm-overview-content></div>' +
@@ -333,13 +261,13 @@ export class OverviewView {
         const icon = exportBtn.querySelector('i');
         if (icon) icon.className = 'ph ph-circle-notch ph-spin';
         try {
-          const exportGuild = legacy.getActiveGuild();
+          const exportGuild = getActiveGuild();
           // H2: exporting with an unresolved tenant would have exported ALPHA.
           if (!exportGuild) throw new Error('guild_unresolved');
-          const res = await legacy.exportGuildData(exportGuild);
+          const res = await exportGuildData(exportGuild);
           if (!res.ok) throw new Error(res.error || 'export_failed');
         } catch (err: any) {
-          legacy.showToast(legacy.t('toast_err_generic') + ' ' + err.message, 'error');
+          showToast(t('toast_err_generic') + ' ' + err.message, 'error');
         } finally {
           exportBtn.disabled = false;
           if (icon) icon.className = 'ph ph-download-simple';
@@ -357,21 +285,21 @@ export class OverviewView {
         '<div class="gm-empty">' +
           '<i class="ph ph-clock gm-icon"></i>' +
           '<div class="gm-empty-title">No timezone clocks yet</div>' +
-          '<div class="gm-empty-hint">Add an officer\'s timezone with "' + legacy.esc(legacy.t('manage_clocks')) + '" above.</div>' +
+          '<div class="gm-empty-hint">Add an officer\'s timezone with "' + escapeHTML(t('manage_clocks')) + '" above.</div>' +
         '</div>';
       return;
     }
 
     let html = '';
     this.clockMembers.forEach((m) => {
-      const initials = legacy.avatarInit(m.name);
+      const initials = avatarInit(m.name);
       const offsetText = formatOffsetLabel(m.offset);
-      const roleBadge = m.role ? ' <span style="font-size: var(--fs-xs); opacity: 0.8;">(' + legacy.esc(m.role) + ')</span>' : '';
+      const roleBadge = m.role ? ' <span style="font-size: var(--fs-xs); opacity: 0.8;">(' + escapeHTML(m.role) + ')</span>' : '';
       html +=
-        '<div class="gm-clock-card" data-offset="' + m.offset + '" data-timezone="' + legacy.esc(m.timezone || '') + '">' +
-          '<div class="gm-avatar gm-avatar-sm gm-avatar-' + m.color + '">' + legacy.esc(initials) + '</div>' +
+        '<div class="gm-clock-card" data-offset="' + m.offset + '" data-timezone="' + escapeHTML(m.timezone || '') + '">' +
+          '<div class="gm-avatar gm-avatar-sm gm-avatar-' + m.color + '">' + escapeHTML(initials) + '</div>' +
           '<div class="gm-clock-info">' +
-            '<div class="gm-clock-name">' + legacy.esc(m.name) + roleBadge + '</div>' +
+            '<div class="gm-clock-name">' + escapeHTML(m.name) + roleBadge + '</div>' +
             '<div class="gm-clock-meta">' +
               '<span>' + offsetText + '</span>' +
               '<span class="gm-clock-icon-slot"></span>' +
@@ -440,14 +368,14 @@ export class OverviewView {
     const content = panel.querySelector('[data-gm-overview-content]');
     if (!content) return;
 
-    const liveEventsMeta = stats.liveEvents > 0 ? stats.liveEventNames.join(' · ') : legacy.t('overview_no_live');
+    const liveEventsMeta = stats.liveEvents > 0 ? stats.liveEventNames.join(' · ') : t('overview_no_live');
 
     const html =
       '<div class="gm-stat-grid">' +
-        this.statTile(legacy.t('overview_s_members'), legacy.fmt(stats.members), null, 'ph-users', false, 'Active Guild Members', 'stat-theme-lime') +
-        this.statTile('Guild Power', formatBigNumber(stats.totalPower, (v) => legacy.fmt(v)), null, 'ph-gauge', false, 'Total Power of All Members', 'stat-theme-cyan') +
-        this.statTile(legacy.t('overview_s_events'), String(stats.liveEvents), null, 'ph-clock', stats.liveEvents > 0, liveEventsMeta, 'stat-theme-coral') +
-        this.statTile(legacy.t('overview_s_glory'), formatBigNumber(stats.gloryTotal, (v) => legacy.fmt(v)), 'up', 'ph-trophy', false, legacy.t('overview_s_glory_meta'), 'stat-theme-mint') +
+        this.statTile(t('overview_s_members'), formatNumber(stats.members), null, 'ph-users', false, 'Active Guild Members', 'stat-theme-lime') +
+        this.statTile('Guild Power', formatBigNumber(stats.totalPower, (v) => formatNumber(v)), null, 'ph-gauge', false, 'Total Power of All Members', 'stat-theme-cyan') +
+        this.statTile(t('overview_s_events'), String(stats.liveEvents), null, 'ph-clock', stats.liveEvents > 0, liveEventsMeta, 'stat-theme-coral') +
+        this.statTile(t('overview_s_glory'), formatBigNumber(stats.gloryTotal, (v) => formatNumber(v)), 'up', 'ph-trophy', false, t('overview_s_glory_meta'), 'stat-theme-mint') +
       '</div>' +
       '<div class="gm-section" id="pending-accounts-card">' +
         '<div class="gm-section-head">' +
@@ -466,44 +394,36 @@ export class OverviewView {
       '</div>' +
       '<div class="gm-section">' +
         '<div class="gm-section-head">' +
-          '<div class="gm-section-title"><i class="ph ph-calendar-dots"></i> ' + legacy.t('overview_upcoming_title') + '</div>' +
+          '<div class="gm-section-title"><i class="ph ph-calendar-dots"></i> ' + t('overview_upcoming_title') + '</div>' +
         '</div>' +
         this.renderUpcomingCard(upcoming) +
       '</div>' +
       '<div class="gm-section">' +
         '<div class="gm-section-head">' +
-          '<div class="gm-section-title"><i class="ph ph-pulse"></i> ' + legacy.t('overview_recent_activity') + '</div>' +
+          '<div class="gm-section-title"><i class="ph ph-pulse"></i> ' + t('overview_recent_activity') + '</div>' +
         '</div>' +
         this.renderActivityCard(activity) +
       '</div>';
 
     content.innerHTML = html;
 
-    legacy.renderPendingRegistrations();
+    // The pending-registrations slot above is filled by the admin accounts
+    // render (guild-requests.controller#renderPendingRegistrations). The view
+    // used to call `window.GM.renderPendingRegistrations()` here, but nothing
+    // ever installed that member, so the call was a no-op and is gone.
 
     this.startCountdownTicker();
   }
 
   private getEventIcon(name: string): string {
-    const fromGm = legacy.getEventIcon(name);
-    if (fromGm) return fromGm;
-    if (!name) return 'ph-calendar-dot';
-    const lower = name.toLowerCase();
-    if (lower.indexOf('svs') !== -1) return 'ph-sword';
-    if (lower.indexOf('gvg') !== -1) return 'ph-flag-banner';
-    if (lower.indexOf('shadowfront') !== -1) return 'ph-ghost';
-    if (lower.indexOf('trade') !== -1 || lower.indexOf('dtr') !== -1) return 'ph-truck';
-    if (lower.indexOf('stage a') !== -1) return 'ph-crosshair';
-    if (lower.indexOf('stage b') !== -1) return 'ph-target';
-    if (lower.indexOf('arms') !== -1) return 'ph-crosshair';
-    if (lower.indexOf('glory') !== -1) return 'ph-trophy';
-    return 'ph-calendar-dot';
+    return getEventIcon(name);
   }
+
 
   private renderUpcomingCard(upcoming: any[]): string {
     if (!upcoming || !upcoming.length) {
       return '<div class="gm-empty"><i class="ph ph-calendar-x gm-icon"></i>' +
-        '<div class="gm-empty-title">' + legacy.t('overview_no_upcoming') + '</div></div>';
+        '<div class="gm-empty-title">' + t('overview_no_upcoming') + '</div></div>';
     }
 
     let html = '<div class="gm-timeline-container">';
@@ -511,12 +431,12 @@ export class OverviewView {
       const dateObj = new Date(u.when);
       const timeStr = isNaN(dateObj.getTime()) ? '' : pad2(dateObj.getUTCHours()) + ':' + pad2(dateObj.getUTCMinutes());
       const iconClass = this.getEventIcon(u.name);
-      const themeClass = legacy.getEventTheme(u.name);
+      const themeClass = getEventTheme(u.name);
 
       html +=
         '<div class="gm-timeline-item">' +
           '<div class="gm-timeline-time-col">' +
-            '<div>' + legacy.esc(timeStr) + '</div>' +
+            '<div>' + escapeHTML(timeStr) + '</div>' +
             '<div style="font-size: var(--fs-xs); font-weight:500; opacity:0.7;">UTC</div>' +
           '</div>' +
           '<div class="gm-timeline-line-col"><div class="gm-timeline-dot"></div></div>' +
@@ -524,15 +444,15 @@ export class OverviewView {
             '<div class="gm-task-card ' + themeClass + '">' +
               '<div class="gm-task-card-top">' +
                 '<div class="gm-task-status-tag"><i class="ph ph-clock"></i><span>Upcoming</span></div>' +
-                '<span class="gm-task-countdown-badge gm-countdown" data-deadline="' + legacy.esc(u.when) + '">' +
-                  legacy.esc(formatCountdown(u.when, legacy.t('overview_time_now'))) +
+                '<span class="gm-task-countdown-badge gm-countdown" data-deadline="' + escapeHTML(u.when) + '">' +
+                  escapeHTML(formatCountdown(u.when, t('overview_time_now'))) +
                 '</span>' +
               '</div>' +
               '<div class="gm-task-card-body">' +
                 '<div class="gm-task-icon-squircle"><i class="ph ' + iconClass + '"></i></div>' +
                 '<div class="gm-task-info">' +
-                  '<div class="gm-task-title">' + legacy.esc(u.name) + '</div>' +
-                  '<div class="gm-task-sub">' + legacy.esc(legacy.formatDateTimeUTC(u.when)) + '</div>' +
+                  '<div class="gm-task-title">' + escapeHTML(u.name) + '</div>' +
+                  '<div class="gm-task-sub">' + escapeHTML(formatDateTimeUTC(u.when)) + '</div>' +
                 '</div>' +
                 '<button class="gm-task-action-btn" title="Event Actions" aria-label="Event actions"><i class="ph ph-dots-three-vertical"></i></button>' +
               '</div>' +
@@ -553,7 +473,7 @@ export class OverviewView {
       const els = document.querySelectorAll('#gm-overview .gm-countdown');
       if (!els.length) { if (this.countdownTimer) clearInterval(this.countdownTimer); this.countdownTimer = null; return; }
       els.forEach((el) => {
-        el.textContent = formatCountdown(el.getAttribute('data-deadline'), legacy.t('overview_time_now'));
+        el.textContent = formatCountdown(el.getAttribute('data-deadline'), t('overview_time_now'));
       });
     }, 1000);
   }
@@ -562,16 +482,16 @@ export class OverviewView {
     const themeCls = themeClass || 'stat-theme-lime';
     return '<div class="gm-stat-tile ' + themeCls + '">' +
       '<div class="gm-stat-tile-header">' +
-        '<div class="gm-stat-tile-label">' + legacy.esc(label) + '</div>' +
+        '<div class="gm-stat-tile-label">' + escapeHTML(label) + '</div>' +
         '<div class="gm-task-icon-squircle"><i class="ph ' + icon + '"></i></div>' +
       '</div>' +
-      '<div class="gm-stat-tile-value">' + legacy.esc(value) + '</div>' +
+      '<div class="gm-stat-tile-value">' + escapeHTML(value) + '</div>' +
       '<div class="gm-stat-tile-footer">' +
         (meta || trend
           ? '<div class="gm-stat-tile-meta' + (trend === 'up' ? ' gm-up' : trend === 'down' ? ' gm-down' : '') + '">' +
             (trend === 'up' ? '<i class="ph ph-trend-up"></i> ' : '') +
             (trend === 'down' ? '<i class="ph ph-trend-down"></i> ' : '') +
-            legacy.esc(meta || '') +
+            escapeHTML(meta || '') +
             '</div>'
           : '<div class="gm-stat-tile-meta">&nbsp;</div>') +
       '</div>' +
@@ -581,7 +501,7 @@ export class OverviewView {
   private renderActivityCard(activity: any[]): string {
     if (!activity || !activity.length) {
       return '<div class="gm-empty"><i class="ph ph-clock-counter-clockwise gm-icon"></i>' +
-        '<div class="gm-empty-title">' + legacy.t('overview_no_activity') + '</div></div>';
+        '<div class="gm-empty-title">' + t('overview_no_activity') + '</div></div>';
     }
 
     const themeMap: Record<string, string> = {
@@ -595,7 +515,7 @@ export class OverviewView {
       const dateObj = new Date(a.when);
       const timeStr = isNaN(dateObj.getTime()) ? '' : pad2(dateObj.getUTCHours()) + ':' + pad2(dateObj.getUTCMinutes());
 
-      let themeClass = legacy.getEventTheme(a.text);
+      let themeClass = getEventTheme(a.text);
       if (themeClass === 'gm-task-card-dark' && a.color) themeClass = themeMap[a.color] || 'gm-task-card-dark';
 
       let tagLabel = 'Activity';
@@ -606,21 +526,21 @@ export class OverviewView {
       html +=
         '<div class="gm-timeline-item">' +
           '<div class="gm-timeline-time-col">' +
-            '<div>' + legacy.esc(timeStr) + '</div>' +
+            '<div>' + escapeHTML(timeStr) + '</div>' +
             '<div style="font-size: var(--fs-xs); font-weight:500; opacity:0.7;">UTC</div>' +
           '</div>' +
           '<div class="gm-timeline-line-col"><div class="gm-timeline-dot"></div></div>' +
           '<div>' +
             '<div class="gm-task-card ' + themeClass + '">' +
               '<div class="gm-task-card-top">' +
-                '<div class="gm-task-status-tag"><i class="ph ' + legacy.esc(a.icon) + '"></i><span>' + legacy.esc(tagLabel) + '</span></div>' +
-                '<span class="gm-task-countdown-badge">' + legacy.esc(relativeTime(a.when, legacy.t('overview_time_now'))) + '</span>' +
+                '<div class="gm-task-status-tag"><i class="ph ' + escapeHTML(a.icon) + '"></i><span>' + escapeHTML(tagLabel) + '</span></div>' +
+                '<span class="gm-task-countdown-badge">' + escapeHTML(relativeTime(a.when, t('overview_time_now'))) + '</span>' +
               '</div>' +
               '<div class="gm-task-card-body">' +
-                '<div class="gm-task-icon-squircle"><i class="ph ' + legacy.esc(a.icon) + '"></i></div>' +
+                '<div class="gm-task-icon-squircle"><i class="ph ' + escapeHTML(a.icon) + '"></i></div>' +
                 '<div class="gm-task-info">' +
-                  '<div class="gm-task-title">' + legacy.esc(a.text) + '</div>' +
-                  '<div class="gm-task-sub">' + legacy.esc(legacy.formatDateTimeUTC(a.when)) + '</div>' +
+                  '<div class="gm-task-title">' + escapeHTML(a.text) + '</div>' +
+                  '<div class="gm-task-sub">' + escapeHTML(formatDateTimeUTC(a.when)) + '</div>' +
                 '</div>' +
                 '<button class="gm-task-action-btn" title="Activity Actions" aria-label="Activity actions"><i class="ph ph-dots-three-vertical"></i></button>' +
               '</div>' +
@@ -644,9 +564,9 @@ export class OverviewView {
     const tzRegions = Array.from(new Set(COMMON_TIMEZONES.map((z) => z.region)));
     tzRegions.forEach((region) => {
       const zones = COMMON_TIMEZONES.filter((z) => z.region === region);
-      tzOptions += '<optgroup label="' + legacy.esc(region) + '">';
+      tzOptions += '<optgroup label="' + escapeHTML(region) + '">';
       zones.forEach((z) => {
-        tzOptions += '<option value="' + legacy.esc(z.zone) + '">' + legacy.esc(z.label) + '</option>';
+        tzOptions += '<option value="' + escapeHTML(z.zone) + '">' + escapeHTML(z.label) + '</option>';
       });
       tzOptions += '</optgroup>';
     });
@@ -659,7 +579,7 @@ export class OverviewView {
 
     overlay.innerHTML =
       '<div class="gm-modal-card" style="max-width: 450px; width: 95%; text-align: left; padding: 1.5rem;">' +
-        '<h3 style="font-family: var(--font-display); margin-bottom: 1rem; text-align: center; font-size: var(--fs-xl);">' + legacy.t('modal_manage_clocks_title') + '</h3>' +
+        '<h3 style="font-family: var(--font-display); margin-bottom: 1rem; text-align: center; font-size: var(--fs-xl);">' + t('modal_manage_clocks_title') + '</h3>' +
         '<div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">' +
           '<button type="button" id="gm-sync-officers-clocks-btn" class="gm-btn gm-btn-ghost gm-btn-sm" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.4rem;">' +
             '<i class="ph ph-arrows-clockwise"></i> Auto-sync with Officers (R4/R5)' +
@@ -667,23 +587,23 @@ export class OverviewView {
         '</div>' +
         '<div id="gm-clocks-list-container" class="gm-col" style="gap: .6rem; max-height: 220px; overflow-y: auto; margin-bottom: 1.5rem; padding-right: 4px;"></div>' +
         '<div style="border-top: 1px solid var(--border-soft); padding-top: 1.2rem;">' +
-          '<h4 style="font-size: var(--fs-base); font-weight: 600; color: var(--fg-muted); margin-bottom: 0.6rem;">' + legacy.t('modal_add_clock_section') + '</h4>' +
+          '<h4 style="font-size: var(--fs-base); font-weight: 600; color: var(--fg-muted); margin-bottom: 0.6rem;">' + t('modal_add_clock_section') + '</h4>' +
           '<div class="gm-col" style="gap: 0.6rem;">' +
-            '<input type="text" id="gm-new-clock-name" class="gm-input" placeholder="' + legacy.t('modal_add_clock_name_placeholder') + '" maxlength="20">' +
+            '<input type="text" id="gm-new-clock-name" class="gm-input" placeholder="' + t('modal_add_clock_name_placeholder') + '" maxlength="20">' +
             '<select id="gm-new-clock-tz" class="gm-select" style="padding: .55rem .75rem;">' + tzOptions + '</select>' +
             '<div style="display: flex; gap: 0.5rem;">' +
               '<select id="gm-new-clock-offset" class="gm-select" style="flex: 1; padding: .55rem .75rem;">' + offsetOptions + '</select>' +
-              '<button id="gm-add-clock-btn" class="gm-btn gm-btn-primary" style="flex-shrink: 0;"><i class="ph ph-plus"></i> ' + legacy.t('modal_add_clock_btn') + '</button>' +
+              '<button id="gm-add-clock-btn" class="gm-btn gm-btn-primary" style="flex-shrink: 0;"><i class="ph ph-plus"></i> ' + t('modal_add_clock_btn') + '</button>' +
             '</div>' +
           '</div>' +
         '</div>' +
         '<div class="confirm-actions" style="margin-top: 1.5rem; gap: 1rem; justify-content: flex-end;">' +
-          '<button id="gm-clocks-modal-close" class="gm-btn gm-btn-ghost">' + legacy.t('modal_clocks_close') + '</button>' +
+          '<button id="gm-clocks-modal-close" class="gm-btn gm-btn-ghost">' + t('modal_clocks_close') + '</button>' +
         '</div>' +
       '</div>';
 
     document.body.appendChild(overlay);
-    winAny().requestAnimationFrame(() => { overlay.classList.add('visible'); });
+    window.requestAnimationFrame(() => { overlay.classList.add('visible'); });
 
     const modalClose = (): void => {
       overlay.classList.remove('visible');
@@ -705,15 +625,15 @@ export class OverviewView {
 
       let html = '';
       this.clockMembers.forEach((m, idx) => {
-        const initials = legacy.avatarInit(m.name);
+        const initials = avatarInit(m.name);
         const offsetText = formatOffsetLabel(m.offset) + (m.timezone ? ' (' + m.timezone + ')' : '');
         html +=
           '<div style="display: flex; align-items: center; justify-content: space-between; background: var(--bg-1); border: 1px solid var(--border-soft); padding: 0.5rem 0.75rem; border-radius: 8px; gap: 0.5rem;">' +
             '<div style="display: flex; align-items: center; gap: 0.6rem; min-width: 0;">' +
-              '<div class="gm-avatar gm-avatar-sm gm-avatar-' + m.color + '" style="flex-shrink:0;">' + legacy.esc(initials) + '</div>' +
+              '<div class="gm-avatar gm-avatar-sm gm-avatar-' + m.color + '" style="flex-shrink:0;">' + escapeHTML(initials) + '</div>' +
               '<div style="min-width: 0;">' +
-                '<div style="font-weight: 600; font-size: var(--fs-base); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">' + legacy.esc(m.name) + '</div>' +
-                '<div style="font-size: var(--fs-xs); color: var(--fg-dim);">' + legacy.esc(offsetText) + '</div>' +
+                '<div style="font-weight: 600; font-size: var(--fs-base); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">' + escapeHTML(m.name) + '</div>' +
+                '<div style="font-size: var(--fs-xs); color: var(--fg-dim);">' + escapeHTML(offsetText) + '</div>' +
               '</div>' +
             '</div>' +
             '<button class="gm-mini-btn gm-danger delete-clock-btn" data-index="' + idx + '" title="Delete" style="flex-shrink:0;"><i class="ph ph-trash"></i></button>' +
@@ -725,8 +645,8 @@ export class OverviewView {
         btn.addEventListener('click', async () => {
           const idx = parseInt(btn.getAttribute('data-index') || '0', 10);
           this.clockMembers.splice(idx, 1);
-          await legacy.configSet('timezone_clocks', serializeTimezoneClocks(this.clockMembers));
-          legacy.showToast(legacy.t('toast_clock_deleted'), 'info');
+          await config.set('timezone_clocks', serializeTimezoneClocks(this.clockMembers));
+          showToast(t('toast_clock_deleted'), 'info');
           renderModalClocks();
           this.renderTimezoneClocks(panel);
         });
@@ -736,20 +656,20 @@ export class OverviewView {
     const syncBtn = overlay.querySelector('#gm-sync-officers-clocks-btn');
     if (syncBtn) {
       syncBtn.addEventListener('click', async () => {
-        const db = legacy.getDb();
+        const db = getClient();
         if (!db) return;
-        const currentG = legacy.getActiveGuild();
+        const currentG = getActiveGuild();
         try {
           const res = await queryGuildOfficerTimezones(db, currentG);
           if (res.error) throw res.error;
           const officerClocks = buildOfficerClocks(res.data || []);
           this.clockMembers = officerClocks;
-          await legacy.configSet('timezone_clocks', serializeTimezoneClocks(this.clockMembers));
-          legacy.showToast('Clocks synced with guild officers!', 'success');
+          await config.set('timezone_clocks', serializeTimezoneClocks(this.clockMembers));
+          showToast('Clocks synced with guild officers!', 'success');
           renderModalClocks();
           this.renderTimezoneClocks(panel);
         } catch (err: any) {
-          legacy.showToast('Failed to sync officer clocks: ' + err.message, 'error');
+          showToast('Failed to sync officer clocks: ' + err.message, 'error');
         }
       });
     }
@@ -772,7 +692,7 @@ export class OverviewView {
         const nameInput = document.getElementById('gm-new-clock-name') as HTMLInputElement | null;
         const name = nameInput ? nameInput.value.trim() : '';
         if (!name) {
-          legacy.showToast(legacy.t('toast_clock_name_empty'), 'error');
+          showToast(t('toast_clock_name_empty'), 'error');
           return;
         }
         const tzVal = tzSelect && tzSelect.value ? tzSelect.value : null;
@@ -782,8 +702,8 @@ export class OverviewView {
         const color = colors[this.clockMembers.length % colors.length];
 
         this.clockMembers.push({ name, offset, color, timezone: tzVal || null });
-        await legacy.configSet('timezone_clocks', serializeTimezoneClocks(this.clockMembers));
-        legacy.showToast(legacy.t('toast_clock_added'), 'success');
+        await config.set('timezone_clocks', serializeTimezoneClocks(this.clockMembers));
+        showToast(t('toast_clock_added'), 'success');
         if (nameInput) nameInput.value = '';
 
         renderModalClocks();

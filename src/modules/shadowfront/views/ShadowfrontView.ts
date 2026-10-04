@@ -9,8 +9,8 @@
  * Architecture:
  *   - Pure domain logic (constants, categorisation, history aggregation, squad
  *     sorting, Discord payload) lives in `shadowfront.service.ts`.
- *   - All `window.GM.*` / `window.showConfirm` reads happen at call time through
- *     an internal typed adapter.
+ *   - Shared helpers (i18n, toasts, dates, Discord, the Supabase client,
+ *     dialogs) are typed imports; nothing is read from `window`.
  *   - `load()` always calls `render()`, even on fetch error, so the panel is
  *     never left blank.
  *   - This module never assigns any `window.GM_*` variable.
@@ -41,103 +41,21 @@ import {
   type ShadowfrontCategory
 } from '../shadowfront.service';
 import * as ShadowfrontData from '../shadowfront.service';
-import { escapeHTML } from '../../../core/utils/text';
 import { pendingApprovalHtml, wirePendingApprovals } from '../../events/pending-approval';
 import { EventsService } from '../../events/events.service';
 import { fetchAllRows } from '../../../core/api/paginate';
-
-function winAny(): any {
-  return (typeof window !== 'undefined' ? window : ({} as any)) as any;
-}
-
-function gm(): any {
-  return winAny().GM;
-}
-
-// ── Legacy adapter (call-time reads) ──────────────────────────────────────────
-
-const legacy = {
-  getDb(): any {
-    const g = gm();
-    return g && g.db ? g.db : null;
-  },
-  t(key: string, replacements?: Record<string, string | number>): string {
-    const g = gm();
-    // B1: the shim dropped the replacements argument, so no message in this
-    // view could carry a value -- which is part of why the commander limit was
-    // written as a hardcoded English sentence instead of a translated one.
-    return g && typeof g.t === 'function' ? g.t(key, replacements) : key;
-  },
-  esc(value: unknown): string {
-    return escapeHTML(value);
-  },
-  getWeekStart(dateArg?: unknown): string {
-    const g = gm();
-    if (!g || typeof g.getWeekStart !== 'function') return '';
-    return dateArg === undefined ? g.getWeekStart() : g.getWeekStart(dateArg);
-  },
-  getActiveGuild(): string | null {
-    const g = gm();
-    return g && typeof g.getActiveGuild === 'function' ? g.getActiveGuild() : null;
-  },
-  buildEventSessionId(eventName: string, when: unknown, existingIds?: unknown): string {
-    const g = gm();
-    if (!g || typeof g.buildEventSessionId !== 'function') return '';
-    return g.buildEventSessionId(eventName, when, existingIds as any);
-  },
-  sessionDateFromId(sessionId: string | null): unknown {
-    const g = gm();
-    return g && typeof g.sessionDateFromId === 'function' ? g.sessionDateFromId(sessionId as any) : null;
-  },
-  formatDateTimeUTC(value: unknown): string {
-    const g = gm();
-    return g && typeof g.formatDateTimeUTC === 'function' ? g.formatDateTimeUTC(value) : '';
-  },
-  getPowerTier(power: unknown, maxPower: unknown): string {
-    const g = gm();
-    return g && typeof g.getPowerTier === 'function' ? g.getPowerTier(power, maxPower) : 'D';
-  },
-  getPowerTierMeta(tier: string): any {
-    const g = gm();
-    return g && typeof g.getPowerTierMeta === 'function' ? g.getPowerTierMeta(tier) : { color: 'var(--fg-dim)', icon: '•' };
-  },
-  formatPower(value: unknown): string {
-    const g = gm();
-    return g && typeof g.formatPower === 'function' ? g.formatPower(value) : String(value ?? '');
-  },
-  showToast(msg: string, type: string): void {
-    const g = gm();
-    if (g && typeof g.showToast === 'function') g.showToast(msg, type);
-  },
-  notifyDiscordEvent(eventName: string, startAt: unknown, kind: string): void {
-    const g = gm();
-    if (g && typeof g.notifyDiscordEvent === 'function') g.notifyDiscordEvent(eventName, startAt, kind);
-  },
-  configGet(key: string): Promise<any> | any {
-    const g = gm();
-    return g && g.config && typeof g.config.get === 'function' ? g.config.get(key) : undefined;
-  },
-  formatDiscordRoleMention(roleId: unknown): string {
-    const g = gm();
-    if (g && typeof g.formatDiscordRoleMention === 'function') return g.formatDiscordRoleMention(roleId);
-    const rStr = String(roleId).trim();
-    const rMatch = rStr.match(/\d{15,22}/);
-    return rMatch ? '<@&' + rMatch[0] + '>' : rStr;
-  },
-  sendDiscordWebhookDetailed(channel: string, body: unknown): Promise<any> {
-    const g = gm();
-    if (g && typeof g.sendDiscordWebhookDetailed === 'function') return g.sendDiscordWebhookDetailed(channel, body);
-    return Promise.resolve({ ok: false, error: 'sendDiscordWebhookDetailed unavailable' });
-  },
-  pickEventStart(opts: unknown, cb: (startAt: string | null) => void): void {
-    const g = gm();
-    if (g && typeof g.pickEventStart === 'function') g.pickEventStart(opts, cb);
-  },
-  showConfirm(title: string, body: string, onConfirm: () => void): void {
-    const w = winAny();
-    if (typeof w.showConfirm === 'function') w.showConfirm(title, body, onConfirm);
-  }
-};
+import { getClient } from '../../../core/api/supabase';
+import { getActiveGuild } from '../../../core/auth/roles';
+import { buildEventSessionId, sessionDateFromId } from '../../../core/config/events';
+import { getGuildConfig } from '../../../core/config/guild-config';
+import { showToast } from '../../../core/dom/toast';
+import { pickEventStart } from '../../../core/dom/ui';
+import { t } from '../../../core/i18n/i18n';
+import { formatDiscordRoleMention, notifyDiscordEvent, sendDiscordWebhookDetailed } from '../../../core/integrations/discord';
+import { getPowerTier, getPowerTierMeta } from '../../../core/scoring/combat';
+import { formatDateTimeUTC, getWeekStart } from '../../../core/utils/date';
+import { escapeHTML, formatPower } from '../../../core/utils/text';
+import { showConfirm } from '../../app/dialogs/dialogs.service';
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -204,7 +122,7 @@ export class ShadowfrontView {
 
   // ── Helpers ────────────────────────────────────────────────────────────────
   private squadLabel(squad: ShadowfrontSquadKey): string {
-    return squad === 'squad1' ? legacy.t('sf_squad1') : legacy.t('sf_squad2');
+    return squad === 'squad1' ? t('sf_squad1') : t('sf_squad2');
   }
 
   private getMemberPower(pseudo: string): number {
@@ -250,14 +168,14 @@ export class ShadowfrontView {
 
   // ── Load ───────────────────────────────────────────────────────────────────
   public async load(): Promise<void> {
-    const db = legacy.getDb();
+    const db = getClient();
     if (!db) {
       this.render();
       return;
     }
     try {
-      const currentWeek = legacy.getWeekStart();
-      const currentG = legacy.getActiveGuild();
+      const currentWeek = getWeekStart();
+      const currentG = getActiveGuild();
 
       let statusQ: any = ShadowfrontData.fetchSquadStatuses(db);
       let membersQ: any = ShadowfrontData.fetchRosterMembers(db);
@@ -332,26 +250,26 @@ export class ShadowfrontView {
 
   // ── Start / End a squad ────────────────────────────────────────────────────
   private async startSquad(squad: ShadowfrontSquadKey, startAt: string | null): Promise<void> {
-    const db = legacy.getDb();
+    const db = getClient();
     if (!db) return;
     const sq = this.state.squads[squad];
-    const currentG = legacy.getActiveGuild();
+    const currentG = getActiveGuild();
     const oldSessionId = sq ? sq.sessionId : null;
     let sessionId: string;
     if (sq && sq.sessionId && !sq.ended) {
       sessionId = sq.sessionId;
     } else {
       if (!currentG) {
-        legacy.showToast(legacy.t('guild_unresolved'), 'error');
+        showToast(t('guild_unresolved'), 'error');
         return;
       }
       const taken = await EventsService.takenSessionIdsToday(currentG, SHADOWFRONT_EVENT_NAME, SHADOWFRONT_SQUAD_EVENT[squad], startAt || null);
       if (!taken.ok) {
         // Unknown ids could mean a duplicate: refuse rather than merge sessions.
-        legacy.showToast(legacy.t('toast_err_generic') + ' ' + taken.error, 'error');
+        showToast(t('toast_err_generic') + ' ' + taken.error, 'error');
         return;
       }
-      sessionId = legacy.buildEventSessionId(SHADOWFRONT_SQUAD_EVENT[squad], startAt || new Date(), taken.ids);
+      sessionId = buildEventSessionId(SHADOWFRONT_SQUAD_EVENT[squad], startAt || new Date(), taken.ids);
     }
     if (sq) sq.ended = false;
     try {
@@ -363,20 +281,20 @@ export class ShadowfrontView {
 
       await this.syncParticipantRows(sessionId);
 
-      legacy.showToast(this.squadLabel(squad) + ' - ' + legacy.t('sf_squad_started'), 'success');
+      showToast(this.squadLabel(squad) + ' - ' + t('sf_squad_started'), 'success');
 
-      legacy.notifyDiscordEvent(SHADOWFRONT_SQUAD_EVENT[squad], startAt || sessionId, 'start');
+      notifyDiscordEvent(SHADOWFRONT_SQUAD_EVENT[squad], startAt || sessionId, 'start');
     } catch (err: any) {
       console.error('startSquad', err);
-      legacy.showToast(legacy.t('toast_err_generic') + ' ' + err.message, 'error');
+      showToast(t('toast_err_generic') + ' ' + err.message, 'error');
     }
     await this.load();
   }
 
   private async endSquads(squads: ShadowfrontSquadKey[]): Promise<void> {
-    const db = legacy.getDb();
+    const db = getClient();
     if (!db) return;
-    const currentG = legacy.getActiveGuild();
+    const currentG = getActiveGuild();
     for (let i = 0; i < squads.length; i++) {
       const squad = squads[i];
       const currentSession = this.state.squads[squad] ? this.state.squads[squad].sessionId : null;
@@ -384,25 +302,25 @@ export class ShadowfrontView {
         await ShadowfrontData.upsertInactiveSquadStatus(db, currentG, squad, currentSession);
       } catch (err) { console.error('endSquad', err); }
     }
-    legacy.showToast(legacy.t('sf_squad_ended'), 'success');
+    showToast(t('sf_squad_ended'), 'success');
     await this.load();
   }
 
   private async editSquadSchedule(squad: ShadowfrontSquadKey): Promise<void> {
-    const db = legacy.getDb();
+    const db = getClient();
     if (!db) return;
     const sq = this.state.squads[squad];
     if (!sq || !sq.active || !sq.sessionId) return;
 
     try {
-      const currentG = legacy.getActiveGuild();
+      const currentG = getActiveGuild();
       const res = await ShadowfrontData.fetchSquadStartAt(db, currentG, squad);
       if (res.error) throw res.error;
 
       const currentStartAt = res.data ? res.data.start_at : null;
 
-      legacy.pickEventStart({
-        eventLabel: this.squadLabel(squad) + ' - ' + legacy.t('edit_title'),
+      pickEventStart({
+        eventLabel: this.squadLabel(squad) + ' - ' + t('edit_title'),
         defaultVal: currentStartAt
       }, async (startAt) => {
         if (!startAt) return;
@@ -411,44 +329,44 @@ export class ShadowfrontView {
           // One transaction (M4a): status, squad rows and participants move to
           // the new start and session id together, or not at all. Four of the
           // six writes this replaces never checked their error.
-          const newSessionId = legacy.buildEventSessionId(SHADOWFRONT_SQUAD_EVENT[squad], new Date(startAt), []);
+          const newSessionId = buildEventSessionId(SHADOWFRONT_SQUAD_EVENT[squad], new Date(startAt), []);
           const moved = await EventsService.rescheduleSession(SHADOWFRONT_SQUAD_EVENT[squad], sq.sessionId, newSessionId, startAt);
           sq.sessionId = moved.session_id;
 
-          legacy.showToast(legacy.t('toast_member_updated'), 'success');
-          legacy.notifyDiscordEvent(SHADOWFRONT_SQUAD_EVENT[squad], startAt, 'edit');
+          showToast(t('toast_member_updated'), 'success');
+          notifyDiscordEvent(SHADOWFRONT_SQUAD_EVENT[squad], startAt, 'edit');
 
           await this.load();
         } catch (err: any) {
           console.error('editSquadSchedule update', err);
-          legacy.showToast(legacy.t('toast_err_generic') + ' ' + err.message, 'error');
+          showToast(t('toast_err_generic') + ' ' + err.message, 'error');
         }
       });
     } catch (err: any) {
       console.error('editSquadSchedule fetch', err);
-      legacy.showToast(legacy.t('toast_err_generic') + ' ' + err.message, 'error');
+      showToast(t('toast_err_generic') + ' ' + err.message, 'error');
     }
   }
 
   private deleteSquadSession(squad: ShadowfrontSquadKey): void {
-    const db = legacy.getDb();
+    const db = getClient();
     if (!db) return;
     const sq = this.state.squads[squad];
     if (!sq || !sq.sessionId) return;
 
-    legacy.showConfirm(
-      legacy.t('confirm_delete_session_title'),
-      '<strong>' + legacy.esc(this.squadLabel(squad)) + '</strong><br>' + legacy.t('confirm_delete_session_body'),
+    showConfirm(
+      t('confirm_delete_session_title'),
+      '<strong>' + escapeHTML(this.squadLabel(squad)) + '</strong><br>' + t('confirm_delete_session_body'),
       async () => {
         try {
           // Participants, squad rows and status, in one transaction (M4a).
           await EventsService.deleteSession(SHADOWFRONT_SQUAD_EVENT[squad], sq.sessionId);
 
-          legacy.showToast(legacy.t('toast_session_deleted'), 'success');
+          showToast(t('toast_session_deleted'), 'success');
           await this.load();
         } catch (err: any) {
           console.error('deleteSquadSession', err);
-          legacy.showToast(legacy.t('toast_err_generic') + ' ' + err.message, 'error');
+          showToast(t('toast_err_generic') + ' ' + err.message, 'error');
         }
       }
     );
@@ -456,7 +374,7 @@ export class ShadowfrontView {
 
   // ── Share composition on Discord ───────────────────────────────────────────
   private async shareCompositionOnDiscord(): Promise<void> {
-    const db = legacy.getDb();
+    const db = getClient();
     if (!db) return;
 
     const squadKey: ShadowfrontSquadKey = this.activeSquad === 'squad2' ? 'squad2' : 'squad1';
@@ -468,40 +386,40 @@ export class ShadowfrontView {
     const squad = formatSquadCompositionField(members);
 
     const squadRoleKey = squadKey === 'squad2' ? 'discord_role_id_shadowfront_squad2' : 'discord_role_id_shadowfront_squad1';
-    const roleId = await legacy.configGet(squadRoleKey) || await legacy.configGet('discord_role_id_shadowfront') || await legacy.configGet('discord_role_id');
+    const roleId = await getGuildConfig(squadRoleKey) || await getGuildConfig('discord_role_id_shadowfront') || await getGuildConfig('discord_role_id');
     let roleMention = '';
     if (roleId) {
-      roleMention = legacy.formatDiscordRoleMention(roleId);
+      roleMention = formatDiscordRoleMention(roleId);
     }
 
     const body = buildShadowfrontDiscordPayload({
       squadLabel: this.squadLabel(squadKey),
       squad,
       roleMention,
-      participantsLabel: legacy.t('sf_participants'),
-      reservesLabel: legacy.t('sf_reserves')
+      participantsLabel: t('sf_participants'),
+      reservesLabel: t('sf_reserves')
     });
 
-    const res = await legacy.sendDiscordWebhookDetailed('shadowfront', body);
+    const res = await sendDiscordWebhookDetailed('shadowfront', body);
     if (res && res.ok) {
-      legacy.showToast(legacy.t('sf_share_discord_sent'), 'success');
+      showToast(t('sf_share_discord_sent'), 'success');
     } else {
       const errMsg = res && typeof res.error === 'object' ? JSON.stringify(res.error) : (res ? res.error : 'Unknown');
-      legacy.showToast('Discord Error: ' + errMsg, 'error');
+      showToast('Discord Error: ' + errMsg, 'error');
     }
   }
 
   // ── Assign / Unassign ──────────────────────────────────────────────────────
   private async assign(pseudo: string, squad: ShadowfrontSquadKey, role: ShadowfrontRole): Promise<void> {
-    const db = legacy.getDb();
+    const db = getClient();
     if (!db) return;
     const sq = this.state.squads[squad];
     if (!sq) return;
 
-    const currentG = legacy.getActiveGuild();
+    const currentG = getActiveGuild();
 
     if (!sq.sessionId || sq.ended) {
-      sq.sessionId = legacy.buildEventSessionId(SHADOWFRONT_SQUAD_EVENT[squad], sq.startAt || new Date());
+      sq.sessionId = buildEventSessionId(SHADOWFRONT_SQUAD_EVENT[squad], sq.startAt || new Date());
       sq.ended = false;
       try {
         await ShadowfrontData.upsertInactiveSquadStatus(db, currentG, squad, sq.sessionId);
@@ -512,9 +430,9 @@ export class ShadowfrontView {
 
     const existing = this.state.assignments.filter((a) => a.squad === squad && a.role === role);
     const max = role === 'participant' ? SHADOWFRONT_PARTICIPANTS_MAX : SHADOWFRONT_RESERVES_MAX;
-    if (existing.length >= max) { legacy.showToast(legacy.t('sf_squad_full'), 'error'); return; }
+    if (existing.length >= max) { showToast(t('sf_squad_full'), 'error'); return; }
 
-    const week = legacy.getWeekStart(sq.startAt || legacy.sessionDateFromId(sq.sessionId) || new Date());
+    const week = getWeekStart(sq.startAt || sessionDateFromId(sq.sessionId) || new Date());
 
     try {
       await ShadowfrontData.deleteWeekAssignment(db, currentG, week, pseudo);
@@ -526,7 +444,7 @@ export class ShadowfrontView {
 
     if (upsertRes.error) {
       console.error('shadowfront_squads upsert error', upsertRes.error);
-      legacy.showToast(legacy.t('toast_err_generic') + ' ' + upsertRes.error.message, 'error');
+      showToast(t('toast_err_generic') + ' ' + upsertRes.error.message, 'error');
       return;
     }
 
@@ -535,19 +453,19 @@ export class ShadowfrontView {
   }
 
   private async unassign(pseudo: string): Promise<void> {
-    const db = legacy.getDb();
+    const db = getClient();
     if (!db) return;
     const a = this.state.assignments.find((x) => x.pseudo === pseudo);
     if (!a) {
       const hasSignup = this.state.signups.some((s) => s.pseudo === pseudo);
       if (hasSignup) {
-        const week = legacy.getWeekStart();
-        const currentG = legacy.getActiveGuild();
+        const week = getWeekStart();
+        const currentG = getActiveGuild();
         await ShadowfrontData.deleteSignup(db, currentG, week, pseudo);
       }
       return;
     }
-    const g = (a && a.guild) || legacy.getActiveGuild();
+    const g = (a && a.guild) || getActiveGuild();
     try {
       await ShadowfrontData.unsyncParticipant(db, g, a.session_id, pseudo);
     } catch (err) {
@@ -559,7 +477,7 @@ export class ShadowfrontView {
   }
 
   private async toggleCommander(pseudo: string): Promise<void> {
-    const db = legacy.getDb();
+    const db = getClient();
     if (!db) return;
     const assignment = this.state.assignments.find((a) => a.pseudo === pseudo);
     if (!assignment) return;
@@ -573,12 +491,12 @@ export class ShadowfrontView {
         return a.squad === assignment.squad && a.is_commander;
       });
       if (currentCommanders.length >= SHADOWFRONT_COMMANDERS_MAX) {
-        legacy.showToast(legacy.t('sf_commanders_full', { n: SHADOWFRONT_COMMANDERS_MAX }), 'error');
+        showToast(t('sf_commanders_full', { n: SHADOWFRONT_COMMANDERS_MAX }), 'error');
         return;
       }
     }
 
-    const currentG = legacy.getActiveGuild();
+    const currentG = getActiveGuild();
     await ShadowfrontData.updateCommander(db, currentG, sq.sessionId, pseudo, isNewCommander);
 
     await this.load();
@@ -586,9 +504,9 @@ export class ShadowfrontView {
 
   // ── Sync participant rows ──────────────────────────────────────────────────
   private async syncParticipantRows(sessionId: string | null): Promise<void> {
-    const db = legacy.getDb();
+    const db = getClient();
     if (!db || !sessionId) return;
-    const currentG = legacy.getActiveGuild();
+    const currentG = getActiveGuild();
     try {
       const res = await ShadowfrontData.syncParticipants(db, currentG, sessionId);
       if (res.error) {
@@ -600,38 +518,38 @@ export class ShadowfrontView {
   }
 
   private async saveParticipation(pseudo: string, value: number): Promise<void> {
-    const db = legacy.getDb();
+    const db = getClient();
     if (!db) return;
     const p = this.state.participants.find((x) => x.pseudo === pseudo);
     if (!p) return;
-    const g = p.guild || legacy.getActiveGuild();
+    const g = p.guild || getActiveGuild();
     await ShadowfrontData.updateParticipated(db, g, p.session_id, pseudo, value);
   }
 
   private async saveLate(pseudo: string, value: boolean): Promise<void> {
-    const db = legacy.getDb();
+    const db = getClient();
     if (!db) return;
     const p = this.state.participants.find((x) => x.pseudo === pseudo);
     if (!p) return;
-    const g = p.guild || legacy.getActiveGuild();
+    const g = p.guild || getActiveGuild();
     await ShadowfrontData.updateLate(db, g, p.session_id, pseudo, value);
   }
 
   private async saveExcused(pseudo: string, value: boolean): Promise<void> {
-    const db = legacy.getDb();
+    const db = getClient();
     if (!db) return;
     const p = this.state.participants.find((x) => x.pseudo === pseudo);
     if (!p) return;
-    const g = p.guild || legacy.getActiveGuild();
+    const g = p.guild || getActiveGuild();
     await ShadowfrontData.updateExcused(db, g, p.session_id, pseudo, value);
   }
 
   private async saveSubPresent(pseudo: string, value: boolean): Promise<void> {
-    const db = legacy.getDb();
+    const db = getClient();
     if (!db) return;
     const p = this.state.participants.find((x) => x.pseudo === pseudo);
     if (!p) return;
-    const g = p.guild || legacy.getActiveGuild();
+    const g = p.guild || getActiveGuild();
     await ShadowfrontData.updateSubPresent(db, g, p.session_id, pseudo, value);
   }
 
@@ -645,16 +563,16 @@ export class ShadowfrontView {
     const isActive = sq.active;
 
     const statusBadgeClass = isActive ? 'gm-chip-success active' : 'gm-chip-muted';
-    const statusText = isActive ? legacy.t('event_active') : legacy.t('event_inactive');
+    const statusText = isActive ? t('event_active') : t('event_inactive');
     const dotColor = isActive ? 'var(--success)' : 'var(--fg-dim)';
     const subText = sq.startAt
-      ? legacy.formatDateTimeUTC(sq.startAt)
-      : (isActive ? legacy.t('event_active') : legacy.t('sf_squad_inactive_hint'));
+      ? formatDateTimeUTC(sq.startAt)
+      : (isActive ? t('event_active') : t('sf_squad_inactive_hint'));
 
     let html =
       '<div class="sf-main-tabs">' +
-        '<button class="sf-main-tab squad1' + (this.activeSquad === 'squad1' ? ' active' : '') + '" data-squad="squad1"><i class="ph ph-shield-star"></i> ' + legacy.t('sf_squad1') + '</button>' +
-        '<button class="sf-main-tab squad2' + (this.activeSquad === 'squad2' ? ' active' : '') + '" data-squad="squad2"><i class="ph ph-shield-star"></i> ' + legacy.t('sf_squad2') + '</button>' +
+        '<button class="sf-main-tab squad1' + (this.activeSquad === 'squad1' ? ' active' : '') + '" data-squad="squad1"><i class="ph ph-shield-star"></i> ' + t('sf_squad1') + '</button>' +
+        '<button class="sf-main-tab squad2' + (this.activeSquad === 'squad2' ? ' active' : '') + '" data-squad="squad2"><i class="ph ph-shield-star"></i> ' + t('sf_squad2') + '</button>' +
       '</div>';
 
     html +=
@@ -662,21 +580,21 @@ export class ShadowfrontView {
         '<div class="gm-event-meta" style="display: flex; align-items: center; gap: 1rem; flex: 1; min-width: 250px;">' +
           '<div class="gm-event-icon" style="width: 48px; height: 48px; border-radius: 50%; background: ' + (isActive ? 'var(--primary-soft)' : 'rgba(255,255,255,0.05)') + '; color: ' + (isActive ? 'var(--primary)' : 'var(--text-muted)') + '; display: flex; align-items: center; justify-content: center; font-size: var(--fs-3xl);"><i class="ph ph-ghost"></i></div>' +
           '<div class="gm-grow" style="display: flex; flex-direction: column; gap: 0.25rem;">' +
-            '<div class="gm-event-name" style="font-size: var(--fs-xl); font-weight: 700; font-family: var(--font-family-title);">' + legacy.esc(sqLabel) + '</div>' +
+            '<div class="gm-event-name" style="font-size: var(--fs-xl); font-weight: 700; font-family: var(--font-family-title);">' + escapeHTML(sqLabel) + '</div>' +
             '<div class="gm-event-status-line" style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">' +
               '<span class="event-status-badge gm-chip ' + statusBadgeClass + '" style="display: inline-flex; align-items: center; gap: 0.35rem; font-size: var(--fs-sm);"><span class="gm-dot" style="background: ' + dotColor + '; width: 8px; height: 8px; border-radius: 50%;"></span> ' + statusText + '</span>' +
-              '<span class="gm-dim" style="font-size: var(--fs-sm); color: var(--text-muted);">' + legacy.esc(subText) + '</span>' +
+              '<span class="gm-dim" style="font-size: var(--fs-sm); color: var(--text-muted);">' + escapeHTML(subText) + '</span>' +
             '</div>' +
           '</div>' +
         '</div>' +
         '<div class="gm-event-actions" style="display: flex; gap: 0.5rem;">' +
           (isActive ?
-            '<button class="gm-btn gm-btn-danger event-end-btn sf-squad-end-btn" data-squad="' + this.activeSquad + '" style="margin-right: 0.25rem;"><i class="ph ph-stop-circle"></i> <span>' + legacy.t('event_end') + '</span></button>' +
-            '<button class="gm-btn sf-squad-edit-btn" style="background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.3); color: #a5b4fc; margin-right: 0.25rem;" data-squad="' + this.activeSquad + '" title="' + legacy.t('edit_title') + '"><i class="ph ph-calendar"></i> <span>' + legacy.t('edit_title') + '</span></button>' +
-            '<button class="gm-btn sf-squad-delete-btn" style="background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.25); color: var(--error);" data-squad="' + this.activeSquad + '" title="' + legacy.t('delete_title') + '"><i class="ph ph-trash"></i></button>'
+            '<button class="gm-btn gm-btn-danger event-end-btn sf-squad-end-btn" data-squad="' + this.activeSquad + '" style="margin-right: 0.25rem;"><i class="ph ph-stop-circle"></i> <span>' + t('event_end') + '</span></button>' +
+            '<button class="gm-btn sf-squad-edit-btn" style="background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.3); color: #a5b4fc; margin-right: 0.25rem;" data-squad="' + this.activeSquad + '" title="' + t('edit_title') + '"><i class="ph ph-calendar"></i> <span>' + t('edit_title') + '</span></button>' +
+            '<button class="gm-btn sf-squad-delete-btn" style="background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.25); color: var(--error);" data-squad="' + this.activeSquad + '" title="' + t('delete_title') + '"><i class="ph ph-trash"></i></button>'
           :
-            '<button class="gm-btn gm-btn-success event-start-btn sf-squad-start-btn" data-squad="' + this.activeSquad + '"><i class="ph ph-play"></i> <span>' + legacy.t('event_start') + '</span></button>' +
-            '<button class="gm-btn gm-btn-danger event-end-btn sf-squad-end-btn" data-squad="' + this.activeSquad + '" disabled><i class="ph ph-stop-circle"></i> <span>' + legacy.t('event_end') + '</span></button>'
+            '<button class="gm-btn gm-btn-success event-start-btn sf-squad-start-btn" data-squad="' + this.activeSquad + '"><i class="ph ph-play"></i> <span>' + t('event_start') + '</span></button>' +
+            '<button class="gm-btn gm-btn-danger event-end-btn sf-squad-end-btn" data-squad="' + this.activeSquad + '" disabled><i class="ph ph-stop-circle"></i> <span>' + t('event_end') + '</span></button>'
           ) +
         '</div>' +
       '</div>';
@@ -685,8 +603,8 @@ export class ShadowfrontView {
       html +=
         '<div class="gm-empty" style="margin-top: 2rem;">' +
           '<i class="ph ph-ghost gm-icon"></i>' +
-          '<div class="gm-empty-title">' + legacy.t('event_not_active') + '</div>' +
-          '<div class="gm-empty-hint">' + legacy.t('sf_squad_inactive_hint') + '</div>' +
+          '<div class="gm-empty-title">' + t('event_not_active') + '</div>' +
+          '<div class="gm-empty-hint">' + t('sf_squad_inactive_hint') + '</div>' +
         '</div>';
       area.innerHTML = html;
       this.attachSFListeners(area);
@@ -709,15 +627,15 @@ export class ShadowfrontView {
 
     html +=
       '<div class="sf-stepper" style="margin-bottom: 1.5rem;">' +
-        stepBtn('composition', 'ph-users-three', legacy.t('sf_step_composition'), true) +
+        stepBtn('composition', 'ph-users-three', t('sf_step_composition'), true) +
         '<span class="sf-step-sep"></span>' +
-        stepBtn('tracking', 'ph-chart-bar', legacy.t('sf_step_tracking'), hasTrackableSession) +
+        stepBtn('tracking', 'ph-chart-bar', t('sf_step_tracking'), hasTrackableSession) +
       '</div>';
 
     html +=
       '<div class="input-wrapper" style="margin-bottom: 1.5rem;">' +
         '<i class="ph ph-magnifying-glass"></i>' +
-        '<input type="text" class="sf-search-input" placeholder="' + legacy.t('search_placeholder') + '">' +
+        '<input type="text" class="sf-search-input" placeholder="' + t('search_placeholder') + '">' +
       '</div>';
 
     // ── Panel: Composition ────────────────────────────────────────────────────
@@ -754,34 +672,34 @@ export class ShadowfrontView {
       html += '<div class="sf-sub-panel active">';
       html += '<div class="sf-compose-bar">' +
         '<div class="sf-compose-summary">' +
-          '<span class="stat-chip"><i class="ph ph-users"></i> ' + legacy.t('sf_pool') + ': ' + poolPseudos.length + '</span>' +
-          '<span class="stat-chip"><i class="ph ph-shield-check"></i> ' + legacy.t('sf_participants') + ': ' + confirmedParticipants.length + '/20</span>' +
-          '<span class="stat-chip"><i class="ph ph-clock-countdown"></i> ' + legacy.t('sf_reserves') + ': ' + confirmedReserves.length + '/10</span>' +
-          '<span class="stat-chip"><i class="ph ph-chart-line"></i> ' + legacy.t('sf_avg_rate') + ': ' + avgRate + '</span>' +
+          '<span class="stat-chip"><i class="ph ph-users"></i> ' + t('sf_pool') + ': ' + poolPseudos.length + '</span>' +
+          '<span class="stat-chip"><i class="ph ph-shield-check"></i> ' + t('sf_participants') + ': ' + confirmedParticipants.length + '/20</span>' +
+          '<span class="stat-chip"><i class="ph ph-clock-countdown"></i> ' + t('sf_reserves') + ': ' + confirmedReserves.length + '/10</span>' +
+          '<span class="stat-chip"><i class="ph ph-chart-line"></i> ' + t('sf_avg_rate') + ': ' + avgRate + '</span>' +
         '</div>' +
         '<div class="sf-compose-controls">' +
           '<div class="sf-sort-toggle" style="display:flex; gap:0.25rem;">' +
-            '<button class="gm-btn gm-btn-xs sf-sort-btn' + (this.sort === 'rate' ? ' sf-sort-active' : '') + '" data-sort="rate" title="' + legacy.t('sf_sort_rate') + '"><i class="ph ph-chart-pie"></i> ' + legacy.t('sf_sort_rate') + '</button>' +
-            '<button class="gm-btn gm-btn-xs sf-sort-btn' + (this.sort === 'power' ? ' sf-sort-active' : '') + '" data-sort="power" title="' + legacy.t('sf_sort_power') + '"><i class="ph ph-lightning"></i> ' + legacy.t('sf_sort_power') + '</button>' +
+            '<button class="gm-btn gm-btn-xs sf-sort-btn' + (this.sort === 'rate' ? ' sf-sort-active' : '') + '" data-sort="rate" title="' + t('sf_sort_rate') + '"><i class="ph ph-chart-pie"></i> ' + t('sf_sort_rate') + '</button>' +
+            '<button class="gm-btn gm-btn-xs sf-sort-btn' + (this.sort === 'power' ? ' sf-sort-active' : '') + '" data-sort="power" title="' + t('sf_sort_power') + '"><i class="ph ph-lightning"></i> ' + t('sf_sort_power') + '</button>' +
           '</div>' +
-          '<button class="gm-btn sf-share-discord-btn" style="margin-left: auto;"><i class="ph ph-paper-plane-tilt"></i> ' + legacy.t('sf_share_discord') + '</button>' +
+          '<button class="gm-btn sf-share-discord-btn" style="margin-left: auto;"><i class="ph ph-paper-plane-tilt"></i> ' + t('sf_share_discord') + '</button>' +
         '</div>' +
       '</div>';
       html += '<div class="sf-layout">';
 
       html +=
         '<div class="sf-column sf-unassigned">' +
-        '<div class="sf-col-header"><i class="ph ph-users-three"></i> ' + legacy.t('sf_pool') +
+        '<div class="sf-col-header"><i class="ph ph-users-three"></i> ' + t('sf_pool') +
           ' <span class="count-badge">' + poolPseudos.length + '</span></div>';
 
       html +=
         '<div class="sf-filter-tabs" style="padding: 0.5rem; justify-content: center; gap: 0.2rem;">' +
-          '<button class="sf-filter-btn' + (this.filter === 'all' ? ' active' : '') + '" data-filter="all">' + legacy.t('sf_filter_all') + '</button>' +
-          '<button class="sf-filter-btn' + (this.filter === 'excellent' ? ' active' : '') + '" data-filter="excellent">🟢 ' + legacy.t('sf_filter_excellent').split(' (')[0] + ' <span>' + countRate(poolPseudos, 'excellent', (p) => this.state.history[p]) + '</span></button>' +
-          '<button class="sf-filter-btn' + (this.filter === 'good' ? ' active' : '') + '" data-filter="good">🔵 ' + legacy.t('sf_filter_good').split(' (')[0] + ' <span>' + countRate(poolPseudos, 'good', (p) => this.state.history[p]) + '</span></button>' +
-          '<button class="sf-filter-btn' + (this.filter === 'average' ? ' active' : '') + '" data-filter="average">🟡 ' + legacy.t('sf_filter_average').split(' (')[0] + ' <span>' + countRate(poolPseudos, 'average', (p) => this.state.history[p]) + '</span></button>' +
-          '<button class="sf-filter-btn' + (this.filter === 'poor' ? ' active' : '') + '" data-filter="poor">🔴 ' + legacy.t('sf_filter_poor').split(' (')[0] + ' <span>' + countRate(poolPseudos, 'poor', (p) => this.state.history[p]) + '</span></button>' +
-          '<button class="sf-filter-btn' + (this.filter === 'none' ? ' active' : '') + '" data-filter="none">⚫ ' + legacy.t('sf_filter_none').split(' /')[0] + ' <span>' + countRate(poolPseudos, 'none', (p) => this.state.history[p]) + '</span></button>' +
+          '<button class="sf-filter-btn' + (this.filter === 'all' ? ' active' : '') + '" data-filter="all">' + t('sf_filter_all') + '</button>' +
+          '<button class="sf-filter-btn' + (this.filter === 'excellent' ? ' active' : '') + '" data-filter="excellent">🟢 ' + t('sf_filter_excellent').split(' (')[0] + ' <span>' + countRate(poolPseudos, 'excellent', (p) => this.state.history[p]) + '</span></button>' +
+          '<button class="sf-filter-btn' + (this.filter === 'good' ? ' active' : '') + '" data-filter="good">🔵 ' + t('sf_filter_good').split(' (')[0] + ' <span>' + countRate(poolPseudos, 'good', (p) => this.state.history[p]) + '</span></button>' +
+          '<button class="sf-filter-btn' + (this.filter === 'average' ? ' active' : '') + '" data-filter="average">🟡 ' + t('sf_filter_average').split(' (')[0] + ' <span>' + countRate(poolPseudos, 'average', (p) => this.state.history[p]) + '</span></button>' +
+          '<button class="sf-filter-btn' + (this.filter === 'poor' ? ' active' : '') + '" data-filter="poor">🔴 ' + t('sf_filter_poor').split(' (')[0] + ' <span>' + countRate(poolPseudos, 'poor', (p) => this.state.history[p]) + '</span></button>' +
+          '<button class="sf-filter-btn' + (this.filter === 'none' ? ' active' : '') + '" data-filter="none">⚫ ' + t('sf_filter_none').split(' /')[0] + ' <span>' + countRate(poolPseudos, 'none', (p) => this.state.history[p]) + '</span></button>' +
         '</div>';
 
       const sortedPool = poolPseudos.slice().sort((a, b) => {
@@ -796,7 +714,7 @@ export class ShadowfrontView {
 
       html += '<div class="sf-col-body" style="max-height: 480px; overflow-y: auto;">';
       if (filteredPool.length === 0) {
-        html += '<div class="sf-empty">' + (poolPseudos.length === 0 ? legacy.t('sf_pool_empty') : legacy.t('sf_no_match_filter')) + '</div>';
+        html += '<div class="sf-empty">' + (poolPseudos.length === 0 ? t('sf_pool_empty') : t('sf_no_match_filter')) + '</div>';
       } else {
         filteredPool.forEach((pseudo) => {
           const cat = this.categorise(pseudo);
@@ -815,9 +733,9 @@ export class ShadowfrontView {
 
           const member = this.state.membersData.find((m) => m.pseudo === pseudo);
           const powerVal = member ? parseInt(String(member.overall_power), 10) || 0 : 0;
-          const pTier = legacy.getPowerTier(powerVal, this.state.maxPower);
-          const pMeta = legacy.getPowerTierMeta(pTier);
-          const formattedPower = powerVal > 0 ? legacy.formatPower(powerVal) : '';
+          const pTier = getPowerTier(powerVal, this.state.maxPower);
+          const pMeta = getPowerTierMeta(pTier);
+          const formattedPower = powerVal > 0 ? formatPower(powerVal) : '';
 
           const powerBadge = powerVal > 0
             ? '<span class="gm-chip" style="font-size: var(--fs-xs); padding:0.05rem 0.2rem; color:' + pMeta.color + '; border:1px solid ' + pMeta.color + '22; background:' + pMeta.color + '05; display:inline-flex; align-items:center; gap:0.15rem; margin-left:0.25rem;"><span style="font-size: var(--fs-sm);">' + pMeta.icon + '</span> ' + formattedPower + '</span>'
@@ -825,15 +743,15 @@ export class ShadowfrontView {
 
           const btns =
             '<div class="sf-squad-btns">' +
-              '<button class="sf-btn sf-btn-p" data-pseudo="' + legacy.esc(pseudo) + '" data-squad="' + this.activeSquad + '" data-role="participant" title="' + legacy.t('sf_participant') + '"><i class="ph ph-shield-check"></i></button>' +
-              '<button class="sf-btn sf-btn-r" data-pseudo="' + legacy.esc(pseudo) + '" data-squad="' + this.activeSquad + '" data-role="reserve" title="' + legacy.t('sf_reserve') + '"><i class="ph ph-clock-countdown"></i></button>' +
+              '<button class="sf-btn sf-btn-p" data-pseudo="' + escapeHTML(pseudo) + '" data-squad="' + this.activeSquad + '" data-role="participant" title="' + t('sf_participant') + '"><i class="ph ph-shield-check"></i></button>' +
+              '<button class="sf-btn sf-btn-r" data-pseudo="' + escapeHTML(pseudo) + '" data-squad="' + this.activeSquad + '" data-role="reserve" title="' + t('sf_reserve') + '"><i class="ph ph-clock-countdown"></i></button>' +
             '</div>';
 
           html +=
             '<div class="sf-member-row sf-member-' + cat + '" style="border-left: 3px solid ' + (cat === 'excellent' ? 'var(--success)' : cat === 'good' ? '#60a5fa' : cat === 'average' ? '#fb923c' : cat === 'poor' ? 'var(--error)' : 'var(--text-muted)') + ';">' +
               '<div class="sf-member-info" style="display: flex; align-items: center; gap: 0.4rem; min-width: 0; overflow: hidden; flex: 1;">' +
                 '<span class="sf-rate-badge ' + meta.cls + '" style="font-size: var(--fs-xs); padding: 0.15rem 0.45rem;">' + rateText + '</span>' +
-                '<span class="sf-pseudo" title="' + legacy.esc(tooltipText) + '" style="margin-left: 0.2rem; font-size: var(--fs-base); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">' + legacy.esc(pseudo) + '</span>' +
+                '<span class="sf-pseudo" title="' + escapeHTML(tooltipText) + '" style="margin-left: 0.2rem; font-size: var(--fs-base); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">' + escapeHTML(pseudo) + '</span>' +
                 powerBadge +
                 stats +
               '</div>' +
@@ -854,8 +772,8 @@ export class ShadowfrontView {
         html +=
           '<div class="gm-empty" style="margin-top: 2rem;">' +
             '<i class="ph ph-rocket-launch gm-icon"></i>' +
-            '<div class="gm-empty-title">' + legacy.t('event_not_active') + '</div>' +
-            '<div class="gm-empty-hint">' + legacy.t('sf_squad_inactive_hint') + '</div>' +
+            '<div class="gm-empty-title">' + t('event_not_active') + '</div>' +
+            '<div class="gm-empty-hint">' + t('sf_squad_inactive_hint') + '</div>' +
           '</div>';
         area.innerHTML = html;
         this.attachSFListeners(area);
@@ -869,7 +787,7 @@ export class ShadowfrontView {
       if (squadTrackingParticipants.length > 0) {
         html += this.renderTrackingTable(squadTrackingParticipants);
       } else {
-        html += '<div class="empty-state">' + legacy.t('sf_no_one') + '</div>';
+        html += '<div class="empty-state">' + t('sf_no_one') + '</div>';
       }
       html += '</div>';
     }
@@ -887,13 +805,13 @@ export class ShadowfrontView {
 
     html += '<div class="sf-column sf-squad-col' + (sq.active ? '' : ' sf-squad-off') + '">' +
       '<div class="sf-col-header squad-header ' + squad + '">' +
-        '<i class="ph ph-shield-check"></i> ' + legacy.t('sf_participants') +
+        '<i class="ph ph-shield-check"></i> ' + t('sf_participants') +
         ' <span class="sf-cap ' + (pFull ? 'full' : '') + '" style="margin-left: auto;">' + participants.length + '/' + SHADOWFRONT_PARTICIPANTS_MAX + '</span>' +
       '</div>' +
       '<div class="sf-col-body" style="max-height: 520px; overflow-y: auto;">';
 
     if (participants.length === 0) {
-      html += '<div class="sf-empty">' + legacy.t('sf_no_one') + '</div>';
+      html += '<div class="sf-empty">' + t('sf_no_one') + '</div>';
     } else {
       participants.forEach((a) => { html += this.renderAssignedRow(a.pseudo, true, !!a.is_commander); });
     }
@@ -901,13 +819,13 @@ export class ShadowfrontView {
 
     html += '<div class="sf-column sf-squad-col' + (sq.active ? '' : ' sf-squad-off') + '">' +
       '<div class="sf-col-header squad-header ' + squad + '" style="filter: brightness(0.95);">' +
-        '<i class="ph ph-clock-countdown"></i> ' + legacy.t('sf_reserves') +
+        '<i class="ph ph-clock-countdown"></i> ' + t('sf_reserves') +
         ' <span class="sf-cap ' + (rFull ? 'full' : '') + '" style="margin-left: auto;">' + reserves.length + '/' + SHADOWFRONT_RESERVES_MAX + '</span>' +
       '</div>' +
       '<div class="sf-col-body" style="max-height: 520px; overflow-y: auto;">';
 
     if (reserves.length === 0) {
-      html += '<div class="sf-empty">' + legacy.t('sf_no_one') + '</div>';
+      html += '<div class="sf-empty">' + t('sf_no_one') + '</div>';
     } else {
       reserves.forEach((a) => { html += this.renderAssignedRow(a.pseudo, false, !!a.is_commander); });
     }
@@ -935,16 +853,16 @@ export class ShadowfrontView {
     if (isParticipant) {
       const iconClass = isCommander ? 'ph ph-star' : 'ph ph-star';
       const starColor = isCommander ? 'color: #eab308; cursor: pointer;' : 'color: var(--fg-dim); cursor: pointer;';
-      cmdBtn = '<button class="sf-commander-btn" data-pseudo="' + legacy.esc(pseudo) + '" title="Toggle Commander" style="background: none; border: none; padding: 0.2rem; margin-right: 0.25rem;' + starColor + '">' +
+      cmdBtn = '<button class="sf-commander-btn" data-pseudo="' + escapeHTML(pseudo) + '" title="Toggle Commander" style="background: none; border: none; padding: 0.2rem; margin-right: 0.25rem;' + starColor + '">' +
         '<i class="' + iconClass + '" style="font-size: var(--fs-xl);"></i>' +
       '</button>';
     }
 
     const member = this.state.membersData.find((m) => m.pseudo === pseudo);
     const powerVal = member ? parseInt(String(member.overall_power), 10) || 0 : 0;
-    const pTier = legacy.getPowerTier(powerVal, this.state.maxPower);
-    const pMeta = legacy.getPowerTierMeta(pTier);
-    const formattedPower = powerVal > 0 ? legacy.formatPower(powerVal) : '';
+    const pTier = getPowerTier(powerVal, this.state.maxPower);
+    const pMeta = getPowerTierMeta(pTier);
+    const formattedPower = powerVal > 0 ? formatPower(powerVal) : '';
     const powerBadge = powerVal > 0
       ? '<span class="gm-chip" style="font-size: var(--fs-xs); padding:0.05rem 0.2rem; color:' + pMeta.color + '; border:1px solid ' + pMeta.color + '22; background:' + pMeta.color + '05; display:inline-flex; align-items:center; gap:0.15rem; margin-right: 0.25rem;"><span style="font-size: var(--fs-sm);">' + pMeta.icon + '</span> ' + formattedPower + '</span>'
       : '';
@@ -953,14 +871,14 @@ export class ShadowfrontView {
 
     return '<div class="sf-assigned-row" style="' + rowStyle + '">' +
       '<span class="sf-rate-badge ' + meta.cls + '" style="font-size: var(--fs-xs); padding: 0.1rem 0.35rem; margin-right: 0.25rem;">' + rateText + '</span>' +
-      '<span class="sf-pseudo" title="' + legacy.esc(tooltipText) + '" style="font-weight: 500; font-size: var(--fs-base); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 0.25rem;">' +
-        legacy.esc(pseudo) +
+      '<span class="sf-pseudo" title="' + escapeHTML(tooltipText) + '" style="font-weight: 500; font-size: var(--fs-base); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 0.25rem;">' +
+        escapeHTML(pseudo) +
       '</span>' +
       powerBadge +
       stats +
       '<div style="display: flex; align-items: center; gap: 0.2rem;">' +
         cmdBtn +
-        '<button class="sf-remove-btn" data-pseudo="' + legacy.esc(pseudo) + '" title="' + legacy.t('sf_remove') + '"><i class="ph ph-x"></i></button>' +
+        '<button class="sf-remove-btn" data-pseudo="' + escapeHTML(pseudo) + '" title="' + t('sf_remove') + '"><i class="ph ph-x"></i></button>' +
       '</div>' +
     '</div>';
   }
@@ -970,18 +888,18 @@ export class ShadowfrontView {
 
     let html =
       '<div class="sf-tracking">' +
-        '<div class="sf-tracking-header"><i class="ph ph-chart-bar"></i> ' + legacy.t('sf_tracking_title') + '</div>' +
+        '<div class="sf-tracking-header"><i class="ph ph-chart-bar"></i> ' + t('sf_tracking_title') + '</div>' +
         '<div class="event-stats" style="margin-bottom: 1rem; display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem;">' +
-          '<span class="stat-chip"><i class="ph ph-users"></i> ' + participants.length + ' ' + legacy.t('event_total') + '</span>' +
-          '<span class="stat-chip success"><i class="ph ph-check-circle"></i> ' + done + ' ' + legacy.t('event_participated') + '</span>' +
-          '<button type="button" class="gm-btn gm-btn-sm sf-all-present-btn" style="font-size: var(--fs-sm); padding: 0.25rem 0.5rem;"><i class="ph ph-check-square"></i> ' + legacy.t('sf_all_present') + '</button>' +
-          '<button type="button" class="gm-btn gm-btn-sm sf-all-absent-btn" style="font-size: var(--fs-sm); padding: 0.25rem 0.5rem;"><i class="ph ph-square"></i> ' + legacy.t('sf_all_absent') + '</button>' +
+          '<span class="stat-chip"><i class="ph ph-users"></i> ' + participants.length + ' ' + t('event_total') + '</span>' +
+          '<span class="stat-chip success"><i class="ph ph-check-circle"></i> ' + done + ' ' + t('event_participated') + '</span>' +
+          '<button type="button" class="gm-btn gm-btn-sm sf-all-present-btn" style="font-size: var(--fs-sm); padding: 0.25rem 0.5rem;"><i class="ph ph-check-square"></i> ' + t('sf_all_present') + '</button>' +
+          '<button type="button" class="gm-btn gm-btn-sm sf-all-absent-btn" style="font-size: var(--fs-sm); padding: 0.25rem 0.5rem;"><i class="ph ph-square"></i> ' + t('sf_all_absent') + '</button>' +
           '<span class="sf-saved-flash" style="opacity:0; transition: opacity 0.3s; font-size: var(--fs-sm); color:var(--success);"></span>' +
         '</div>' +
         '<div class="participants-table-wrap"><table class="participants-table"><thead><tr>' +
-          '<th>' + legacy.t('col_member') + '</th>' +
-          '<th>' + legacy.t('sf_squad_col') + '</th>' +
-          '<th class="center">' + legacy.t('col_participated') + '</th>' +
+          '<th>' + t('col_member') + '</th>' +
+          '<th>' + t('sf_squad_col') + '</th>' +
+          '<th class="center">' + t('col_participated') + '</th>' +
           '<th class="center">Late</th>' +
           '<th class="center">Excused</th>' +
           '<th class="center">Sub Present</th>' +
@@ -991,7 +909,7 @@ export class ShadowfrontView {
     participants.forEach((p) => {
       const assignment = this.state.assignments.find((a) => a.pseudo === p.pseudo);
       const squadLbl = assignment
-        ? this.squadLabel(assignment.squad) + ' - ' + (assignment.role === 'participant' ? legacy.t('sf_participant') : legacy.t('sf_reserve'))
+        ? this.squadLabel(assignment.squad) + ' - ' + (assignment.role === 'participant' ? t('sf_participant') : t('sf_reserve'))
         : '-';
       const isChecked = Number(p.participated) > 0;
       const isLateChecked = !!p.late;
@@ -1011,35 +929,35 @@ export class ShadowfrontView {
         '<tr class="' + rowClass + '">' +
           '<td class="pseudo-cell" style="display: flex; align-items: center; gap: 0.5rem;">' +
             '<span class="sf-rate-badge ' + meta.cls + '" style="font-size: var(--fs-xs); padding: 0.1rem 0.35rem;">' + rateText + '</span>' +
-            '<strong style="font-size: var(--fs-base);">' + legacy.esc(p.pseudo) + '</strong>' +
+            '<strong style="font-size: var(--fs-base);">' + escapeHTML(p.pseudo) + '</strong>' +
             pendingApprovalHtml(p.pseudo, p.is_pending) +
           '</td>' +
           '<td><span class="squad-chip ' + (assignment ? assignment.squad : '') + '">' + squadLbl + '</span></td>' +
           '<td class="check-cell">' +
             '<label class="check-toggle">' +
-              '<input type="checkbox" class="participation-checkbox sf-participation-checkbox" data-pseudo="' + legacy.esc(p.pseudo) + '"' + (isChecked ? ' checked' : '') + '>' +
+              '<input type="checkbox" class="participation-checkbox sf-participation-checkbox" data-pseudo="' + escapeHTML(p.pseudo) + '"' + (isChecked ? ' checked' : '') + '>' +
               '<span class="check-slider"></span>' +
             '</label>' +
           '</td>' +
           '<td class="check-cell">' +
             '<label class="check-toggle check-toggle-warning">' +
-              '<input type="checkbox" class="sf-late-checkbox" data-pseudo="' + legacy.esc(p.pseudo) + '"' + (isLateChecked ? ' checked' : '') + '>' +
+              '<input type="checkbox" class="sf-late-checkbox" data-pseudo="' + escapeHTML(p.pseudo) + '"' + (isLateChecked ? ' checked' : '') + '>' +
               '<span class="check-slider"></span>' +
             '</label>' +
           '</td>' +
           '<td class="check-cell">' +
             '<label class="check-toggle check-toggle-info">' +
-              '<input type="checkbox" class="sf-excused-checkbox" data-pseudo="' + legacy.esc(p.pseudo) + '"' + (isExcusedChecked ? ' checked' : '') + '>' +
+              '<input type="checkbox" class="sf-excused-checkbox" data-pseudo="' + escapeHTML(p.pseudo) + '"' + (isExcusedChecked ? ' checked' : '') + '>' +
               '<span class="check-slider"></span>' +
             '</label>' +
           '</td>' +
           '<td class="check-cell">' +
             '<label class="check-toggle check-toggle-accent">' +
-              '<input type="checkbox" class="sf-sub-present-checkbox" data-pseudo="' + legacy.esc(p.pseudo) + '"' + (isSubPresentChecked ? ' checked' : '') + '>' +
+              '<input type="checkbox" class="sf-sub-present-checkbox" data-pseudo="' + escapeHTML(p.pseudo) + '"' + (isSubPresentChecked ? ' checked' : '') + '>' +
               '<span class="check-slider"></span>' +
             '</label>' +
           '</td>' +
-          '<td style="white-space: nowrap; text-align: right;"><button class="delete-btn sf-delete-participant-btn" data-pseudo="' + legacy.esc(p.pseudo) + '" title="' + legacy.t('delete_title') + '"><i class="ph ph-trash"></i></button></td>' +
+          '<td style="white-space: nowrap; text-align: right;"><button class="delete-btn sf-delete-participant-btn" data-pseudo="' + escapeHTML(p.pseudo) + '" title="' + t('delete_title') + '"><i class="ph ph-trash"></i></button></td>' +
         '</tr>';
     });
 
@@ -1048,12 +966,12 @@ export class ShadowfrontView {
   }
 
   private async bulkSetParticipation(value: number): Promise<void> {
-    const db = legacy.getDb();
+    const db = getClient();
     if (!db) return;
     const sq = this.state.squads[this.activeSquad];
     if (!sq || !sq.sessionId) return;
     try {
-      const currentG = legacy.getActiveGuild();
+      const currentG = getActiveGuild();
       await ShadowfrontData.updateSessionParticipated(db, currentG, sq.sessionId, value);
       this.state.participants.forEach((p) => {
         if (p.session_id === sq.sessionId) p.participated = value;
@@ -1062,14 +980,14 @@ export class ShadowfrontView {
       this.flashSaved();
     } catch (err: any) {
       console.error('bulkSetParticipation failed', err);
-      legacy.showToast(legacy.t('toast_err_generic') + ' ' + err.message, 'error');
+      showToast(t('toast_err_generic') + ' ' + err.message, 'error');
     }
   }
 
   private flashSaved(): void {
     const el = document.querySelector('#event-shadowfront .sf-saved-flash');
     if (!el) return;
-    (el as HTMLElement).textContent = legacy.t('sf_saved');
+    (el as HTMLElement).textContent = t('sf_saved');
     (el as HTMLElement).style.opacity = '1';
     setTimeout(() => { (el as HTMLElement).style.opacity = '0'; }, 1500);
   }
@@ -1087,7 +1005,7 @@ export class ShadowfrontView {
     if (startBtn) {
       startBtn.addEventListener('click', () => {
         const squad = (startBtn.getAttribute('data-squad') || 'squad1') as ShadowfrontSquadKey;
-        legacy.pickEventStart({ eventLabel: 'Shadowfront - ' + this.squadLabel(squad) }, (startAt: string | null) => {
+        pickEventStart({ eventLabel: 'Shadowfront - ' + this.squadLabel(squad) }, (startAt: string | null) => {
           if (!startAt) return; // cancelled
           this.startSquad(squad, startAt);
         });
@@ -1098,9 +1016,9 @@ export class ShadowfrontView {
     if (endBtn) {
       endBtn.addEventListener('click', () => {
         const squad = (endBtn.getAttribute('data-squad') || 'squad1') as ShadowfrontSquadKey;
-        legacy.showConfirm(
-          legacy.t('event_end'),
-          '<strong>' + this.squadLabel(squad) + '</strong><br>' + legacy.t('sf_squad_ended'),
+        showConfirm(
+          t('event_end'),
+          '<strong>' + this.squadLabel(squad) + '</strong><br>' + t('sf_squad_ended'),
           () => {
             this.endSquads([squad]);
           }
@@ -1160,16 +1078,16 @@ export class ShadowfrontView {
       const done = this.state.participants.filter((p) => Number(p.participated) > 0).length;
       const chip = area.querySelector('.event-stats .stat-chip.success');
       if (chip) {
-        chip.innerHTML = '<i class="ph ph-check-circle"></i> ' + done + ' ' + legacy.t('event_participated');
+        chip.innerHTML = '<i class="ph ph-check-circle"></i> ' + done + ' ' + t('event_participated');
       }
     };
 
     const sfSession = this.state.squads[this.activeSquad] ? this.state.squads[this.activeSquad].sessionId : null;
-    const sfDb = legacy.getDb();
-    const sfGuild = legacy.getActiveGuild();
+    const sfDb = getClient();
+    const sfGuild = getActiveGuild();
     if (sfDb && sfGuild && sfSession) {
       wirePendingApprovals(area, {
-        db: sfDb, guild: sfGuild, eventName: SHADOWFRONT_EVENT_NAME, sessionId: sfSession, showToast: legacy.showToast
+        db: sfDb, guild: sfGuild, eventName: SHADOWFRONT_EVENT_NAME, sessionId: sfSession, showToast
       }, (pseudo) => {
         const pp = this.state.participants.find((p) => p.pseudo === pseudo && p.session_id === sfSession);
         if (pp) pp.is_pending = false;
@@ -1235,15 +1153,15 @@ export class ShadowfrontView {
     area.querySelectorAll('.sf-delete-participant-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
         const pseudo = btn.getAttribute('data-pseudo') || '';
-        legacy.showConfirm(
-          legacy.t('delete_title'),
-          '<strong>' + legacy.esc(pseudo) + '</strong><br>' + legacy.t('confirm_remove_participant_body'),
+        showConfirm(
+          t('delete_title'),
+          '<strong>' + escapeHTML(pseudo) + '</strong><br>' + t('confirm_remove_participant_body'),
           async () => {
-            const db = legacy.getDb();
+            const db = getClient();
             if (!db) return;
             const p = this.state.participants.find((x) => x.pseudo === pseudo);
             if (!p) return;
-            const g = p.guild || legacy.getActiveGuild();
+            const g = p.guild || getActiveGuild();
             await ShadowfrontData.deleteParticipant(db, g, p.session_id, pseudo);
             this.load();
           }

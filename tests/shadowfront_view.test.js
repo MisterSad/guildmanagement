@@ -11,6 +11,13 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { ShadowfrontView } from '../src/modules/shadowfront/views/ShadowfrontView';
+import { showToast } from '../src/core/dom/toast';
+
+// The view imports showToast directly (no more `window.GM.showToast` read).
+vi.mock('../src/core/dom/toast', async (importOriginal) => ({
+  ...(await importOriginal()),
+  showToast: vi.fn()
+}));
 
 const GM = window.GM;
 
@@ -108,7 +115,7 @@ beforeEach(() => {
   mount();
   localStorage.setItem('gm_role', 'guild_admin');
   window.currentGuildRestriction = 'ALPHA';
-  GM.showToast = vi.fn();
+  vi.mocked(showToast).mockReset();
   tables = baseTables();
   installDb();
 });
@@ -252,7 +259,7 @@ describe('ShadowfrontView golden results (post shadowfront.js cutover)', () => {
         })
       })
     }));
-    expect(GM.showToast).toHaveBeenCalledWith('Composition sent to Discord.', 'success');
+    expect(showToast).toHaveBeenCalledWith('Composition sent to Discord.', 'success');
   });
 
   it('does not expose any window.GM_* global (cutover guard)', async () => {

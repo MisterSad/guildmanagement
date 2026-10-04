@@ -1,4 +1,21 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+// StatsView imports getWeekStart directly (phase M4c), so pinning "the current
+// week" goes through a mock of its source module instead of window.GM.
+const weekOverride = vi.hoisted(() => ({ current: null }));
+vi.mock('../src/core/utils/date', async (importOriginal) => {
+    const actual = await importOriginal();
+    return {
+        ...actual,
+        getWeekStart: (...args) => (weekOverride.current !== null ? weekOverride.current : actual.getWeekStart(...args))
+    };
+});
+// StatsView imports ensureAuthSession directly (phase M4c): neutralise it at
+// its source module rather than through window.GM.
+vi.mock('../src/core/api/supabase', async (importOriginal) => {
+    const actual = await importOriginal();
+    return { ...actual, ensureAuthSession: async () => null };
+});
 import { statsView } from '../src/modules/stats/views/StatsView';
 import { mockStatsMembers, mockStatsHealth, mockStatsEvents } from './helpers/stats-aggregate.js';
 
@@ -176,7 +193,6 @@ beforeEach(() => {
     mountContainers();
     db = buildDb();
     window.GM.db = db;
-    window.GM.ensureAuthSession = async () => null;
     // Each test expects GM_STATS.load() to actually re-fetch against its own
     // mock DB; the TTL freshness cache (gm-utils.js) is a same-session
     // optimization and must not carry over between tests.
@@ -185,7 +201,6 @@ beforeEach(() => {
 
 afterEach(() => {
     delete window.GM.db;
-    window.GM.ensureAuthSession = undefined;
     document.body.innerHTML = '';
     localStorage.removeItem('gm_stats_mode');
 });
@@ -301,8 +316,7 @@ describe('GM_STATS reliability across the whole window', () => {
                 shadowfront_squads: () => new MockBuilder(SQUADS)
             }
         });
-        const realGetWeekStart = window.GM.getWeekStart;
-        window.GM.getWeekStart = () => W2;
+        weekOverride.current = W2;
 
         try {
             await window.GM_STATS.load();
@@ -316,13 +330,9 @@ describe('GM_STATS reliability across the whole window', () => {
             expect(alpha.attended).toBe('2/2');
             expect(beta.attended).toBe('1/2');
         } finally {
-            // Restore the real implementation (gm-utils.js) rather than
-            // deleting it — a prior version of this test used `delete
-            // window.GM.getWeekStart`, which removes it for every test that
-            // runs afterward in this file (nothing re-installs it), causing
-            // fetchAvailableWeeks()'s internal fallback to throw uncaught
-            // and leave state.isLoading stuck true for the rest of the suite.
-            window.GM.getWeekStart = realGetWeekStart;
+            // Restore the real implementation so every later test in this
+            // file sees the true current week again.
+            weekOverride.current = null;
         }
     });
 });
@@ -449,16 +459,14 @@ describe('GM_STATS cockpit', () => {
         mountContainers();
         db = buildKpiDb();
         window.GM.db = db;
-        window.GM.ensureAuthSession = async () => null;
-        // Deterministic week helpers: current week = W2, previous = W1
-        window.GM.getWeekStart = () => W2;
+            // Deterministic week helpers: current week = W2, previous = W1
+        weekOverride.current = W2;
         window.GM.getPrevWeekStart = () => W1;
     });
 
     afterEach(() => {
         delete window.GM.db;
-        window.GM.ensureAuthSession = undefined;
-        window.GM.getWeekStart = undefined;
+            weekOverride.current = null;
         window.GM.getPrevWeekStart = undefined;
         document.body.innerHTML = '';
     });
@@ -552,7 +560,7 @@ describe('GM_STATS cockpit', () => {
                 event_status: () => new MockBuilder([])
             }
         });
-        window.GM.getWeekStart = () => W2;
+        weekOverride.current = W2;
 
         await window.GM_STATS.load();
         await window.GM_STATS.setView('cockpit');
@@ -565,7 +573,7 @@ describe('GM_STATS cockpit', () => {
         expect(text).not.toContain('10/08/2026');
         expect(text).not.toContain('2026-08-10');
 
-        delete window.GM.getWeekStart;
+        weekOverride.current = null;
     });
 
     it('renders the roster breakdown without throwing', async () => {

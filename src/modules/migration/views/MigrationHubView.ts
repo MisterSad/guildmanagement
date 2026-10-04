@@ -11,6 +11,9 @@ import { escapeHTML } from '../../../core/utils/text';
 import { debounce } from '../../../core/utils/async';
 import { getActiveGuild, currentAccountId, getCurrentPseudo, roleFromStorage } from '../../../core/auth/roles';
 import { getClient } from '../../../core/api/supabase';
+import { getAppState } from '../../../core/state/app-state';
+import { showToast } from '../../../core/dom/toast';
+import { showConfirm } from '../../app/dialogs/dialogs.service';
 import {
   compressImage,
   extractImagesFromClipboard,
@@ -37,40 +40,16 @@ import {
   requestScopeBriefing
 } from '../migration.service';
 
-function winAny(): any {
-  return (typeof window !== 'undefined' ? window : ({} as any)) as any;
+/**
+ * Server number of a guild, from the cached guild list, else the caller's
+ * server restriction.
+ */
+function getServerNumber(guildId: string): string {
+  const entry = getAppState().guildsData[guildId];
+  if (entry && entry.server_number) return String(entry.server_number);
+  const store = typeof localStorage !== 'undefined' ? localStorage : null;
+  return store ? (store.getItem('gm_server_restriction') || '') : '';
 }
-
-function gm(): any {
-  return winAny().GM;
-}
-
-const legacy = {
-  getDb(): any {
-    const g = gm();
-    return g && g.db ? g.db : getClient();
-  },
-  showToast(msg: string, type: string = 'info'): void {
-    const g = gm();
-    if (g && typeof g.showToast === 'function') g.showToast(msg, type);
-  },
-  showConfirm(title: string, body: string, onConfirm: () => void): void {
-    const w = winAny();
-    if (typeof w.showConfirm === 'function') {
-      w.showConfirm(title, body, onConfirm);
-    } else if (confirm(`${title}\n\n${body}`)) {
-      onConfirm();
-    }
-  },
-  getServerNumber(guildId: string): string {
-    const w = winAny();
-    if (w.guildsData && w.guildsData[guildId] && w.guildsData[guildId].server_number) {
-      return String(w.guildsData[guildId].server_number);
-    }
-    const store = typeof localStorage !== 'undefined' ? localStorage : null;
-    return store ? (store.getItem('gm_server_restriction') || '') : '';
-  }
-};
 
 const CATEGORY_LABELS: Record<MigrationWikiCategory, string> = {
   general: 'General',
@@ -266,7 +245,7 @@ export class MigrationHubView {
     copyAiSummaryBtn?.addEventListener('click', () => {
       if (this.currentAiSummary) {
         navigator.clipboard.writeText(this.currentAiSummary);
-        legacy.showToast('Copied AI summary to clipboard!', 'success');
+        showToast('Copied AI summary to clipboard!', 'success');
       }
     });
 
@@ -292,7 +271,7 @@ export class MigrationHubView {
     document.getElementById('migration-hub-digest-copy-btn')?.addEventListener('click', () => {
       if (this.currentAiBriefing) {
         navigator.clipboard.writeText(this.currentAiBriefing);
-        legacy.showToast('Copied briefing to clipboard!', 'success');
+        showToast('Copied briefing to clipboard!', 'success');
       }
     });
 
@@ -307,12 +286,12 @@ export class MigrationHubView {
    */
   public async load(): Promise<void> {
     this.init();
-    const db = legacy.getDb();
+    const db = getClient();
     if (!db) return;
 
     const currentG = getActiveGuild();
     if (!currentG) return;
-    const serverNumber = legacy.getServerNumber(currentG);
+    const serverNumber = getServerNumber(currentG);
 
     // Update scope switcher labels
     const guildLabel = document.getElementById('migration-hub-guild-label');
@@ -327,7 +306,7 @@ export class MigrationHubView {
       const { data, error } = await query;
       if (error) {
         console.error('[MigrationHub] Failed to fetch pages', error);
-        legacy.showToast('Failed to load migration pages: ' + (error.message || 'Unknown error'), 'error');
+        showToast('Failed to load migration pages: ' + (error.message || 'Unknown error'), 'error');
         return;
       }
 
@@ -353,7 +332,7 @@ export class MigrationHubView {
    * Subscribes to Supabase Realtime channel for collaborative updates.
    */
   private subscribeRealtime(): void {
-    const db = legacy.getDb();
+    const db = getClient();
     if (!db || typeof db.channel !== 'function') return;
 
     if (!this.realtimeChannel) {
@@ -708,7 +687,7 @@ export class MigrationHubView {
 
     const title = (titleInput?.value || '').trim();
     if (!title) {
-      legacy.showToast('Please provide a title for the page', 'error');
+      showToast('Please provide a title for the page', 'error');
       return;
     }
 
@@ -716,12 +695,12 @@ export class MigrationHubView {
     const isPinned = !!pinnedCheck?.checked;
     const content = (contentInput?.value || '').trim();
 
-    const db = legacy.getDb();
+    const db = getClient();
     if (!db) return;
 
     const currentG = getActiveGuild();
     if (!currentG) return;
-    const serverNumber = legacy.getServerNumber(currentG);
+    const serverNumber = getServerNumber(currentG);
     const pseudo = getCurrentPseudo() || currentAccountId() || 'Admin';
 
     const saveBtn = document.getElementById('migration-hub-form-save-btn') as HTMLButtonElement | null;
@@ -734,11 +713,11 @@ export class MigrationHubView {
 
         if (error) {
           console.error('[MigrationHub] Update failed', error);
-          legacy.showToast('Failed to update page: ' + (error.message || 'Error'), 'error');
+          showToast('Failed to update page: ' + (error.message || 'Error'), 'error');
           return;
         }
 
-        legacy.showToast('Page updated successfully!', 'success');
+        showToast('Page updated successfully!', 'success');
         this.filterState.activePageId = this.editingPageId;
       } else {
         // Create new page
@@ -746,11 +725,11 @@ export class MigrationHubView {
 
         if (error) {
           console.error('[MigrationHub] Insert failed', error);
-          legacy.showToast('Failed to create page: ' + (error.message || 'Error'), 'error');
+          showToast('Failed to create page: ' + (error.message || 'Error'), 'error');
           return;
         }
 
-        legacy.showToast('Page created successfully!', 'success');
+        showToast('Page created successfully!', 'success');
         if (data && data.id) {
           this.filterState.activePageId = data.id;
         }
@@ -760,7 +739,7 @@ export class MigrationHubView {
       await this.load();
     } catch (err: any) {
       console.error('[MigrationHub] handleFormSubmit exception', err);
-      legacy.showToast('An unexpected error occurred while saving', 'error');
+      showToast('An unexpected error occurred while saving', 'error');
     } finally {
       if (saveBtn) saveBtn.disabled = false;
     }
@@ -773,19 +752,19 @@ export class MigrationHubView {
     const page = this.pages.find((p) => p.id === this.filterState.activePageId);
     if (!page) return;
 
-    const db = legacy.getDb();
+    const db = getClient();
     if (!db) return;
 
     const newPinned = !page.is_pinned;
     const { error } = await setWikiPagePinned(db, page.id, newPinned);
 
     if (error) {
-      legacy.showToast('Failed to pin/unpin page', 'error');
+      showToast('Failed to pin/unpin page', 'error');
       return;
     }
 
     page.is_pinned = newPinned;
-    legacy.showToast(newPinned ? 'Page pinned to top' : 'Page unpinned', 'info');
+    showToast(newPinned ? 'Page pinned to top' : 'Page unpinned', 'info');
     this.renderPagesList();
     this.renderActivePage();
   }
@@ -797,25 +776,25 @@ export class MigrationHubView {
     const page = this.pages.find((p) => p.id === this.filterState.activePageId);
     if (!page) return;
 
-    legacy.showConfirm(
+    showConfirm(
       'Delete Page',
       // The confirm dialog renders HTML: the title is escaped, or a Server
       // Intel page titled by a rival guild's admin runs script in the session
       // of whoever clicks Delete.
       `Are you sure you want to delete "${escapeHTML(page.title)}"? This cannot be undone.`,
       async () => {
-        const db = legacy.getDb();
+        const db = getClient();
         if (!db) return;
 
         // RLS filters a refused delete to zero rows without an error, so ask
         // for the deleted rows back and check one came.
         const { data, error } = await deleteWikiPage(db, page.id);
         if (error || !data || data.length === 0) {
-          legacy.showToast(error ? 'Failed to delete page: ' + (error.message || 'Forbidden') : 'Only the page\'s creator can delete it.', 'error');
+          showToast(error ? 'Failed to delete page: ' + (error.message || 'Forbidden') : 'Only the page\'s creator can delete it.', 'error');
           return;
         }
 
-        legacy.showToast('Page deleted', 'info');
+        showToast('Page deleted', 'info');
         this.filterState.activePageId = null;
         await this.load();
       }
@@ -842,9 +821,9 @@ export class MigrationHubView {
 
     try {
       await navigator.clipboard.writeText(text);
-      legacy.showToast('Copied formatted text for Discord!', 'success');
+      showToast('Copied formatted text for Discord!', 'success');
     } catch {
-      legacy.showToast('Failed to copy to clipboard', 'error');
+      showToast('Failed to copy to clipboard', 'error');
     }
   }
 
@@ -854,7 +833,7 @@ export class MigrationHubView {
    * Loads comments for a specific wiki page.
    */
   public async loadComments(pageId: string): Promise<void> {
-    const db = legacy.getDb();
+    const db = getClient();
     if (!db) return;
 
     try {
@@ -950,11 +929,11 @@ export class MigrationHubView {
     const content = (input?.value || '').trim();
 
     if (!content) {
-      legacy.showToast('Please enter a comment', 'error');
+      showToast('Please enter a comment', 'error');
       return;
     }
 
-    const db = legacy.getDb();
+    const db = getClient();
     if (!db) return;
 
     const pseudo = getCurrentPseudo() || currentAccountId() || 'Leader';
@@ -966,16 +945,16 @@ export class MigrationHubView {
 
       if (error) {
         console.error('[MigrationHub] Comment submit error', error);
-        legacy.showToast('Failed to post comment: ' + (error.message || 'Error'), 'error');
+        showToast('Failed to post comment: ' + (error.message || 'Error'), 'error');
         return;
       }
 
       if (input) input.value = '';
-      legacy.showToast('Comment posted!', 'success');
+      showToast('Comment posted!', 'success');
       await this.loadComments(activePageId);
     } catch (err) {
       console.error('[MigrationHub] handleCommentSubmit error', err);
-      legacy.showToast('Failed to submit comment', 'error');
+      showToast('Failed to submit comment', 'error');
     } finally {
       if (submitBtn) submitBtn.disabled = false;
     }
@@ -985,18 +964,18 @@ export class MigrationHubView {
    * Deletes a comment with confirmation.
    */
   private async deleteComment(commentId: string): Promise<void> {
-    legacy.showConfirm('Delete Comment', 'Are you sure you want to delete this comment?', async () => {
-      const db = legacy.getDb();
+    showConfirm('Delete Comment', 'Are you sure you want to delete this comment?', async () => {
+      const db = getClient();
       if (!db) return;
 
       const { error } = await deleteWikiComment(db, commentId);
       if (error) {
         console.error('[MigrationHub] delete comment error', error);
-        legacy.showToast('Failed to delete comment: ' + (error.message || 'Forbidden'), 'error');
+        showToast('Failed to delete comment: ' + (error.message || 'Forbidden'), 'error');
         return;
       }
 
-      legacy.showToast('Comment deleted', 'info');
+      showToast('Comment deleted', 'info');
       if (this.filterState.activePageId) {
         await this.loadComments(this.filterState.activePageId);
       }
@@ -1009,7 +988,7 @@ export class MigrationHubView {
   private async handleFilesAdded(files: File[]): Promise<void> {
     if (files.length === 0) return;
 
-    legacy.showToast(`Compressing ${files.length} screenshot(s)...`, 'info');
+    showToast(`Compressing ${files.length} screenshot(s)...`, 'info');
 
     for (const file of files) {
       try {
@@ -1033,7 +1012,7 @@ export class MigrationHubView {
         this.pendingAttachments.push(attachment);
       } catch (err) {
         console.error('[MigrationHub] Compression error', err);
-        legacy.showToast(`Failed to compress ${file.name}`, 'error');
+        showToast(`Failed to compress ${file.name}`, 'error');
       }
     }
 
@@ -1249,23 +1228,23 @@ export class MigrationHubView {
     }
 
     try {
-      const db = legacy.getDb();
+      const db = getClient();
       const { data, error } = await requestPageSummary(db, activePage.id, activePage.scope, activePage.guild_id, activePage.server_number);
 
       if (error || !data || !data.ok) {
         const errMsg = error?.message || data?.message || 'Failed to generate summary';
         aiContent.innerHTML = `<span style="color:var(--danger);"><i class="ph ph-warning"></i> ${escapeHTML(errMsg)}</span>`;
-        legacy.showToast('AI summary failed: ' + errMsg, 'error');
+        showToast('AI summary failed: ' + errMsg, 'error');
         return;
       }
 
       this.currentAiSummary = data.summary || '';
       aiContent.innerHTML = this.renderMarkdown(this.currentAiSummary);
-      legacy.showToast('AI summary generated!', 'success');
+      showToast('AI summary generated!', 'success');
     } catch (err: any) {
       console.error('[MigrationHub] generatePageSummary exception', err);
       aiContent.innerHTML = `<span style="color:var(--danger);"><i class="ph ph-warning"></i> Error calling AI service</span>`;
-      legacy.showToast('AI service error', 'error');
+      showToast('AI service error', 'error');
     } finally {
       if (summaryBtn) {
         summaryBtn.disabled = false;
@@ -1287,7 +1266,7 @@ export class MigrationHubView {
 
     const currentG = getActiveGuild();
     if (!currentG) return;
-    const serverNumber = legacy.getServerNumber(currentG);
+    const serverNumber = getServerNumber(currentG);
     const scopeLabel = this.filterState.scope === 'guild' ? `Guild [${currentG}]` : `Server [${serverNumber}]`;
 
     if (modalTitle) {
@@ -1309,7 +1288,7 @@ export class MigrationHubView {
     }
 
     try {
-      const db = legacy.getDb();
+      const db = getClient();
       const { data, error } = await requestScopeBriefing(db, this.filterState.scope, currentG, serverNumber);
 
       if (error || !data || !data.ok) {
@@ -1319,13 +1298,13 @@ export class MigrationHubView {
             <i class="ph ph-warning" style="margin-right:0.35rem;"></i> ${escapeHTML(errMsg)}
           </div>
         `;
-        legacy.showToast('Failed to generate briefing', 'error');
+        showToast('Failed to generate briefing', 'error');
         return;
       }
 
       this.currentAiBriefing = data.summary || '';
       modalContent.innerHTML = this.renderMarkdown(this.currentAiBriefing);
-      legacy.showToast('Executive briefing ready!', 'success');
+      showToast('Executive briefing ready!', 'success');
     } catch (err: any) {
       console.error('[MigrationHub] generateScopeBriefing exception', err);
       modalContent.innerHTML = `
@@ -1333,7 +1312,7 @@ export class MigrationHubView {
           <i class="ph ph-warning" style="margin-right:0.35rem;"></i> Error communicating with Gemini AI service
         </div>
       `;
-      legacy.showToast('AI service error', 'error');
+      showToast('AI service error', 'error');
     } finally {
       if (digestBtn) {
         digestBtn.disabled = false;
@@ -1346,7 +1325,7 @@ export class MigrationHubView {
    * Cleanup on view destruction.
    */
   public destroy(): void {
-    const db = legacy.getDb();
+    const db = getClient();
     if (this.realtimeChannel) {
       if (db && typeof db.removeChannel === 'function') {
         db.removeChannel(this.realtimeChannel);

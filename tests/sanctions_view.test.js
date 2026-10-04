@@ -7,6 +7,27 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { SanctionsView } from '../src/modules/sanctions/views/SanctionsView';
 
+// The view imports its collaborators directly; mock the source modules
+// rather than the legacy window.GM / window.showConfirm surface.
+const mocks = vi.hoisted(() => ({ showToast: vi.fn(), showConfirm: vi.fn() }));
+
+vi.mock('../src/core/i18n/i18n', async (importOriginal) => ({
+  ...(await importOriginal()),
+  t: (k) => k
+}));
+vi.mock('../src/core/auth/roles', async (importOriginal) => ({
+  ...(await importOriginal()),
+  getActiveGuild: () => 'ALPHA'
+}));
+vi.mock('../src/core/dom/toast', async (importOriginal) => ({
+  ...(await importOriginal()),
+  showToast: mocks.showToast
+}));
+vi.mock('../src/modules/app/dialogs/dialogs.service', async (importOriginal) => ({
+  ...(await importOriginal()),
+  showConfirm: mocks.showConfirm
+}));
+
 let insertMock;
 let deleteMock;
 let showConfirmMock;
@@ -47,16 +68,12 @@ function installDb(members) {
 }
 
 function installGM() {
-  showConfirmMock = vi.fn((title, body, cb) => { cb && cb(); });
-  window.showConfirm = showConfirmMock;
-  window.GM = {
-    t: (k) => k,
-    escapeHTML: (s) => String(s ?? ''),
-    getActiveGuild: () => 'ALPHA',
-    avatarInit: (s) => String(s || '').slice(0, 1).toUpperCase(),
-    showToast: vi.fn(),
-    db: null
-  };
+  mocks.showToast.mockReset();
+  mocks.showConfirm.mockReset();
+  mocks.showConfirm.mockImplementation((title, body, cb) => { cb && cb(); });
+  showConfirmMock = mocks.showConfirm;
+  // Only the client lives on window.GM (getClient() reads it).
+  window.GM = { db: null };
 }
 
 function mount() {
@@ -81,7 +98,6 @@ beforeEach(() => {
 afterEach(() => {
   vi.useRealTimers();
   delete window.GM;
-  delete window.showConfirm;
   document.body.innerHTML = '';
   vi.restoreAllMocks();
 });
@@ -119,7 +135,7 @@ describe('SanctionsView — form & delete', () => {
     await new Promise((r) => setTimeout(r, 0));
 
     expect(insertMock).toHaveBeenCalledWith([{ guild: 'ALPHA', pseudo: 'Bravo', comment: 'No-show' }]);
-    expect(window.GM.showToast).toHaveBeenCalledWith('toast_sanction_added', 'success');
+    expect(mocks.showToast).toHaveBeenCalledWith('toast_sanction_added', 'success');
 
     view.destroy();
   });

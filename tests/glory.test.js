@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { gloryView } from '../src/modules/glory/views/GloryView';
+import { getAppState, patchAppState } from '../src/core/state/app-state';
 
 const GM = window.GM;
 const GLORY = gloryView;
@@ -35,6 +36,7 @@ describe('Glory Module Tests', () => {
     let containerEl;
     let mockParticipants;
     let insertTracker;
+    let previousGuild;
 
     beforeEach(() => {
         containerEl = document.createElement('div');
@@ -80,7 +82,10 @@ describe('Glory Module Tests', () => {
         };
 
         window.GM.db = mockDb;
-        window.GM.getActiveGuild = () => 'YARR';
+        // The view resolves the tenant through getActiveGuild() (typed import),
+        // so set the real app state rather than stubbing window.GM.
+        previousGuild = getAppState().currentGuild;
+        patchAppState({ currentGuild: 'YARR' });
         window.GM.canWriteGuild = () => true;
     });
 
@@ -88,6 +93,7 @@ describe('Glory Module Tests', () => {
         if (containerEl && containerEl.parentNode) {
             containerEl.parentNode.removeChild(containerEl);
         }
+        patchAppState({ currentGuild: previousGuild });
         vi.restoreAllMocks();
     });
 
