@@ -552,7 +552,7 @@ if (['.js', '.css', '.webmanifest', '.png', '.json', '.html'].includes(ext)) {
   1. Le répertoire `supabase/migrations/` contient **157 fichiers de migration**, dont plusieurs contiennent des instructions `INSERT INTO guild_members` spécifiques à des guildes (`add_sen_guild_members.sql`, `import_blackthunder_members.sql`, etc.), violant le principe SaaS multi-tenant agnostique.
   2. Le fichier `src/workers/matchup.worker.ts` implémente un Web Worker pour les calculs de matchup SvS/GvG, mais aucun fichier client (`svs-matchup.js`, `gvg-matchup.js`) n'instancie `new Worker()`, les calculs étant déjà réalisés côté serveur via les RPC SQL Postgres (`gm_svs_server_matchup`). Il s'agit de code mort.
 - **Code Corrigé / Préconisation :**
-  1. Exécuter le plan de squash documenté dans `docs/database_squash_plan.md` pour regrouper les 157 migrations en 4 fichiers maîtres et déplacer les seeds de membres dans `supabase/seeds/dev_seed.sql`.
+  1. Exécuter le plan de squash documenté dans `docs/archive/database_squash_plan.md` pour regrouper les 157 migrations en 4 fichiers maîtres et déplacer les seeds de membres dans `supabase/seeds/dev_seed.sql`.
   2. Supprimer ou connecter le Web Worker selon que les calculs de prévisualisation doivent être effectués côté client ou côté base de données.
 - **Justification technique :** Accélère le déploiement local/staging et clarifie la responsabilité des calculs métier.
 

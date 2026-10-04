@@ -9,7 +9,6 @@
  * This module never assigns `window.GM_GLORY` (bridge added at cutover).
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { fetchGloryMembers, fetchGloryWeekScores, upsertPlayerGlory } from '../glory.service';
 import { getClient } from '../../../core/api/supabase';

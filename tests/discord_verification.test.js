@@ -19,6 +19,7 @@
 //      `not_on_roster`, which the caller turns into the "pending" state.
 
 import { describe, it, expect } from 'vitest';
+import { squash } from './helpers/source-text.js';
 import fs from 'fs';
 import path from 'path';
 import {
@@ -645,7 +646,7 @@ describe('Regression: discord-profile-verification role decision', () => {
     const visitorBlock = fnSrc.slice(visitorIdx, guildMemberIdx);
     expect(visitorBlock).toContain('visitorTagDisplay = `[${VISITOR_ROLE_NAME}]`');
     expect(visitorBlock).toContain('buildNickname(visitorTagDisplay, pseudo, serverNum)');
-    expect(visitorBlock).toContain('assignRoleAndNickname(discordServerId, discordUserId, visitorRole.id, visitorNickname, logger');
+    expect(squash(visitorBlock)).toContain(squash('assignRoleAndNickname(discordServerId, discordUserId, visitorRole.id, visitorNickname, logger'));
   });
 
   it('never grants the guild role on the pending path, and never stamps the refused tag into the nickname', () => {

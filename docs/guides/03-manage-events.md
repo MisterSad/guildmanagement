@@ -45,7 +45,7 @@ Typing 100 scores by hand is boring. Let the AI read your screenshots!
 
 1. On the event page, click the OCR button. Example: **📅 SvS Day N OCR**, **🔥 SvS Day 6 OCR**, **🚛 DTR OCR**.
 2. For a "Day N" scan, pick the day (**Day 1 … Day 5**).
-3. Drop your **screenshots** (PNG/JPG), or a **screen recording** where you scroll slowly through the list (MP4/MOV, max 8 minutes).
+3. Drop your **screenshots** (PNG/JPG), or a **screen recording** where you scroll slowly through the list (MP4/MOV, max 5 minutes and 64 MB).
 4. Wait for the AI to read them.
 5. **Check the table:**
    - The summary at the top counts the lines **Ready to Apply** ✅

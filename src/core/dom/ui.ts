@@ -6,7 +6,6 @@
  * renderer.
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { adoptDialog } from '../../components/ui/Dialog';
 import { formatNumber, formatPower, escapeHTML } from '../utils/text';

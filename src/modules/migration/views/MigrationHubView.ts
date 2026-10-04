@@ -5,7 +5,6 @@
  * for cross-server migrations with dual Guild and Server scopes.
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { escapeHTML } from '../../../core/utils/text';
 import { debounce } from '../../../core/utils/async';
@@ -1139,7 +1138,7 @@ export class MigrationHubView {
     html = html.replace(/^# (.*$)/gim, '<h1 style="margin:1.5rem 0 0.6rem; font-size:1.4rem; font-weight:700; color:var(--fg);">$1</h1>');
 
     // Step 3: Blockquotes
-    html = html.replace(/^\&gt; (.*$)/gim, '<blockquote style="border-left:3px solid var(--accent); padding-left:0.75rem; margin:0.6rem 0; color:var(--text-muted); font-style:italic;">$1</blockquote>');
+    html = html.replace(/^&gt; (.*$)/gim, '<blockquote style="border-left:3px solid var(--accent); padding-left:0.75rem; margin:0.6rem 0; color:var(--text-muted); font-style:italic;">$1</blockquote>');
     html = html.replace(/^> (.*$)/gim, '<blockquote style="border-left:3px solid var(--accent); padding-left:0.75rem; margin:0.6rem 0; color:var(--text-muted); font-style:italic;">$1</blockquote>');
 
     // Step 4: Tables
@@ -1192,7 +1191,7 @@ export class MigrationHubView {
     html = html.replace(/(?:`|&#96;)(.*?)(?:`|&#96;)/g, '<code style="background:rgba(0,0,0,0.25); padding:2px 5px; border-radius:4px; font-family:monospace; font-size:0.85em; color:var(--accent);">$1</code>');
 
     // Step 7: Bullet lists
-    html = html.replace(/^\- (.*$)/gim, '<li style="margin-left:1.25rem; margin-bottom:0.25rem;">$1</li>');
+    html = html.replace(/^- (.*$)/gim, '<li style="margin-left:1.25rem; margin-bottom:0.25rem;">$1</li>');
 
     // Step 8: Newlines to <br> (outside tables)
     html = html.replace(/\n\n/g, '<div style="margin-bottom:0.75rem;"></div>');

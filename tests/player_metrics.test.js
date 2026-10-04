@@ -5,7 +5,7 @@
  * and sorting algorithms.
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, } from 'vitest';
 import { PortalService } from '../src/modules/portal/portal.service.ts';
 import {
     calculateCombatDensity, calculateRallyScore, calculateRallyGrade, calculateResidualPower,

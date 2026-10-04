@@ -14,7 +14,7 @@ const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
 
 const worker = read('discord-verification-worker/index.js');
 const interactions = read('supabase/functions/discord-bot-interactions/index.ts');
-const memberPortal = strip(edgeSource('member-portal'));
+const _memberPortal = strip(edgeSource('member-portal'));
 const portal = strip(read('src/modules/portal/views/PortalView.ts'));
 const help = read('src/modules/help/HelpView.ts');
 

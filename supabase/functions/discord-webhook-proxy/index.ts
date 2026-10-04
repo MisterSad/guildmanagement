@@ -8,9 +8,6 @@ import { serveUnlessTest } from "../_shared/serve.ts";
 import { isAdminRole, isGuildAdmin, isGuildInScope, isServerAdmin } from "../_shared/admin-authz.ts";
 import type { CallerInfo } from "../_shared/auth.ts";
 
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 
 function makeJson(req: Request) {
   return (body: unknown, status = 200): Response =>

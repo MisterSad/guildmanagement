@@ -6,7 +6,7 @@
   "engines": {
     "node": "24.x"
   },
-  "description": "FGF Guild Management Tool — client-side app (vanilla JS + Supabase)",
+  "description": "FGF Guild Management — TypeScript front end built by Vite, on Supabase (Postgres + Deno Edge Functions)",
   "scripts": {
     "dev": "vite",
     "build": "node scripts/build.js",
@@ -16,10 +16,13 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "lint": "biome ci .",
+    "format": "biome format --write .",
     "setup:hooks": "bash scripts/setup-hooks.sh"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
+    "@biomejs/biome": "2.5.15",
     "@playwright/test": "1.62.1",
     "@vitest/coverage-v8": "^4.1.11",
     "esbuild": "0.28.2",

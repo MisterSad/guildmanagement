@@ -4,7 +4,6 @@
  * only localStorage and the DOM are reached at call time.
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { escapeHTML } from '../../../core/utils/text';
 import { t as translate } from '../../../core/i18n/i18n';

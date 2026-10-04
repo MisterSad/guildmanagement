@@ -66,7 +66,7 @@ describe('Member Duplicate UID & Same-Guild Rename Detection', () => {
     it('correctly builds same-guild prompt UI with Update Player Name button', () => {
         const existingPseudo = 'Trader28168';
         const typedPseudo = 'Trader28168_Renamed';
-        const uid = '1833757';
+        const _uid = '1833757';
         const guild = 'OMEGA';
 
         const notice = `This player (${existingPseudo}) already belongs to ${guild}. Would you like to update their name to ${typedPseudo}?`;

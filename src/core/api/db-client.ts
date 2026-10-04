@@ -13,7 +13,6 @@
  * (setDbClient / getClient), not by `window.GM.db`.
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 /** The guarded Supabase client. Typed loosely, as every call site already treats it. */
 export type DbClient = any;

@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, } from 'vitest';
+import { squash } from './helpers/source-text.js';
 import fs from 'fs';
 import path from 'path';
 import { canManageAccount } from '../supabase/functions/_shared/admin-authz';
@@ -91,9 +92,9 @@ describe('Pending Player Registration Visibility & Validation', () => {
 
     it('matches guild case-insensitively in renderPendingRegistrations and renderAccounts', () => {
       const appJs = read('src/modules/app/admin/guild-requests.controller.ts') + read('src/modules/app/admin/accounts.render.ts');
-      expect(appJs).toMatch(/const activeGUpper = String\(guild \|\| ''\)\.trim\(\)\.toUpperCase\(\);/);
-      expect(appJs).toMatch(/accGuildUpper === activeGUpper/);
-      expect(appJs).toMatch(/String\(accGuild\)\.trim\(\)\.toUpperCase\(\) === activeGUpper/);
+      expect(squash(appJs)).toMatch(/const activeGUpper = String\(guild \|\| ''\)\.trim\(\)\.toUpperCase\(\);/);
+      expect(squash(appJs)).toMatch(/accGuildUpper === activeGUpper/);
+      expect(squash(appJs)).toMatch(/String\(accGuild\)\.trim\(\)\.toUpperCase\(\) === activeGUpper/);
     });
 
     it('filters out pending status accounts from active member accounts', () => {

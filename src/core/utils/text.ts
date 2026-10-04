@@ -46,7 +46,8 @@ export function validatePseudo(pseudo: unknown): string | null {
   if (v.length === 0) return 'validation_pseudo_empty';
   if (v.length > 32) return 'validation_pseudo_too_long';
   // Reject HTML/JS-dangerous characters and control characters.
-  if (/[<>"'`&\\\/\x00-\x1F\x7F]/.test(v)) return 'validation_pseudo_invalid_chars';
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: rejecting control characters is the point.
+  if (/[<>"'`&\\/\x00-\x1F\x7F]/.test(v)) return 'validation_pseudo_invalid_chars';
   return null;
 }
 
@@ -148,7 +149,7 @@ export function cleanPlayerPseudo(rawPseudo?: string | null, guildTag?: string |
   if (!rawPseudo || typeof rawPseudo !== 'string') return '';
   let clean = rawPseudo.trim();
   if (guildTag) {
-    const tagClean = guildTag.replace(/[\[\]]/g, '').trim();
+    const tagClean = guildTag.replace(/[[\]]/g, '').trim();
     if (tagClean) {
       const escapedTag = tagClean.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const tagRegex = new RegExp('^\\s*\\[?' + escapedTag + '\\]?\\s*[-_:]?\\s*', 'i');
@@ -196,8 +197,8 @@ export function calculateStringSimilarity(str1?: string | null, str2?: string | 
   const s2 = String(str2).toLowerCase().trim();
   if (s1 === s2) return 1.0;
 
-  const clean1 = s1.replace(/\[[^\]]*\]|\([^\)]*\)/g, '').replace(/[^a-z0-9]/gi, '');
-  const clean2 = s2.replace(/\[[^\]]*\]|\([^\)]*\)/g, '').replace(/[^a-z0-9]/gi, '');
+  const clean1 = s1.replace(/\[[^\]]*\]|\([^)]*\)/g, '').replace(/[^a-z0-9]/gi, '');
+  const clean2 = s2.replace(/\[[^\]]*\]|\([^)]*\)/g, '').replace(/[^a-z0-9]/gi, '');
   if (clean1 && clean1 === clean2) return 0.95;
 
   const len1 = s1.length;
@@ -247,10 +248,10 @@ export function findBestMatchingMember<T extends { pseudo?: string | null }>(
     if (exactClean) return { member: exactClean, matchType: 'clean_tag', score: 0.98 };
   }
 
-  const targetClean = (cleanTarget || target).replace(/\[[^\]]*\]|\([^\)]*\)/g, '').replace(/[^a-z0-9]/gi, '');
+  const targetClean = (cleanTarget || target).replace(/\[[^\]]*\]|\([^)]*\)/g, '').replace(/[^a-z0-9]/gi, '');
   if (targetClean.length >= 3) {
     const normMatch = members.find((m) => {
-      const mClean = (m.pseudo || '').trim().toLowerCase().replace(/\[[^\]]*\]|\([^\)]*\)/g, '').replace(/[^a-z0-9]/gi, '');
+      const mClean = (m.pseudo || '').trim().toLowerCase().replace(/\[[^\]]*\]|\([^)]*\)/g, '').replace(/[^a-z0-9]/gi, '');
       return mClean === targetClean;
     });
     if (normMatch) return { member: normMatch, matchType: 'normalized', score: 0.95 };
@@ -307,7 +308,7 @@ export function parseGeminiJson<T = unknown>(jsonText?: string | null): T | null
       const sub = cleaned.substring(start, end);
       try {
         return JSON.parse(sub) as T;
-      } catch (e2) {
+      } catch {
         // Substring fallback parse failed, will throw original error below
       }
     }

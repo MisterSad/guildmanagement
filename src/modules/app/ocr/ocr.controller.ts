@@ -9,7 +9,6 @@
  * renderer. Every collaborator is a typed import (phase M4c).
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { adoptDialog, closeDialog } from '../../../components/ui/Dialog';
 import { eventsViewLazy, armsRaceViewLazy, shadowfrontViewLazy } from '../lazy-views';
@@ -889,7 +888,7 @@ export async function commitOcrUpdates(): Promise<void> {
 
   if (selectedExistingIndices.length === 0 && selectedNewIndices.length === 0 && checkedRemovalPseudos.length === 0) { showToast('No players selected.', 'error'); return; }
 
-  let selectedExisting = selectedExistingIndices.map((idx) => extracted[idx]).filter(Boolean);
+  const selectedExisting = selectedExistingIndices.map((idx) => extracted[idx]).filter(Boolean);
   let selectedNew = selectedNewIndices.map((idx) => extracted[idx]).filter(Boolean);
 
   const invalidUidPseudos: string[] = [];
@@ -949,7 +948,7 @@ export async function commitOcrUpdates(): Promise<void> {
         const uidVal = String(np.uid || '').trim();
         if (!uidVal) return true;
         if (bannedUidSet.has(uidVal)) { bannedLabels.push(np.pseudo + ' (' + uidVal + ')'); return false; }
-        if (Object.prototype.hasOwnProperty.call(collidingUidInfo, uidVal)) {
+        if (Object.hasOwn(collidingUidInfo, uidVal)) {
           const info = collidingUidInfo[uidVal];
           const ownerGuild = info && info.player && info.player.guild ? info.player.guild : '?';
           collidingLabels.push(np.pseudo + ' (already in ' + ownerGuild + ')');

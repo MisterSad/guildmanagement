@@ -6,6 +6,7 @@
 // export another guild's data) and the binary-response contract.
 
 import { describe, it, expect } from 'vitest';
+import { squash } from './helpers/source-text.js';
 import fs from 'fs';
 import path from 'path';
 import { fetchAllRows } from '../supabase/functions/_shared/pagination.ts';
@@ -18,7 +19,7 @@ function makeFakeAdmin(pages) {
   return {
     calls,
     from(table) {
-      let filters = [];
+      const filters = [];
       const chain = {
         select() { return chain; },
         eq(col, val) { filters.push([col, val]); return chain; },
@@ -110,8 +111,8 @@ describe('Regression: guild-data-export enforces guild scoping and stays paginat
   });
 
   it('uses the paginated fetcher for the two known-unbounded ledger tables', () => {
-    expect(src).toContain('fetchAllRows(admin, "event_participants"');
-    expect(src).toContain('fetchAllRows(admin, "player_metrics_history"');
+    expect(squash(src)).toContain(squash('fetchAllRows(admin, "event_participants"'));
+    expect(squash(src)).toContain(squash('fetchAllRows(admin, "player_metrics_history"'));
     // No raw unpaginated .select() call on those tables anywhere else.
     expect(src.match(/\.from\("event_participants"\)/g) || []).toHaveLength(0);
   });

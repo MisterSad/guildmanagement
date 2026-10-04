@@ -10,7 +10,6 @@
  * configureFetchErrorRuntime() (main.ts), so unit tests can substitute fakes.
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 // The one escaping boundary. Imported from utils/text rather than from
 // ./supabase (which re-exports it) because supabase.ts imports mapFetchError

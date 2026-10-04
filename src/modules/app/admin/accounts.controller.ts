@@ -6,7 +6,6 @@
  * the create account/admin/guild forms, and wireJoinCode.
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { t, esc, byId, getDb, ls } from './utils';
 import { getActiveGuild, isSuperAdmin, currentAccountId } from '../../../core/auth/roles';

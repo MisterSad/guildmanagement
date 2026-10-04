@@ -14,7 +14,6 @@
  * - This module never assigns any `window.GM_*` variable.
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { PortalService } from '../portal.service';
 import { escapeHTML, avatarInit, formatPower, formatNumber, parseNumber } from '../../../core/utils/text';
@@ -421,9 +420,7 @@ export class PortalView {
       totalCount += hist[k].count;
       totalAttended += hist[k].attended;
     });
-    const overallRate = totalCount > 0 ? Math.round((totalAttended / totalCount) * 100) : 0;
 
-    const kpis = this.state.kpis;
     const player = this.state.player || {};
     const guildAvg = this.state.guildAverages || {};
     const density = calculateCombatDensity(player);
@@ -671,7 +668,7 @@ export class PortalView {
     return '#c4c7c5';
   }
 
-  private renderChartCard(eventKey: string, ev: any, idx: number): string {
+  private renderChartCard(eventKey: string, _ev: any, idx: number): string {
     const icon = getEventIcon(eventKey);
     const accent = this.eventAccent(eventKey);
     return '<div class="portal-chart-card">' +
@@ -711,7 +708,7 @@ export class PortalView {
             '</div>';
   }
 
-  private drawChart(eventKey: string, ev: any, idx: number): void {
+  private drawChart(_eventKey: string, ev: any, idx: number): void {
     const canvas = document.querySelector<HTMLCanvasElement>('.portal-chart-canvas[data-chart-idx="' + idx + '"]');
     if (!canvas) return;
     drawScoreTrendChart(canvas, ev.history || []);
@@ -1422,7 +1419,7 @@ export class PortalView {
           } else {
             setTransferMsg('Transfer request sent! Waiting for approval.', 'success');
           }
-        } catch (err) {
+        } catch {
           setTransferMsg('An error occurred.', 'error');
         } finally {
           if (span) span.textContent = origText;

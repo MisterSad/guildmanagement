@@ -7,7 +7,6 @@
  * timezone coverage. All values escaped via esc().
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { t, esc, byId } from '../admin/utils';
 import { getActiveGuild } from '../../../core/auth/roles';
@@ -88,8 +87,8 @@ export function sortMembers(list: GuildMember[], sortVal: string, scoreMap?: Map
     for (const m of list) scores.set(memberKey(m), calculateRallyScore(m));
   }
   return list.slice().sort((a: any, b: any) => {
-    const pa = parseInt(a.overall_power) || 0;
-    const pb = parseInt(b.overall_power) || 0;
+    const pa = parseInt(a.overall_power, 10) || 0;
+    const pb = parseInt(b.overall_power, 10) || 0;
     switch (sortVal) {
       case 'invalid_uid': {
         const aInv = isInvalidOrTempUid(a.uid);
@@ -102,12 +101,12 @@ export function sortMembers(list: GuildMember[], sortVal: string, scoreMap?: Map
       case 'pseudo_desc': return String(b.pseudo).localeCompare(String(a.pseudo));
       case 'power_desc': return pb - pa;
       case 'power_asc': return pa - pb;
-      case 'fleet_desc': return (parseInt(b.fleet_rating) || 0) - (parseInt(a.fleet_rating) || 0);
-      case 'tech_desc': return (parseInt(b.tech_power) || 0) - (parseInt(a.tech_power) || 0);
-      case 'flagship_desc': return (parseInt(b.flagship_power) || 0) - (parseInt(a.flagship_power) || 0);
-      case 'champ_desc': return (parseInt(b.champion_power) || 0) - (parseInt(a.champion_power) || 0);
-      case 'crew_desc': return (parseInt(b.crew_power) || 0) - (parseInt(a.crew_power) || 0);
-      case 'glory_desc': return (parseInt(b.glory_score) || 0) - (parseInt(a.glory_score) || 0);
+      case 'fleet_desc': return (parseInt(b.fleet_rating, 10) || 0) - (parseInt(a.fleet_rating, 10) || 0);
+      case 'tech_desc': return (parseInt(b.tech_power, 10) || 0) - (parseInt(a.tech_power, 10) || 0);
+      case 'flagship_desc': return (parseInt(b.flagship_power, 10) || 0) - (parseInt(a.flagship_power, 10) || 0);
+      case 'champ_desc': return (parseInt(b.champion_power, 10) || 0) - (parseInt(a.champion_power, 10) || 0);
+      case 'crew_desc': return (parseInt(b.crew_power, 10) || 0) - (parseInt(a.crew_power, 10) || 0);
+      case 'glory_desc': return (parseInt(b.glory_score, 10) || 0) - (parseInt(a.glory_score, 10) || 0);
       case 'density_desc':
       case 'rally_desc':
       case 'war_desc': {
@@ -115,9 +114,9 @@ export function sortMembers(list: GuildMember[], sortVal: string, scoreMap?: Map
         const rb = scores!.get(memberKey(b)) ?? 0;
         if (rb !== ra) return rb - ra;
         if (pb !== pa) return pb - pa;
-        const fb = (parseInt(b.flagship_power) || 0) - (parseInt(a.flagship_power) || 0);
+        const fb = (parseInt(b.flagship_power, 10) || 0) - (parseInt(a.flagship_power, 10) || 0);
         if (fb !== 0) return fb;
-        return (parseInt(b.fleet_rating) || 0) - (parseInt(a.fleet_rating) || 0);
+        return (parseInt(b.fleet_rating, 10) || 0) - (parseInt(a.fleet_rating, 10) || 0);
       }
       default: return 0;
     }
@@ -171,7 +170,7 @@ export function memberTileHtml(
     ? new Date(m.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
     : '-';
   const initial = avatarInit(m.pseudo);
-  const powerVal = parseInt(String(m.overall_power)) || 0;
+  const powerVal = parseInt(String(m.overall_power), 10) || 0;
   const meta = getPowerTierMeta(getPowerTier(powerVal, maxPower));
   const formattedPower = formatPower(powerVal);
 
@@ -308,11 +307,11 @@ export function buildMilitaryMatrixHtml(
     const ra = scoreMap.get(memberKey(a)) ?? 0;
     const rb = scoreMap.get(memberKey(b)) ?? 0;
     if (rb !== ra) return rb - ra;
-    const pb = (parseInt(b.overall_power) || 0) - (parseInt(a.overall_power) || 0);
+    const pb = (parseInt(b.overall_power, 10) || 0) - (parseInt(a.overall_power, 10) || 0);
     if (pb !== 0) return pb;
-    const fb = (parseInt(b.flagship_power) || 0) - (parseInt(a.flagship_power) || 0);
+    const fb = (parseInt(b.flagship_power, 10) || 0) - (parseInt(a.flagship_power, 10) || 0);
     if (fb !== 0) return fb;
-    return (parseInt(b.fleet_rating) || 0) - (parseInt(a.fleet_rating) || 0);
+    return (parseInt(b.fleet_rating, 10) || 0) - (parseInt(a.fleet_rating, 10) || 0);
   });
 
   // Single sort: on rally views the ranking IS the table order.
@@ -332,9 +331,9 @@ export function buildMilitaryMatrixHtml(
 
   let totalFleet = 0, totalTech = 0, totalGlory = 0;
   sorted.forEach((m) => {
-    totalFleet += parseInt(String(m.fleet_rating)) || 0;
-    totalTech += parseInt(String(m.tech_power)) || 0;
-    totalGlory += parseInt(String(m.glory_score)) || 0;
+    totalFleet += parseInt(String(m.fleet_rating), 10) || 0;
+    totalTech += parseInt(String(m.tech_power), 10) || 0;
+    totalGlory += parseInt(String(m.glory_score), 10) || 0;
   });
 
   const headerSummary =
@@ -358,7 +357,7 @@ export function buildMilitaryMatrixHtml(
     const initial = avatarInit(m.pseudo);
     const uidVal = m.uid || '-';
     const roleVal = m.role || 'R1';
-    const powerVal = parseInt(m.overall_power) || 0;
+    const powerVal = parseInt(m.overall_power, 10) || 0;
     const rallyScore = scoreMap.get(memberKey(m)) ?? 0;
     const rallyGrade = calculateRallyGrade(m, maxRallyScore);
     const rallyInfo = rallyRankMap[(m.pseudo || '').toLowerCase()] || { isLeader: false, rank: 999 };
@@ -651,7 +650,7 @@ export function renderGuildMembers(skipSubpanels?: boolean): void {
     let matchTier: boolean;
     if (tAdmin === 'ALL') matchTier = true;
     else if (tAdmin === 'TEMP_UID') matchTier = isInvalidOrTempUid(m.uid);
-    else matchTier = getPowerTier(parseInt(String(m.overall_power)) || 0, maxPower) === tAdmin;
+    else matchTier = getPowerTier(parseInt(String(m.overall_power), 10) || 0, maxPower) === tAdmin;
     return matchGuild && matchSearch && matchTier;
   });
 

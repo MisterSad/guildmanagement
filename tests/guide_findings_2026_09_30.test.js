@@ -19,7 +19,7 @@ const read = (p) => fs.readFileSync(path.resolve(__dirname, '..', p), 'utf-8');
 
 describe('5. a Glory typed outside the Glory page reaches the Glory Tracker', () => {
   it('Player Portal: a CHANGED Glory is filed for the week through updatePlayerGlory', () => {
-    const src = edgeSource('member-portal');
+    const _src = edgeSource('member-portal');
     const handler = edgeFunctionBody('member-portal', 'updateMetrics');
     expect(handler).toMatch(/if \(payload\?\.glory_score !== undefined && gloryScore !== \(Number\(member\.glory_score\) \|\| 0\)\)/);
     expect(handler).toContain('await updatePlayerGlory(admin, uid, identity.guild, gloryScore)');

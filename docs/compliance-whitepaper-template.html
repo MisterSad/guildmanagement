@@ -383,549 +383,398 @@
 </head>
 <body>
 
-  <!-- ================= COVER PAGE ================= -->
-  <div class="cover-container">
-    <div class="cover-header">
-      <div style="display: flex; justify-content: space-between; align-items: center;">
-        <span class="badge-pill badge-primary">Technical & Legal Compliance Whitepaper</span>
-        <span class="badge-pill badge-dark">Ref: FGF-SEC-IP-COMPLIANCE-2026</span>
-      </div>
-      <h1 class="cover-title">FGF GUILD MANAGEMENT</h1>
-      <div class="cover-subtitle">
-        Technical Architecture, Zero-Trust Security, Privacy by Design & Intellectual Property Compliance Whitepaper
-      </div>
+<!-- ================= COVER PAGE ================= -->
+<!-- Kept in step with docs/COMPLIANCE_AND_SECURITY_WHITEPAPER.md (revised 2026-10-04).
+     Sources: ADR-018, privacy.html, the code and the production catalogue. -->
+<div class="cover-container">
+  <div class="cover-header">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <span class="badge-pill badge-primary">Technical & Legal Compliance Whitepaper</span>
+      <span class="badge-pill badge-dark">Ref: FGF-SEC-IP-COMPLIANCE-2026</span>
     </div>
-
-    <div>
-      <div class="callout callout-success avoid-break">
-        <div class="callout-title">Formal Purpose of this Document</div>
-        <p style="margin-bottom: 0;">
-          This official whitepaper is prepared specifically for the <strong>Game Publisher, Developer, Legal Counsel, and Community Operations teams</strong>. It demonstrates unequivocally that the FGF Guild Management Platform is an independent, non-intrusive community companion tool that processes <strong>Zero Personal Identifiers (Zero PII)</strong>, incorporates <strong>Zero Copyrighted Game Assets</strong>, does <strong>not interact with game client memory or network streams</strong>, and enforces enterprise-grade <strong>PostgreSQL 17 Row-Level Security</strong>.
-        </p>
-      </div>
-
-      <div class="summary-box-grid avoid-break">
-        <div class="stat-card">
-          <div class="stat-number">0</div>
-          <div class="stat-label">Personal Data (Zero PII)</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-number">0</div>
-          <div class="stat-label">Copyrighted Game Assets</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-number">0</div>
-          <div class="stat-label">Game Memory / Client Hooks</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-number">100%</div>
-          <div class="stat-label">PostgreSQL RLS Protected</div>
-        </div>
-      </div>
-
-      <div class="cover-meta-grid avoid-break">
-        <div class="meta-item">
-          <span class="meta-label">Target Audience</span>
-          <span class="meta-val">Game Publisher & Developer Compliance / Security Teams</span>
-        </div>
-        <div class="meta-item">
-          <span class="meta-label">Document Version</span>
-          <span class="meta-val">2.4.0 (Consolidated Canonical Specification)</span>
-        </div>
-        <div class="meta-item">
-          <span class="meta-label">Primary Frameworks</span>
-          <span class="meta-val">GDPR, CCPA, OWASP Top 10, Zero-Trust Architecture</span>
-        </div>
-        <div class="meta-item">
-          <span class="meta-label">Date of Attestation</span>
-          <span class="meta-val">August 19, 2026</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="cover-footer">
-      <span>© 2026 FGF Guild Management Platform — Unofficial Community Companion Tool</span>
-      <span>Confidential & Proprietary Compliance Whitepaper</span>
+    <h1 class="cover-title">FGF GUILD MANAGEMENT</h1>
+    <div class="cover-subtitle">
+      Technical Architecture, Security, Privacy by Design & Intellectual Property Compliance Whitepaper
     </div>
   </div>
 
-  <!-- ================= TABLE OF CONTENTS & SECTION 1 ================= -->
-  <div class="avoid-break" style="margin-bottom: 15pt;">
-    <h2>Table of Contents</h2>
-    <div style="margin-top: 6pt;">
-      <div class="toc-item"><span class="toc-title">1. Executive Summary & Scope</span><span class="toc-page">Page 2</span></div>
-      <div class="toc-item"><span class="toc-title">2. Zero-PII & Privacy-by-Design Governance (GDPR / CCPA Standards)</span><span class="toc-page">Page 3</span></div>
-      <div class="toc-item"><span class="toc-title">3. Intellectual Property (IP), Asset & Trademark Safeguards</span><span class="toc-page">Page 4</span></div>
-      <div class="toc-item"><span class="toc-title">4. Technical Architecture & Modern Serverless Stack</span><span class="toc-page">Page 5</span></div>
-      <div class="toc-item"><span class="toc-title">5. Zero-Trust Security Model & Defensive Protections</span><span class="toc-page">Page 6</span></div>
-      <div class="toc-item"><span class="toc-title">6. Automated Quality Assurance & Verification Protocols</span><span class="toc-page">Page 7</span></div>
-      <div class="toc-item"><span class="toc-title">7. Publisher Compliance Matrix & Summary Checklist</span><span class="toc-page">Page 8</span></div>
-      <div class="toc-item"><span class="toc-title">8. Official Attestation & Responsible Communication</span><span class="toc-page">Page 8</span></div>
-    </div>
-  </div>
-
-  <div class="avoid-break">
-    <h2>1. Executive Summary & Scope</h2>
-    <h3>1.1 Mission & Nature of the Platform</h3>
-    <p>
-      The <strong>FGF Guild Management Platform</strong> is an out-of-game, web-based software-as-a-service (SaaS) companion dashboard designed solely to assist guild officers and players in organizing internal rosters, scheduling guild battle events, tracking aggregate statistical participation, and dispatching announcements via Discord webhooks.
-    </p>
-    <p>
-      The platform operates <strong>100% externally and asynchronously</strong> from the video game client and its operational servers. It acts in the exact same legal and technical capacity as a collaborative spreadsheet (e.g. Google Sheets or Microsoft Excel) or an out-of-game Discord bot, providing community organization tools.
-    </p>
-
-    <h3>1.2 Fundamental Compliance Invariants</h3>
-    <div class="grid-2 avoid-break">
-      <div class="card">
-        <h4 style="color: #0369a1; margin-top: 0;">🛡️ Game Integrity & Non-Interference</h4>
-        <ul class="cross-list" style="margin-bottom: 0;">
-          <li><strong>Zero Client Hooks</strong>: No injection into game memory or executable space.</li>
-          <li><strong>Zero Network Tampering</strong>: No packet interception or sniffing.</li>
-          <li><strong>Zero Automation</strong>: No automated botting, macros, or gameplay actions.</li>
-          <li><strong>Zero Private APIs</strong>: No unauthorized reverse-engineering of game endpoints.</li>
-        </ul>
-      </div>
-      <div class="card">
-        <h4 style="color: #15803d; margin-top: 0;">🔒 Data Privacy & IP Safeguards</h4>
-        <ul class="check-list" style="margin-bottom: 0;">
-          <li><strong>Zero PII Collected</strong>: No real names, emails, phones, or GPS coordinates.</li>
-          <li><strong>Zero Game Assets</strong>: No copyrighted textures, sprites, or 3D models.</li>
-          <li><strong>Ephemeral In-Memory OCR</strong>: Roster screenshots destroyed immediately after parse.</li>
-          <li><strong>PostgreSQL 17 RLS</strong>: Kernel-level cryptographic tenant isolation.</li>
-        </ul>
-      </div>
-    </div>
-  </div>
-
-  <!-- ================= SECTION 2: PRIVACY & ZERO PII ================= -->
-  <div class="page-break"></div>
-  <h2>2. Zero-PII & Privacy-by-Design Governance (GDPR & CCPA)</h2>
-  
-  <p>
-    The platform was architected under strict <strong>Privacy by Design</strong> (PbD) and <strong>Data Minimization</strong> principles in full alignment with the European General Data Protection Regulation (GDPR - Regulation EU 2016/679), the California Consumer Privacy Act (CCPA), and child safety standards (COPPA).
-  </p>
-
-  <h3>2.1 Strict Absence of Personally Identifiable Information (PII)</h3>
-  <p>
-    The database contains <strong>zero real-world personal data</strong>. Below is an exhaustive audit of all data fields handled by the system:
-  </p>
-
-  <table class="avoid-break">
-    <thead>
-      <tr>
-        <th style="width: 25%;">Data Category</th>
-        <th style="width: 15%; text-align: center;">Stored?</th>
-        <th style="width: 60%;">Technical Implementation & Privacy Safeguard</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><strong>Real Names / Surnames</strong></td>
-        <td style="text-align: center;"><span class="status-tag-no">NO (0%)</span></td>
-        <td>Only public in-game nicknames chosen by players are stored (e.g. <code>"StarLord99"</code>). No legal names are ever requested or accepted.</td>
-      </tr>
-      <tr>
-        <td><strong>Personal Email Addresses</strong></td>
-        <td style="text-align: center;"><span class="status-tag-no">NO (0%)</span></td>
-        <td>Application database tables store zero real emails. Player accounts use internal synthetic tokens or pseudonymized login handles. Supabase Auth identity is strictly isolated.</td>
-      </tr>
-      <tr>
-        <td><strong>Physical Address / GPS</strong></td>
-        <td style="text-align: center;"><span class="status-tag-no">NO (0%)</span></td>
-        <td>Zero geographical tracking or GPS coordinates exist. No device geolocation APIs are invoked.</td>
-      </tr>
-      <tr>
-        <td><strong>Phone / SMS Numbers</strong></td>
-        <td style="text-align: center;"><span class="status-tag-no">NO (0%)</span></td>
-        <td>No telephony or SMS integrations exist.</td>
-      </tr>
-      <tr>
-        <td><strong>Financial / Card Details</strong></td>
-        <td style="text-align: center;"><span class="status-tag-no">NO (0%)</span></td>
-        <td>SaaS subscriptions are handled 100% off-site by Stripe Hosted Checkout (PCI-DSS Level 1). Zero credit card numbers or billing addresses touch our database.</td>
-      </tr>
-      <tr>
-        <td><strong>In-Game Passwords / Auth</strong></td>
-        <td style="text-align: center;"><span class="status-tag-no">NO (0%)</span></td>
-        <td>The platform never prompts for, accepts, or stores video game passwords, Google Play credentials, Apple IDs, or game session tokens.</td>
-      </tr>
-      <tr>
-        <td><strong>IP Address Persisted</strong></td>
-        <td style="text-align: center;"><span class="status-tag-no">NO (0%)</span></td>
-        <td>IP addresses are never persisted in database tables. Cloud infrastructure logs undergo automated short-term rotation.</td>
-      </tr>
-      <tr>
-        <td><strong>Timezone Offset</strong></td>
-        <td style="text-align: center;"><span class="status-tag-yes">Offset Only</span></td>
-        <td>Only a non-identifying integer offset (e.g. <code>+2</code> or <code>-5</code>) is stored to calculate guild battle countdowns relative to UTC.</td>
-      </tr>
-    </tbody>
-  </table>
-
-  <div class="grid-2 avoid-break">
-    <div class="card">
-      <h4>🗑️ Data Minimization & Cascade Deletion</h4>
-      <p style="font-size: 8.5pt; margin-bottom: 0;">
-        All member records maintain strict foreign key cascades (<code>ON DELETE CASCADE</code>). When an officer or member removes their profile, all related event participations, squad assignments, and score logs are <strong>instantaneously and permanently deleted</strong> from the database.
-      </p>
-    </div>
-    <div class="card">
-      <h4>🚫 Zero Ad Trackers & Behavioral Telemetry</h4>
-      <p style="font-size: 8.5pt; margin-bottom: 0;">
-        The client contains <strong>zero marketing SDKs</strong>, zero advertising cookies, and zero behavioral telemetry tools (no Facebook Pixel, no Google Ads, no data brokering). Data is exclusively used for guild roster display.
-      </p>
-    </div>
-  </div>
-
-  <!-- ================= SECTION 3: IP & ASSET COMPLIANCE ================= -->
-  <div class="page-break"></div>
-  <h2>3. Intellectual Property (IP), Asset & Trademark Safeguards</h2>
-
-  <p>
-    A foundational design requirement is the absolute respect of the Game Publisher’s copyright, trademarks, game assets, and intellectual property.
-  </p>
-
-  <h3>3.1 100% Zero Copyrighted Game Asset Guarantee</h3>
-  <p>
-    The application repository and production distribution bundles have been verified to contain <strong>zero copyrighted game assets</strong>:
-  </p>
-  <ul class="cross-list avoid-break">
-    <li><strong>Zero Game Textures / Bitmaps</strong>: No spaceship textures, character portraits, weapon icons, or UI artwork from the video game are hosted or served.</li>
-    <li><strong>Zero 3D Models / Meshes</strong>: No proprietary 3D geometry, polygon meshes, or skeletal animations are used.</li>
-    <li><strong>Zero Audio Tracks / Effects</strong>: No in-game sound effects, voice lines, or musical scores are distributed.</li>
-    <li><strong>Zero Game Code Binaries</strong>: No decompiled game code, reverse-engineered bytecode, or shaders are included.</li>
-  </ul>
-
-  <h3>3.2 Permissive Open-Source UI Design System</h3>
-  <p>
-    All visual components and interfaces are constructed exclusively from open-source, permissively licensed design libraries:
-  </p>
-
-  <table class="avoid-break">
-    <thead>
-      <tr>
-        <th>Interface Layer</th>
-        <th>Design Standard & Provenance</th>
-        <th>License Type</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><strong>UI Framework & Tokens</strong></td>
-        <td>Google Material Design 3.0 (M3) Hierarchy styled with Cozy Graphite / Titanium neutral surfaces</td>
-        <td>Open Standard / MIT</td>
-      </tr>
-      <tr>
-        <td><strong>Typography</strong></td>
-        <td>Google Fonts <em>Plus Jakarta Sans</em> & <em>Inter</em></td>
-        <td>SIL Open Font License 1.1</td>
-      </tr>
-      <tr>
-        <td><strong>Iconography</strong></td>
-        <td>Google Material Symbols Rounded (Variable Font Glyphs)</td>
-        <td>Apache License 2.0</td>
-      </tr>
-      <tr>
-        <td><strong>3D Ambient Background</strong></td>
-        <td>Procedural, mathematically generated geometric particle scene using Three.js</td>
-        <td>MIT License</td>
-      </tr>
-      <tr>
-        <td><strong>Application Charts</strong></td>
-        <td>Custom HTML5 2D Canvas vector rendering (<code>PortalChart.ts</code>)</td>
-        <td>Proprietary Original Code</td>
-      </tr>
-    </tbody>
-  </table>
-
-  <h3>3.3 Ephemeral In-Memory OCR Processing (Zero Screenshot Storage)</h3>
-  <p>
-    To assist guild officers with roster management without manual typing, an Optical Character Recognition (OCR) pipeline is provided. The architecture guarantees that <strong>no user screenshots are permanently saved or stored</strong>:
-  </p>
-  <div class="card avoid-break">
-    <ol style="margin-bottom: 0; font-size: 8.5pt;">
-      <li><strong>In-Memory Transit</strong>: The guild officer uploads a leaderboard screenshot over an encrypted TLS 1.3 channel to the <code>ocr-guild-members</code> Edge Function.</li>
-      <li><strong>AI Vision Extraction</strong>: Google Gemini Vision API parses the image in volatile RAM to extract numeric values (power, scores) and public pseudonyms.</li>
-      <li><strong>Immediate Bitmap Destruction</strong>: The screenshot bitmap is <strong>immediately destroyed from RAM</strong> upon parse completion. The platform maintains zero disk storage, zero S3/bucket image retention, and zero image archiving.</li>
-      <li><strong>Defensive Sanitization</strong>: Extracted values are strictly sanitized into plain integers before insertion into database tables.</li>
-    </ol>
-  </div>
-
-  <div class="callout callout-warning avoid-break">
-    <div class="callout-title">Explicit Legal Disclaimer of Non-Affiliation</div>
-    <p style="margin-bottom: 0; font-size: 8.5pt;">
-      <em>"FGF Guild Management is an independent, community-created companion tool. It is not affiliated with, endorsed by, sponsored by, or specifically approved by the game developer or publisher. All game titles, trademarks, and associated names remain the exclusive intellectual property of their respective owners."</em>
-    </p>
-  </div>
-
-  <!-- ================= SECTION 4: TECHNICAL ARCHITECTURE ================= -->
-  <div class="page-break"></div>
-  <h2>4. Technical Architecture & Modern Serverless Stack</h2>
-
-  <p>
-    The platform employs a decoupled, modern serverless architecture built on modern web standards, strict static type safety, and managed cloud infrastructure.
-  </p>
-
-  <pre class="avoid-break">
-+---------------------------------------------------------------------------------------------------+
-|                                  PLATFORM TECHNICAL ARCHITECTURE                                  |
-|                                                                                                   |
-|  CLIENT TIER (Modern ES Modules & PWA)                                                            |
-|  +---------------------------------------------------------------------------------------------+  |
-|  | Strict TypeScript | Vite 8.2 Bundler | Reactive Pub/Sub Store | Web Worker Math Engine      |  |
-|  | Material Design 3.0 System Tokens | Three.js Procedural Canvas | Installable PWA Shell       |  |
-|  +---------------------------------------------------------------------------------------------+  |
-|                                                |                                                  |
-|                             HTTPS / TLS 1.3    | Cryptographic JWT Claims                         |
-|                                                v                                                  |
-|  SERVERLESS EDGE COMPUTE (Deno Runtime / Supabase Cloud Functions)                               |
-|  +---------------------------------------------------------------------------------------------+  |
-|  |  member-portal        |  ocr-guild-members    |  discord-webhook-proxy (SSRF Whitelist)       |  |
-|  |  admin-accounts       |  auth-login           |  gm-stripe-webhook (PCI-DSS Handled)          |  |
-|  +---------------------------------------------------------------------------------------------+  |
-|                                                |                                                  |
-|                                                | Native Postgres Protocol (RLS Kernel Enforcement)|
-|                                                v                                                  |
-|  DATABASE TIER (PostgreSQL 17 on Supabase Cloud)                                                  |
-|  +---------------------------------------------------------------------------------------------+  |
-|  |  Canonical Schema: guilds, accounts, guild_members, event_participants, weekly_scores        |  |
-|  |  Kernel-Level Row-Level Security (RLS) Policies on 100% of Tables                           |  |
-|  |  SECURITY DEFINER Functions with Explicit Fixed Search Paths (SET search_path TO '')       |  |
-|  |  Distributed Immutable Structured Audit Logs (public.system_audit_logs)                     |  |
-|  +---------------------------------------------------------------------------------------------+  |
-+---------------------------------------------------------------------------------------------------+
-  </pre>
-
-  <div class="grid-3 avoid-break">
-    <div class="card">
-      <h4 style="color: #0284c7; margin-top: 0;">⚡ Client Tier</h4>
-      <ul style="font-size: 8pt; margin-bottom: 0; padding-left: 10pt;">
-        <li>Vite 8.2 & TypeScript 7</li>
-        <li>Reactive Pub/Sub Store</li>
-        <li>Web Workers for calculations</li>
-        <li>Zero heavy UI frameworks</li>
-      </ul>
-    </div>
-    <div class="card">
-      <h4 style="color: #0284c7; margin-top: 0;">🌐 Edge Compute</h4>
-      <ul style="font-size: 8pt; margin-bottom: 0; padding-left: 10pt;">
-        <li>Deno TypeScript Runtime</li>
-        <li>Global low-latency deployment</li>
-        <li>SSRF-protected proxies</li>
-        <li>Zero server maintenance</li>
-      </ul>
-    </div>
-    <div class="card">
-      <h4 style="color: #0284c7; margin-top: 0;">🗄️ Database Tier</h4>
-      <ul style="font-size: 8pt; margin-bottom: 0; padding-left: 10pt;">
-        <li>PostgreSQL 17 Cloud</li>
-        <li>100% RLS Coverage</li>
-        <li>AES-256 Encryption at rest</li>
-        <li>Immutable Audit Logs</li>
-      </ul>
-    </div>
-  </div>
-
-  <h3>4.1 Distributed Observability & Structured Audit Logging</h3>
-  <p>
-    Every edge execution and browser transaction generates structured JSON telemetry with correlation tracking:
-  </p>
-  <ul class="avoid-break">
-    <li><strong>Correlation IDs (<code>x-correlation-id</code>)</strong>: Distributed end-to-end request tracing across client and edge functions.</li>
-    <li><strong>Automated Credential Scrubbing</strong>: Passwords, tokens, and authorization headers are automatically redacted prior to logging.</li>
-    <li><strong>Persistent Audit Trail</strong>: Administrative mutations (roster updates, member role promotions) write permanent records to <code>public.system_audit_logs</code>.</li>
-  </ul>
-
-  <!-- ================= SECTION 5: ZERO-TRUST SECURITY ================= -->
-  <div class="page-break"></div>
-  <h2>5. Zero-Trust Security Model & Defensive Protections</h2>
-
-  <p>
-    The platform enforces a strict <strong>Zero-Trust Security Model</strong>: all requests require explicit cryptographic verification regardless of origin.
-  </p>
-
-  <h3>5.1 The Four-Role Access Control Model (RBAC)</h3>
-  <table class="avoid-break">
-    <thead>
-      <tr>
-        <th style="width: 18%;">Role</th>
-        <th style="width: 35%;">Database & API Scope</th>
-        <th style="width: 47%;">Security Isolation Boundary</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><strong><code>super_admin</code></strong></td>
-        <td>Platform owner. Reads & writes all guild tenants for maintenance and global diagnostic logs.</td>
-        <td>Single master account (HawkEye). Enforced via JWT verification + database role checks.</td>
-      </tr>
-      <tr>
-        <td><strong><code>server_admin</code></strong></td>
-        <td>Reads & writes only guild tenants sharing their assigned game <code>server_number</code>.</td>
-        <td>PostgreSQL RLS queries cross-checking <code>guilds.server_number</code>. Cross-server writes are blocked.</td>
-      </tr>
-      <tr>
-        <td><strong><code>guild_admin</code></strong></td>
-        <td>Reads & writes <strong>strictly their single assigned guild tenant</strong> (e.g. <code>ALPHA</code>).</td>
-        <td>PostgreSQL RLS engine isolation. Attempting to access another guild returns empty sets or 403.</td>
-      </tr>
-      <tr>
-        <td><strong><code>member</code></strong></td>
-        <td><strong>ZERO direct database access</strong>. Cannot read or write any database tables directly.</td>
-        <td>Restricted to Player Portal. Communicates solely via the <code>member-portal</code> Edge Function.</td>
-      </tr>
-    </tbody>
-  </table>
-
-  <h3>5.2 PostgreSQL 17 Kernel Row-Level Security (RLS)</h3>
-  <p>
-    Tenant isolation is enforced directly within the PostgreSQL kernel via <code>SECURITY DEFINER</code> access functions with explicit <code>SET search_path TO ''</code> to prevent search path hijacking:
-  </p>
-
-  <pre class="avoid-break">
--- Centralized Tenant Read Qualifier Function
-CREATE OR REPLACE FUNCTION public.gm_can_read_guild_data(p_guild text)
-RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO ''
-AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM public.accounts a
-    LEFT JOIN public.guilds g ON g.id = p_guild
-    WHERE a.auth_user_id = (SELECT auth.uid())
-      AND a.status = 'active'
-      AND (
-        a.role = 'super_admin'
-        OR (a.role = 'server_admin' AND a.server_number IS NOT NULL AND a.server_number = g.server_number)
-        OR (a.role IN ('guild_admin', 'R5', 'R4', 'admin') AND a.guild = p_guild)
-      )
-  );
-$$;
-  </pre>
-
-  <h3>5.3 Defensive Edge Function Hardening</h3>
-  <div class="grid-2 avoid-break">
-    <div class="card">
-      <h4 style="color: #0369a1; margin-top: 0;">🛡️ SSRF Webhook Whitelisting</h4>
-      <p style="font-size: 8.5pt; margin-bottom: 0;">
-        The <code>discord-webhook-proxy</code> enforces strict hostname whitelisting (<code>discord.com/api/webhooks/</code>). Arbitrary destination URLs, loopback interfaces (<code>127.0.0.1</code>), and internal RFC 1918 private subnets are categorically blocked.
-      </p>
-    </div>
-    <div class="card">
-      <h4 style="color: #0369a1; margin-top: 0;">🔢 Defensive Score Bounding</h4>
-      <p style="font-size: 8.5pt; margin-bottom: 0;">
-        All numerical submissions pass through <code>parseSafeScore</code>, bounding non-negative integer values to <code>500,000,000</code>. This prevents integer overflow attacks, NaN corruption, and database schema errors.
-      </p>
-    </div>
-  </div>
-
-  <!-- ================= SECTION 6: QUALITY ASSURANCE ================= -->
-  <div class="page-break"></div>
-  <h2>6. Automated Quality Assurance & Verification Protocols</h2>
-
-  <p>
-    The platform’s stability and security invariants are guaranteed via an automated continuous integration (CI) pipeline on GitHub Actions:
-  </p>
-
-  <div class="card avoid-break">
-    <h4 style="margin-top: 0; color: #0284c7;">Continuous Integration Quality Gate (.github/workflows/ci.yml)</h4>
-    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6pt; margin-top: 6pt; text-align: center;">
-      <div style="background: #f8fafc; padding: 6pt; border: 1px solid #e2e8f0; border-radius: 4pt;">
-        <div style="font-weight: 700; color: #10b981;">Step 1</div>
-        <div style="font-size: 7.5pt; font-weight: 600;">Type Check</div>
-        <div style="font-size: 7pt; color: #64748b;">tsc --noEmit (0 errors)</div>
-      </div>
-      <div style="background: #f8fafc; padding: 6pt; border: 1px solid #e2e8f0; border-radius: 4pt;">
-        <div style="font-weight: 700; color: #10b981;">Step 2</div>
-        <div style="font-size: 7.5pt; font-weight: 600;">Unit Tests</div>
-        <div style="font-size: 7pt; color: #64748b;">Vitest (219/219 green)</div>
-      </div>
-      <div style="background: #f8fafc; padding: 6pt; border: 1px solid #e2e8f0; border-radius: 4pt;">
-        <div style="font-weight: 700; color: #10b981;">Step 3</div>
-        <div style="font-size: 7.5pt; font-weight: 600;">Prod Build</div>
-        <div style="font-size: 7pt; color: #64748b;">Vite bundle compile</div>
-      </div>
-      <div style="background: #f8fafc; padding: 6pt; border: 1px solid #e2e8f0; border-radius: 4pt;">
-        <div style="font-weight: 700; color: #10b981;">Step 4</div>
-        <div style="font-size: 7.5pt; font-weight: 600;">E2E Testing</div>
-        <div style="font-size: 7pt; color: #64748b;">Playwright tests</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ================= SECTION 7 & 8: COMPLIANCE MATRIX & ATTESTATION ================= -->
-  <div class="avoid-break" style="margin-top: 15pt;">
-    <h2>7. Publisher Compliance Matrix & Summary Checklist</h2>
-    <table class="avoid-break">
-      <thead>
-        <tr>
-          <th style="width: 25%;">Compliance Domain</th>
-          <th style="width: 25%;">Publisher Requirement</th>
-          <th style="width: 38%;">Platform Safeguard & Architecture</th>
-          <th style="width: 12%; text-align: center;">Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><strong>Personal Data (PII)</strong></td>
-          <td>Zero real-world personal identification stored.</td>
-          <td>Only public in-game nicknames and non-identifying stats stored.</td>
-          <td style="text-align: center;"><span class="status-tag-yes">VERIFIED</span></td>
-        </tr>
-        <tr>
-          <td><strong>Game Client Memory</strong></td>
-          <td>No hooks, DLL injection, or memory inspection.</td>
-          <td>100% external web browser application. Zero memory interaction.</td>
-          <td style="text-align: center;"><span class="status-tag-yes">VERIFIED</span></td>
-        </tr>
-        <tr>
-          <td><strong>Game Automation / Bots</strong></td>
-          <td>No gameplay macros, farming bots, or automated actions.</td>
-          <td>Manual roster coordination tool. Zero game automation.</td>
-          <td style="text-align: center;"><span class="status-tag-yes">VERIFIED</span></td>
-        </tr>
-        <tr>
-          <td><strong>Copyrighted Assets</strong></td>
-          <td>No proprietary game textures, audio, or 3D models.</td>
-          <td>100% open-source UI (Material Design 3.0, Material Symbols, Three.js).</td>
-          <td style="text-align: center;"><span class="status-tag-yes">VERIFIED</span></td>
-        </tr>
-        <tr>
-          <td><strong>OCR Screenshot Policy</strong></td>
-          <td>Screenshots must not be archived or monetized.</td>
-          <td>In-memory OCR extraction. Bitmaps destroyed immediately from RAM.</td>
-          <td style="text-align: center;"><span class="status-tag-yes">VERIFIED</span></td>
-        </tr>
-        <tr>
-          <td><strong>Access Security & RLS</strong></td>
-          <td>Robust multi-tenant separation.</td>
-          <td>PostgreSQL 17 Row-Level Security on 100% of tables.</td>
-          <td style="text-align: center;"><span class="status-tag-yes">VERIFIED</span></td>
-        </tr>
-        <tr>
-          <td><strong>Network Safety (SSRF)</strong></td>
-          <td>Safe webhook proxies without internal attack vectors.</td>
-          <td>Strict Discord domain whitelist; blocks private subnets.</td>
-          <td style="text-align: center;"><span class="status-tag-yes">VERIFIED</span></td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-
-  <div class="avoid-break" style="margin-top: 15pt;">
-    <h2>8. Official Attestation & Responsible Communication</h2>
+  <div>
     <div class="callout callout-success avoid-break">
-      <div class="callout-title">Formal Platform Attestation</div>
-      <p style="font-size: 8.5pt; margin-bottom: 0;">
-        This document certifies that the <strong>FGF Guild Management Platform</strong> operates exclusively as a community-driven organizational companion. It poses zero threat to the Game Publisher’s server infrastructure, game economy, copyright assets, player privacy, or intellectual property rights.
+      <div class="callout-title">Purpose of this Document</div>
+      <p style="margin-bottom: 0;">
+        Prepared for the <strong>Game Publisher, Developer, Legal Counsel and Community Operations teams</strong>. It describes an independent, free, out-of-game companion tool that does <strong>not interact with the game client or its network traffic</strong>, uses <strong>no copyrighted game assets</strong>, processes a <strong>limited, published set of personal data</strong>, and isolates every guild with <strong>PostgreSQL 17 Row-Level Security</strong>.
       </p>
     </div>
 
-    <div class="card avoid-break" style="margin-top: 8pt;">
-      <h4 style="margin-top: 0; color: #0f172a;">Contact & Publisher Inquiries</h4>
-      <p style="font-size: 8.5pt; margin-bottom: 0;">
-        The development team welcomes active dialogue with the Game Publisher and its community safety representatives. For technical questions, compliance verifications, or security coordination, please reach out through the official repository channels.
-      </p>
+    <div class="summary-box-grid avoid-break">
+      <div class="stat-card">
+        <div class="stat-number">0</div>
+        <div class="stat-label">Copyrighted Game Assets</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number">0</div>
+        <div class="stat-label">Game Memory / Client Hooks</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number">0</div>
+        <div class="stat-label">Payments, Cookies or Analytics</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number">100%</div>
+        <div class="stat-label">Public Tables under RLS + FORCE RLS</div>
+      </div>
+    </div>
+
+    <div class="cover-meta-grid avoid-break">
+      <div class="meta-item">
+        <span class="meta-label">Target Audience</span>
+        <span class="meta-val">Game Publisher & Developer Compliance / Security Teams</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Document Version</span>
+        <span class="meta-val">3.0 (supersedes the August 2026 edition)</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Frameworks</span>
+        <span class="meta-val">GDPR (EU 2016/679), OWASP Top 10, Zero-Trust Access</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Revised</span>
+        <span class="meta-val">October 4, 2026</span>
+      </div>
     </div>
   </div>
+
+  <div class="cover-footer">
+    <span>© 2026 FGF Guild Management Platform — Unofficial Community Companion Tool</span>
+    <span>Compliance Whitepaper</span>
+  </div>
+</div>
+
+<!-- ================= TABLE OF CONTENTS & SECTION 1 ================= -->
+<div class="avoid-break" style="margin-bottom: 15pt;">
+  <h2>Table of Contents</h2>
+  <div style="margin-top: 6pt;">
+    <div class="toc-item"><span class="toc-title">1. Executive Summary & Scope</span><span class="toc-page"></span></div>
+    <div class="toc-item"><span class="toc-title">2. Personal Data & Privacy by Design (GDPR)</span><span class="toc-page"></span></div>
+    <div class="toc-item"><span class="toc-title">3. Intellectual Property, Asset & Trademark Safeguards</span><span class="toc-page"></span></div>
+    <div class="toc-item"><span class="toc-title">4. Technical Stack</span><span class="toc-page"></span></div>
+    <div class="toc-item"><span class="toc-title">5. Security Model</span><span class="toc-page"></span></div>
+    <div class="toc-item"><span class="toc-title">6. Quality Assurance</span><span class="toc-page"></span></div>
+    <div class="toc-item"><span class="toc-title">7. Publisher Compliance Matrix</span><span class="toc-page"></span></div>
+    <div class="toc-item"><span class="toc-title">8. Attestation & Contact</span><span class="toc-page"></span></div>
+  </div>
+</div>
+
+<div class="callout callout-warning avoid-break">
+  <div class="callout-title">What changed since the August 2026 edition</div>
+  <p style="margin-bottom: 0; font-size: 8.5pt;">
+    That edition claimed the platform held zero personal data, that IP addresses were never persisted, that deleting a profile cascaded through every record, that payments went through Stripe, that the app was an installable PWA with an offline cache, and that screenshots and recordings never touched storage. None of that is true today, and some of it was never true. The app is free with no payment surface (ADR-015); the PWA and Web Push were removed (ADR-016). Every statement below was checked against the repository or the production database on the revision date; the data inventory follows ADR-018 and the published Privacy Policy, which prevail in case of disagreement.
+  </p>
+</div>
+
+<div class="avoid-break">
+  <h2>1. Executive Summary & Scope</h2>
+  <h3>1.1 Purpose of the Platform</h3>
+  <p>
+    The <strong>FGF Guild Management Platform</strong> is an out-of-game web application that helps guild leaders, officers and players of <em>Foundation Galactic Frontier</em> organise rosters, schedule guild events, track attendance and scores, and post announcements to their own Discord servers. It is free for every guild, with no paid tier.
+  </p>
+  <p>
+    The platform runs <strong>entirely outside</strong> the game client and the game servers. It works in the same capacity as a shared spreadsheet or a community Discord bot.
+  </p>
+
+  <h3>1.2 Foundational Principles</h3>
+  <div class="grid-2 avoid-break">
+    <div class="card">
+      <h4 style="color: #0369a1; margin-top: 0;">Game Integrity & Non-Interference</h4>
+      <ul class="cross-list" style="margin-bottom: 0;">
+        <li><strong>No client hooks</strong>: no injection into game memory or processes.</li>
+        <li><strong>No network tampering</strong>: no packet interception.</li>
+        <li><strong>No automation</strong>: no bots, macros or gameplay actions.</li>
+        <li><strong>No private APIs</strong>: inputs are what users type or upload.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4 style="color: #15803d; margin-top: 0;">Data & IP Safeguards</h4>
+      <ul class="check-list" style="margin-bottom: 0;">
+        <li><strong>Data minimisation</strong>: pseudonyms, player IDs, Discord IDs if linked, 24-hour sign-in IPs.</li>
+        <li><strong>No game assets</strong>: open-source fonts and icons, self-hosted.</li>
+        <li><strong>OCR</strong>: screenshots not stored; recordings staged privately, then deleted.</li>
+        <li><strong>PostgreSQL 17 RLS</strong>: database-enforced tenant isolation.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ================= SECTION 2: PERSONAL DATA ================= -->
+<div class="page-break"></div>
+<h2>2. Personal Data & Privacy by Design (GDPR)</h2>
+
+<p>
+  The operator is established in France, so the GDPR applies whether or not the service is paid. The full notice is the Privacy Policy (<code>privacy.html</code>), whose inventory is exhaustive.
+</p>
+
+<h3>2.1 Data Inventory</h3>
+<table class="avoid-break">
+  <thead>
+    <tr>
+      <th style="width: 24%;">Data Category</th>
+      <th style="width: 14%; text-align: center;">Processed?</th>
+      <th style="width: 62%;">Detail</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>In-game identity</strong></td><td style="text-align: center;"><span class="status-tag-yes">YES</span></td><td>Pseudonym, in-game player ID (UID), pseudonym-change history (12 months). Online identifiers under GDPR Art. 4(1).</td></tr>
+    <tr><td><strong>Game activity</strong></td><td style="text-align: center;"><span class="status-tag-yes">YES</span></td><td>Attendance, scores, power and ratings, absences, squads, sanctions and bans.</td></tr>
+    <tr><td><strong>Account data</strong></td><td style="text-align: center;"><span class="status-tag-yes">YES</span></td><td>Account identifier, role, guild and server; password stored as a bcrypt hash. A legacy reversibly encrypted copy remains only for accounts not signed in since 2026-10-03, deleted at their next sign-in.</td></tr>
+    <tr><td><strong>Discord identifiers</strong></td><td style="text-align: center;"><span class="status-tag-yes">IF LINKED</span></td><td>Discord user ID and username; OAuth scope <code>identify</code> only (no email, no server list). Call-to-arms answers record the Discord user ID for 7 days.</td></tr>
+    <tr><td><strong>IP addresses</strong></td><td style="text-align: center;"><span class="status-tag-yes">24 HOURS</span></td><td>Sign-in IP stored in <code>public.login_throttle</code> for rate limiting, purged hourly by the <code>login-throttle-retention</code> job (rows older than 24 hours). No analytics, profiling or geolocation.</td></tr>
+    <tr><td><strong>Free text</strong></td><td style="text-align: center;"><span class="status-tag-yes">YES</span></td><td>Support tickets, wiki pages and comments.</td></tr>
+    <tr><td><strong>Diagnostics</strong></td><td style="text-align: center;"><span class="status-tag-yes">ON ERROR</span></td><td>Error reports to Sentry (EU): error, code path, active guild; credentials stripped.</td></tr>
+    <tr><td><strong>Player email addresses</strong></td><td style="text-align: center;"><span class="status-tag-no">NO</span></td><td>None collected. Each account's sign-in identity uses a synthetic address derived one-way from the account identifier.</td></tr>
+    <tr><td><strong>Names, address, phone, birth date, ID documents</strong></td><td style="text-align: center;"><span class="status-tag-no">NO</span></td><td>Never requested.</td></tr>
+    <tr><td><strong>Payment data</strong></td><td style="text-align: center;"><span class="status-tag-no">NO</span></td><td>The app is free: no checkout, subscription or donation path (ADR-015).</td></tr>
+    <tr><td><strong>Game credentials</strong></td><td style="text-align: center;"><span class="status-tag-no">NO</span></td><td>Game, Apple or Google credentials are never requested.</td></tr>
+    <tr><td><strong>Location / special categories</strong></td><td style="text-align: center;"><span class="status-tag-no">NO</span></td><td>No geolocation; no Art. 9 or Art. 10 data.</td></tr>
+  </tbody>
+</table>
+
+<div class="grid-2 avoid-break">
+  <div class="card">
+    <h4>Retention</h4>
+    <p style="font-size: 8.5pt; margin-bottom: 0;">
+      Enforced by scheduled database jobs, mainly <code>gm_apply_data_retention()</code> daily at 04:30 UTC: sign-in IPs 24 hours; codes, tickets and cached OCR text until expiry; call-to-arms answers 7 days; unactioned guild requests 14 days, their Discord handle erased 90 days after closure; audit log and pseudonym history 12 months; rosters and statistics while the guild uses the service.
+    </p>
+  </div>
+  <div class="card">
+    <h4>Erasure</h4>
+    <p style="font-size: 8.5pt; margin-bottom: 0;">
+      On request, through <code>gm_erase_player</code> and <code>gm_erase_account</code>. A player is <strong>anonymised</strong>: the pseudonym is replaced by a token from a salt that is never stored, UID and timezone cleared, absences and history deleted; the roster row survives unattributable so guild totals stay valid. Ban records are kept in full, as disclosed (Art. 17(3)).
+    </p>
+  </div>
+</div>
+
+<div class="grid-2 avoid-break">
+  <div class="card">
+    <h4>No Tracking</h4>
+    <p style="font-size: 8.5pt; margin-bottom: 0;">
+      No cookies, analytics, advertising SDKs or pixels. Browser storage holds only session and display state, strictly necessary, so no consent banner is required. The CSP <code>connect-src</code> limits the browser to the Supabase project and Sentry ingest.
+    </p>
+  </div>
+  <div class="card">
+    <h4>Processors</h4>
+    <p style="font-size: 8.5pt; margin-bottom: 0;">
+      Supabase (database, auth, storage, functions; EU database), Vercel (hosting), Google Gemini (OCR, wiki summaries), Discord (sign-in, notifications), Sentry (EU, diagnostics), Render (verification worker). Transfers outside the EU under standard contractual clauses or the EU–US Data Privacy Framework.
+    </p>
+  </div>
+</div>
+
+<!-- ================= SECTION 3: IP & ASSET COMPLIANCE ================= -->
+<div class="page-break"></div>
+<h2>3. Intellectual Property, Asset & Trademark Safeguards</h2>
+
+<h3>3.1 No Game Assets</h3>
+<ul class="cross-list avoid-break">
+  <li><strong>No game textures or art</strong>: no ship, hero or item graphics from the game.</li>
+  <li><strong>No 3D models</strong>, <strong>no audio</strong>, <strong>no game code or shaders</strong>.</li>
+</ul>
+
+<h3>3.2 Interface Provenance</h3>
+<table class="avoid-break">
+  <thead>
+    <tr><th>Component</th><th>Source</th><th>License</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Design tokens</strong></td><td>Original token set (<code>tokens.css</code>, <code>theme.css</code>) on Material Design 3 conventions</td><td>Original work</td></tr>
+    <tr><td><strong>Typography</strong></td><td>Inter, Plus Jakarta Sans, JetBrains Mono, self-hosted</td><td>SIL Open Font License 1.1</td></tr>
+    <tr><td><strong>Icons</strong></td><td>Phosphor Icons (<code>@phosphor-icons/web</code>), subset font served locally</td><td>MIT</td></tr>
+    <tr><td><strong>Charts</strong></td><td>Hand-written rendering (<code>PortalChart.ts</code>)</td><td>Original work</td></tr>
+    <tr><td><strong>Game assets</strong></td><td>None</td><td>—</td></tr>
+  </tbody>
+</table>
+<p style="font-size: 8.5pt;">The CSP allows scripts and fonts from the app's own origin only: no external font or script CDN.</p>
+
+<h3>3.3 OCR Processing</h3>
+<div class="card avoid-break">
+  <ol style="margin-bottom: 0; font-size: 8.5pt;">
+    <li><strong>Screenshots</strong> travel in the request body over TLS to the <code>ocr-guild-members</code> Edge Function, are read by Google Gemini for the duration of the request, and are <strong>not stored</strong>. The transcribed text and a SHA-256 fingerprint of the image are cached in <code>public.ocr_cache</code> until expiry.</li>
+    <li><strong>Screen recordings</strong> (MP4, MOV or WebM; at most 64 MiB and 300 s) are uploaded by the browser to the private Storage bucket <code>ocr-videos</code>, where RLS lets only that guild's administrators upload, read or delete. The function reads the video with the caller's own token, sends it to the Gemini File API, then deletes the Gemini file and the stored object whatever the outcome; recordings left over from an interrupted scan are removed at the guild's next scan after one hour. Google deletes the file after processing or within 48 hours.</li>
+    <li><strong>Review before write</strong>: the officer sees a diff against the roster and confirms; a roster import is all-or-nothing.</li>
+  </ol>
+</div>
+
+<div class="callout callout-warning avoid-break">
+  <div class="callout-title">Non-Affiliation</div>
+  <p style="margin-bottom: 0; font-size: 8.5pt;">
+    The README and the Terms state that this is an unofficial, community-developed project, not affiliated with or endorsed by the publisher of <em>Foundation Galactic Frontier</em>, and that all game names and trademarks belong to their owners.
+  </p>
+</div>
+
+<!-- ================= SECTION 4: TECHNICAL STACK ================= -->
+<div class="page-break"></div>
+<h2>4. Technical Stack</h2>
+
+<pre class="avoid-break">
++----------------------------------------------------------------------------------------+
+|  CLIENT (browser, Vercel)                                                              |
+|  TypeScript ES modules, no UI framework | Vite 8 | lazy-loaded view chunks             |
+|  single state module | Web Worker | no PWA, no offline cache                           |
++----------------------------------------------------------------------------------------+
+                       |  HTTPS, Supabase JWT
+                       v
++----------------------------------------------------------------------------------------+
+|  EDGE FUNCTIONS (Deno, Supabase) — 14, deployed from CI only                           |
+|  auth-login, auth-discord, player-register, guild-request, event-reminders,            |
+|  discord-bot-interactions, discord-profile-verification, member-portal,                |
+|  admin-accounts, ocr-guild-members, discord-webhook-proxy, guild-data-export,          |
+|  tickets, migration-summary                                                            |
++----------------------------------------------------------------------------------------+
+                       |
+                       v
++----------------------------------------------------------------------------------------+
+|  DATABASE (PostgreSQL 17, Supabase)                                                    |
+|  RLS + FORCE RLS on every public table | SECURITY DEFINER helpers, search_path = ''    |
+|  system_audit_logs | pg_cron retention jobs                                            |
++----------------------------------------------------------------------------------------+
+</pre>
+
+<div class="grid-3 avoid-break">
+  <div class="card">
+    <h4 style="color: #0284c7; margin-top: 0;">Client</h4>
+    <ul style="font-size: 8pt; margin-bottom: 0; padding-left: 10pt;">
+      <li>Strict TypeScript, Vite</li>
+      <li>Views loaded on first use; admin code in its own chunk</li>
+      <li>One global only: the frozen e2e entry point</li>
+      <li>No PWA; a self-unregistering tombstone service worker</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h4 style="color: #0284c7; margin-top: 0;">Edge Functions</h4>
+    <ul style="font-size: 8pt; margin-bottom: 0; padding-left: 10pt;">
+      <li>Deno on Supabase</li>
+      <li>14 in the repository, 14 deployed (ADR-017)</li>
+      <li>Deployed from CI after every check passes</li>
+      <li>Zod-validated inputs</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h4 style="color: #0284c7; margin-top: 0;">Database</h4>
+    <ul style="font-size: 8pt; margin-bottom: 0; padding-left: 10pt;">
+      <li>PostgreSQL 17 on Supabase</li>
+      <li>RLS + FORCE RLS on every table</li>
+      <li>Migration history replayed in CI</li>
+      <li>Audit log kept 12 months</li>
+    </ul>
+  </div>
+</div>
+
+<h3>4.1 Logging & Audit</h3>
+<ul class="avoid-break">
+  <li><strong>Structured logs</strong>: <code>EdgeLogger</code> emits JSON with correlation IDs and redacts credentials and tokens; browser errors go through a rate-limited RPC and Sentry with PII scrubbing.</li>
+  <li><strong>Audit trail</strong>: administrative actions write to <code>public.system_audit_logs</code>, whose insert is reserved to the service role.</li>
+</ul>
+
+<!-- ================= SECTION 5: SECURITY MODEL ================= -->
+<div class="page-break"></div>
+<h2>5. Security Model</h2>
+
+<h3>5.1 Four Roles</h3>
+<p>Roles are stored in <code>public.accounts.role</code>, limited by a CHECK constraint to four values, and resolved from <code>auth.uid()</code> on every request — never from client-supplied data.</p>
+<table class="avoid-break">
+  <thead>
+    <tr><th style="width: 18%;">Role</th><th style="width: 40%;">Scope</th><th style="width: 42%;">Enforcement</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong><code>super_admin</code></strong></td><td>All guilds; account provisioning, audit log, ticket console.</td><td><code>accounts</code> row resolved from the JWT.</td></tr>
+    <tr><td><strong><code>server_admin</code></strong></td><td>Guilds on their own game server.</td><td>RLS helpers compare <code>guilds.server_number</code>.</td></tr>
+    <tr><td><strong><code>guild_admin</code></strong></td><td>Their own guild only.</td><td><code>gm_can_read_guild_data</code>, <code>check_user_guild_write_access</code>.</td></tr>
+    <tr><td><strong><code>member</code></strong></td><td>No direct table access; the Player Portal only.</td><td>Every RLS read helper returns false; requests go through the <code>member-portal</code> Edge Function.</td></tr>
+  </tbody>
+</table>
+
+<h3>5.2 Row-Level Security</h3>
+<p>
+  Every public table has RLS <strong>and</strong> FORCE RLS. Policies call <code>SECURITY DEFINER</code> helpers with <code>SET search_path = ''</code>, which also refuse a session whose epoch was revoked (password reset, role change, suspension). Tables holding credential material are granted per column.
+</p>
+<div class="callout callout-warning avoid-break">
+  <div class="callout-title">Not a control: <code>is_subscription_active()</code></div>
+  <p style="margin-bottom: 0; font-size: 8.5pt;">
+    <code>public.is_subscription_active(p_guild)</code> still appears in 45 write policies, but it is an inert stub (a literal <code>SELECT true</code>, verified on production on 2026-10-04). It gates nothing; the app is free.
+  </p>
+</div>
+
+<h3>5.3 Player Portal Isolation</h3>
+<p>
+  A player signs in with Discord and joins a guild with a join code and their UID, approved by an officer. Direct table queries from a member return nothing. The portal calls <code>member-portal</code>, which requires a platform-verified JWT, resolves the account from it (active status and current session epoch required) and derives the player's UID server-side; client-supplied identities are ignored.
+</p>
+
+<h3>5.4 Edge Function Protections</h3>
+<ul class="avoid-break">
+  <li><strong>Authentication</strong>: <code>verify_jwt</code> is set per function in <code>supabase/config.toml</code>. Seven functions take no Supabase JWT because no session exists yet or the caller is not a user (sign-in, registration, guild requests, the cron-triggered reminder dispatcher, the Discord interactions endpoint verified by Ed25519 signature, the verification worker authenticated by a shared secret); the other seven require one.</li>
+  <li><strong>Input validation</strong>: Zod schemas; scores bounded to 0–9,999,999,999.</li>
+  <li><strong>Rate limits</strong> fail closed (sign-in, portal, OCR video budget).</li>
+  <li><strong>Webhooks</strong>: Discord webhook URLs are stored server-side in <code>guild_config</code>, never supplied by the client at send time; only Discord hosts over HTTPS are accepted.</li>
+  <li><strong>Secrets</strong> live in Supabase Vault or function environment variables, never in the repository.</li>
+</ul>
+
+<!-- ================= SECTION 6: QA ================= -->
+<div class="page-break"></div>
+<h2>6. Quality Assurance</h2>
+<p>Every push runs the CI pipeline; deployment jobs run only after all checks pass.</p>
+<pre class="avoid-break">
+1. npm run type-check      zero TypeScript errors
+2. npm test                Vitest suite, with a coverage floor
+3. npm run build           production bundle, with an entry-size budget
+4. npx playwright test     end-to-end tests against the built bundle in dist/,
+                           incl. axe-core accessibility checks, CSP and asset errors
+5. deno check / deno test  Edge Functions against an in-memory Supabase
+6. migration replay        PostgreSQL 17 from scratch, schema fingerprint vs production,
+                           SQL tests of RLS, grants and RPCs as each role
+</pre>
+<p style="font-size: 8.5pt;">On 2026-10-04 the suite stood at 2,508 Vitest tests and 61 Playwright tests (CHANGELOG, phase M5). The number grows with every change: read the CI run rather than this line.</p>
+
+<!-- ================= SECTION 7: MATRIX ================= -->
+<div class="avoid-break">
+  <h2>7. Publisher Compliance Matrix</h2>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 18%;">Area</th>
+        <th style="width: 25%;">Requirement</th>
+        <th style="width: 43%;">Implementation</th>
+        <th style="width: 14%; text-align: center;">Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>Personal data</strong></td><td>Lawful, minimal processing (GDPR).</td><td>Published inventory, retention jobs and erasure functions (ADR-018). No player emails, payment or location data.</td><td style="text-align: center;"><span class="status-tag-yes">DOCUMENTED</span></td></tr>
+      <tr><td><strong>Game modification</strong></td><td>No memory injection, packet tampering or hooks.</td><td>External web application; no interaction with the game client.</td><td style="text-align: center;"><span class="status-tag-yes">YES</span></td></tr>
+      <tr><td><strong>Automation</strong></td><td>No automated gameplay.</td><td>Manual management and voluntary score entry; the Discord bot acts in Discord only.</td><td style="text-align: center;"><span class="status-tag-yes">YES</span></td></tr>
+      <tr><td><strong>Copyrighted assets</strong></td><td>No proprietary textures, models, audio or binaries.</td><td>OFL fonts, MIT icons, original tokens and charts.</td><td style="text-align: center;"><span class="status-tag-yes">YES</span></td></tr>
+      <tr><td><strong>Screenshots & recordings</strong></td><td>Not archived or monetised.</td><td>Screenshots not stored; recordings staged privately and deleted after transcription.</td><td style="text-align: center;"><span class="status-tag-yes">YES</span></td></tr>
+      <tr><td><strong>Access security</strong></td><td>Tenant isolation.</td><td>RLS + FORCE RLS on every table; four server-resolved roles; session revocation.</td><td style="text-align: center;"><span class="status-tag-yes">YES</span></td></tr>
+      <tr><td><strong>Network safety</strong></td><td>Safe webhook relaying.</td><td>Server-side webhook URLs, Discord hosts only.</td><td style="text-align: center;"><span class="status-tag-yes">YES</span></td></tr>
+      <tr><td><strong>Game economy</strong></td><td>No currency manipulation or trading.</td><td>No virtual goods, trading or game-server writes; no payments of any kind.</td><td style="text-align: center;"><span class="status-tag-yes">YES</span></td></tr>
+      <tr><td><strong>Legal status</strong></td><td>Clear non-affiliation.</td><td>Statement in the README and the Terms.</td><td style="text-align: center;"><span class="status-tag-yes">YES</span></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="avoid-break" style="margin-top: 15pt;">
+  <h2>8. Attestation & Contact</h2>
+  <div class="callout callout-success avoid-break">
+    <div class="callout-title">Developer Attestation</div>
+    <p style="font-size: 8.5pt; margin-bottom: 0;">
+      The <strong>FGF Guild Management Platform</strong> is an independent community tool. It supports guild coordination without touching the game client or servers, uses no publisher assets, and processes the limited personal data described in Section 2 under a published Privacy Policy.
+    </p>
+  </div>
+
+  <div class="card avoid-break" style="margin-top: 8pt;">
+    <h4 style="margin-top: 0; color: #0f172a;">Contact</h4>
+    <p style="font-size: 8.5pt; margin-bottom: 0;">
+      Controller and maintainer: André Vieira, <strong>fgfwiki@gmail.com</strong> (the single contact address in the Privacy Policy). Security and compliance concerns sent there are handled with priority.
+    </p>
+  </div>
+</div>
 
 </body>
 </html>

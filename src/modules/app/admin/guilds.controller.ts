@@ -16,7 +16,6 @@
  * choosing it failed the save.
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { t, esc, byId, getDb, ls } from './utils';
 import { fetchGuilds } from './accounts.controller';

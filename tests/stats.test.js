@@ -296,7 +296,7 @@ describe('GM_STATS reliability across the whole window', () => {
         // Current week = W2. Add a session planned for W3 (the next week): it
         // must NOT inflate the total event count, so rates stay unchanged.
         const W3 = '2026-08-10';
-        const base = buildDb();
+        const _base = buildDb();
         const futureParts = PARTS.concat([
             { pseudo: 'AlphaPrime', event_name: 'SvS', session_id: 's3', week_start: W3, participated: 1, score: 999, score_prep: 0, score_pvp: 0, is_pending: false, guild: G },
             { pseudo: 'BetaKnight', event_name: 'SvS', session_id: 's3', week_start: W3, participated: 0, score: 0, score_prep: 0, score_pvp: 0, is_pending: false, guild: G }
@@ -434,7 +434,7 @@ describe('GM_STATS cockpit', () => {
     ];
 
     function buildKpiDb() {
-        const base = buildDb();
+        const _base = buildDb();
         return makeDb({
             rpc: {
                 gm_stats_weeks: () => ({ data: { ok: true, weeks: [W2, W1] }, error: null }),

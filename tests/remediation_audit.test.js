@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { squash } from './helpers/source-text.js';
 import fs from 'fs';
 import path from 'path';
 import { logger } from '../src/core/logger/logger';
@@ -227,7 +228,8 @@ describe('Audit Remediation Verification Suite', () => {
 
     // 4. discord-webhook-proxy masks blocked webhook URL
     const discordContent = fs.readFileSync(path.resolve(__dirname, '../supabase/functions/discord-webhook-proxy/index.ts'), 'utf-8');
-    expect(discordContent).toContain('replace(/(https:\\/\\/discord\\.com\\/api\\/webhooks\\/\\d+\\/)[^?#\\s]+/, \'$1***\')');
+    // Either quote: the formatter normalises string quotes per file.
+    expect(squash(discordContent).replace(/"\$1\*\*\*"/g, "'$1***'")).toContain('replace(/(https:\\/\\/discord\\.com\\/api\\/webhooks\\/\\d+\\/)[^?#\\s]+/, \'$1***\')');
     expect(discordContent).toContain('redirect: "error"');
 
     // 5. ocr-guild-members uses x-goog-api-key header

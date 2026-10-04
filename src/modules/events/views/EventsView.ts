@@ -9,14 +9,12 @@
  * This module never assigns `window.GM_EVENTS` (bridge added at cutover).
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import {
   TAB_TO_DB_EVENTS,
   PANEL_MAP,
   EVENTS_WITHOUT_SCORE,
   SCHEDULED_TABS,
-  type EventTabKey,
   type EventTabState,
   EventsService,
   fetchTabEventStatus,

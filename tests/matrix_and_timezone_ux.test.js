@@ -106,7 +106,7 @@ describe('Ticket 2.2 — Tactical Force Matrix Alignment & Timezone Collapsible 
             window.GM.formatNumber = (n) => String(n);
             window.GM.avatarInit = (pseudo) => (pseudo || '?').slice(0, 2).toUpperCase();
             window.GM.calculateCombatDensity = () => 1.5;
-            window.GM.calculateRallyScore = (m) => (parseInt(m.fleet_rating) || 0) + (parseInt(m.tech_power) || 0);
+            window.GM.calculateRallyScore = (m) => (parseInt(m.fleet_rating, 10) || 0) + (parseInt(m.tech_power, 10) || 0);
             window.GM.calculateRallyGrade = () => 85;
             window.GM.getUidStatus = () => ({ valid: true });
             window.currentGuild = 'ALPHA';

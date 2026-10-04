@@ -28,9 +28,6 @@ import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.
 import { serviceClient } from "../_shared/clients.ts";
 import { serveUnlessTest } from "../_shared/serve.ts";
 
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 
 interface ColumnDef {
   key: string;
@@ -123,7 +120,7 @@ export async function handler(req: Request): Promise<Response> {
     return json({ ok: false, error: "invalid_guild" }, 400);
   }
 
-  let targetGuild: string | null = isGuildAdmin(caller.role) ? caller.guild : (body?.guild || null);
+  const targetGuild: string | null = isGuildAdmin(caller.role) ? caller.guild : (body?.guild || null);
   if (!targetGuild) {
     return json({ ok: false, error: "missing_guild" }, 400);
   }

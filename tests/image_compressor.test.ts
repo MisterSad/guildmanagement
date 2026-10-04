@@ -3,10 +3,9 @@
  *
  * Unit tests for client-side image compression utility.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, } from 'vitest';
 import {
   calculateTargetDimensions,
-  compressImage,
   extractImagesFromClipboard,
   extractImagesFromDrop
 } from '../src/core/utils/image-compressor';

@@ -49,30 +49,29 @@ export class FakeSupabase {
   }
 
   client(): AdminClient {
-    const fake = this;
     const client = {
-      from: (name: string) => new Query(fake, name),
+      from: (name: string) => new Query(this, name),
       rpc: (name: string, args: Record<string, unknown> = {}) => {
-        fake.calls.push({ kind: "rpc", name, args });
-        const h = fake.rpcs[name];
+        this.calls.push({ kind: "rpc", name, args });
+        const h = this.rpcs[name];
         const run = async (): Promise<Result> => (h ? await h(args) : { data: null, error: null });
         return thenable(run);
       },
       auth: {
         getUser: async (jwt: string) => {
-          fake.calls.push({ kind: "auth", name: "getUser" });
-          const user = fake.users[jwt];
+          this.calls.push({ kind: "auth", name: "getUser" });
+          const user = this.users[jwt];
           return user ? { data: { user }, error: null } : { data: { user: null }, error: { message: "invalid JWT" } };
         },
         // A shadow-session sign-in always succeeds unless a test scripts otherwise.
         signInWithPassword: async (creds: { email: string }) => {
-          fake.calls.push({ kind: "auth", name: "signInWithPassword", args: { email: creds.email } });
-          if (fake.signInError) return { data: { session: null }, error: { message: fake.signInError } };
+          this.calls.push({ kind: "auth", name: "signInWithPassword", args: { email: creds.email } });
+          if (this.signInError) return { data: { session: null }, error: { message: this.signInError } };
           return { data: { session: { access_token: "access-test", refresh_token: "refresh-test", expires_at: 1790000000 } }, error: null };
         },
         admin: new Proxy({}, {
           get: (_t, method: string) => async (...args: unknown[]) => {
-            fake.calls.push({ kind: "auth", name: `admin.${method}`, args });
+            this.calls.push({ kind: "auth", name: `admin.${method}`, args });
             if (method === "createUser") return { data: { user: { id: crypto.randomUUID() } }, error: null };
             return { data: {}, error: null };
           },

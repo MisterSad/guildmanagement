@@ -7,7 +7,6 @@
  * password kept during the transition; passkeys were removed (2026-10-03).
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { getClient, parseFunctionsInvokeResult } from '../api/supabase';
 import { SUPABASE_URL } from '../config/constants';
@@ -394,7 +393,7 @@ export async function registerPlayer(id: string, password: string, uid: string, 
         code: (code || '').trim().toUpperCase()
       }
     });
-  } catch (e) {
+  } catch {
     return { ok: false, error: 'request_failed' };
   }
   const data = await parseFunctionsInvokeResult(r);
@@ -423,7 +422,7 @@ export async function submitGuildRequest(
         note: (note || '').trim()
       }
     });
-  } catch (e) {
+  } catch {
     return { ok: false, error: 'request_failed' };
   }
   const data = await parseFunctionsInvokeResult(r);
@@ -471,7 +470,7 @@ export async function adminAccounts(action: string, payload?: Record<string, any
     const targetGuild = payload.guild === 'ALL' ? null : (payload.guild || null);
     let targetServer = payload.serverNumber || null;
     if (payload.role === 'server_admin' && !targetServer) {
-      let gId = targetGuild;
+      const gId = targetGuild;
       // (A `window.accountsList` lookup stood here; nothing ever set it.)
       if (gId) {
         const guildsData = getAppState().guildsData;

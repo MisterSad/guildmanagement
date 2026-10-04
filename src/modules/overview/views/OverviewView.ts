@@ -9,7 +9,6 @@
  * This module never assigns `window.GM_OVERVIEW` (bridge added at cutover).
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { adoptDialog } from '../../../components/ui/Dialog';
 import {
@@ -479,7 +478,7 @@ export class OverviewView {
     }, 1000);
   }
 
-  private statTile(label: string, value: string, trend: string | null, icon: string, accent: boolean, meta: string | null, themeClass: string): string {
+  private statTile(label: string, value: string, trend: string | null, icon: string, _accent: boolean, meta: string | null, themeClass: string): string {
     const themeCls = themeClass || 'stat-theme-lime';
     return '<div class="gm-stat-tile ' + themeCls + '">' +
       '<div class="gm-stat-tile-header">' +

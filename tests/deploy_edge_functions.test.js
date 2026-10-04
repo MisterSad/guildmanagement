@@ -79,7 +79,7 @@ describe('the pre-push hook no longer deploys', () => {
 
 describe('the CI pipeline', () => {
   it('is read-only by default (SEC-24)', () => {
-    expect(ci).toMatch(/^permissions:\n  contents: read$/m);
+    expect(ci).toMatch(/^permissions:\n {2}contents: read$/m);
   });
 
   it('replays the migrations and compares the schema with production', () => {

@@ -6,7 +6,7 @@
  * place during this phase; this suite exercises the new module directly in
  * jsdom and guards the anti-shadowing invariant (no `window.GM_SHELL` written).
  */
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { ShellView, NAV_ITEMS, BREAKPOINT_MOBILE } from '../src/modules/shell/views/ShellView';
 import { APP_VERSION } from '../src/core/config/constants';
 import { onTabActivated } from '../src/modules/app/router';
@@ -66,7 +66,7 @@ function installGM(role) {
   return calls;
 }
 
-function boot(role, opts = {}) {
+function boot(role, _opts = {}) {
   document.body.innerHTML = FIXTURE;
   localStorage.clear();
   const calls = installGM(role);

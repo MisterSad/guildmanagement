@@ -16,7 +16,6 @@
  *   - This module never assigns any `window.GM_*` variable.
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import {
   ARMSRACE_STAGE_KEYS,

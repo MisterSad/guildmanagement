@@ -34,7 +34,7 @@
  * reimplementation.
  */
 import { EdgeLogger } from "../_shared/logger.ts";
-import { canManageAccount, isGuildInScope, normalizeRole } from "../_shared/admin-authz.ts";
+import { canManageAccount, isGuildInScope, } from "../_shared/admin-authz.ts";
 import { editChannelMessage, postChannelMessage } from "../_shared/discord-verification.ts";
 import { decideRegistration, getTargetCtx } from "../_shared/registration-decision.ts";
 import {
@@ -58,8 +58,6 @@ import { officerAccountsForDiscord } from "../_shared/auth.ts";
 import { serviceClient } from "../_shared/clients.ts";
 import { serveUnlessTest } from "../_shared/serve.ts";
 
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const DISCORD_WORKER_SECRET = Deno.env.get("DISCORD_WORKER_SECRET") || "";
 
 /** Constant-time compare, same as discord-profile-verification's. */

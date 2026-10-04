@@ -5,7 +5,6 @@
  * app.js#renderMigrationGroupsList (super-admin create/open/close/reopen).
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { esc, byId, getDb } from './utils';
 import { showToast, showConfirm } from '../dialogs/dialogs.service';

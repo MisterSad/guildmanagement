@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { GVG_DAILY_TASKS, buildGvgDailyTaskEmbed } from '../src/core/config/gvg-tasks';
 import * as events from '../src/core/config/events';
 import { t } from '../src/core/i18n/i18n';
@@ -116,7 +116,15 @@ describe('GvG Daily Task Reminders & Points Breakdown', () => {
     // still builds the same payload as the one the admin panel imports.
     it('builds the same payload through the events config as through gvg-tasks', () => {
         expect(events.GVG_DAILY_TASKS).toEqual(GVG_DAILY_TASKS);
-        expect(events.buildGvgDailyTaskEmbed(2, '@everyone')).toEqual(buildGvgDailyTaskEmbed(2, '@everyone'));
+        // Each builder stamps `new Date()`: freeze the clock, or the two calls
+        // straddle a millisecond under load and the payloads differ (flaky).
+        vi.useFakeTimers({ toFake: ['Date'] });
+        vi.setSystemTime(new Date('2026-10-04T12:00:00Z'));
+        try {
+            expect(events.buildGvgDailyTaskEmbed(2, '@everyone')).toEqual(buildGvgDailyTaskEmbed(2, '@everyone'));
+        } finally {
+            vi.useRealTimers();
+        }
 
         const day2 = events.buildGvgDailyTaskEmbed(2, '@everyone');
         expect(day2.content).toContain('GvG Day 2 Tasks are Live!');

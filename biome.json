@@ -1,0 +1,123 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "files": {
+    "includes": [
+      "src/**",
+      "tests/**",
+      "e2e/**",
+      "scripts/**",
+      "supabase/functions/**",
+      "*.js",
+      "*.ts",
+      "*.json",
+      "!src/types/database.generated.ts",
+      "!discord-verification-worker",
+      "!audit",
+      "!dist",
+      "!coverage",
+      "!test-results",
+      "!playwright-report",
+      "!**/__snapshots__",
+      "!package-lock.json",
+      "!skills-lock.json"
+    ]
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 120
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single",
+      "semicolons": "always",
+      "trailingCommas": "es5",
+      "quoteProperties": "preserve"
+    }
+  },
+  "css": {
+    "formatter": {
+      "enabled": false
+    },
+    "linter": {
+      "enabled": false
+    }
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "preset": "recommended",
+      "style": {
+        "useTemplate": "off",
+        "noNonNullAssertion": "off",
+        "useNodejsImportProtocol": "off",
+        "useImportType": "off"
+      },
+      "complexity": {
+        "useOptionalChain": "off",
+        "useLiteralKeys": "off",
+        "noThisInStatic": "off",
+        "noStaticOnlyClass": "off",
+        "useArrowFunction": "off",
+        "noUselessLoneBlockStatements": "off",
+        "noBannedTypes": "off"
+      },
+      "suspicious": {
+        "noExplicitAny": "off",
+        "noGlobalIsNan": "off",
+        "noGlobalIsFinite": "off",
+        "useIterableCallbackReturn": "off",
+        "noAssignInExpressions": "off"
+      }
+    }
+  },
+  "assist": {
+    "enabled": false
+  },
+  "overrides": [
+    {
+      "includes": [
+        "tests/**",
+        "e2e/**",
+        "supabase/functions/_test/**",
+        "supabase/functions/**/*.test.ts"
+      ],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noThenProperty": "off",
+            "noTemplateCurlyInString": "off",
+            "noExportsInTest": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "supabase/functions/**"
+      ],
+      "javascript": {
+        "formatter": {
+          "quoteStyle": "double"
+        }
+      }
+    },
+    {
+      "includes": [
+        "supabase/functions/event-reminders/**",
+        "supabase/functions/_shared/reminder-rules.ts"
+      ],
+      "javascript": {
+        "formatter": {
+          "quoteStyle": "single"
+        }
+      }
+    }
+  ]
+}

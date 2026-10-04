@@ -7,7 +7,6 @@
  * role/guild selects). All dynamic values go through esc().
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { t, esc, byId } from './utils';
 import { getActiveGuild, roleFromStorage } from '../../../core/auth/roles';

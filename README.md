@@ -52,10 +52,10 @@ Record sanctions with reason and author, with an automatic alert for repeat offe
 Paste a webhook URL and the guild's Discord is wired in: per-event webhooks, role mentions, notification toggles, and fully customizable message templates. Automated reminders cover every event (30 minutes before, 5 minutes before, at start), plus the complex schedules of GvG Saturday and SvS PvP day.
 
 ### Player portal
-Players don't need an account. They enter their in-game UID and can update their power, request a guild transfer, and submit their scores for active events. Submissions arrive as pending for officers to approve.
+Players sign in with Discord and join their guild once, with the guild's join code and their in-game UID; an officer approves the request. From then on they can update their power, request a guild transfer, declare absences, and submit their scores for active events. Submissions arrive as pending for officers to approve.
 
 ### Roster scanning (OCR)
-Rather than retyping a roster, officers upload a screenshot of the in-game member list or a metrics panel. It is transcribed automatically, matched against the existing roster, and presented as a diff — joins, departures, renames and power changes — for the officer to accept or reject. The image itself is never stored; only the transcribed text is cached, briefly, so re-submitting the same screenshot costs nothing.
+Rather than retyping a roster, officers upload screenshots or a screen recording of the in-game member list or a metrics panel. It is transcribed automatically, matched against the existing roster, and presented as a diff — joins, departures, renames and power changes — for the officer to accept or reject. A screenshot is not stored: only the transcribed text and a fingerprint of the image are cached, briefly, so re-submitting the same screenshot costs nothing. A screen recording is first uploaded to private storage readable only by that guild's administrators, read once by the AI, and deleted as soon as it has been transcribed.
 
 ### Migration Hub
 A wiki for cross-server intelligence during server migrations: pages scoped to a guild or to a whole server, categorised (recruitment, diplomacy, intel), with comments and live updates. It is the largest feature in the app and, until now, the least documented.
@@ -73,7 +73,7 @@ Administrative actions are recorded with who, what, when and which guild, and ar
 Small (i) buttons throughout the interface open plain-English guidance in place, so a new officer does not need a manual.
 
 ### Multi-guild support
-One platform, many guilds — 26 of them today, sharing nothing. Each guild is completely isolated, with its own members, events and settings, enforced in the database rather than only in the interface. Creating a guild is self-service.
+One platform, many guilds, sharing nothing. Each guild is completely isolated, with its own members, events and settings, enforced in the database rather than only in the interface. Creating a guild is self-service.
 
 ### Free, with no payment surface
 The app is free for every guild. There is no checkout, no subscription, no donation mechanism, and no payment data is held or transmitted anywhere. Nothing is, or ever has been, gated behind a paid tier.
@@ -98,8 +98,7 @@ The app is free for every guild. There is no checkout, no subscription, no donat
 | **Super Admin** | Platform-wide: every guild, account provisioning, the audit log and the bug-ticket console. |
 | **Server Admin** | Every guild on one game server. |
 | **Guild Admin** | Full management of their guild: events, squads, members, sanctions, Discord settings. |
-| **Member** | Read-only access: overview, members, stats, history. |
-| **Player (portal)** | No account needed. Submits scores, updates power, requests transfers via their in-game UID. |
+| **Member (player)** | The Player Portal only, with no direct database access: every request goes through a server function that resolves the player from their session. The account is opened by signing in with Discord and joining the guild with its join code and the player's UID, then approved by an officer. Submits scores, updates power, declares absences, requests transfers. |
 
 A role is never read from the browser. It is resolved from the signed session token and re-checked in the database on every read and write, so changing it locally changes nothing.
 
@@ -109,7 +108,7 @@ A role is never read from the browser. It is resolved from the signed session to
 
 This project was developed entirely by me, with no third-party assets. It is a web app built in plain TypeScript with no UI framework, a custom design system, a Postgres database with serverless functions, and an automated test suite covering the core logic — statistics, rankings, access control, tenant isolation — plus end-to-end tests that drive the real production bundle rather than a development server.
 
-It is also deliberately light on the browser: no cookies, no analytics, no tracking of any kind, and no service worker. What it stores about players and how long it keeps it is set out in the [Privacy Policy](privacy.html).
+It is also deliberately light on the browser: no cookies, no analytics, no tracking of any kind, and no offline mode or installable app. The only service worker left is a tombstone that unregisters itself, kept so that devices which installed the old app get it removed (see [ADR-016](docs/adr/ADR-016-pwa-and-web-push-retirement.md)). What it stores about players and how long it keeps it is set out in the [Privacy Policy](privacy.html).
 
 ---
 

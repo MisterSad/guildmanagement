@@ -25,7 +25,6 @@ import {
   getRallyRoleMeta,
   getPowerTier,
   getPowerTierMeta,
-  COMBAT_WEIGHTS
 } from '../src/core/scoring/combat';
 
 import {

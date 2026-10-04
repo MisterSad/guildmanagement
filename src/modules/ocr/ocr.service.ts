@@ -6,7 +6,6 @@
  * metrics upsert, guild export).
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { findBestMatchingMember, cleanPlayerPseudo, parseGeminiJson } from '../../core/utils/text';
 import { getClient } from '../../core/api/supabase';
@@ -324,7 +323,7 @@ export function compressImageForUpload(fileOrBlob: Blob, maxDimension?: number, 
           if (!ctx) return resolve(e.target.result);
           ctx.drawImage(img, 0, 0, w, h);
           resolve(canvas.toDataURL('image/jpeg', q));
-        } catch (err) {
+        } catch {
           resolve(e.target.result);
         }
       };

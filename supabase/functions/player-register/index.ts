@@ -4,8 +4,6 @@ import { extractClientIp, checkAndRecordIpAttempt } from "../_shared/rate-limit.
 import { serviceClient } from "../_shared/clients.ts";
 import { serveUnlessTest } from "../_shared/serve.ts";
 
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 function makeJson(req: Request) {
   return (body: unknown, status = 200): Response =>

@@ -10,7 +10,6 @@
  * in src/main.ts).
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 export interface HelpEntry {
   icon: string;

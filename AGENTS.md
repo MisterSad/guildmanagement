@@ -10,7 +10,7 @@ Never claim completion without proof, and never fabricate a result. Measure agai
 - **Frontend**: TypeScript ES modules in `src/`, built by Vite. No UI framework. Modules call each other by typed import; the client (`setDbClient`/`getClient`) and the state (`app-state.ts`) are modules, not globals. The app installs exactly one global, the frozen `window.GM_E2E` the e2e suite drives (`tests/gm_bridge_contract.test.js` pins it); add nothing to `window`.
 - **Backend**: Supabase Postgres 17 (RLS, `SECURITY DEFINER`, `SET search_path = ''`) + Deno Edge Functions. 14 deployed, 14 in the repo — keep it reconciled (ADR-017). Deploys run from CI only.
 - **Hosting**: Vercel. No service worker behaviour, no PWA, no cookies, no analytics.
-- **Scale** (measured 2026-10-03): 35 guilds, ~3,797 members, ~55,943 participation rows, 41 tables, 86 policies.
+- **Scale** (measured 2026-10-04): 36 guilds, ~3,867 members, ~56,063 participation rows, 39 tables, 86 policies, 12 cron jobs.
 
 ## Invariants that are easy to break
 - **Four roles**: `super_admin`, `server_admin`, `guild_admin`, `member`. Resolved from `accounts` via `auth.uid()` — never from client-supplied data.
@@ -33,6 +33,7 @@ Never claim completion without proof, and never fabricate a result. Measure agai
 
 ## Quality gate
 ```bash
+npm run lint           # Biome: lint + format check (biome.json); `npm run format` fixes the layout
 npm run type-check     # 0 errors
 npm test               # vitest run, all green, plus a coverage floor
 npm run build

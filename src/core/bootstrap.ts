@@ -22,7 +22,7 @@ export function migrateLegacyStorageKeys(): void {
       localStorage.setItem('gm_' + keys[j].substring(4), v as string);
       localStorage.removeItem(keys[j]);
     }
-  } catch (e) {
+  } catch {
     /* localStorage unavailable (no permission): ignored */
   }
 }

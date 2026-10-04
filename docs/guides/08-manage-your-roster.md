@@ -57,7 +57,7 @@ Click **AI Metric Scanners** and pick a scanner:
 - **3. Fleet OCR**, **5. Flagship OCR**, **6. Champs OCR**, **7. Crew OCR**: from the **game leaderboards**. Fill in the **Guild Tag Filter** (e.g. `[PR1M]`) so other guilds are ignored.
 - **4. Tech OCR** and **8. Glory OCR**: from your guild's lists.
 
-Then drop your **screenshots** or a **screen recording** (scroll slowly, max 8 minutes), check the table, and click **Validate & Apply**.
+Then drop your **screenshots** or a **screen recording** (MP4, MOV or WebM, scroll slowly, max 5 minutes and 64 MB), check the table, and click **Validate & Apply**.
 
 -# Scanners 2 to 8 only update players **already in your list**. New names show **Not in Roster**: add them with **1. Members OCR** first.
 

@@ -7,14 +7,13 @@
  * dialogs service.
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { adoptDialog } from '../../../components/ui/Dialog';
 import { eventsViewLazy, armsRaceViewLazy, shadowfrontViewLazy } from '../lazy-views';
 import { t, esc, byId } from '../admin/utils';
 import { getActiveGuild } from '../../../core/auth/roles';
 import { patchAppState } from '../../../core/state/app-state';
-import { getGuildMembers, setGuildMembers, pushGuildMember, filterGuildMembersOut, findGuildMember, getPendingTransfers, setPendingTransfers, transferActionFor } from './members.store';
+import { getGuildMembers, setGuildMembers, pushGuildMember, filterGuildMembersOut, getPendingTransfers, setPendingTransfers, transferActionFor } from './members.store';
 import { renderGuildMembers, membersSkeletonHtml } from './members.render';
 import { showToast, showConfirm } from '../dialogs/dialogs.service';
 import { getClient } from '../../../core/api/supabase';
@@ -155,7 +154,7 @@ export async function fetchGuildMembers(opts?: { signal?: AbortSignal }): Promis
       const pKey = String(m.pseudo || '').trim().toLowerCase();
       const lastGlory = latestGloryMap[pKey];
       if (lastGlory !== undefined && lastGlory > 0) {
-        if (!m.glory_score || parseInt(m.glory_score) === 0 || parseInt(m.glory_score) !== lastGlory) m.glory_score = lastGlory;
+        if (!m.glory_score || parseInt(m.glory_score, 10) === 0 || parseInt(m.glory_score, 10) !== lastGlory) m.glory_score = lastGlory;
       }
       return m;
     }));
@@ -439,7 +438,7 @@ export async function handleAddMember(inputId: string, uidInputId: string, power
   const members = getGuildMembers();
   if (members.some((m) => String(m.pseudo).toLowerCase() === pseudo.toLowerCase())) { showToast(t('toast_duplicate_member'), 'error'); return; }
 
-  const readInt = (id: string): number => { const el = byId<HTMLInputElement>(id); return el ? (parseInt(el.value) || 0) : 0; };
+  const readInt = (id: string): number => { const el = byId<HTMLInputElement>(id); return el ? (parseInt(el.value, 10) || 0) : 0; };
   const fleetVal = readInt('member-fleet');
   const techVal = readInt('member-tech');
   const flagshipVal = readInt('member-flagship');
@@ -550,7 +549,7 @@ export async function renameGuildMember(
   if (!client) return false;
   const newPseudo = (newPseudoInput || '').trim();
   const newUid = (newUidInput || '').trim();
-  const powerVal = parseInt(String(newPower)) || 0;
+  const powerVal = parseInt(String(newPower), 10) || 0;
   const roleVal = newRole || 'R1';
   extraMetrics = extraMetrics || {};
 
@@ -564,7 +563,7 @@ export async function renameGuildMember(
     (m.pseudo && String(m.pseudo).toLowerCase() === oldPseudo.toLowerCase()) ||
     (m.uid && newUid && String(m.uid).trim() === String(newUid).trim()));
 
-  const oldPower = member ? parseInt(String(member.overall_power)) || 0 : 0;
+  const oldPower = member ? parseInt(String(member.overall_power), 10) || 0 : 0;
   const oldRole = member ? member.role || 'R1' : 'R1';
   const pseudoChanged = newPseudo.toLowerCase() !== oldPseudo.toLowerCase();
   const uidChanged = !!member && (member.uid || '') !== newUid;
@@ -600,12 +599,12 @@ export async function renameGuildMember(
     if (uidChanged) update.uid = newUid || null;
     update.overall_power = powerVal;
     update.role = roleVal;
-    if (extraMetrics.tech_power !== undefined) update.tech_power = parseInt(extraMetrics.tech_power) || 0;
-    if (extraMetrics.champion_power !== undefined) update.champion_power = parseInt(extraMetrics.champion_power) || 0;
-    if (extraMetrics.crew_power !== undefined) update.crew_power = parseInt(extraMetrics.crew_power) || 0;
-    if (extraMetrics.flagship_power !== undefined) update.flagship_power = parseInt(extraMetrics.flagship_power) || 0;
-    if (extraMetrics.fleet_rating !== undefined) update.fleet_rating = parseInt(extraMetrics.fleet_rating) || 0;
-    if (extraMetrics.glory_score !== undefined) update.glory_score = parseInt(extraMetrics.glory_score) || 0;
+    if (extraMetrics.tech_power !== undefined) update.tech_power = parseInt(extraMetrics.tech_power, 10) || 0;
+    if (extraMetrics.champion_power !== undefined) update.champion_power = parseInt(extraMetrics.champion_power, 10) || 0;
+    if (extraMetrics.crew_power !== undefined) update.crew_power = parseInt(extraMetrics.crew_power, 10) || 0;
+    if (extraMetrics.flagship_power !== undefined) update.flagship_power = parseInt(extraMetrics.flagship_power, 10) || 0;
+    if (extraMetrics.fleet_rating !== undefined) update.fleet_rating = parseInt(extraMetrics.fleet_rating, 10) || 0;
+    if (extraMetrics.glory_score !== undefined) update.glory_score = parseInt(extraMetrics.glory_score, 10) || 0;
     if (extraMetrics.timezone !== undefined) update.timezone = extraMetrics.timezone || null;
     if (extraMetrics.timezone_offset !== undefined) update.timezone_offset = extraMetrics.timezone_offset;
 
@@ -894,12 +893,12 @@ export async function showEditMemberDialog(member: any): Promise<void> {
       const tzVal = val('edit-timezone').trim();
       const tzOffset = tzVal ? getTimezoneOffset(tzVal) : (member.timezone_offset != null ? member.timezone_offset : null);
       const extraMetrics = {
-        fleet_rating: parseInt(val('edit-fleet')) || 0,
-        tech_power: parseInt(val('edit-tech')) || 0,
-        flagship_power: parseInt(val('edit-flagship')) || 0,
-        champion_power: parseInt(val('edit-champ')) || 0,
-        crew_power: parseInt(val('edit-crew')) || 0,
-        glory_score: parseInt(val('edit-glory')) || 0,
+        fleet_rating: parseInt(val('edit-fleet'), 10) || 0,
+        tech_power: parseInt(val('edit-tech'), 10) || 0,
+        flagship_power: parseInt(val('edit-flagship'), 10) || 0,
+        champion_power: parseInt(val('edit-champ'), 10) || 0,
+        crew_power: parseInt(val('edit-crew'), 10) || 0,
+        glory_score: parseInt(val('edit-glory'), 10) || 0,
         timezone: tzVal || null,
         timezone_offset: tzOffset
       };

@@ -71,7 +71,7 @@ function installDb(members) {
 function installGM() {
   mocks.showToast.mockReset();
   mocks.showConfirm.mockReset();
-  mocks.showConfirm.mockImplementation((title, body, cb) => { cb && cb(); });
+  mocks.showConfirm.mockImplementation((_title, _body, cb) => { cb && cb(); });
   showConfirmMock = mocks.showConfirm;
   resetSupabaseClient();
 }

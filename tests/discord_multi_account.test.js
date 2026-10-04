@@ -12,6 +12,7 @@
 // change silently breaks.
 
 import { describe, it, expect } from 'vitest';
+import { squash } from './helpers/source-text.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { edgeSource, edgeFunctionBody } from './helpers/edge-source.js';
@@ -183,7 +184,7 @@ describe('the client asks instead of guessing', () => {
     // owner mid-decision.
     const fnSrc = edgeSource('auth-discord');
     expect(fnSrc).toMatch(/const CONTINUATION_TTL_MS = 15 \* 60_000;/);
-    expect(fnSrc).toMatch(/issueTicket\(\s*admin, \{ discordUserId, discordUsername, displayName, attempts: 0 \}, logger, TICKET_TTL_MS,?\s*\)/);
+    expect(squash(fnSrc)).toMatch(/issueTicket\(\s*admin, \{ discordUserId, discordUsername, displayName, attempts: 0 \}, logger, TICKET_TTL_MS,?\s*\)/);
   });
 
   it('escapes every value it renders', () => {

@@ -5,7 +5,6 @@
  * from app.js (OCR_METRICS_META, currentOcrMetric, ocrExtractedPlayers).
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 export interface OcrMetricMeta {
   title: string;

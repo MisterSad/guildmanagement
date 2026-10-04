@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { getValidatedEnv, ConfigurationError, EnvSchema } from '../supabase/functions/_shared/env.ts';
+import { getValidatedEnv, ConfigurationError, } from '../supabase/functions/_shared/env.ts';
 
 describe('Ticket 2.1: Zod Runtime Environment Validator (env.ts)', () => {
   const validBaseEnv = {
@@ -101,7 +101,8 @@ describe('Ticket 2.1: Static Containment - Edge Functions use getValidatedEnv', 
     const content = fs.readFileSync(authLoginPath, 'utf-8');
 
     expect(content).toContain('import { getValidatedEnv } from "../_shared/env.ts";');
-    expect(content).toContain('const env = getValidatedEnv();');
+    // Called for its cold-start validation; auth-login reads no variable itself.
+    expect(content).toMatch(/^getValidatedEnv\(\);$/m);
     expect(content).not.toContain('Deno.env.get(');
   });
 

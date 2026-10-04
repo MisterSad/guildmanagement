@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { isAllowedOrigin, getCorsHeaders, ALLOWED_ORIGINS } from '../supabase/functions/_shared/cors.ts';
+import { isAllowedOrigin, getCorsHeaders, } from '../supabase/functions/_shared/cors.ts';
 
 describe('Ticket 1.4: CORS Hardening & Vercel Origin Restriction', () => {
   const corsPath = path.resolve(__dirname, '../supabase/functions/_shared/cors.ts');

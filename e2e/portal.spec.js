@@ -31,7 +31,7 @@ const FIXTURES = {
 function stubMemberPortal(page) {
     return page.route('**/functions/v1/member-portal', async (route) => {
         let body = {};
-        try { body = route.request().postDataJSON() || {}; } catch (e) {}
+        try { body = route.request().postDataJSON() || {}; } catch {}
         const action = body.action;
         const reply = FIXTURES[action] || { ok: true };
         await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(reply) });

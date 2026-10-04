@@ -5,6 +5,7 @@
 // a schedule, so most of what is asserted below is about what it must NOT do.
 
 import { describe, it, expect } from 'vitest';
+import { squash } from './helpers/source-text.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { edgeSource } from './helpers/edge-source.js';
@@ -159,8 +160,8 @@ describe('the onboarding action', () => {
 
   it('discriminates on mode so fields cannot cross branches', () => {
     expect(discordFn).toContain('z.discriminatedUnion("mode"');
-    expect(discordFn).toMatch(/uid: z\.string\(\)\.trim\(\)\.regex\(\/\^\[0-9\]\{1,20\}\$\//);
-    expect(discordFn).toMatch(/server_number: z\.string\(\)\.trim\(\)\.regex\(\/\^\[0-9\]\{4\}\$\//);
+    expect(squash(discordFn)).toMatch(/uid: z\.string\(\)\.trim\(\)\.regex\(\/\^\[0-9\]\{1,20\}\$\//);
+    expect(squash(discordFn)).toMatch(/server_number: z\.string\(\)\.trim\(\)\.regex\(\/\^\[0-9\]\{4\}\$\//);
   });
 
   it('spends the continuation ticket, like every other path', () => {

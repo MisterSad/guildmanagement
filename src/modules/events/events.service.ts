@@ -381,7 +381,6 @@ export class EventsService {
 // Each builder takes the client the view hands it and returns the
 // builder/promise; the view awaits it and keeps its own error handling.
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 /** Read a tab's `event_status` rows for a guild. */
 export function fetchTabEventStatus(db: DbClient, guild: string | null, dbEvents: string[]) {

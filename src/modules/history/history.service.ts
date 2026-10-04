@@ -152,7 +152,6 @@ export function deleteHistorySession(eventName: string, weekStart: string, sessi
 // Each builder takes the client the view hands it and returns the
 // builder/promise; the view awaits it and keeps its own error handling.
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 /** List the guild's event sessions through `gm_list_event_sessions`. */
 export function listEventSessions(db: DbClient, guild: string | null) {

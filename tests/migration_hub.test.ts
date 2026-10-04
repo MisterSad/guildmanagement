@@ -3,7 +3,7 @@
  *
  * Unit tests for the Migration Hub view module, markdown sanitizer, and scope handling.
  */
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, } from 'vitest';
 import { MigrationHubView } from '../src/modules/migration/views/MigrationHubView';
 import { NAV_ITEMS } from '../src/modules/shell/views/ShellView';
 import fs from 'fs';

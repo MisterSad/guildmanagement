@@ -12,7 +12,6 @@
  * This module never assigns `window.GM_SANCTIONS` (bridge added at cutover).
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { escapeHTML, avatarInit } from '../../../core/utils/text';
 import { t } from '../../../core/i18n/i18n';

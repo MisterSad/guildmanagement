@@ -21,6 +21,7 @@
 //    raises no constraint error.
 
 import { describe, it, expect } from 'vitest';
+import { squash } from './helpers/source-text.js';
 import fs from 'fs';
 import path from 'path';
 import { edgeSource, edgeFunctionBody } from './helpers/edge-source.js';
@@ -57,8 +58,10 @@ describe('event-reminders: reminder locks are atomic (ON CONFLICT DO NOTHING)', 
 
   it('the GvG daily task lock treats an already-held lock as "already sent" and skips, rather than silently doing nothing', () => {
     const claim = edgeFunctionBody('event-reminders', 'claimSlot');
-    expect(claim).toMatch(/if \(!await acquireReminderLock\(run, lockKey\)\) \{\n\s+run\.logger\.info\(`\[\$\{run\.guild\}\] Lock already exists for \$\{what\}, skipping`\);\n\s+return false;/);
-    expect(edgeFunctionBody('event-reminders', 'runGvgDailyTasks')).toContain('if (!await claimSlot(run, lockKey, what, forceGvg)) return;');
+    // The formatter writes `!(await …)`; both read the same.
+    expect(squash(claim)).toMatch(/if \(!\(?await acquireReminderLock\(run, lockKey\)\)?\) \{ run\.logger\.info\(`\[\$\{run\.guild\}\] Lock already exists for \$\{what\}, skipping`\); return false;/);
+    // The formatter writes `!(await …)`; both read the same.
+    expect(edgeFunctionBody('event-reminders', 'runGvgDailyTasks')).toMatch(/if \(!\(?await claimSlot\(run, lockKey, what, forceGvg\)\)?\) return;/);
   });
 });
 
@@ -73,8 +76,8 @@ describe('event-reminders: Discord webhook allowed_mentions and role handling', 
   });
 
   it('supports dedicated role IDs for Shadowfront Squad 1 and Squad 2 with fallback', () => {
-    expect(content).toContain("normalizeEventName(event.event_name) === 'SHADOWFRONT SQUAD 1' && config['discord_role_id_shadowfront_squad1']?.trim()");
-    expect(content).toContain("normalizeEventName(event.event_name) === 'SHADOWFRONT SQUAD 2' && config['discord_role_id_shadowfront_squad2']?.trim()");
+    expect(squash(content)).toContain(squash("normalizeEventName(event.event_name) === 'SHADOWFRONT SQUAD 1' && config['discord_role_id_shadowfront_squad1']?.trim()"));
+    expect(squash(content)).toContain(squash("normalizeEventName(event.event_name) === 'SHADOWFRONT SQUAD 2' && config['discord_role_id_shadowfront_squad2']?.trim()"));
     expect(content).toContain("eventSpecificRoleId = config[`discord_role_id_${eventPrefix}`] || null;");
   });
 
@@ -85,7 +88,7 @@ describe('event-reminders: Discord webhook allowed_mentions and role handling', 
 
   it('auto-expires stale events older than 24 hours in event-reminders', () => {
     expect(content).toContain('const DAY_MS = 24 * 60 * 60 * 1000;');
-    expect(content).toContain('(now - startMs) > DAY_MS');
+    expect(content).toMatch(/\(?now - startMs\)? > DAY_MS/);
     expect(content).toContain("is_active: false");
   });
 });
@@ -102,7 +105,7 @@ describe('discord-webhook-proxy: allowed_mentions defaults', () => {
 
 describe('event-reminders: strict toggle evaluation (P0 RC1/RC2 — no more ghost notifications)', () => {
   it('imports the shared reminder rules (isToggleEnabled + resolveGuildWebhook)', () => {
-    expect(content).toContain('from "../_shared/reminder-rules.ts"');
+    expect(content).toMatch(/from ["']\.\.\/_shared\/reminder-rules\.ts["']/);
   });
 
   it('no longer uses the default-ON patterns (== undefined || == "true"), != "false" gates, or the gvg_svs_calamity_enabled master gate', () => {

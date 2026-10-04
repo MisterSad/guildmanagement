@@ -12,10 +12,8 @@ const LoginSchema = z.object({
   password: z.string().min(1).max(256),
 });
 
-const env = getValidatedEnv();
-const SUPABASE_URL  = env.SUPABASE_URL;
-const SERVICE_ROLE  = env.SUPABASE_SERVICE_ROLE_KEY;
-const ANON_KEY      = env.SUPABASE_ANON_KEY;
+// Fails the cold start when a required variable is missing; nothing here reads it.
+getValidatedEnv();
 
 function makeJson(req: Request) {
   return (body: unknown, status = 200): Response =>

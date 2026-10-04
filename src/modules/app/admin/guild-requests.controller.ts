@@ -7,7 +7,6 @@
  * showConfirm and feedback through dialogs showToast.
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { overviewViewLazy } from '../lazy-views';
 import { getActiveGuild } from '../../../core/auth/roles';
@@ -355,7 +354,7 @@ async function onGuildSettingsSubmit(e: Event): Promise<void> {
     }
     const serverNumVal = (byId<HTMLInputElement>('guild-server-number-setting')?.value || '').trim();
 
-    const promises: Promise<boolean | void>[] = [
+    const promises: Promise<unknown>[] = [
       config.set('guild_tag', tagVal),
       config.set('server_number', serverNumVal)
     ];

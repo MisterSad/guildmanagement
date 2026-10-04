@@ -4,6 +4,7 @@
 // and getGuildAverages never computed per-metric guild averages.
 
 import { describe, it, expect } from 'vitest';
+import { squash } from './helpers/source-text.js';
 import fs from 'fs';
 import path from 'path';
 import { edgeSource, edgeFunctionBody } from './helpers/edge-source.js';
@@ -15,7 +16,7 @@ describe('Player Portal military metrics response (v127.1)', () => {
     // getPlayer moved to _shared/member-lookup.ts (2026-09, Discord bot Phase
     // 1) so discord-bot-interactions can reuse the exact same query for
     // /myinfo instead of duplicating it -- member-portal now imports it.
-    const content = fs.readFileSync(memberLookupPath, 'utf-8');
+    const content = squash(fs.readFileSync(memberLookupPath, 'utf-8'));
     const selectMatch = content.match(/\.select\("pseudo, guild, overall_power, power_updated_at, metrics_updated_at, tech_power, champion_power, crew_power, flagship_power, fleet_rating, glory_score, role, timezone_offset(?:,\s*timezone)?"\)/);
     expect(selectMatch).not.toBeNull();
   });
@@ -27,7 +28,7 @@ describe('Player Portal military metrics response (v127.1)', () => {
   });
 
   it('get-active-sessions response carries every metric field the portal tiles render', () => {
-    const content = edgeSource('member-portal');
+    const _content = edgeSource('member-portal');
     const sessionsBlock = edgeFunctionBody('member-portal', 'getActiveSessions');
     for (const field of [
       'overall_power', 'tech_power', 'champion_power', 'crew_power',

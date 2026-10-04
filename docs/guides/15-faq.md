@@ -41,7 +41,7 @@ Click **Start** on the event first, then run the OCR again.
 **The OCR missed some players.**
 Check the table before applying. Names shown as **Other Guild / Non-Member** were not recognised: fix the name by hand, tick the line, then **Validate & Apply**. Clear screenshots of the **whole line** give the best results.
 
-**"Video is too long (max 8 minutes)" or my iPhone video fails.**
+**"That video is over 5 minutes", or my iPhone video fails.**
 Use a shorter recording, re-export it as **H.264**, or use screenshots.
 
 **A player's line shows "Pending".**

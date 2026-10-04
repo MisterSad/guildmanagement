@@ -37,6 +37,9 @@ jobs:
         run: |
           for f in *.js; do [ -f "$f" ] && node --check "$f"; done
 
+      - name: Lint and format check (Biome)
+        run: npm run lint
+
       - name: Type Check TypeScript
         run: npm run type-check
 

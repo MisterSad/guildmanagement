@@ -6,7 +6,6 @@
  * at the end of the file (M4b), which return the query for the view to await.
  */
 
-import { eventScoringKey } from '../../core/config/events';
 import type { DbClient } from '../../core/api/db-client';
 import { weightedRate, type BucketCounts } from '../../core/scoring/reliability';
 
@@ -553,35 +552,7 @@ export interface EventLeaderboardParams {
   shadowfrontRate: (eventsDone: number, assignedCount: number) => number;
 }
 
-interface ByMemberAcc {
-  pseudo: string;
-  score: number;
-  score_prep: number;
-  score_pvp: number;
-  events_done: number;
-  events_total: number;
-  sub_count: number;
-  ara_count: number;
-  arb_count: number;
-  late_count: number;
-  excused_count: number;
-}
 
-function emptyByMemberAcc(pseudo: string): ByMemberAcc {
-  return {
-    pseudo,
-    score: 0,
-    score_prep: 0,
-    score_pvp: 0,
-    events_done: 0,
-    events_total: 0,
-    sub_count: 0,
-    ara_count: 0,
-    arb_count: 0,
-    late_count: 0,
-    excused_count: 0
-  };
-}
 
 export function normalizePseudo(p?: string | null): string {
   return p ? String(p).trim().toLowerCase() : '';

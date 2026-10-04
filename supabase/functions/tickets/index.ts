@@ -7,9 +7,6 @@ import { serviceClient } from "../_shared/clients.ts";
 import { serveUnlessTest } from "../_shared/serve.ts";
 import { isAdminRole, isSuperAdmin } from "../_shared/admin-authz.ts";
 
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 // Central bug-report Discord webhook URL (set via `supabase secrets set
 // TICKET_WEBHOOK_URL=...`). This is a send-token secret: never committed,
 // never echoed. Only the edge reads it.
@@ -289,7 +286,7 @@ export async function handler(req: Request): Promise<Response> {
         p_metadata: { ticket_number: ticketNo, category, severity, webhook: webhookOk },
         p_service: "tickets",
       });
-    } catch (auditErr) {
+    } catch {
       logger.warn("Ticket audit log failed", { ticketNo });
     }
 

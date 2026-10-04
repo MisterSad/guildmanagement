@@ -20,9 +20,6 @@ function makeJson(req: Request) {
 
 const env = getValidatedEnv({ requireGemini: true });
 const GEMINI_API_KEY = env.GEMINI_API_KEY;
-const SUPABASE_URL = env.SUPABASE_URL;
-const SERVICE_ROLE = env.SUPABASE_SERVICE_ROLE_KEY;
-const ANON_KEY = env.SUPABASE_ANON_KEY;
 
 
 const RequestSchema = z

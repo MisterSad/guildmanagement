@@ -6,7 +6,6 @@
  * gm-utils.js#getGuildConfig / setGuildConfig / getGuildTag exactly.
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { getClient } from '../api/supabase';
 import { getActiveGuild } from '../auth/roles';

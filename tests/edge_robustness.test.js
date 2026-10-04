@@ -2,6 +2,7 @@
 // (audit SEC-12, BE-A-12, BE-A-15, SEC-13, INF-05, SEC-19).
 
 import { describe, it, expect } from 'vitest';
+import { squash } from './helpers/source-text.js';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -43,8 +44,8 @@ describe('bounded inputs (BE-A-15, SEC-13)', () => {
 
   it('guild-data-export is rate-limited and checks the guild shape', () => {
     const src = read('supabase/functions/guild-data-export/index.ts');
-    expect(src).toContain('checkAndRecordIpAttempt(admin, extractClientIp(req.headers), { limit: 5, windowMs: 10 * 60_000 })');
-    expect(src).toContain("/^[A-Za-z0-9_]{2,12}$/.test(body.guild.trim())");
+    expect(squash(src)).toContain(squash('checkAndRecordIpAttempt(admin, extractClientIp(req.headers), { limit: 5, windowMs: 10 * 60_000 })'));
+    expect(squash(src)).toContain(squash("/^[A-Za-z0-9_]{2,12}$/.test(body.guild.trim())"));
   });
 
   it('discord-webhook-proxy bounds what it relays to Discord limits', () => {
@@ -56,8 +57,8 @@ describe('bounded inputs (BE-A-15, SEC-13)', () => {
 
   it('ocr-guild-members bounds each image and its MIME type', () => {
     const src = read('supabase/functions/ocr-guild-members/index.ts');
-    expect(src).toContain('base64Data: z.string().min(1).max(8 * 1024 * 1024),');
-    expect(src).toMatch(/mimeType: z\.string\(\)\.regex\(/);
+    expect(squash(src)).toContain(squash('base64Data: z.string().min(1).max(8 * 1024 * 1024),'));
+    expect(squash(src)).toMatch(/mimeType: z\.string\(\)\.regex\(/);
   });
 
   it('auth-passkey is gone: passkeys were removed (owner decision, 2026-10-03)', () => {

@@ -1,6 +1,6 @@
 import { execSync } from 'child_process';
 import crypto from 'crypto';
-import { build as esbuildBuild, transform } from 'esbuild';
+import { build as esbuildBuild, } from 'esbuild';
 import fs from 'fs';
 import path from 'path';
 

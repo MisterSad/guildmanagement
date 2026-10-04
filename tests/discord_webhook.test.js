@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { squash } from './helpers/source-text.js';
 import fs from 'fs';
 import path from 'path';
 
@@ -196,7 +197,8 @@ describe('Ticket 1.2: discord-webhook-proxy - Architectural & Security Guards', 
     });
 
     it('masks sensitive Discord webhook token in error logs', () => {
-        expect(proxyContent).toContain('replace(/(https:\\/\\/discord\\.com\\/api\\/webhooks\\/\\d+\\/)[^?#\\s]+/, \'$1***\')');
+        // Either quote: the formatter normalises string quotes per file.
+        expect(squash(proxyContent).replace(/"\$1\*\*\*"/g, "'$1***'")).toContain('replace(/(https:\\/\\/discord\\.com\\/api\\/webhooks\\/\\d+\\/)[^?#\\s]+/, \'$1***\')');
     });
 
     it('enforces network timeout with AbortSignal.timeout(8000)', () => {

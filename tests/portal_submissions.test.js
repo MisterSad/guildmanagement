@@ -60,7 +60,7 @@ describe('warSubmissionRows', () => {
 });
 
 describe('member-portal submit-scores', () => {
-  const src = edgeSource('member-portal');
+  const _src = edgeSource('member-portal');
   const handler = edgeFunctionBody('member-portal', 'submitScores');
 
   it('refuses loudly when the player has no row, instead of updating zero rows', () => {

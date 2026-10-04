@@ -47,7 +47,6 @@ import {
   renderGuildRequestsList,
   renderPendingRegistrations,
   loadGuildSettings,
-  resolveRegistration
 } from '../src/modules/app/admin/guild-requests.controller';
 import { renderMigrationGroupsList } from '../src/modules/app/admin/migration-groups.controller';
 import { renderGuildsList } from '../src/modules/app/admin/guilds.controller';
@@ -91,7 +90,7 @@ function makeDb(opts = {}) {
       if (table === 'server_migration_groups') {
         return {
           select: () => ({ order: async () => ({ data: groups, error: null }) }),
-          insert: (payload) => ({ select: () => ({ single: async () => ({ data: { id: 'new-group' }, error: null }) }) }),
+          insert: (_payload) => ({ select: () => ({ single: async () => ({ data: { id: 'new-group' }, error: null }) }) }),
           update: (payload) => ({ eq: async () => { calls.update.push({ table, payload }); return { data: null, error: null }; } })
         };
       }

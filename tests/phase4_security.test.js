@@ -19,7 +19,7 @@ const read = (p) => fs.readFileSync(path.join(rootDir, p), 'utf8');
 const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
 
 describe('M14 — a suspended account is authorized for nothing', () => {
-  const auth = stripComments(read('supabase/functions/_shared/auth.ts'));
+  const _auth = stripComments(read('supabase/functions/_shared/auth.ts'));
 
   it('every consumer gates on the role, which is what makes this work', () => {
     for (const f of ['tickets', 'ocr-guild-members', 'migration-summary', 'discord-webhook-proxy', 'guild-data-export']) {

@@ -9,7 +9,6 @@
  * (parity bridge is added at cutover in src/main.ts).
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { adoptDialog } from '../../../components/ui/Dialog';
 import { escapeHTML } from '../../../core/utils/text';

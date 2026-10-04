@@ -85,7 +85,7 @@ describe('Ticket 2.1 — Compact OCR Scanners Dropdown Menu', () => {
     });
 
     describe('2. Interactive Behavior (JSDOM Simulation & Event Handling)', () => {
-        let container;
+        let _container;
         let trigger;
         let menu;
         let outsideElem;
@@ -122,7 +122,7 @@ describe('Ticket 2.1 — Compact OCR Scanners Dropdown Menu', () => {
             const initOcrDropdown = setupInitOcrDropdown();
             initOcrDropdown();
 
-            container = document.getElementById('ocr-scanners-dropdown');
+            _container = document.getElementById('ocr-scanners-dropdown');
             trigger = document.getElementById('ocr-dropdown-trigger');
             menu = document.getElementById('ocr-dropdown-menu');
             outsideElem = document.getElementById('outside-area');

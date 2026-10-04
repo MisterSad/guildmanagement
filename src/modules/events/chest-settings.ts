@@ -8,7 +8,6 @@
  * When no grid exists yet in the DB, a sensible default grid is rendered.
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { EventsService, WarEventName } from './events.service';
 import { ChestTier } from '../../types/database';
@@ -35,7 +34,7 @@ function dayTiers(day: number): ChestTier[] {
     .sort((a, b) => a.min_score - b.min_score);
 }
 
-function tierIndexBadge(day: number, idx: number): string {
+function tierIndexBadge(_day: number, idx: number): string {
   return renderBadge({
     text: 'T' + (idx + 1),
     tone: currentEvent === 'SvS' ? 'svs' : 'gvg',

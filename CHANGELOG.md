@@ -2,6 +2,43 @@
 
 ## [Unreleased]
 
+- **Lint, format and documentation** (medium-term plan, phase M6; audit QA-07, REC-04 to REC-07, INF-12).
+  - **Biome** (`biome.json`, `@biomejs/biome` 2.5.15).
+    - `npm run lint` runs `biome ci .`, which covers lint and format. It is a new step in the CI job `build-and-test`, and AGENTS.md and the `fgf-quality-gate` skill list it.
+    - `npm run format` fixes the layout. The CSS, the generated database types and the Discord worker are left out (the worker stays out of scope, by owner decision).
+  - **Lint rules.**
+    - The recommended set is on. Off:
+      - style rules with very high counts: `useTemplate` (724), `useOptionalChain` (237), `useLiteralKeys` (55), `noNonNullAssertion`;
+      - `noExplicitAny` (611, tracked type debt);
+      - `noGlobalIsNan`: switching to `Number.isNaN` changes behaviour, since `isNaN` coerces;
+      - idioms used on purpose, such as `while ((m = re.exec()))` and test sources that contain `${}`.
+    - Fixed:
+      - 50 `parseInt` calls without a radix;
+      - useless regex escapes;
+      - unused imports, variables and catch bindings;
+      - 26 unused environment constants in 10 Edge Functions (`auth-login` keeps its `getValidatedEnv()` call, which fails the cold start);
+      - two dead private methods in Shadowfront and a dead accumulator in Stats;
+      - a duplicate `in()` in a test fake.
+    - The two intentional exceptions carry a `biome-ignore` with the reason: a thenable in `db-guard`, and the control-character check in `validatePseudo`.
+    - The 48 `eslint-disable` comments are removed. No ESLint ever ran.
+  - **Formatting** is a separate, purely mechanical commit, listed in `.git-blame-ignore-revs`.
+    - It runs two `biome format --write` passes; three Edge scenario tests only settle on the second.
+    - Quotes stay as they were: single in the front, double in the Edge Functions, single in `event-reminders`. Property quotes are preserved.
+    - Proven on a copy before the commit: lint and format clean, type-check, 2,508 vitest tests, build, Playwright 61/61, `deno check`, and 126 Deno tests with the characterization snapshots unchanged.
+  - **Tests made layout-proof.** 26 assertions read source text whose layout the formatter changes. They now compare through `tests/helpers/source-text.js` (`squash()`) or quote-agnostic patterns, and pass before and after formatting.
+    - Also fixed: an old intermittent failure in `gvg-tasks`. Two builders each stamped `new Date()` and could fall on different milliseconds; the test now freezes the clock.
+  - **Documentation**, corrected against the code and read-only production queries (2026-10-04: 36 guilds, 3,867 members, 56,063 participation rows, 39 tables, 86 policies, 12 cron jobs):
+    - README: no guild count; Discord sign-in; portal behind an account; recordings go through `ocr-videos`; the service-worker tombstone.
+    - PROJECT_CONTEXT, shortened. Removed: `db push`, push, passkeys, PWA, `simple-icons`, the wrong counts. Now: the real `verify_jwt` settings, and deploys from CI and migrations through the MCP.
+    - The `fgf-saas-architect` skill: dated scale, Edge Functions on Supabase, `GM_E2E` and lazy chunks instead of the window bridge.
+    - ARCHITECTURE: §5 OCR rewritten from the code (bucket, Gemini, all-or-nothing commit); the 12 cron jobs; `webauthn.service.ts` and other removed files dropped; `GM_E2E`, `lazy-views`, `admin-loader` and `Dialog`.
+    - DEPLOY_RUNBOOK: the 14 functions from `config.toml`, deploys from CI only, never `--no-verify-jwt` (finding M1). No more "Subscriptions" check.
+    - Compliance whitepaper (Markdown, HTML template and PDF regenerated), rebuilt from ADR-018. Removed: Stripe, PWA, `gm-stripe-webhook`. IP addresses are now declared: kept 24 h in `login_throttle`, purged hourly. `is_subscription_active` is described as an inert stub.
+    - Guides 03, 08 and 15: the video limit is 5 minutes and 64 MB, not 8 minutes.
+    - `docs/database_squash_plan.md` moved to `docs/archive/` (the squash is done; the replay supersedes it).
+    - AGENTS.md: the scale is re-measured.
+    - `package.json` no longer says "vanilla JS".
+
 - **Front-end performance and accessibility** (medium-term plan, phase M5; audit FE-03, FE-04, FE-05, FE-12, FE-13).
   - **Code splitting.**
     - What a first visit downloads before rendering: 1.06 MB of JS (281 KB gzip) before, **354 KB (101 KB gzip)** now. `scripts/build.js` fails the build above 450 KB.

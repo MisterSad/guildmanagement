@@ -94,7 +94,7 @@ function installDb() {
 
 function installStubs() {
   runInChunksMock.mockReset();
-  runInChunksMock.mockImplementation(async (items, size, worker) => {
+  runInChunksMock.mockImplementation(async (items, _size, worker) => {
     for (const it of items) await worker(it);
   });
   localStorage.setItem('gm_current_guild', 'ALPHA');
@@ -213,7 +213,7 @@ describe('EventsView — cutover guard', () => {
   it('does not expose a GM_EVENTS global', async () => {
     const view = new EventsView();
     await view.loadEvent('SvS');
-    expect(Object.prototype.hasOwnProperty.call(window, 'GM_EVENTS')).toBe(false);
+    expect(Object.hasOwn(window, 'GM_EVENTS')).toBe(false);
   });
 });
 

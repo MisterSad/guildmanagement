@@ -96,7 +96,6 @@ export function computeArmsRaceStats(participants: ArmsRaceParticipantRow[]): { 
 
 // ── Data access (M4b) ─────────────────────────────────────────────────────────
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 /** Read both stages' `event_status` rows for a guild. */
 export function fetchArmsRaceStatus(db: DbClient, guild: string | null) {

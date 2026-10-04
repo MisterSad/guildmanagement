@@ -7,10 +7,8 @@
  * notifications/reminders.
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { SUPABASE_URL, SUPABASE_KEY } from '../config/constants';
-import { formatPower, escapeHTML } from '../utils/text';
 import { getGuildConfig } from '../config/guild-config';
 import { getActiveGuild } from '../auth/roles';
 import { getClient, ensureAuthSession } from '../api/supabase';

@@ -47,7 +47,7 @@ export async function handleStart(req: Request, url: URL, admin: any, logger: Ed
 }
 
 // ── GET /callback ───────────────────────────────────────────────────────────
-export async function handleCallback(req: Request, url: URL, admin: any, logger: EdgeLogger): Promise<Response> {
+export async function handleCallback(_req: Request, url: URL, admin: any, logger: EdgeLogger): Promise<Response> {
   const state = url.searchParams.get("state") ?? "";
   const code = url.searchParams.get("code") ?? "";
 

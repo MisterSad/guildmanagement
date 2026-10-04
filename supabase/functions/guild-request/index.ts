@@ -27,8 +27,6 @@ import { serveUnlessTest } from "../_shared/serve.ts";
 // already partly spent. That is the same cost player-register accepts, and a
 // shared budget that works beats a private one that does not.
 
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 /**
  * FINDING B3, now closed: this limiter used to be a `Map` in module scope.

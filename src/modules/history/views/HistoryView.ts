@@ -12,7 +12,6 @@
  * This module never assigns `window.GM_HISTORY` (bridge added at cutover).
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import {
   EVENT_META,

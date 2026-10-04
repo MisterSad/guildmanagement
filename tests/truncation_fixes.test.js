@@ -119,7 +119,7 @@ describe('whole-history reads', () => {
   });
 
   it('member-portal aggregates guild session stats in SQL', () => {
-    const src = edgeSource('member-portal');
+    const _src = edgeSource('member-portal');
     const block = edgeFunctionBody('member-portal', 'getHistory');
     expect(block).toContain('admin.rpc("gm_player_session_guild_stats", { p_guild: member.guild, p_pseudo: member.pseudo })');
     expect(block).not.toContain('allGuildParticipants');

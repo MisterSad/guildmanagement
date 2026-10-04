@@ -4,6 +4,7 @@
 // unification.
 
 import { describe, it, expect } from 'vitest';
+import { squash } from './helpers/source-text.js';
 import fs from 'fs';
 import path from 'path';
 
@@ -19,7 +20,7 @@ describe('Nav reorganization: footer section and dead code cleanup', () => {
 
   it('renderSidebar renders footer-section items as a lightweight link near the legal footer', () => {
     expect(shellJs).toContain("const footerItems = visible.filter((i) => i.section === 'footer');");
-    expect(shellJs).toContain('footerItems.map((item) =>');
+    expect(squash(shellJs)).toContain(squash('footerItems.map((item) =>'));
   });
 });
 

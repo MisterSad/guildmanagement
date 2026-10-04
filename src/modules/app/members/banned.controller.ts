@@ -6,7 +6,6 @@
  * deleteBannedPlayer. Strict escaping via esc().
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { t, esc, byId } from '../admin/utils';
 import {

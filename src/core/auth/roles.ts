@@ -61,7 +61,7 @@ export function roleFromStorage(): AccountRole {
       if (getAppState().currentGuildRestriction) return 'guild_admin';
     }
     return role;
-  } catch (e) {
+  } catch {
     return 'member';
   }
 }
@@ -241,7 +241,7 @@ export function detectClientEnvironment(ua?: string): ClientEnvironment {
   if (/iPhone|iPad|iPod/i.test(userAgent)) os = 'iOS';
   else if (/Macintosh|Mac\s+OS\s+X/i.test(userAgent)) os = 'macOS';
   else if (/Android/i.test(userAgent)) {
-    const m = userAgent.match(/Android\s+([\d\.]+)/i);
+    const m = userAgent.match(/Android\s+([\d.]+)/i);
     os = 'Android' + (m ? ' ' + m[1] : '');
   } else if (/Windows/i.test(userAgent)) {
     if (/Windows NT 10.0/i.test(userAgent)) os = 'Windows 10/11';
@@ -251,20 +251,20 @@ export function detectClientEnvironment(ua?: string): ClientEnvironment {
   } else if (/Linux/i.test(userAgent)) os = 'Linux';
 
   let browser = 'Unknown Browser';
-  if (/Edg\/([\d\.]+)/i.test(userAgent)) {
-    const m = userAgent.match(/Edg\/([\d\.]+)/i);
+  if (/Edg\/([\d.]+)/i.test(userAgent)) {
+    const m = userAgent.match(/Edg\/([\d.]+)/i);
     browser = 'Edge' + (m ? ' ' + m[1].split('.')[0] : '');
-  } else if (/Chrome\/([\d\.]+)/i.test(userAgent) && !/Chromium|OPR/i.test(userAgent)) {
-    const m = userAgent.match(/Chrome\/([\d\.]+)/i);
+  } else if (/Chrome\/([\d.]+)/i.test(userAgent) && !/Chromium|OPR/i.test(userAgent)) {
+    const m = userAgent.match(/Chrome\/([\d.]+)/i);
     browser = 'Chrome' + (m ? ' ' + m[1].split('.')[0] : '');
-  } else if (/Safari\/([\d\.]+)/i.test(userAgent) && !/Chrome|Chromium|Android/i.test(userAgent)) {
-    const m = userAgent.match(/Version\/([\d\.]+)/i);
+  } else if (/Safari\/([\d.]+)/i.test(userAgent) && !/Chrome|Chromium|Android/i.test(userAgent)) {
+    const m = userAgent.match(/Version\/([\d.]+)/i);
     browser = 'Safari' + (m ? ' ' + m[1].split('.')[0] : '');
-  } else if (/Firefox\/([\d\.]+)/i.test(userAgent)) {
-    const m = userAgent.match(/Firefox\/([\d\.]+)/i);
+  } else if (/Firefox\/([\d.]+)/i.test(userAgent)) {
+    const m = userAgent.match(/Firefox\/([\d.]+)/i);
     browser = 'Firefox' + (m ? ' ' + m[1].split('.')[0] : '');
-  } else if (/OPR\/([\d\.]+)/i.test(userAgent)) {
-    const m = userAgent.match(/OPR\/([\d\.]+)/i);
+  } else if (/OPR\/([\d.]+)/i.test(userAgent)) {
+    const m = userAgent.match(/OPR\/([\d.]+)/i);
     browser = 'Opera' + (m ? ' ' + m[1].split('.')[0] : '');
   }
 

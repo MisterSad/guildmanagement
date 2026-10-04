@@ -43,7 +43,7 @@ export const AUDIT_SERVICE = "discord-profile-verification";
 export const ROSTER_SCAN_CAP = 5000;
 
 export function normalizeTag(raw: string | null | undefined): string {
-  return (raw || "").replace(/[\[\]]/g, "").trim().toUpperCase();
+  return (raw || "").replace(/[[\]]/g, "").trim().toUpperCase();
 }
 
 /**

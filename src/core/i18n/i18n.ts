@@ -13,7 +13,7 @@
 import { EN } from './i18n.dictionary';
 
 const TRANSLATIONS: Record<string, Record<string, string>> = { en: EN };
-let currentLang = 'en';
+const currentLang = 'en';
 
 /** Exact translation, or the raw key when unknown. */
 export function t(key: string, replacements?: Record<string, string | number>): string {

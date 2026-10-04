@@ -4,6 +4,7 @@
 // could not collapse on phones.
 
 import { describe, it, expect } from 'vitest';
+import { squash } from './helpers/source-text.js';
 import fs from 'fs';
 import path from 'path';
 
@@ -18,8 +19,8 @@ describe('Mobile UX regression guards (v128.0)', () => {
     expect(portal).toContain('data-portal-more');
     expect(portal).toContain('data-portal-drawer');
     // The nav bar must render exactly the primary set + More (not navItems wholesale)
-    expect(portal).toMatch(/primaryNavIds\.map/);
-    expect(portal).toMatch(/drawerNavIds\.map/);
+    expect(squash(portal)).toMatch(/primaryNavIds\.map/);
+    expect(squash(portal)).toMatch(/drawerNavIds\.map/);
   });
 
   it('portal content clears the bottom nav on mobile (padding includes nav height + safe area)', () => {

@@ -48,7 +48,6 @@ function makeFakeAdmin({ tableResponses = {}, rpcResponses = {} } = {}) {
       delete() { if (!state.op) state.op = 'delete'; return chain; },
       eq() { return chain; },
       neq() { return chain; },
-      in() { return chain; },
       limit() { return chain; },
       in() { return chain; },
       maybeSingle() { state.single = true; return chain; },

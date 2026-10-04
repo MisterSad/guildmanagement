@@ -7,7 +7,6 @@
  * reads a member the app installed on `window`.
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { getDomRefs, getDomRef } from './dom-refs';
 import { getVerifiedRole } from '../../core/auth/roles';

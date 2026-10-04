@@ -7,7 +7,6 @@
  * escaped via esc().
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { shadowfrontViewLazy } from '../lazy-views';
 import { esc, byId } from '../admin/utils';

@@ -82,7 +82,7 @@ export async function parseFunctionsInvokeResult(result: any): Promise<any> {
     try {
       const body = await ctx.clone().json();
       if (body && typeof body === 'object') return body;
-    } catch (e) { /* not JSON, or already consumed — fall through */ }
+    } catch { /* not JSON, or already consumed — fall through */ }
   }
   return { ok: false, error: (result && result.error && result.error.message) || 'request_failed' };
 }
@@ -258,7 +258,7 @@ export async function sessionInfo(): Promise<SessionInfo | null> {
     const verified: SessionInfo = { role: normalizeRole(am.app_role), accountId: am.account_id || null };
     notifySessionVerified(verified);
     return verified;
-  } catch (e) {
+  } catch {
     notifySessionVerified(null);
     return null;
   }

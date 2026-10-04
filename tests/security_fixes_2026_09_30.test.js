@@ -10,6 +10,7 @@
  *   3. A Members OCR scan could delete the R5 leader, history and all.
  */
 import { describe, it, expect } from 'vitest';
+import { squash } from './helpers/source-text.js';
 import fs from 'fs';
 import path from 'path';
 import { transferActionFor } from '../src/modules/app/members/members.store';
@@ -86,7 +87,7 @@ describe('2. Migration Hub AI summary: checked on the data actually read', () =>
 
   const fn = read('supabase/functions/migration-summary/index.ts');
   it("checks a page against the page's own scope, not the request's", () => {
-    expect(fn).toMatch(/scope: page\.scope, guildId: page\.guild_id \?\? null, serverNumber: page\.server_number \?\? null/);
+    expect(squash(fn)).toMatch(/scope: page\.scope, guildId: page\.guild_id \?\? null, serverNumber: page\.server_number \?\? null/);
   });
   it('rate-limits per account, and never echoes the provider error', () => {
     expect(fn).toContain('`migration-summary:${caller.accountId}`');
@@ -117,7 +118,7 @@ describe('3. the R5 leader is never removed by accident', () => {
 
   it('the commit, the single delete and the ban all refuse an R5 before any request', () => {
     expect(read('src/modules/app/ocr/ocr.controller.ts')).toContain("if (p && !r5Pseudos.has(p.toLowerCase())) checkedRemovalPseudos.push(p);");
-    expect(read('src/modules/app/members/members.controller.ts')).toMatch(/if \(target && target\.role === 'R5'\) \{ showToast\(R5_DELETE_MESSAGE/);
+    expect(squash(read('src/modules/app/members/members.controller.ts'))).toMatch(/if \(target && target\.role === 'R5'\) \{ showToast\(R5_DELETE_MESSAGE/);
     expect(read('src/modules/app/members/banned.controller.ts')).toContain("m.uid === uidVal && m.role === 'R5'");
   });
 

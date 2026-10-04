@@ -18,7 +18,6 @@
  *   - This module never assigns any `window.GM_*` variable.
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { adoptDialog } from '../../../components/ui/Dialog';
 import { armsRaceViewLazy, shadowfrontViewLazy, overviewViewLazy } from '../../app/lazy-views';
 import {
@@ -104,7 +103,6 @@ function matchMediaOrStub(query: string): any {
   return { matches: false, addEventListener: () => undefined, removeEventListener: () => undefined };
 }
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 /*
  * PHASE 7. A `lazyModules` registry lived here, resolving three sibling views

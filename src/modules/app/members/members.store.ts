@@ -6,7 +6,6 @@
  * controller, renderer and banned modules.
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 export interface GuildMember {
   pseudo: string;
@@ -72,7 +71,7 @@ let maxOverallPower = 0;
 function recomputeMaxPower(): void {
   let mx = 0;
   for (const m of guildMembers) {
-    const p = parseInt(String(m.overall_power)) || 0;
+    const p = parseInt(String(m.overall_power), 10) || 0;
     if (p > mx) mx = p;
   }
   maxOverallPower = mx;

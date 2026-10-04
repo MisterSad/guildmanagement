@@ -12,20 +12,21 @@
 
 ## 1. High-Level System Topology
 
-**FGF Guild Management Tool** is a serverless, multi-tenant SaaS tactical command and analytics platform built for competitive guilds in *Foundation Galactic Frontier*. The live production system is a single TypeScript/ESM frontend (`/src/main.ts`), backed by Supabase PostgreSQL 17 with Row Level Security (RLS) and Deno TypeScript Edge Functions. Phase 7 replaced most of the `window.GM_*` bridge with typed imports; what remains of it, and why, is in PART 2. The former root monolith `app.js` was removed in the Strangler final cutover. The project root now holds no application script at all — only tooling configs (`playwright.config.js`, `vitest.config.js`) — and `src/sw/service-worker.ts` is now a self-destructing tombstone — the PWA was removed in Phase 2 — still compiled to the root-scoped `dist/sw.js` by esbuild in `scripts/build.js` because that is the only way an already-installed worker can be retired. See §6.
+**FGF Guild Management Tool** is a serverless, multi-tenant SaaS tactical command and analytics platform built for competitive guilds in *Foundation Galactic Frontier*. The live production system is a single TypeScript/ESM frontend (`/src/main.ts`), backed by Supabase PostgreSQL 17 with Row Level Security (RLS) and Deno TypeScript Edge Functions. Modules call each other by typed import; the `window.GM_*` bridge is gone (M4c) and the only global left is the frozen `window.GM_E2E` the e2e suite drives (PART 2). The former root monolith `app.js` was removed in the Strangler final cutover. The project root now holds no application script at all — only tooling configs (`playwright.config.js`, `vitest.config.js`) — and `src/sw/service-worker.ts` is now a self-destructing tombstone — the PWA was removed in Phase 2 — still compiled to the root-scoped `dist/sw.js` by esbuild in `scripts/build.js` because that is the only way an already-installed worker can be retired. See §6.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────────┐
 │                                     CLIENT LAYER (Browser)                              │
 │  ┌───────────────────────────────────────────────────────────────────────────────────┐  │
 │  │ TypeScript / ESM Frontend (`index.html` + `/src/main.ts` module)              │  │
-│  │ ├─ Core Utilities & Legacy Bridge: `/src/core/gm-bridge.ts` (window.GM)        │  │
-│  │ ├─ Admin Command Center: `/src/modules/app/admin/*` (accounts, requests,       │  │
-│  │ │   guilds, migration groups), EventsView/StatsView (`/src`)                   │  │
-│  │ ├─ Player Self-Service Portal: PortalView (`/src`)                             │  │
+│  │ ├─ Entry chunk: `main.ts` + `src/core/*` (client, state, i18n, auth, dom)      │  │
+│  │ ├─ Tab views: one lazy chunk each (`/src/modules/app/lazy-views.ts`)           │  │
+│  │ ├─ Admin chunk (shell, router, admin controllers, OCR), reached only via       │  │
+│  │ │   `loadAdmin()` in `/src/modules/app/admin-loader.ts`                        │  │
+│  │ ├─ Player Self-Service Portal: PortalView (`/src/modules/portal/`)             │  │
 │  │ ├─ Roster OCR (screenshots or video) + Rank Detection:                         │  │
 │  │ │   `/src/modules/app/ocr/*` + `/src/modules/ocr/ocr.service.ts`              │  │
-│  │ ├─ Identity: `/src/core/auth/webauthn.service.ts` (Passkeys client)           │  │
+│  │ ├─ Identity: Discord sign-in + ID/password (`/src/core/auth/session.ts`)      │  │
 │  │ └─ Design System: Material Design 3.0 Tokens (`tokens.css`) + Apple Cozy Neutral│  │
 │  └───────────────────────────────────────────────────────────────────────────────────┘  │
 └──────────────────────────────────────────┬──────────────────────────────────────────────┘
@@ -37,6 +38,7 @@
 │  │ Supabase Deno TypeScript Edge Functions (`supabase/functions/`) — 14 live         │  │
 │  │ ├─ Public (`verify_jwt = false`):                                                 │  │
 │  │ │   ├─ `auth-login`: Bcrypt dual-read, lockout, IP rate limit, JWT issuer         │  │
+│  │ │   ├─ `auth-discord`: Discord OAuth sign-in (PKCE state row, one-time ticket)    │  │
 │  │ │   ├─ `player-register`: Self-service member registration                        │  │
 │  │ │   ├─ `guild-request`: Public guild self-service request submission (reviewed    │  │
 │  │ │   │   manually by a super_admin; provisions nothing on its own)                 │  │
@@ -49,7 +51,7 @@
 │  │ │       ├─ `member-portal`: Cryptographically resolved player portal backend      │  │
 │  │ │       ├─ `admin-accounts`: Centralized admin role provisioner (`admin-authz.ts`)│  │
 │  │ │       ├─ `ocr-guild-members`: Gemini vision multimodal OCR — screenshots OR     │  │
-│  │ │       │   a screen-recording video (client extracts frames first); Members      │  │
+│  │ │       │   a screen-recording video read from the `ocr-videos` bucket; Members   │  │
 │  │ │       │   scans also detect R1-R4 rank from the roster's section headers        │  │
 │  │ │       ├─ `discord-webhook-proxy`: Whitelisted Discord webhook proxy (SSRF safe) │  │
 │  │ │       ├─ `guild-data-export`: Guild data export (JWT-gated)                     │  │
@@ -65,12 +67,12 @@
 │                                   DATABASE LAYER (Postgres 17)                          │
 │  ┌───────────────────────────────────────────────────────────────────────────────────┐  │
 │  │ Supabase Postgres 17 (Multi-Tenant Schema with Zero-Trust Row Level Security)       │  │
-│  │ ├─ 41 persistent tables, all RLS + FORCE RLS, 86 policies                         │  │
+│  │ ├─ 39 persistent tables, all RLS + FORCE RLS, 86 policies (2026-10-04)           │  │
 │  │ ├─ Security Definer Access Helpers with `SET search_path TO ''`                   │  │
 │  │ ├─ Deterministic Event Session Generator: `public.gm_event_session_id()`           │  │
 │  │ ├─ Distributed Audit Ledger: `public.system_audit_logs` (service_role only)       │  │
 │  │ ├─ Vault-Backed Secrets: `vault.decrypted_secrets`                                │  │
-│  │ └─ Automated pg_cron Jobs: Reminders, Demo Reset, Stale Lock Cleanup              │  │
+│  │ └─ 12 pg_cron jobs (reminders, demo reset, retention purges — see §4.3)           │  │
 │  └───────────────────────────────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -111,7 +113,7 @@ Authentication operates on an **accounts-table-only** role resolution model. `us
 #### The Four Access Roles:
 1. **`super_admin`**: Single global master account (`HawkEye`). Bypasses tenant RLS qualifiers. Accesses full Command Center and `#tab-tickets`.
 2. **`server_admin`**: Reads and writes all tenant guilds sharing their assigned `server_number`. Uses server-scoped Guild Switcher.
-3. **`guild_admin`**: Scoped strictly to own guild tenant (`accounts.guild`). Write operations still pass through `public.is_subscription_active()`, which has been a literal `SELECT true` since `20260824000000_free_app_and_donations.sql` — the app is free and the gate is inert. It survives only because ~44 RLS clauses call it; removing it means rewriting all of them, which is a lot of its own (deferred, Phase 4.14).
+3. **`guild_admin`**: Scoped strictly to own guild tenant (`accounts.guild`). Write operations still pass through `public.is_subscription_active()`, which has been a literal `SELECT true` since `20260824000000_free_app_and_donations.sql` — the app is free and the gate is inert. It survives only because 45 RLS policies call it (counted on production 2026-10-04 in `pg_policies`); removing it means rewriting all of them, which is a lot of its own (deferred, Phase 4.14).
 4. **`member`**: **Zero direct database table access**. Communicates exclusively through the `member-portal` Edge Function.
 
 > These are the **only** values `accounts.role` may hold — the DB enforces it via the `accounts_role_check` CHECK constraint (column default `member`). The legacy virtual/in-game ranks (`R5`, `R4`) and the historical `admin` alias were **retired on 2026-09-13** and are rejected by the constraint; no helper maps them to elevated access anymore.
@@ -131,7 +133,7 @@ Passkeys were removed entirely (owner decision). Sign-in is Discord, with ID + p
 
 ### 3. Member Portal Server-Side Identity Pipeline
 
-The Player Portal (`portal.js`) never connects to Postgres directly. All actions pass through `POST /functions/v1/member-portal` using the member's JWT:
+The Player Portal (`src/modules/portal/`: `PortalView` + `portal.service.ts`) never reads tenant tables directly — a `member` gets `false` from every RLS read helper. All actions pass through `POST /functions/v1/member-portal` using the member's JWT:
 
 ```
 [ Member Portal Request + JWT ]
@@ -139,23 +141,25 @@ The Player Portal (`portal.js`) never connects to Postgres directly. All actions
             ▼
 [ POST /functions/v1/member-portal ]
             │
-            ├─► 1. Cryptographic JWT Verification (`auth.getUser(jwt)`)
-            ├─► 2. Resolve Account Identity:
-            │      SELECT id, role, guild, status, uid FROM public.accounts WHERE auth_user_id = user.id
-            ├─► 3. Resolve Player UID:
-            │      `gm_get_shadow(accountId)` -> `accounts.uid` -> fallback `accountId`
-            └─► 4. Execute Scoped Action (`get-personal-kpis`, `get-active-sessions`, `submit-scores`, `declare-absence`)
+            ├─► 0. Platform JWT gate (`verify_jwt = true`) + IP rate limit (60 req / 5 min)
+            ├─► 1. `resolveCaller()` (`_shared/auth.ts`): `auth.getUser(jwt)`, then the
+            │      `accounts` row by `auth_user_id`; refused unless `status = 'active'`
+            │      and the session epoch is current (C1)
+            ├─► 2. Player UID: `accounts.uid`, or the account id when no player was claimed
+            └─► 3. Execute Scoped Action (`get-active-sessions`, `submit-scores`, `update-power`,
+                   `get-history`, `set-absence`, `submit-transfer-request`, ... — the
+                   `ACTIONS` table in `member-portal/index.ts`)
 ```
 
 ---
 
 ### 4. Database Topology & Access Helpers
 
-#### 4.1 Database Tables (**41 persistent tables**, counted live 2026-10-03; all have RLS *and* FORCE RLS, across 86 policies):
-- **Core Tenant / Roster** (19): `guilds` (**35 rows**, 1 is `DEMO`), `guild_members` (**~3,797 rows**), `event_status`, `event_participants` (**~55,943 rows** — the permanent attendance ledger), `war_opponents`, `war_sessions`, `event_daily_scores`, `event_chest_tiers` (SvS/GvG granular war — added 2026-09-13, see §4.4), `shadowfront_squads` (weekly squad *assignments* — does not reliably retain history once a later session overwrites it, unlike `event_participants`; see the Shadowfront attendance-rate note below), `shadowfront_signups`, `weekly_scores`, `sanctions`, `banned_players`, `guild_config`, `guild_transfers`, `player_name_history`, `player_metrics_history`, `server_migration_groups`, `server_migration_group_servers`. `diplomatic_treaties` was dropped in Phase 3 (0 rows, no UI).
+#### 4.1 Database Tables (**39 persistent tables**, counted live 2026-10-04; all have RLS *and* FORCE RLS, across 86 policies):
+- **Core Tenant / Roster** (19): `guilds` (**36 rows**, 1 is `DEMO`), `guild_members` (**~3,867 rows**), `event_status`, `event_participants` (**~56,063 rows** — the permanent attendance ledger), `war_opponents`, `war_sessions`, `event_daily_scores`, `event_chest_tiers` (SvS/GvG granular war — added 2026-09-13, see §4.4), `shadowfront_squads` (weekly squad *assignments* — does not reliably retain history once a later session overwrites it, unlike `event_participants`; see the Shadowfront attendance-rate note below), `shadowfront_signups`, `weekly_scores`, `sanctions`, `banned_players`, `guild_config`, `guild_transfers`, `player_name_history`, `player_metrics_history`, `server_migration_groups`, `server_migration_group_servers`. `diplomatic_treaties` was dropped in Phase 3 (0 rows, no UI).
 
-> **These figures were counted against production on 2026-10-03, not estimated.** The previous set (13 / ~1,540 / ~33k) understated the live system by roughly a factor of two and had been carried forward unchecked. Re-measure rather than adjust: `SELECT count(*)` on the three tables.
-- **Accounts & Identity** (8): `accounts` (custom bcrypt credential store, source of truth — see §2), `login_throttle` (IP rate limit for `auth-login`), `account_backup_codes` (super_admin recovery codes, Discord flow), `discord_account_links`, `discord_link_codes`, `discord_verification_throttle` (Discord account linking + verification rate limiting, added 2026-09).
+> **These figures were counted against production on 2026-10-04, not estimated.** The previous set (13 / ~1,540 / ~33k) understated the live system by roughly a factor of two and had been carried forward unchecked. Re-measure rather than adjust: `SELECT count(*)` on the three tables.
+- **Accounts & Identity** (6): `accounts` (custom bcrypt credential store, source of truth — see §2), `login_throttle` (IP rate limit for `auth-login`), `account_backup_codes` (super_admin recovery codes, Discord flow), `discord_account_links`, `discord_link_codes`, `discord_verification_throttle` (Discord account linking + verification rate limiting, added 2026-09). `account_passkeys` and `webauthn_challenges` were dropped with passkeys (`20261003165501_remove_passkeys`).
 - **Self-Service Requests** (1): `guild_creation_requests` (public `guild-request` submissions, reviewed by `super_admin`).
 - **Player Portal** (1): `player_absences`. `player_push_prefs` was dropped with Web Push in Phase 2.
 - **Notifications** (0): none. `push_subscriptions` was dropped in Phase 2 — Discord is the only notification channel.
@@ -164,22 +168,36 @@ The Player Portal (`portal.js`) never connects to Postgres directly. All actions
 - **Observability** (1): `system_audit_logs` (service_role-only INSERT).
 - **Not yet sorted into the groups above** (10, listed so the inventory matches `pg_class`): `guild_tag_history` (one row per guild TAG change, drives the 7-day cooldown — ADR-022), `guild_weekly_snapshots` (ADR-019), `ocr_cache` (ADR-012), `migration_wiki_pages`, `migration_wiki_comments`, `account_link_codes`, `discord_auth_tickets`, `discord_auth_throttle`, `discord_oauth_states`, `discord_rally_responses`.
 
-> **Count note**: count tables from `pg_class`, never from the number of `CREATE TABLE` statements in the migration chain — the chain also contains the drops, so the two diverge every time something is removed, which is how this document came to claim 42. As of 2026-10-03 there are **41**, every one with RLS and FORCE RLS enabled. Phases 1–3 dropped `gm_payments`, `diplomatic_treaties`, the seven `e2ee_*` tables and the two Web Push tables; `tmp_demo_roster` is a session-scoped `TEMP` staging table and never appears in the count.
+> **Count note**: count tables from `pg_class`, never from the number of `CREATE TABLE` statements in the migration chain — the chain also contains the drops, so the two diverge every time something is removed, which is how this document came to claim 42. As of 2026-10-04 there are **39**, every one with RLS and FORCE RLS enabled (`pg_class`, `relkind = 'r'`, schema `public`). Phases 1–3 dropped `gm_payments`, `diplomatic_treaties`, the seven `e2ee_*` tables and the two Web Push tables, and the passkey removal of 2026-10-03 dropped `account_passkeys` and `webauthn_challenges`; `tmp_demo_roster` is a session-scoped `TEMP` staging table and never appears in the count.
 
-> ⚠️ **Note on `shadowfront_squads` completeness**: a long-tenured player can show more attended Shadowfront weeks (`event_participants`) than surviving squad-assignment rows (`shadowfront_squads`), because the latter doesn't reliably retain every past week once a later session overwrites it. The Stats attendance-rate calculation (`gm-utils.js:computeShadowfrontAttendanceRate`) floors its denominator at the attended count to stay mathematically capped at 100%, but the underlying gap in `shadowfront_squads` itself is unresolved — any *new* feature reading that table should not assume it is a complete historical ledger.
+> ⚠️ **Note on `shadowfront_squads` completeness**: a long-tenured player can show more attended Shadowfront weeks (`event_participants`) than surviving squad-assignment rows (`shadowfront_squads`), because the latter doesn't reliably retain every past week once a later session overwrites it. The Stats attendance-rate calculation (`src/core/config/events.ts:computeShadowfrontAttendanceRate`) floors its denominator at the attended count to stay mathematically capped at 100%, but the underlying gap in `shadowfront_squads` itself is unresolved — any *new* feature reading that table should not assume it is a complete historical ledger.
 
 #### 4.2 Centralized SQL Access Helpers (`SECURITY DEFINER`, `STABLE`, `SET search_path TO ''`):
 - `public.gm_can_read_guild_data(p_guild text)` — Permissive SELECT filter for tenant tables.
 - `public.gm_can_read_guilds()` — Permissive SELECT filter for `guilds`.
 - `public.gm_can_read_account(p_account_id text)` — Permissive SELECT filter for `accounts`.
 - `public.check_user_guild_write_access(p_guild text)` — INSERT/UPDATE/DELETE authorization check.
-- `public.is_subscription_active(p_guild text)` — SaaS subscription write gate.
+- `public.is_subscription_active(p_guild text)` — inert: a literal `SELECT true` since the app became free (ADR-015), still referenced by 45 write policies (see §2).
 - `public.gm_can_admin_see_absences(p_guild text)` — Absence visibility qualifier.
 
-#### 4.3 Active Cron Jobs:
-1. `fgf-event-reminders`: Runs every minute (`* * * * *`), invokes `SELECT public.gm_invoke_event_reminders();` using Vault-stored secret.
-2. `daily-demo-tenant-reset`: Runs daily at 03:00 UTC (`0 3 * * *`), executes `SELECT public.gm_reset_demo_tenant_data();`.
-3. `daily-cleanup-stale-locks`: Runs daily at 04:00 UTC (`0 4 * * *`), executes `SELECT public.gm_cleanup_stale_reminder_locks();`.
+#### 4.3 Active Cron Jobs
+
+Twelve jobs, read from `cron.job` on production on 2026-10-04 (`SELECT jobname, schedule FROM cron.job`), and identical to what the migrations schedule and never unschedule. Re-measure there rather than trusting this list; never select `command`, which can carry secrets.
+
+| Job | Schedule (UTC) | Does |
+|---|---|---|
+| `fgf-event-reminders` | `*/5 * * * *` | `gm_invoke_event_reminders()` → `event-reminders` (Vault cron secret) |
+| `daily-demo-tenant-reset` | `0 3 * * *` | `gm_reset_demo_tenant_data()` rebuilds the `DEMO` tenant |
+| `guild-requests-expire` | `0 3 * * *` | pending guild requests older than 14 days → `expired` |
+| `weekly-stats-snapshot` | `20 3 * * 1` | `gm_stats_snapshot_run()` (ADR-019) |
+| `daily-expire-empty-guilds` | `30 3 * * *` | `gm_expire_empty_guilds()` |
+| `daily-cleanup-stale-locks` | `0 4 * * *` | `gm_cleanup_stale_reminder_locks()` |
+| `daily-data-retention` | `30 4 * * *` | `gm_apply_data_retention()` (ADR-018) |
+| `purge-rally-responses` | `40 4 * * *` | `discord_rally_responses` older than 7 days |
+| `daily-cron-history-purge` | `50 4 * * *` | `gm_purge_cron_history()` |
+| `login-throttle-retention` | `17 * * * *` | `login_throttle` rows older than 24 hours |
+| `hourly-discord-ephemera-purge` | `23 * * * *` | `gm_purge_discord_ephemera()` |
+| `discord-auth-throttle-retention` | `41 * * * *` | `discord_auth_throttle` rows older than 24 hours |
 
 #### 4.4 SvS / GvG Granular War Management (added 2026-09-13, migration `20260914090000_war_daily_scores_and_chest_tiers.sql`)
 
@@ -198,65 +216,67 @@ Tracks SvS and GvG at per-day granularity — scores (Day 1..6), parametrizable 
 
 **RPCs** (all `SECURITY DEFINER SET search_path TO ''`, authenticated only): `gm_get_chest_tiers`, `gm_save_chest_tiers` (bounded/ordered validation + audit), `gm_upsert_war_session` (resolve-or-create opponent, upsert session, freeze grid on first create), `gm_get_war_session`, `gm_list_war_sessions`, `gm_upsert_daily_scores` (batch ≤ 200, auto-chests from snapshot), `gm_get_daily_scores`, `gm_delete_war_session`, `gm_list_opponent_candidates` (pick-list: own catalog + distinct `guilds.server_number` for SvS / registered `guilds` for GvG).
 
-**Retro-compatibility guarantee**: no destructive `ALTER`, no backfill. For sessions that opt into the granular grid, `gm_upsert_daily_scores` **derives** `event_participants.score_prep` (sum Day 1-5) and `score_pvp` (Day 6) and sets `score = NULL` (avoiding double-count in `score+score_prep+score_pvp` totals) in the same transaction; `participated = 1` when any day is non-zero. Legacy sessions keep their aggregate columns and the History modal keeps its dual-score layout because `gm_list_event_sessions` now exposes a `granular boolean` (EXISTS on `war_sessions`) consumed by both EventsView and HistoryView to pick the day-grid rendering. Admin editing of a granular session in History routes through the war RPCs, and the legacy SvS/GvG OCR aggregate buttons (`svs_prep`/`svs_pvp`/`gvg_prep`/`gvg_pvp`) are disabled by `syncWarOcrGate` while a granular session is active.
+**Retro-compatibility guarantee**: no destructive `ALTER`, no backfill. For sessions that opt into the granular grid, `gm_upsert_daily_scores` **derives** `event_participants.score_prep` (sum Day 1-5) and `score_pvp` (Day 6) and sets `score = NULL` (avoiding double-count in `score+score_prep+score_pvp` totals) in the same transaction; `participated = 1` when any day is non-zero. Legacy sessions keep their aggregate columns and the History modal keeps its dual-score layout because `gm_list_event_sessions` now exposes a `granular boolean` (EXISTS on `war_sessions`) consumed by both EventsView and HistoryView to pick the day-grid rendering. Admin editing of a granular session in History routes through the war RPCs. The SvS/GvG OCR buttons stay enabled: `syncWarOcrGate` was removed with the Day 0 aggregate (`20260915100000_war_aggregate_day0.sql`), and the scans write through `gm_upsert_daily_scores` (`svs_prep`/`gvg_prep` → day 0, `svs_day`/`gvg_day` → the chosen day, `svs_pvp`/`gvg_pvp` → day 6).
 
 ---
 
 ### 5. AI Roster OCR Pipeline
 
-```
-[ Guild Admin Uploads Screenshots OR a Screen-Recording Video ]
-                       │
-                       ├─ Video path (client-side, before any upload):
-                       │    `src/modules/app/ocr/ocr.controller.ts:extractFramesFromVideo`
-                       │    samples the video
-                       │    continuously but KEEPS a frame only where the visible
-                       │    content changed since the last kept frame (12x12
-                       │    luminance-grid diff) — avoids wasting the batch on
-                       │    near-duplicates during a slow scroll, avoids missing
-                       │    rows during a fast one. Kept frames are downsampled
-                       │    to <=25 (`GM.ocrDownsampleEvenly`, spread evenly
-                       │    across the whole recording, not just its start) and
-                       │    folded in as if they were additional screenshots —
-                       │    everything downstream is unchanged.
-                       ▼
-          [ POST /functions/v1/ocr-guild-members ] (chunks of <=4 images/call)
-                       │
-                       ├─► Multimodal Gemini Vision Extraction
-                       │    Members scans ALSO detect R4/R3/R2/R1 rank from the
-                       │    roster's section headers ("Executive Manager" / "Rank
-                       │    3/2/1 Members"). A `rankHint`/`endingRank` round trip
-                       │    carries the active rank section across sequential
-                       │    batches, since a header can scroll out of view
-                       │    partway through a recording.
-                       └─► Returns Parsed Roster JSON: [{ pseudo, overall_power, uid?, rank? }]
-                               │
-                               ▼
-        [ Client-Side Categorization: `gm-utils.js:categorizeOcrDiff` ]
-                       │
-         ┌─────────────┼─────────────┐
-         ▼             ▼             ▼
-  [ Existing ]      [ New ]      [ Removed ]
-  (Power + Rank    (New Recruits, (Missing from OCR)
-   Updates)         Rank if detected)
-                       │             │
-                       ├─ Enter UID  ├─ Proposed Remove by Default
-                       │  (No TEMP)  └─ Per-Row Keep/Remove Toggle
-                       ├─ Rank is an editable dropdown (defaults to detected
-                       │  value; R5 is never assignable here — same
-                       │  `isRoleAllowedForBulk` gate the manual bulk rank
-                       │  buttons use)
-                       ▼
-          [ Live Counter: Roster N → M ]
-                       │
-                       ▼
-          [ Commit Roster Changes ]
-                       │
-                       ├─ IF removals present: Show Confirmation Dialog listing every deleted pseudo
-                       └─ Upsert/Delete records (incl. `role` when a rank was assigned) with transactional integrity
-```
+Two input paths into one Edge Function, `ocr-guild-members` (`verify_jwt = true`). The browser no longer cuts videos into frames: `extractFramesFromVideo` is gone (ADR-021 is referenced in the code but not yet written in `docs/adr/`).
 
----
+```
+[ Guild Admin opens the OCR modal (admin chunk) and drops files ]
+          │
+          ├─ Screenshots: `src/modules/app/ocr/ocr.controller.ts`
+          │    chunks of 4 images per call, base64 in the request body
+          │      → POST /functions/v1/ocr-guild-members { images, metricType, ... }
+          │      SHA-256 of images + metadata looked up in `public.ocr_cache` (ADR-012)
+          │
+          └─ Screen recording (MP4 / MOV / WebM): `callGeminiOcrVideoApi`
+               1. Client refuses > 64 MB or > 300 s (duration read from metadata)
+               2. Upload to the private Storage bucket `ocr-videos` at
+                  `<guild>/<uuid>.<ext>` (`ocr.service.ts:uploadOcrVideo`).
+                  RLS on storage.objects: INSERT/SELECT/DELETE only if
+                  `check_user_guild_write_access(<guild>)` — members cannot upload
+                  (migration `20261001194004_ocr_videos_bucket.sql`, which also
+                  sets the 64 MiB limit and the three MIME types)
+               3. POST /functions/v1/ocr-guild-members { video: { path, mimeType } }
+                  `ocr-guild-members/index.ts:handleVideoScan`:
+                  - per-account budget: 20 video scans / 10 min, fails closed
+                  - downloads the object with a client carrying the CALLER's JWT,
+                    so storage RLS decides which video can be read
+                  - uploads it to the Gemini File API, waits until ACTIVE,
+                    refuses > 300 s as measured by Gemini
+                  - one reading at an fps sized to a 600-frame budget (max 8 fps);
+                    gaps in the leaderboard positions (or the roster counter)
+                    trigger one targeted second pass (`video.ts`)
+                  - finally: deletes the Gemini file, deletes the object, and
+                    removes that guild's staged objects older than 1 hour
+               4. The client also calls `removeOcrVideo` in a `finally`, for a
+                  call that never reached the function
+          │
+          ▼
+  Returns { players: [{ pseudo, overall_power | score, uid?, rank?, position? }],
+            endingRank, coverage }  (coverage = expected / found / missing positions,
+            video path only). Members scans also detect R4/R3/R2/R1 from the
+            roster's section headers; `rankHint`/`endingRank` carry the active
+            rank section across sequential screenshot batches.
+          │
+          ▼
+  [ Client-side diff: `src/modules/ocr/ocr.service.ts:categorizeOcrDiff` ]
+          │
+   Existing (power + rank updates) · New (recruits; UID required, rank if
+   detected) · Removed (missing from the scan; proposed removal, per-row
+   Keep/Remove; a partial scan keeps everyone by default). Rank is an editable
+   dropdown; R5 is never assignable here (`isRoleAllowedForBulk`).
+          │
+          ▼
+  [ Commit ] — confirmation dialog listing every removal, then ONE call:
+    `gm_commit_ocr_roster` via `guildWrite()` (`src/core/api/guild-rpc.ts`).
+    All-or-nothing: one refused row refuses the whole import and names it.
+    Event metrics go through `gm_record_event_attendance` /
+    `gm_upsert_daily_scores` instead.
+```
 
 ### 6. Notifications — Discord only (Web Push and the PWA removed, Phase 2)
 Discord is the **only** notification channel. `event-reminders` dispatches to each guild's own webhooks on its cron tick; there is no second fan-out.
@@ -269,7 +289,7 @@ Web Push and the PWA were removed entirely: `src/modules/push/PushService.ts`, `
   ```
   `0` means the tombstone is not deployed yet. `tests/phase2_pwa_retirement.test.js` enforces the all-or-nothing rule and that `/sw.js` is served revalidating — cache it and the kill switch never arrives.
 - **Offline copy**: `src/core/net/network-status.ts` says changes will **not** be saved. It used to promise "Local changes will sync when online", which was false — there is no write queue and no background sync anywhere in the app, so offline writes are simply lost.
-- **CSP dependency**: the uploaded-file `<video>` blob and any future blob-backed media element depend on `media-src` explicitly including `blob:` in `vercel.json` — `default-src 'self'` does **not** cover it by CSP-spec fallback, and this silently blocks the resource identically on every browser (not a codec/compat issue) if ever dropped. Confirmed live via `document.addEventListener('securitypolicyviolation', ...)` when this shipped without it.
+- **CSP dependency**: the `<video>` element the OCR uses to read a recording's duration from a `blob:` URL, and any future blob-backed media element, depend on `media-src` explicitly including `blob:` in `vercel.json` — `default-src 'self'` does **not** cover it by CSP-spec fallback, and this silently blocks the resource identically on every browser (not a codec/compat issue) if ever dropped. Confirmed live via `document.addEventListener('securitypolicyviolation', ...)` when this shipped without it.
 
 ### 7. Leader Hall — End-to-End Encrypted Messaging (removed 2026-09)
 The Leader Hall feature (1:1 and group Signal-Protocol messaging between guild leadership) has been **removed entirely from the front-end**: `gm-signal-crypto.js`, `gm-leader-hall.js`, `noble-crypto.bundle.js`, the `/src` port and the `#tab-leader-hall` DOM are gone. The server-side `e2ee_*` tables and the `gm_is_leader_caller` RPC have since been dropped too (Phase 3), so nothing of the feature remains in either layer.
@@ -286,21 +306,24 @@ The Leader Hall feature (1:1 and group Signal-Protocol messaging between guild l
 
 ### 9. Production Security & Quality Hardening (September 2026)
 
-- **FORCE ROW LEVEL SECURITY across 100% of public tables** ([ADR-010](./docs/adr/ADR-010-force-row-level-security-all-public-tables.md)): Multi-tenant isolation is enforced even against table owners and superusers via `FORCE ROW LEVEL SECURITY` on all 26 active public tables and any new tables (`ocr_cache`).
+- **FORCE ROW LEVEL SECURITY across 100% of public tables** ([ADR-010](./docs/adr/ADR-010-force-row-level-security-all-public-tables.md)): Multi-tenant isolation is enforced even against table owners and superusers via `FORCE ROW LEVEL SECURITY` on every public table (39 on 2026-10-04, `ocr_cache` included) and on any new one.
 - **Client Error Reporting & Sentry APM** ([ADR-011](./docs/adr/ADR-011-client-error-reporting-and-sentry-apm.md)): `ClientLogger` routes crash telemetry through the rate-limited `public.gm_report_client_error` RPC (`search_path = ''`). Production runtime crashes are captured by `@sentry/browser` with strict PII and token scrubbers.
 - **SHA-256 OCR Deduplication Cache** ([ADR-012](./docs/adr/ADR-012-sha256-ocr-deduplication-cache.md)): Gemini Vision roster analysis computes a canonical SHA-256 fingerprint over image buffers and scan metadata, serving cache hits in <50ms with `cached: true` and persisting entries in `public.ocr_cache` with a 7-day TTL.
-- **WCAG 2.2 Level AA Modal Accessibility** ([ADR-013](./docs/adr/ADR-013-wcag-2-2-aa-dialog-accessibility-and-focus-trap.md)): `Dialog.ts` applies dynamic semantic roles (`alertdialog` for `tone: 'danger'`, `dialog` otherwise), traps keyboard focus bidirectionally, sets `aria-hidden="true"` on `#app` during modal display, and restores focus to `previouslyFocused` on dismissal.
+- **WCAG 2.2 Level AA Modal Accessibility** ([ADR-013](./docs/adr/ADR-013-wcag-2-2-aa-dialog-accessibility-and-focus-trap.md)): every dialog goes through `src/components/ui/Dialog.ts` — `openDialog()` builds one (`showConfirm` included), `adoptDialog()` wraps the 16 hand-built overlays and the OCR modal without changing their markup, and all of them share one stack, so a confirm opened over a modal owns the keyboard. `Dialog.ts` applies dynamic semantic roles (`alertdialog` for `tone: 'danger'`, `dialog` otherwise), traps keyboard focus bidirectionally, sets `aria-hidden="true"` on `#app` during modal display, and restores focus to `previouslyFocused` on dismissal.
 - **Root Scripts Hygiene & Discord Webhook Resilience** ([ADR-014](./docs/adr/ADR-014-root-scripts-hygiene-and-discord-webhook-resilience.md)): `scripts/build.js` strictly excludes test configs (`playwright.config.js`, `vitest.config.js`) from `dist/`, legacy maintenance scripts are archived in `scripts/archive/`, and `discord-webhook-proxy` enforces 30 req/min IP rate limiting and natively propagates Discord HTTP 429 `Retry-After` delays.
 
 ---
 
 ## PART 2 — MODERNIZATION TARGET (`/src` ARCHITECTURE)
 
-`/src` is now the whole codebase. `src/main.ts` is the single `<script type="module">` in `index.html`, the root monolith is gone, and Phase 7 dismantled most of the `window.GM_*` bridge: the router and the views resolve each other by **typed import**, so renaming a loader is a compile error rather than a tab that silently stops loading. Three names survive on `window` deliberately — `GM_APP` and `GM_I` because `core/` must not import `modules/` (the toast implementation `GM_APP.showToast` points at lives in `core/dom/toast.ts`, so importing the app's renderer there would invert the layering), and `GM_COLLAPSED_ROLES` because it is a mirrored state global rather than a method bridge. `tests/gm_bridge_contract.test.js` pins that list so it cannot quietly grow.
-- **App state** (`src/core/state/app-state.ts`): the single write path for cross-cutting state (active tenant, guild list, roster selection). It still mirrors onto `window` for the bridge and for the tests that seed state by assignment, but reads are pure and hydration is absence-aware. The old Pub/Sub `src/core/store/store.ts` was dead — `subscribe()` was never called — and was deleted in Phase 3.
+`/src` is now the whole codebase. `src/main.ts` is the single `<script type="module">` in `index.html`, and modules resolve each other by **typed import**, so renaming a loader is a compile error rather than a tab that silently stops loading. The `window.GM_*` bridge is gone (M4c): `src/core/gm-bridge.ts` is deleted, and `main.ts` installs exactly one global, `window.GM_E2E` — frozen, non-writable, five entry points (`showAdminDashboard`, `openOcrModal`, `loadPortalDashboard`, `openDialog`, `showConfirm`) for the e2e suite, which runs against the real bundle. It grants nothing: every request still goes through RLS with the caller's token. `tests/gm_bridge_contract.test.js` pins it and fails on anything else assigned to `window` in `src/`.
+- **Client** (`src/core/api/supabase.ts`): the guarded Supabase client is set once at boot (`setDbClient(installDbWriteGuard(...))`) and read with `getClient()`.
+- **App state** (`src/core/state/app-state.ts`): the single write path for cross-cutting state (active tenant, guild list, roster selection), written with `patchAppState()`. It is a plain module singleton with no `window` mirror. The old Pub/Sub `src/core/store/store.ts` was dead — `subscribe()` was never called — and was deleted in Phase 3.
+- **Code splitting** (M5): each tab view is its own chunk, loaded on first use through `src/modules/app/lazy-views.ts` (`get()` imports and shows; `peek()` returns the view only if already loaded, so a view never opened is not refreshed). The admin side (shell, router, admin controllers, OCR) is one chunk, `admin-shell.ts`, reached only through `loadAdmin()` in `src/modules/app/admin-loader.ts`; the sign-in screen and the player portal never download it. `scripts/build.js` fails the build if the entry JS exceeds 450 KB, and `tests/code_splitting.test.js` fails on a static import that would fold a lazy module back into the entry chunk.
+- **Dialogs**: `src/components/ui/Dialog.ts` (`openDialog`, `adoptDialog`, `closeDialog`) — see ADR-013 above.
 - **Web Worker Engine** (`src/workers/matchup.worker.ts`): Offloaded combinatorial computation for GvG/SvS dangerosity and draft mercato simulations.
 - **BaseComponent Framework** (`src/components/ui/BaseComponent.ts`): Encapsulated UI component lifecycle with automatic listener cleanup.
-- **i18n**: Fully served by `/src/core/i18n/i18n.ts` (Strangler cutover), bridging the complete dictionary to `window.GM_I18N` and `window.GM.t`.
+- **i18n**: `/src/core/i18n/i18n.ts` + `i18n.dictionary.ts`, imported directly (`t`, `getLang`); nothing is published on `window`.
 - **Incident, resolved 2026-08-31 / feature removed 2026-09**: `svs-matchup.ts`/`gvg-matchup.ts` existed as 50-line stubs (hardcoded fake server/guild IDs, no real table render) that risked silently shadowing the complete legacy `svs-matchup.js`/`gvg-matchup.js` (700+ lines each) the moment `main.ts` started executing in production, since both write into the same DOM containers. The stubs were deleted first, then the whole Settings tab (Draft Mercato / SvS / GvG matchup) was removed entirely, so `svs-matchup.js`, `gvg-matchup.js`, `cross-rank.js` and `#tab-settings` no longer exist.
 
 ### Frontend Resilience & Main-Thread Performance (added 2026-09-13)
@@ -314,4 +337,4 @@ The Leader Hall feature (1:1 and group Signal-Protocol messaging between guild l
   - Max `overall_power` is precomputed in the store (`getMaxOverallPower()`, O(1)) instead of `Math.max(...map())` on every render.
   - Cold tab loads render an `aria-busy` skeleton (`membersSkeletonHtml()`) without clearing cached data on refresh.
 
-> **Operational Invariant**: The Strangler migration is complete — `app.js` and the other legacy root scripts have been removed, and `/src` is now the single source of truth for all runtime behavior. `main.ts` assembles the `window.GM_*` bridge from typed modules; any new feature must live under `/src` and must never re-introduce a root `.js` runtime script or a new `window.GM_*` global (only the existing bridge surface may be extended).
+> **Operational Invariant**: The Strangler migration is complete — `app.js` and the other legacy root scripts have been removed, and `/src` is now the single source of truth for all runtime behavior. Any new feature must live under `/src`, must never re-introduce a root `.js` runtime script, and must add nothing to `window`: `window.GM_E2E` is the only global, and it is closed.

@@ -13,7 +13,6 @@
  * This module never assigns any `window.GM_*` variable (bridge lives in main.ts).
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { renderToast } from '../../../core/dom/toast';
 import { drawScoreTrendChart } from '../../../core/dom/ui';

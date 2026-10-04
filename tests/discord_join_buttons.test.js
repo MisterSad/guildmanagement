@@ -7,6 +7,7 @@
 // is re-validated; and a decided request loses its buttons.
 
 import { describe, it, expect } from 'vitest';
+import { squash } from './helpers/source-text.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { canManageAccount } from '../supabase/functions/_shared/admin-authz.ts';
@@ -60,7 +61,7 @@ describe('the Edge Function decides', () => {
 
   it('runs the shared decision, labelled as coming from Discord', () => {
     expect(handler).toContain('decideRegistration(');
-    expect(handler).toContain('accountId: officer.id, via: "discord"');
+    expect(squash(handler)).toContain(squash('accountId: officer.id, via: "discord"'));
     expect(handler).not.toContain('gm_approve_player_account');
     expect(handler).not.toContain('gm_reject_player_account');
   });

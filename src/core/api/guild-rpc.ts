@@ -17,7 +17,6 @@
  * for a write that did not happen.
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { getClient, getSupabaseClient } from './supabase';
 import { READ_ONLY_MESSAGE } from './db-guard';

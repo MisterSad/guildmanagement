@@ -12,7 +12,6 @@
  * gone; tests call patchAppState().
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 export interface CollapsedRoles {
   R5: boolean;

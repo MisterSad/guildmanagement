@@ -67,7 +67,7 @@ describe('snapshot_drifted_functions', () => {
     for (const f of snapshots) {
       const sql = read(f);
       const created = sql.match(/^CREATE OR REPLACE FUNCTION public\./gm) || [];
-      const checked = sql.match(/^    \('public\.[a-z_]+\(.*\)', '[0-9a-f]{32}', '[a-z_,]+'\)/gm) || [];
+      const checked = sql.match(/^ {4}\('public\.[a-z_]+\(.*\)', '[0-9a-f]{32}', '[a-z_,]+'\)/gm) || [];
       expect(checked.length, f).toBe(created.length);
       expect(sql, f).toContain("RAISE EXCEPTION 'snapshot: % does not have production''s body', r.sig;");
       expect(sql, f).toContain("pg_get_function_identity_arguments(p.oid) || ')' = r.sig");

@@ -270,6 +270,6 @@ describe('ShadowfrontView golden results (post shadowfront.js cutover)', () => {
 
     const after = Object.getOwnPropertyNames(window).filter((k) => k.startsWith('GM_')).sort();
     expect(after).toEqual(baseline);
-    expect(Object.prototype.hasOwnProperty.call(window, 'GM_SHADOWFRONT')).toBe(false);
+    expect(Object.hasOwn(window, 'GM_SHADOWFRONT')).toBe(false);
   });
 });

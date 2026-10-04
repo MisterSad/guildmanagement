@@ -8,7 +8,7 @@ description: >-
 
 # FGF SaaS Architect
 
-The platform is a **free**, multi-tenant app: 26 guilds, ~3,005 members, ~55,760 participation rows. Vanilla TypeScript, no UI framework, Vite, Supabase Postgres 17, Deno Edge Functions on Vercel. There is no paid tier — see ADR-015 before writing anything about plans or prices.
+The platform is a **free**, multi-tenant app. Measured on production on 2026-10-04: 36 guilds, ~3,867 members, ~56,063 participation rows, 39 tables, 86 policies; 14 Edge Functions deployed, 14 in the repo. These numbers drift every week: re-measure before relying on one. Vanilla TypeScript, no UI framework, Vite, hosted on Vercel; Supabase Postgres 17 and Deno Edge Functions, which run on Supabase. There is no paid tier — see ADR-015 before writing anything about plans or prices.
 
 ## 1. Tenant uniformity
 
@@ -18,7 +18,7 @@ An unresolved tenant must **fail visibly**, never fall back. `getActiveGuild()` 
 
 ## 2. Layering
 
-`core/` must never import from `modules/`. This is the constraint behind the two `window` globals that deliberately survive: `core/dom/toast.ts` *is* the implementation `GM_APP.showToast` points at, so importing the app's renderer there would invert the direction and recurse.
+`core/` must never import from `modules/`. Since M4c nothing on `window` papers over that rule: the core toast renders itself (`core/dom/toast.ts`), and `core/utils/date` and `core/dom/ui` import i18n directly.
 
 A module that imports nothing may live in `core/` — that is what allowed the state store to move there. If a `core/` module needs something from `modules/`, the dependency is pointing the wrong way; move the shared thing down, do not add a bridge.
 
@@ -26,18 +26,17 @@ A module that imports nothing may live in `core/` — that is what allowed the s
 
 **`src/core/state/app-state.ts` is the single write path** for cross-cutting state: active tenant, guild list, roster selection, collapsed role groups. Write with `patchAppState()`. Never assign `window.currentGuild` (or any other state global) directly — it is invisible to `tsc` and to every behavioural test, and it simply wins. `tests/app_state_single_writer.test.js` scans for it.
 
-Two properties the store must keep, both of which it once broke:
-
-- **A read does not write.** `getAppState()` must not create the `window` mirror as a side effect.
-- **Hydration is absence-aware.** Deleting a global clears the field; it must not be refilled from the stale in-memory value.
+Since M4c the state is a plain module singleton: there is no `window` mirror any more (`window.currentGuild`, `window.GM_COLLAPSED_ROLES`... are gone), so a read never writes and nothing can refill it from a stale global.
 
 The old pub/sub store (`src/core/store/store.ts`) was dead — `subscribe()` was never called — and is deleted. Do not reintroduce a second state mechanism.
 
 ## 4. Module boundaries and the bridge
 
-Views call each other by **typed import**. Phase 7 converted the router and every inter-view call, which is what turns a rename from "a tab silently stops loading" into a compile error. Three `GM_*` names survive deliberately (`GM_APP`, `GM_I`, `GM_COLLAPSED_ROLES`) and `tests/gm_bridge_contract.test.js` pins that list so it cannot grow.
+Views call each other by **typed import**, which turns a rename from "a tab silently stops loading" into a compile error. The `window.GM_*` bridge is gone (M4c): the app installs exactly one global, the frozen `window.GM_E2E` (five entry points for the e2e suite, set in `src/main.ts`), and `tests/gm_bridge_contract.test.js` pins it so nothing else can be added to `window`.
 
-Do not add a new `window.GM_*` namespace. If two modules need each other, import.
+Tab views are lazy chunks reached through `src/modules/app/lazy-views.ts` (`get()` / `peek()`), and the admin side is one chunk reached only through `loadAdmin()` in `src/modules/app/admin-loader.ts`. Never import a view or an admin module statically from the entry graph; `tests/code_splitting.test.js` fails if you do.
+
+If two modules need each other, import.
 
 ## 5. Deterministic event session IDs
 

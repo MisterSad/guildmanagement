@@ -14,8 +14,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {
   shouldThrottle,
-  isWindowExpired,
-  extractClientIp,
 } from '../supabase/functions/_shared/rate-limit.ts';
 
 const rootDir = path.resolve(__dirname, '..');

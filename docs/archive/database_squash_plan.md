@@ -1,3 +1,6 @@
+> **Historical plan, done.** The squash it describes happened (the old files are in `supabase/migrations_archive/`); it is superseded by the replayed migration history, see `supabase/migrations/README.md` and `scripts/replay-migrations.sh`.
+> Do not follow the `supabase db push` / `db reset` steps below: migrations are applied with the Supabase MCP `apply_migration` only.
+
 # 🗄️ Guide Technique — Consolidation & Squash des Migrations Supabase
 
 Ce document détaille la procédure étape par étape pour regrouper les 156 fichiers de migration SQL actuels en **4 migrations maîtresses consolidées** sur un nouvel environnement Supabase Staging/Production.

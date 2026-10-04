@@ -9,7 +9,6 @@
  * read back from the bridge that main.ts publishes it on.
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { APP_VERSION } from '../../../core/config/constants';
 import { escapeHTML } from '../../../core/utils/text';

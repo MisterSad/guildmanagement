@@ -7,7 +7,6 @@
  * guild-requests controller without duplicating module-level state.
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { getAppState } from '../../../core/state/app-state';
 

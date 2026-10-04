@@ -16,7 +16,6 @@
  *   - This module never assigns any `window.GM_*` variable.
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import {
   SHADOWFRONT_EVENT_NAME,
@@ -31,7 +30,6 @@ import {
   sortSquadList,
   formatSquadCompositionField,
   buildShadowfrontDiscordPayload,
-  emptyShadowfrontHistory,
   type ShadowfrontAssignmentRow,
   type ShadowfrontParticipantRow,
   type ShadowfrontMemberRow,
@@ -134,24 +132,13 @@ export class ShadowfrontView {
     return categoriseHistory(this.state.history[pseudo]);
   }
 
-  private getParticipationBadgeHtml(pseudo: string): string {
-    const h = this.state.history[pseudo] || { assigned: 0, participated: 0 };
-    const rateText = h.assigned > 0 ? Math.round((h.participated / h.assigned) * 100) + '%' : 'N/A';
-    const meta = categoryMeta(this.categorise(pseudo));
-    return '<span class="sf-rate-badge ' + meta.cls + '" style="font-size: var(--fs-xs); padding: 0.1rem 0.35rem; display: inline-flex; align-items: center; justify-content: center; min-width: 32px; border-radius: 4px; font-weight: 600;">' + rateText + '</span>';
-  }
+
 
   private sortSquadListLocal(list: ShadowfrontAssignmentRow[]): ShadowfrontAssignmentRow[] {
     return sortSquadList(list, (pseudo) => this.getMemberPower(pseudo));
   }
 
-  private activeSquadKeys(): ShadowfrontSquadKey[] {
-    return (['squad1', 'squad2'] as ShadowfrontSquadKey[]).filter((k) => this.state.squads[k].active);
-  }
 
-  private anySquadActive(): boolean {
-    return this.activeSquadKeys().length > 0;
-  }
 
   private currentSessionIds(): string[] {
     return (['squad1', 'squad2'] as ShadowfrontSquadKey[])

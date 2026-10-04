@@ -10,6 +10,7 @@ description: >-
 ## The battery
 
 ```bash
+npm run lint           # biome ci . — lint + format check, 0 errors
 npm run type-check     # tsc --noEmit — 0 errors, no exceptions
 npm test               # vitest run, all green, plus a coverage floor
 npm run build          # production build into dist/

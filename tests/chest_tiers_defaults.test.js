@@ -6,7 +6,6 @@ import {
   SVS_CHEST_THRESHOLDS,
   defaultChestGrid,
   resolveChestsForScore,
-  WAR_AGGREGATE_DAY
 } from '../src/core/scoring/chests';
 
 describe('GvG & SvS 9-Tier Chests Scoring & Config', () => {

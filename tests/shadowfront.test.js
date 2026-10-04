@@ -317,9 +317,9 @@ describe('Shadowfront view UI/UX', () => {
             { pseudo: 'Bravo', guild: 'ALPHA', session_id: 'TEMP_SESSION', squad: 'squad1', role: 'participant', week_start: '2026-08-10' },
         ];
 
-        let updatePayload = null;
+        let _updatePayload = null;
         tables.shadowfront_squads.update = (payload) => {
-            updatePayload = payload;
+            _updatePayload = payload;
             return chained(tables.shadowfront_squads);
         };
 
@@ -366,7 +366,7 @@ describe('Shadowfront view UI/UX', () => {
             }
             return chain;
         };
-        vi.mocked(showConfirm).mockImplementation((title, message, onConfirm) => onConfirm());
+        vi.mocked(showConfirm).mockImplementation((_title, _message, onConfirm) => onConfirm());
 
         await SF.load();
         stepByLabel('2. Participation Tracking').click();

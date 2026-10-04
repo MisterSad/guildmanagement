@@ -6,7 +6,7 @@
 // a minimal fake Supabase client, not just regex assertions on source text.
 
 import { describe, it, expect } from 'vitest';
-import { edgeSource, edgeFunctionBody } from './helpers/edge-source.js';
+import { edgeSource, } from './helpers/edge-source.js';
 import fs from 'fs';
 import path from 'path';
 import {

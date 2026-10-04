@@ -169,7 +169,7 @@ describe('WCAG 2.2 AA Accessibility & Focus Management (TICKET-11 / A11Y-01)', (
       const onCancel = vi.fn();
       const onClose = vi.fn();
 
-      const dialog = openDialog({
+      const _dialog = openDialog({
         title: 'Escape Test',
         body: 'Press escape to close',
         onCancel,

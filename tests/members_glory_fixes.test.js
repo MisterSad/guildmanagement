@@ -5,6 +5,7 @@
 //    the weekly event_participants rows the Glory tab reads (week_start filter).
 
 import { describe, it, expect } from 'vitest';
+import { squash } from './helpers/source-text.js';
 import { sqlFunctionBody } from './helpers/sql-function.js';
 import fs from 'fs';
 import path from 'path';
@@ -26,7 +27,7 @@ describe('Members accordion collapse (v128.1)', () => {
     // `window` mirror, which used to leave getAppState() stale.
     expect(app).toContain('patchAppState({ collapsedRoles:');
     expect(app).toContain('!current[key]');
-    expect(app).toMatch(/gm-role-group' \+ \(collapsed \? ' is-collapsed' : ''\)/);
+    expect(squash(app)).toMatch(/gm-role-group' \+ \(collapsed \? ' is-collapsed' : ''\)/);
   });
 });
 

@@ -36,7 +36,7 @@ describe('authorization', () => {
   });
 
   it('checks scope with the shared isGuildInScope against the guild\'s real server', () => {
-    expect(edge).toContain('import { canManageAccount, isGuildInScope, normalizeRole } from "../_shared/admin-authz.ts";');
+    expect(edge).toMatch(/import \{[^}]*\bisGuildInScope\b[^}]*\} from "\.\.\/_shared\/admin-authz\.ts";/);
     expect(handler).toContain('.from("guilds").select("id, server_number").eq("id", target)');
     expect(handler).toContain('officers.some((o) => isGuildInScope(o, target, (guildRow as any).server_number ?? null))');
     // The scope check comes before the join code is ever read.

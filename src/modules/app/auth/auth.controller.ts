@@ -13,7 +13,6 @@
  *  - User feedback delegates to dialogs.service.
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { adoptDialog } from '../../../components/ui/Dialog';
 import { loadAdmin } from '../admin-loader';
@@ -50,9 +49,7 @@ function ls(): Storage | null {
   return typeof localStorage !== 'undefined' ? localStorage : null;
 }
 
-function ss(): Storage | null {
-  return typeof sessionStorage !== 'undefined' ? sessionStorage : null;
-}
+
 
 function el<T extends HTMLElement = HTMLElement>(id: string): T | null {
   if (typeof document === 'undefined') return null;
@@ -236,7 +233,7 @@ export async function restoreSession(): Promise<RestoreSessionResult> {
   const store = ls();
   const localRole = store ? store.getItem('gm_role') : null;
   const localUser = store ? store.getItem('gm_user') : null;
-  const portalSession = store ? store.getItem('gm_portal_session') === '1' : false;
+
 
   if (localRole || localUser) {
     const loginView = el('login-view');

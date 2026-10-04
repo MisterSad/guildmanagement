@@ -22,7 +22,7 @@ This runbook defines the authoritative, repeatable sequence for deploying databa
 ### 2.1 Baseline Quality Gate
 ```sh
 npm run type-check   # 0 TypeScript errors required
-npm test             # 397/397 Vitest unit tests green required
+npm test             # all Vitest tests green, plus the coverage floor
 npm run build        # Clean production build + root syntax check
 ```
 
@@ -49,6 +49,8 @@ WHERE (u.raw_app_meta_data->>'app_role') IS DISTINCT FROM a.role OR a.id IS NULL
 ---
 
 ## 3. Phase 1 — Database Migrations (Canonical Application Order)
+
+> **Historical (2026-08-23).** The `supabase db query --linked` commands below are the record of that run, not a procedure. Migrations are now applied with the Supabase MCP `apply_migration` only, following `supabase/migrations/README.md`; never `supabase db push`.
 
 Apply each migration file sequentially using `supabase db query --linked -f <FILE>` and execute its corresponding verification query:
 
@@ -142,31 +144,35 @@ Apply each migration file sequentially using `supabase db query --linked -f <FIL
 
 ---
 
-## 5. Phase 3 — Edge Functions Deployment Matrix
+## 5. Phase 3 — Edge Functions Deployment
 
-> **Since 2026-10-03 the 14 Edge Functions deploy from CI only** (`deploy-edge-functions` job, `scripts/deploy-edge-functions.sh`), after every check is green, and **without** `--no-verify-jwt`: the CLI reads `verify_jwt` from `supabase/config.toml` (finding M1). The matrix below is for reading, and for a disaster recovery with the CLI; drop the flag there too. `tests/supabase_config_functions.test.js` enforces one `[functions.<name>]` block per function.
+**Edge Functions deploy from CI only.** The `deploy-edge-functions` job of `.github/workflows/ci.yml` runs on a push to `main`, after `build-and-test`, `migrations-replay` and `deno-check` are green, in the `production` environment. It calls `scripts/deploy-edge-functions.sh <before-sha> <head-sha>`, which:
 
-```sh
-# Public Endpoints (verify_jwt = false)
-supabase functions deploy auth-login --no-verify-jwt
-supabase functions deploy player-register --no-verify-jwt
-supabase functions deploy guild-request --no-verify-jwt
-supabase functions deploy event-reminders --no-verify-jwt
-supabase functions deploy discord-bot-interactions --no-verify-jwt
-supabase functions deploy discord-profile-verification --no-verify-jwt
+- enumerates the functions from the directories of `supabase/functions/`, skipping every `_`-prefixed one (`_shared`, `_test`); there is no hand-maintained list;
+- deploys every function when `supabase/functions/_shared/` or `supabase/config.toml` changed, or when the base commit is unknown; otherwise only the functions whose directory changed;
+- runs `supabase functions deploy <fn> --project-ref <ref>` with one retry, and fails the job if any deploy fails or if `SUPABASE_ACCESS_TOKEN` is missing.
 
-# JWT-Gated Endpoints (verify_jwt = true)
-supabase functions deploy member-portal
-supabase functions deploy admin-accounts
-supabase functions deploy ocr-guild-members
-supabase functions deploy discord-webhook-proxy
-supabase functions deploy guild-data-export
-supabase functions deploy tickets
-```
+**Never pass `--no-verify-jwt`.** The old pre-push hook passed it on every deploy, which forced `verify_jwt = false` onto every function whatever `supabase/config.toml` declared: that is how `admin-accounts`, the role provisioner, ran publicly (finding M1). Without the flag the CLI reads each function's `[functions.<name>]` block in `supabase/config.toml`. `tests/deploy_edge_functions.test.js` fails if the flag comes back, and `tests/supabase_config_functions.test.js` requires one block per function directory.
 
-> **Discord verification worker**: `discord-verification-worker/` is a standalone, always-on Node.js Gateway listener — **not** an Edge Function — deployed separately (e.g. Render). It holds no business logic and calls the `discord-profile-verification` Edge Function with the shared `DISCORD_WORKER_SECRET`. The `--no-verify-jwt` flag applies to the `discord-profile-verification` endpoint it calls, not to the worker itself.
+The 14 functions in `supabase/functions/` and their `verify_jwt` setting in `supabase/config.toml`:
 
-> **Deleted in Phase 1 (2026-09-26)**: `gm-create-order`, `gm-order-status`, `gm-stripe-webhook` (payment removal — the platform is free with no donation path), plus two functions that were live on the platform with **no source in this repository**: `gm-revolut-webhook` (public, `verify_jwt = false`) and `webauthn-spike` (a leftover probe). Earlier revisions of this runbook asserted `gm-revolut-webhook` did not exist; it did. Every deployed function must have its source versioned here.
+| `verify_jwt = false` (no platform JWT check: public by design, or authenticated by other means) | `verify_jwt = true` |
+|---|---|
+| `auth-login` | `member-portal` |
+| `auth-discord` | `admin-accounts` |
+| `player-register` | `guild-data-export` |
+| `guild-request` | `discord-webhook-proxy` |
+| `event-reminders` (cron secret) | `ocr-guild-members` |
+| `discord-bot-interactions` (Ed25519 signature) | `tickets` |
+| `discord-profile-verification` (worker shared secret) | `migration-summary` |
+
+**Disaster recovery only** (CI unavailable): from a clean checkout of the commit to restore, run `supabase functions deploy <fn> --project-ref vgweufzwmfwplusskmuf`, with no other flag, so that `verify_jwt` still comes from `supabase/config.toml`.
+
+**Reconcile after a deploy** (ADR-017): the deployed set must equal the directories of `supabase/functions/`. Compare `list_edge_functions` (Supabase MCP) with `ls supabase/functions/`; no CI check can see the platform side.
+
+> **Discord verification worker**: `discord-verification-worker/` is a standalone, always-on Node.js Gateway listener — **not** an Edge Function — deployed separately (Render). It holds no business logic and calls the `discord-profile-verification` Edge Function with the shared `DISCORD_WORKER_SECRET`.
+
+> **Deleted in Phase 1 (2026-09-26)**: `gm-create-order`, `gm-order-status`, `gm-stripe-webhook` (payment removal — the platform is free, ADR-015), plus two functions that were live on the platform with **no source in this repository**: `gm-revolut-webhook` (public, `verify_jwt = false`) and `webauthn-spike` (a leftover probe). `auth-passkey` was deleted on 2026-10-03 with passkeys. Every deployed function must have its source versioned here.
 
 ---
 
@@ -186,7 +192,7 @@ supabase functions deploy tickets
 - **F1**: Admin login loads Command Center and guild switcher.
 - **F2**: Player Portal login (`DemoPlayer`) returns full player KPIs (`get-personal-kpis`) and guild averages.
 - **F3**: Roster OCR opens Three-Section Review (Existing/New/Removed) with UID input and removal overrides.
-- **F4**: Subscriptions view correctly displays active status across all 9 live guild tenants.
+- **F4**: Guild switcher (`super_admin`) lists every guild, and a guild opens with its own roster and events.
 - **F5**: System Logs diagnostics tab renders structured audit logs for `super_admin`.
 - **F6**: Zero browser console CSP/CORS errors on production domain `https://guildmanagement.vercel.app`.
 

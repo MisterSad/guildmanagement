@@ -51,7 +51,7 @@ describe('guild config (localStorage + DB fallback)', () => {
             maybeSingle: async () => ({ data: { value: 'from-db' }, error: null }),
         };
         setDbClient({
-            from: (table) => ({
+            from: (_table) => ({
                 select: () => ({
                     eq: () => eqBuilder,
                 }),

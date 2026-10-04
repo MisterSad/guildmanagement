@@ -14,7 +14,6 @@
  * the visuals defined in styles.css.
  */
 
-import { escapeHTML } from '../../core/utils/text';
 
 export interface TooltipOptions {
   text: string;

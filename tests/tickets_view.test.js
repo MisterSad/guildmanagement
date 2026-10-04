@@ -4,7 +4,7 @@
  * Phase 1 behavioural suite for src/modules/tickets/views/TicketsView.ts in
  * jsdom. The legacy root `tickets.js` is untouched during Phase 1.
  */
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { TicketsView, loadingHtml } from '../src/modules/tickets/views/TicketsView';
 import { setDbClient, resetSupabaseClient } from '../src/core/api/supabase';
 

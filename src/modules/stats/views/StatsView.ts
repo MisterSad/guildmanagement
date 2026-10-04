@@ -16,7 +16,6 @@
  *     neither reads nor assigns any `window.GM*` variable.
  */
 
-import { eventScoringKey } from '../../../core/config/events';
 import { getWeekStart, formatWeek } from '../../../core/utils/date';
 import { formatNumber, avatarInit, escapeHTML, formatPower } from '../../../core/utils/text';
 import { getPowerTier } from '../../../core/scoring/combat';
@@ -29,9 +28,6 @@ import { showPlayerHistoryDialog } from '../../app/dialogs/dialogs.service';
 import {
   StatsService,
   DEFAULT_EVENT_COEFFS,
-  matchesEventName,
-  normalizePseudo,
-  round1,
   type EventCoeffs,
   type StatsMembersPayload,
   type AggregateMemberRow,
@@ -52,7 +48,6 @@ import {
   queryStatsEvents
 } from '../stats.service';
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 // ── Local helpers (mirrors of stats.js internals) ─────────────────────────────
 
@@ -472,7 +467,6 @@ export class StatsView {
   }
 
   private wireModeTabs(container: Element): void {
-    const state = this.state;
     // Wire Primary Views (Cockpit / Leaderboard / Events)
     container.querySelectorAll('[data-gm-view]').forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -1023,7 +1017,7 @@ export class StatsView {
       const isBattleEventMode = (state.primaryView === 'events' && (currentEvent === 'SvS' || currentEvent === 'GvG')) || (state.currentMode === 'SvS' || state.currentMode === 'GvG');
       const isShadowfrontMode = (state.primaryView === 'events' && currentEvent === 'Shadowfront') || state.currentMode === 'Shadowfront';
       const isArmsRaceMode = (state.primaryView === 'events' && currentEvent === 'Arms Race') || state.currentMode === 'Arms Race';
-      const showGloryCol = (state.primaryView === 'leaderboard' && state.currentMode === 'global');
+
 
       // Table Headers
       let theadCols = '<th class="gm-center" style="width:65px;">#</th>' +

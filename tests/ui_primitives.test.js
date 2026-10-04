@@ -12,7 +12,6 @@ import path from 'node:path';
 
 import { cn } from '../src/core/utils/cn';
 import { cva } from '../src/core/utils/cva';
-import { UiSize, UiAccent, UiState } from '../src/components/ui/types';
 
 const rootDir = path.resolve(__dirname, '..');
 const read = (file) => fs.readFileSync(path.join(rootDir, file), 'utf8');

@@ -146,7 +146,7 @@ describe('B1 — every key the code asks for actually exists', () => {
       const re = /\bt\(\s*'([a-z0-9_]+)'\s*[),]/g;
       let m;
       while ((m = re.exec(src)) !== null) {
-        if (!Object.prototype.hasOwnProperty.call(EN, m[1])) {
+        if (!Object.hasOwn(EN, m[1])) {
           missing.push(`${path.relative(srcDir, f)}: t('${m[1]}')`);
         }
       }

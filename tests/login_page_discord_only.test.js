@@ -10,6 +10,7 @@
 // been fooled by prose that named the very thing it said was removed.
 
 import { describe, it, expect } from 'vitest';
+import { squash } from './helpers/source-text.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { edgeSource } from './helpers/edge-source.js';
@@ -143,7 +144,7 @@ describe('the one-door login page (2026-10-02)', () => {
   });
 
   it('gives the Discord button feedback and restores it after a Back navigation', () => {
-    expect(controller).toContain("wireOnce(el('login-discord-btn'), '__gmAuthWired', 'click', () => { startDiscordSignIn(); })");
+    expect(squash(controller)).toContain(squash("wireOnce(el('login-discord-btn'), '__gmAuthWired', 'click', () => { startDiscordSignIn(); })"));
     expect(controller).toContain("'Opening Discord…'");
     expect(controller).toMatch(/addEventListener\('pageshow'[\s\S]{0,80}resetDiscordButton\(\)/);
   });
@@ -165,7 +166,7 @@ describe('the one-door login page (2026-10-02)', () => {
     const show = controller.slice(controller.indexOf('export function showLogin'), controller.indexOf('export function startConditionalPasskeyListener'));
     expect(show).toContain("el('player-portal-view')");
     const portal = stripJs(read('src/modules/portal/views/PortalView.ts'));
-    expect(portal).toContain("signOutBtn.addEventListener('click', () => { exitPortalToLogin(); })");
+    expect(squash(portal)).toContain(squash("signOutBtn.addEventListener('click', () => { exitPortalToLogin(); })"));
   });
 });
 

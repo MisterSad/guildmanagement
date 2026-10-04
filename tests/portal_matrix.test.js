@@ -1,7 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { edgeSource } from './helpers/edge-source.js';
-import fs from 'fs';
-import path from 'path';
 import { z } from 'zod';
 import {
   MAX_ALLOWED_POWER,

@@ -15,7 +15,6 @@
  * decides on its own that a rename is allowed.
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { adoptDialog } from '../../../components/ui/Dialog';
 import { esc, byId, getDb, ls } from './utils';
