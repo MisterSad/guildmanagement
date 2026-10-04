@@ -76,8 +76,6 @@ export function renameErrorMessage(code: string | undefined, nextAllowedAt?: str
       return 'Another guild already uses this TAG.';
     case 'tag_reserved':
       return 'This TAG is reserved or still holds data from a former guild. Pick another one, or ask the super admin.';
-    case 'demo_protected':
-      return 'The DEMO guild cannot be renamed.';
     case 'cooldown': {
       const when = formatDate(nextAllowedAt);
       return 'The TAG was changed less than 7 days ago.' + (when ? ' Next change possible on ' + when + '.' : '');

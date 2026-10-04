@@ -65,7 +65,7 @@ answer instantly.
 - **Format:** the same as creation, `^[A-Z0-9_]{2,12}$` after uppercasing.
   Uniqueness is checked regardless of case.
 - **Reserved tags:**
-  - `DEMO` cannot be renamed, nor taken (`gm_reset_demo_tenant_data` keys on it).
+  - (`DEMO` was reserved while the sandbox tenant existed; since its removal on 2026-10-04 it is an ordinary TAG.)
   - A TAG held by a pending creation request is refused.
   - **A TAG that still owns rows from a deleted guild is refused.**
     `gm_delete_guild` leaves rows behind in the non-FK tables: the deleted CLAW

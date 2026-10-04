@@ -2210,7 +2210,6 @@ export type Database = {
           ok: boolean
         }[]
       }
-      gm_reset_demo_tenant_data: { Args: never; Returns: Json }
       gm_revoke_auth_sessions: {
         Args: { p_auth_user_id: string }
         Returns: number

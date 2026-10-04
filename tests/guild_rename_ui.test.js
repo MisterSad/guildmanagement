@@ -82,7 +82,6 @@ describe('renameErrorMessage', () => {
       'unchanged',
       'tag_taken',
       'tag_reserved',
-      'demo_protected',
       'cooldown',
       'unauthorized',
       'guild_not_found',

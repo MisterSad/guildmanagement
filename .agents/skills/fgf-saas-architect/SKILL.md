@@ -8,7 +8,7 @@ description: >-
 
 # FGF SaaS Architect
 
-The platform is a **free**, multi-tenant app. Measured on production on 2026-10-04: 36 guilds, ~3,867 members, ~56,063 participation rows, 39 tables, 86 policies; 14 Edge Functions deployed, 14 in the repo. These numbers drift every week: re-measure before relying on one. Vanilla TypeScript, no UI framework, Vite, hosted on Vercel; Supabase Postgres 17 and Deno Edge Functions, which run on Supabase. There is no paid tier — see ADR-015 before writing anything about plans or prices.
+The platform is a **free**, multi-tenant app. Measured on production on 2026-10-04: 35 guilds, ~3,802 members, ~54,375 participation rows, 39 tables, 86 policies; 14 Edge Functions deployed, 14 in the repo. These numbers drift every week: re-measure before relying on one. Vanilla TypeScript, no UI framework, Vite, hosted on Vercel; Supabase Postgres 17 and Deno Edge Functions, which run on Supabase. There is no paid tier — see ADR-015 before writing anything about plans or prices.
 
 ## 1. Tenant uniformity
 

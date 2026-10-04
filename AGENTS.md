@@ -10,7 +10,7 @@ Never claim completion without proof, and never fabricate a result. Measure agai
 - **Frontend**: TypeScript ES modules in `src/`, built by Vite. No UI framework. Modules call each other by typed import; the client (`setDbClient`/`getClient`) and the state (`app-state.ts`) are modules, not globals. The app installs exactly one global, the frozen `window.GM_E2E` the e2e suite drives (`tests/gm_bridge_contract.test.js` pins it); add nothing to `window`.
 - **Backend**: Supabase Postgres 17 (RLS, `SECURITY DEFINER`, `SET search_path = ''`) + Deno Edge Functions. 14 deployed, 14 in the repo — keep it reconciled (ADR-017). Deploys run from CI only.
 - **Hosting**: Vercel. No service worker behaviour, no PWA, no cookies, no analytics.
-- **Scale** (measured 2026-10-04): 36 guilds, ~3,867 members, ~56,063 participation rows, 39 tables, 86 policies, 12 cron jobs.
+- **Scale** (measured 2026-10-04): 35 guilds, ~3,802 members, ~54,375 participation rows, 39 tables, 86 policies, 11 cron jobs (after the DEMO removal).
 
 ## Invariants that are easy to break
 - **Four roles**: `super_admin`, `server_admin`, `guild_admin`, `member`. Resolved from `accounts` via `auth.uid()` — never from client-supplied data.
@@ -30,7 +30,7 @@ Never claim completion without proof, and never fabricate a result. Measure agai
 5. **Webhooks**: resolved server-side from `guild_config`, never client-supplied. Discord hosts only.
 6. **XSS**: one escaping boundary — `escapeHTML()` in `src/core/utils/text.ts`.
 7. **Rate limits fail closed.**
-8. **Never run a destructive probe against production.** `execute_sql` autocommits; this has permanently destroyed real rows. Use the `DEMO` tenant, which is rebuilt nightly at 03:00.
+8. **Never run a destructive probe against production.** `execute_sql` autocommits; this has permanently destroyed real rows. Test anything that writes on a replayed database (`scripts/replay-migrations.sh`, then `scripts/sql-tests.sh`). On production, a write runs only inside a dry run that ends in a raised exception, so the whole batch rolls back; read-only `SELECT`s are fine. There is no sandbox tenant: `DEMO` was removed on 2026-10-04.
 
 ## Quality gate
 ```bash

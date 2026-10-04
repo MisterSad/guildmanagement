@@ -72,7 +72,7 @@
 │  │ ├─ Deterministic Event Session Generator: `public.gm_event_session_id()`           │  │
 │  │ ├─ Distributed Audit Ledger: `public.system_audit_logs` (service_role only)       │  │
 │  │ ├─ Vault-Backed Secrets: `vault.decrypted_secrets`                                │  │
-│  │ └─ 12 pg_cron jobs (reminders, demo reset, retention purges — see §4.3)           │  │
+│  │ └─ 11 pg_cron jobs (reminders, snapshots, retention purges — see §4.3)            │  │
 │  └───────────────────────────────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -156,7 +156,7 @@ The Player Portal (`src/modules/portal/`: `PortalView` + `portal.service.ts`) ne
 ### 4. Database Topology & Access Helpers
 
 #### 4.1 Database Tables (**39 persistent tables**, counted live 2026-10-04; all have RLS *and* FORCE RLS, across 86 policies):
-- **Core Tenant / Roster** (19): `guilds` (**36 rows**, 1 is `DEMO`), `guild_members` (**~3,867 rows**), `event_status`, `event_participants` (**~56,063 rows** — the permanent attendance ledger), `war_opponents`, `war_sessions`, `event_daily_scores`, `event_chest_tiers` (SvS/GvG granular war — added 2026-09-13, see §4.4), `shadowfront_squads` (weekly squad *assignments* — does not reliably retain history once a later session overwrites it, unlike `event_participants`; see the Shadowfront attendance-rate note below), `shadowfront_signups`, `weekly_scores`, `sanctions`, `banned_players`, `guild_config`, `guild_transfers`, `player_name_history`, `player_metrics_history`, `server_migration_groups`, `server_migration_group_servers`. `diplomatic_treaties` was dropped in Phase 3 (0 rows, no UI).
+- **Core Tenant / Roster** (19): `guilds` (**35 rows**), `guild_members` (**~3,802 rows**), `event_status`, `event_participants` (**~54,375 rows** — the permanent attendance ledger), `war_opponents`, `war_sessions`, `event_daily_scores`, `event_chest_tiers` (SvS/GvG granular war — added 2026-09-13, see §4.4), `shadowfront_squads` (weekly squad *assignments* — does not reliably retain history once a later session overwrites it, unlike `event_participants`; see the Shadowfront attendance-rate note below), `shadowfront_signups`, `weekly_scores`, `sanctions`, `banned_players`, `guild_config`, `guild_transfers`, `player_name_history`, `player_metrics_history`, `server_migration_groups`, `server_migration_group_servers`. `diplomatic_treaties` was dropped in Phase 3 (0 rows, no UI).
 
 > **These figures were counted against production on 2026-10-04, not estimated.** The previous set (13 / ~1,540 / ~33k) understated the live system by roughly a factor of two and had been carried forward unchecked. Re-measure rather than adjust: `SELECT count(*)` on the three tables.
 - **Accounts & Identity** (6): `accounts` (custom bcrypt credential store, source of truth — see §2), `login_throttle` (IP rate limit for `auth-login`), `account_backup_codes` (super_admin recovery codes, Discord flow), `discord_account_links`, `discord_link_codes`, `discord_verification_throttle` (Discord account linking + verification rate limiting, added 2026-09). `account_passkeys` and `webauthn_challenges` were dropped with passkeys (`20261003165501_remove_passkeys`).
@@ -182,12 +182,11 @@ The Player Portal (`src/modules/portal/`: `PortalView` + `portal.service.ts`) ne
 
 #### 4.3 Active Cron Jobs
 
-Twelve jobs, read from `cron.job` on production on 2026-10-04 (`SELECT jobname, schedule FROM cron.job`), and identical to what the migrations schedule and never unschedule. Re-measure there rather than trusting this list; never select `command`, which can carry secrets.
+Eleven jobs, read from `cron.job` on production on 2026-10-04 (`SELECT jobname, schedule FROM cron.job`), and identical to what the migrations schedule and never unschedule. The twelfth, `daily-demo-tenant-reset`, went with the DEMO tenant (`drop_demo_tenant`, 2026-10-04). Re-measure there rather than trusting this list; never select `command`, which can carry secrets.
 
 | Job | Schedule (UTC) | Does |
 |---|---|---|
 | `fgf-event-reminders` | `*/5 * * * *` | `gm_invoke_event_reminders()` → `event-reminders` (Vault cron secret) |
-| `daily-demo-tenant-reset` | `0 3 * * *` | `gm_reset_demo_tenant_data()` rebuilds the `DEMO` tenant |
 | `guild-requests-expire` | `0 3 * * *` | pending guild requests older than 14 days → `expired` |
 | `weekly-stats-snapshot` | `20 3 * * 1` | `gm_stats_snapshot_run()` (ADR-019) |
 | `daily-expire-empty-guilds` | `30 3 * * *` | `gm_expire_empty_guilds()` |

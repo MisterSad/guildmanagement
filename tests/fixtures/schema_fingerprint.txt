@@ -747,7 +747,7 @@ function|gm_erase_account(p_account_id text)|eebe26c176962c93ea9ee2b50fd0fa6a
 function|gm_erase_player(p_guild text, p_uid text)|2243eac91eb40be987df37cb84f3d098
 function|gm_event_scoring_key(p_event_name text, p_session_id text, p_week_start date)|09fd857845b5cb4ae5d49e82ea7a40e0
 function|gm_event_scoring_key(p_event_name text, p_session_id text, p_week_start text)|2c2f6a796ad602a36721883aadb968c3
-function|gm_expire_empty_guilds()|b8be820d40a6025a83bb0c9b6a35cd75
+function|gm_expire_empty_guilds()|dd08547c43fbac5fce62851223d2b425
 function|gm_find_player_by_uid(p_uid text)|d67436bc910dbf9ce87a50fa09745423
 function|gm_generate_account_id(p_base text)|bc3d5bc9241f6924a07d4dba1b50f511
 function|gm_get_chest_tiers(p_guild text, p_event_name text)|be731fefe05f180c93f47da423d6a17a
@@ -765,7 +765,7 @@ function|gm_is_webhook_key(p_key text)|cc0d1eea0074fe6c34c0bc773268150a
 function|gm_issue_admin_invite(p_code_hash text, p_guild text, p_role text, p_issued_by text, p_expires_at timestamp with time zone, p_max_open integer)|bab2fd427ce8373546e0c6397eefee28
 function|gm_latest_glory_scores(p_guild text)|029c775108bd4f247ca0d1f412db6012
 function|gm_list_event_sessions(p_guild text)|304c98af182eff138ad65a4f650fdbe2
-function|gm_list_opponent_candidates(p_guild text, p_kind text)|2d3212f84da714252ae014932bfa0be6
+function|gm_list_opponent_candidates(p_guild text, p_kind text)|179e822acbb44509212fc0d7cc674f4d
 function|gm_list_tickets()|4e0e71eff2a603e535fb9750655bbcdb
 function|gm_list_transfer_eligible_guilds(p_guild text)|d113505306129d63dfd6399d67cea7f0
 function|gm_list_war_sessions(p_guild text, p_event_name text)|02a5a5e16b1d9e72386442782d97bddb
@@ -786,12 +786,11 @@ function|gm_refuse_banned_member()|d51228561b320232ba85f8d82467c995
 function|gm_register_player(p_id text, p_password text, p_uid text, p_join_code text)|d48ab8ca40e2237f21a8726b83a22dad
 function|gm_reject_guild_request(p_request_id uuid, p_reason text)|3eb64184c99d73a57bf3a8472ce03286
 function|gm_reject_player_account(p_id text)|049ca9c183d9084efca69c104bc92175
-function|gm_rename_guild(p_guild text, p_new_tag text)|1ab1bb5a0a0f15e7f7f68f3fa9f4ad93
+function|gm_rename_guild(p_guild text, p_new_tag text)|beae2dbfabceed956562d0ac29c7bff0
 function|gm_report_client_error(p_level text, p_service text, p_correlation_id text, p_guild text, p_user_identifier text, p_message text, p_metadata jsonb, p_error_details jsonb)|7372054b4e5c0dd1e8b2714d9a9e530e
 function|gm_require_guild_write(p_guild text)|a22bbfcaad773860e0ea080ebea3c11b
 function|gm_reschedule_event_session(p_guild text, p_event_name text, p_old_session_id text, p_new_session_id text, p_start_at timestamp with time zone)|d9c0fc38a0f2f597ded56588c45a96a2
 function|gm_reset_account_password(p_id text, p_password text)|b126defa8c7912ade5b4dc12d7112caf
-function|gm_reset_demo_tenant_data()|643de35ffbeecb7b7ac228173eceae95
 function|gm_revoke_auth_sessions(p_auth_user_id uuid)|266ebf04477bb57a983e5777cb305b4d
 function|gm_save_chest_tiers(p_guild text, p_event_name text, p_tiers jsonb)|e736187784dcbf49039e38c7f3831dc2
 function|gm_session_is_valid()|0aa0d24b5ded470cfd2cec43c1cb10ac

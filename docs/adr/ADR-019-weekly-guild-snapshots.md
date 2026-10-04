@@ -82,11 +82,10 @@ instead of a delete), which touches all seven foreign keys, the GDPR erasure
 path and the OCR departure detection. That is a separate decision, not taken
 here.
 
-**Scheduling is load-bearing.** The job runs at 03:20, after the DEMO tenant is
-rebuilt at 03:00 by `gm_reset_demo_tenant_data` — a job at 02:40 would
-photograph rows that reset is about to delete — and before the empty-guild
+**Scheduling is load-bearing.** The job runs at 03:20, before the empty-guild
 expiry at 03:30, so a guild about to be removed still gets its last week
-recorded.
+recorded. (It also ran after the nightly 03:00 rebuild of the DEMO tenant;
+that tenant and its rebuild were removed on 2026-10-04.)
 
 **Deny-all.** RLS is enabled and forced with zero policies; the table is
 reachable only through `SECURITY DEFINER` functions and `service_role`. Stated

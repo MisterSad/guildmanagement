@@ -568,6 +568,10 @@
     {
       "version": "20261004084243",
       "name": "drop_is_subscription_active"
+    },
+    {
+      "version": "20261004123020",
+      "name": "drop_demo_tenant"
     }
   ]
 }

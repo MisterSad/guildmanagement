@@ -24,7 +24,7 @@
 - **Porte qualité :** `npm run type-check`, `npm test`, `npm run build`, `npx playwright test` ; avant de toucher au SQL ou à une fonction, aussi `deno check`/`deno test`, le rejeu des migrations et `scripts/sql-tests.sh` (voir `AGENTS.md`).
 - **Déploiements depuis la CI uniquement.** Les Edge Functions partent du job `deploy-edge-functions` (`scripts/deploy-edge-functions.sh`), jamais avec `--no-verify-jwt`. Les migrations s'appliquent par le MCP Supabase `apply_migration`, puis le fichier est renommé à la version enregistrée par la production (`supabase/migrations/README.md`). **Ne jamais lancer `supabase db push`** : il rejouerait des migrations déjà appliquées.
 - **Sécurité RLS :** toute table a `ENABLE` et `FORCE ROW LEVEL SECURITY` ; grants par colonne, pas seulement des policies ; aucun rôle lu depuis `user_metadata`.
-- **Sondes en production :** jamais de requête destructive ; utiliser le tenant `DEMO`, reconstruit chaque nuit à 03:00.
+- **Sondes en production :** jamais de requête destructive. Les écritures se testent sur une base rejouée (`scripts/replay-migrations.sh` puis `scripts/sql-tests.sh`) ; en production, uniquement dans une simulation terminée par une exception (tout est annulé). Le tenant `DEMO` a été supprimé le 2026-10-04.
 
 ## 3. Historique résumé (missions du 2026-09-13)
 Détail complet dans `CHANGELOG.md` et les migrations citées. Les instructions de déploiement `supabase db push` de l'époque sont caduques.

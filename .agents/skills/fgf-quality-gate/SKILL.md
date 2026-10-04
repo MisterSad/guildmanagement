@@ -41,5 +41,5 @@ The e2e suite is not optional and not a nicety. `playwright.config.js` runs `npm
 
 ## Never
 
-- Never run a destructive probe against production. `execute_sql` **autocommits** — an `UPDATE`/`DELETE` pair written as a "temporary" verification is permanent. This has destroyed real rows on this project. Test destructive behaviour against the `DEMO` tenant, which is rebuilt nightly at 03:00.
+- Never run a destructive probe against production. `execute_sql` **autocommits** — an `UPDATE`/`DELETE` pair written as a "temporary" verification is permanent. This has destroyed real rows on this project. Test destructive behaviour on a replayed database (`scripts/replay-migrations.sh`, then `scripts/sql-tests.sh`); on production, only inside a dry run that ends in a raised exception so the batch rolls back. The `DEMO` sandbox tenant was removed on 2026-10-04.
 - Never commit or push unless asked.

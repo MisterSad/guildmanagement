@@ -54,6 +54,8 @@ describe('guards that pin production only step aside on a replay', () => {
       '20261003112152_truncation_fixes_and_log_retention.sql',
       '20261003113839_tenant_isolation_and_sessions.sql',
       '20261003165501_remove_passkeys.sql',
+      // Relaxes only the check of production's DEMO account list.
+      '20261004123020_drop_demo_tenant.sql',
     ]);
   });
 

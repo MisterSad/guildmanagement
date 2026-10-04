@@ -10,7 +10,7 @@ name: Database Backup
 
 on:
   schedule:
-    - cron: '17 2 * * *'   # 02:17 UTC, clear of the 03:00 DEMO reset
+    - cron: '17 2 * * *'   # 02:17 UTC
   workflow_dispatch:
 
 permissions:

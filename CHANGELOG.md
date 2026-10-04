@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+- **The DEMO tenant is retired** (owner decision, 2026-10-04): anyone can create a guild themselves now, so the shared sandbox no longer earns its keep.
+  - **Migration `drop_demo_tenant`.**
+    - It unschedules the nightly `daily-demo-tenant-reset` and drops `gm_reset_demo_tenant_data()`.
+    - It purges DEMO through `gm_purge_guild_data()`, like any deleted guild. That covers 60 members and their cascade, 3 accounts, 12 config rows, 8 event statuses, 2 absences and 20 audit lines. The accounts' sessions are revoked; `auth.users` rows are kept.
+    - It removes the remaining DEMO exceptions: `gm_expire_empty_guilds` (protected list), `gm_list_opponent_candidates` (excluded) and `gm_rename_guild` (`demo_protected` / reserved tag).
+    - Owner decisions: the `bread` account (DEMO guild_admin, never signed in) goes too, and "DEMO" becomes an ordinary TAG.
+    - On production it refuses to run unless DEMO holds exactly the three measured accounts.
+  - **Verified.**
+    - Function bodies are md5-identical to production before the edit.
+    - On a replay it purges and passes `supabase/tests/12_no_demo_tenant.sql`, which checks: no DEMO, no rebuild function or job, no function naming DEMO, and the TAG takeable by rename.
+    - A dry run on production, rolled back, gave the counts above, with 11 cron jobs and 35 guilds left. Production was checked unchanged afterwards.
+  - **Repo.**
+    - `supabase/seeds/dev_seed.sql` (unused by `config.toml`, still inserting payment columns dropped in September, and a hardcoded tenant list), `scripts/generate_demo_data.py` and `tests/demo_reset.test.js` are removed.
+    - The rename dialog loses its `demo_protected` message, and the types lose the reset function.
+  - **Rule 8 of AGENTS.md changes with it.** There is no sandbox tenant any more. Writes are tested on a replayed database; on production only inside a dry run that ends in a raised exception. The quality-gate skill, PROJECT_CONTEXT, ARCHITECTURE (11 cron jobs) and ADR-019/022 follow.
+
 - **V3.35.0: the medium-term work, announced.** The app version is bumped (`APP_VERSION`, `package.json`).
   - `DISCORD_CHANGELOG.md` is rewritten from scratch as one note for guild leaders and players, in three Discord-sized messages (each under 2,000 characters). It covers what they will notice:
     - faster first load;

@@ -64,7 +64,8 @@ describe('TICKET-12 [MAINT-01]: Root Scripts Hygiene & Build Exclusion', () => {
     // Only operational scripts remain at scripts/ root
     expect(activeScripts).toContain('build.js');
     expect(activeScripts).toContain('generate-compliance-pdf.js');
-    expect(activeScripts).toContain('generate_demo_data.py');
+    // generate_demo_data.py went with the DEMO tenant (2026-10-04).
+    expect(activeScripts).not.toContain('generate_demo_data.py');
     // register-discord-commands.mjs was DELETED on 2026-09-28, not archived: it
     // was a third command registry, run by hand, that nothing kept in step with
     // the worker and the Edge Function. The worker registers every command on
