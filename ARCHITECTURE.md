@@ -222,7 +222,7 @@ Tracks SvS and GvG at per-day granularity — scores (Day 1..6), parametrizable 
 
 ### 5. AI Roster OCR Pipeline
 
-Two input paths into one Edge Function, `ocr-guild-members` (`verify_jwt = true`). The browser no longer cuts videos into frames: `extractFramesFromVideo` is gone (ADR-021 is referenced in the code but not yet written in `docs/adr/`).
+Two input paths into one Edge Function, `ocr-guild-members` (`verify_jwt = true`). The browser no longer cuts videos into frames: `extractFramesFromVideo` is gone ([ADR-021](docs/adr/ADR-021-video-ocr-reads-the-whole-recording-server-side.md)).
 
 ```
 [ Guild Admin opens the OCR modal (admin chunk) and drops files ]
