@@ -24,7 +24,6 @@ async function generatePDF() {
   const page = await browser.newPage();
   await page.setContent(htmlContent, { waitUntil: 'networkidle' });
 
-  const rootPdfPath = path.join(rootDir, 'FGF_Guild_Management_Technical_Security_IP_Compliance_Whitepaper.pdf');
   const docsPdfPath = path.join(
     rootDir,
     'docs',
@@ -58,14 +57,13 @@ async function generatePDF() {
 
   await browser.close();
 
-  fs.writeFileSync(rootPdfPath, pdfBuffer);
+  // docs/ only: a second copy at the repository root was never tracked and
+  // only left a stray file behind after each run.
   fs.writeFileSync(docsPdfPath, pdfBuffer);
 
-  const stats = fs.statSync(rootPdfPath);
+  const stats = fs.statSync(docsPdfPath);
   console.log(`✅ PDF successfully generated!`);
-  console.log(`📍 File locations:`);
-  console.log(`   - ${rootPdfPath} (${(stats.size / 1024).toFixed(1)} KB)`);
-  console.log(`   - ${docsPdfPath} (${(stats.size / 1024).toFixed(1)} KB)`);
+  console.log(`📍 ${docsPdfPath} (${(stats.size / 1024).toFixed(1)} KB)`);
 }
 
 generatePDF().catch((err) => {
