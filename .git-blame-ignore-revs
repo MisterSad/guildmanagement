@@ -1,0 +1,5 @@
+# Commits that only reformat code. Use with:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# style: apply Biome formatting (M6)
+01e837b43c0bce52e4d5c68ec7c9020b3214f40c
