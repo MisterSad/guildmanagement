@@ -1404,11 +1404,6 @@ h1, h2, h3 { font-weight: 600; letter-spacing: -0.02em; }
     gap: 0.4rem;
 }
 
-/* Hide the static Shadowfront banner as each squad will have its own dynamic banner */
-#event-shadowfront .gm-event-banner {
-    display: none;
-}
-
 /* ─── Shadowfront Main Tabs ─── */
 .sf-main-tabs {
     display: flex;

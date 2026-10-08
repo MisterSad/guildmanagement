@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- **Shadowfront: the session controls are back.** Since the strict CSP (V3.35.0), the Shadowfront tab showed no banner: no Start, End, Edit or Delete for either squad. `styles.css` still hid `#event-shadowfront .gm-event-banner`, a rule written for a static banner that no longer exists. The view's own banner used to escape it through its inline `display: flex`; as a `u-d-flex` class it lost to the ID selector. The dead rule is removed. Covered by `e2e/event-banners.spec.js` (Shadowfront and Arms Race banners visible on the built bundle), which fails with the rule and passes without it.
+
 - **The DEMO tenant is retired** (owner decision, 2026-10-04): anyone can create a guild themselves now, so the shared sandbox no longer earns its keep.
   - **Migration `drop_demo_tenant`.**
     - It unschedules the nightly `daily-demo-tenant-reset` and drops `gm_reset_demo_tenant_data()`.
