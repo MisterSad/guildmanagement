@@ -19,13 +19,17 @@ export const EnvSchema = z.object({
   SUPABASE_ANON_KEY: z
     .string({ required_error: "SUPABASE_ANON_KEY is required" })
     .min(1, "SUPABASE_ANON_KEY must not be empty"),
-  GEMINI_API_KEY: z.string().optional().default(""),
+  // The AI provider (ADR-024): every model call goes through OpenRouter.
+  OPENROUTER_API_KEY: z.string().optional().default(""),
+  // The app's public origin, sent to OpenRouter as the calling site.
+  APP_DEFAULT_ORIGIN: z.string().optional(),
 });
 
 export type ValidatedEnv = z.infer<typeof EnvSchema>;
 
 export interface EnvValidationOptions {
-  requireGemini?: boolean;
+  /** Refuse to start without OPENROUTER_API_KEY (functions that call a model). */
+  requireAi?: boolean;
 }
 
 function getRawEnv(): Record<string, string | undefined> {
@@ -42,7 +46,7 @@ function getRawEnv(): Record<string, string | undefined> {
       "SUPABASE_URL",
       "SUPABASE_SERVICE_ROLE_KEY",
       "SUPABASE_ANON_KEY",
-      "GEMINI_API_KEY",
+      "OPENROUTER_API_KEY",
       "CRON_SECRET",
       "DISCORD_BOT_TOKEN",
       "DISCORD_APPLICATION_ID",
@@ -78,7 +82,7 @@ function getRawEnv(): Record<string, string | undefined> {
  * Throws a ConfigurationError immediately if any required variable is missing or invalid.
  *
  * @param source Optional dictionary of environment variables to parse (defaults to Deno.env / process.env).
- * @param options Optional validation options (e.g., requireGemini to enforce non-empty GEMINI_API_KEY).
+ * @param options Optional validation options (e.g., requireAi to enforce a non-empty OPENROUTER_API_KEY).
  */
 export function getValidatedEnv(
   sourceOrOptions?: Record<string, unknown> | EnvValidationOptions,
@@ -88,7 +92,7 @@ export function getValidatedEnv(
   let opts: EnvValidationOptions | undefined = options;
 
   if (sourceOrOptions && typeof sourceOrOptions === "object") {
-    if ("requireGemini" in sourceOrOptions && !("SUPABASE_URL" in sourceOrOptions)) {
+    if ("requireAi" in sourceOrOptions && !("SUPABASE_URL" in sourceOrOptions)) {
       opts = sourceOrOptions as EnvValidationOptions;
       source = undefined;
     } else {
@@ -97,11 +101,11 @@ export function getValidatedEnv(
   }
 
   const raw = source ?? getRawEnv();
-  const schema = opts?.requireGemini
+  const schema = opts?.requireAi
     ? EnvSchema.extend({
-        GEMINI_API_KEY: z
-          .string({ required_error: "GEMINI_API_KEY is required" })
-          .min(1, "GEMINI_API_KEY must not be empty"),
+        OPENROUTER_API_KEY: z
+          .string({ required_error: "OPENROUTER_API_KEY is required" })
+          .min(1, "OPENROUTER_API_KEY must not be empty"),
       })
     : EnvSchema;
 

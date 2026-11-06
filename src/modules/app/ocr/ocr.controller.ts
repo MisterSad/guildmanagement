@@ -425,11 +425,15 @@ export function initOcrGeminiModule(): void {
 // The recording is no longer cut into frames here. Which frames the browser kept
 // decided which players were found, and on some recordings that was 3 or 4 out
 // of 40. The file goes to a private, per-guild staging bucket, and
-// ocr-guild-members hands it to Gemini whole, checks the rank positions it read
-// for gaps, and re-reads the gaps once.
+// ocr-guild-members hands it to the model whole (through OpenRouter, ADR-024),
+// checks the rank positions it read for gaps, and re-reads the gaps once.
 
-/** Mirrors the bucket (migration 20261001194004) and the Edge Function. */
-const OCR_VIDEO_MAX_BYTES = 64 * 1024 * 1024;
+/**
+ * Mirrors the bucket (migration ocr_videos_20mb) and the Edge Function. Was
+ * 64 MB; the recordings scanned on 2026-11-05/06 weighed 13.9 to 17.3 MB for
+ * 50 to 148 s.
+ */
+const OCR_VIDEO_MAX_BYTES = 20 * 1024 * 1024;
 const OCR_VIDEO_MAX_DURATION_SEC = 300;
 const OCR_VIDEO_EXTENSIONS: Record<string, string> = {
   'video/mp4': 'mp4',
@@ -818,7 +822,7 @@ function ocrBatchErrorMessage(code: string): string {
     case 'video_unsupported_type':
       return 'This video format is not supported. Record as MP4 (or MOV / WebM), or use screenshots.';
     case 'video_too_large':
-      return 'That video is over 64 MB. Record a shorter scroll, or lower the recording resolution.';
+      return 'That video is over 20 MB (about 2 minutes at the usual recording quality). Record a shorter scroll, or lower the recording resolution.';
     case 'video_too_long':
       return 'That video is over 5 minutes. Trim it to the part where the list scrolls.';
     case 'video_upload_failed':

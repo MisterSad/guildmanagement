@@ -292,12 +292,14 @@ describe('Ticket 1.1: ocr-guild-members Prompt Injection Protection & Zod Schema
     expect(fnContent).not.toContain('${rankFieldInstruction}');
   });
 
-  it('isolates variable metadata in content payloads and configures Gemini response_schema', () => {
+  it('isolates variable metadata in content payloads and enforces a response schema', () => {
     expect(fnContent).toContain('taskMetadata');
     expect(fnContent).toContain('JSON.stringify(taskMetadata');
     expect(fnContent).toContain('[EXTRACTION TASK METADATA - ISOLATED INPUT]');
-    expect(fnContent).toContain('response_schema: responseSchema');
-    expect(fnContent).toContain('system_instruction:');
+    // ADR-024: the schema goes to OpenRouter as a strict json_schema, and the
+    // instruction as the system message (supabase/functions/_shared/openrouter.ts).
+    expect(fnContent).toContain('schema: { name: "ocr_extraction", schema: responseSchema }');
+    expect(fnContent).toContain('system: systemInstruction,');
     expect(fnContent).toContain('type: "OBJECT"');
     expect(fnContent).toContain('required: ["metric", "players"]');
   });
@@ -346,13 +348,13 @@ describe('2026 OCR Modernization: Sharpness, Fusion & Exhaustive Prompting', () 
   const fnPath = path.resolve(__dirname, '../supabase/functions/ocr-guild-members/index.ts');
   const fnContent = fs.readFileSync(fnPath, 'utf-8');
 
-  it('keeps an explicit, generous max_output_tokens for exhaustive roster extraction', () => {
+  it('keeps an explicit, generous output budget for exhaustive roster extraction', () => {
     // This used to pin the literal 8192, which is how the bug survived: the
     // budget is shared with the thinking tokens, so a long deliberation left
     // ~600 tokens for the answer and the JSON came back cut in half. Pinning
     // the exact number made raising it a test failure. The property that
     // matters is that a ceiling is set and that it is not that one.
-    const cap = /max_output_tokens:\s*(\d+)/.exec(fnContent);
+    const cap = /maxTokens:\s*(\d+)/.exec(fnContent);
     expect(cap).toBeTruthy();
     expect(Number(cap[1])).toBeGreaterThanOrEqual(32768);
   });

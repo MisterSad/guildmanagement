@@ -33,6 +33,7 @@ const SENSITIVE_KEYS = new Set([
   "service_role",
   "service_role_key",
   "gemini_api_key",
+  "openrouter_api_key",
   "stripe_secret_key",
   "stripe_webhook_signing_secret",
   "private_key",
@@ -52,6 +53,8 @@ const SENSITIVE_TEXT_PATTERNS: RegExp[] = [
   // straight through (finding B3).
   /\bsb_secret_[A-Za-z0-9_-]{10,}\b/gi,
   /\bsb_publishable_[A-Za-z0-9_-]{10,}\b/gi,
+  // OpenRouter API keys (ADR-024).
+  /\bsk-or-(?:v\d+-)?[A-Za-z0-9]{20,}\b/gi,
   /\bBearer\s+[A-Za-z0-9._-]{10,}\b/gi,
   /\b(password|secret|token|api[_-]?key)\s*[:=]\s*\S+/gi,
 ];

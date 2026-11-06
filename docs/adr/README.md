@@ -30,6 +30,7 @@ Whenever major design decisions, patterns, or critical bug resolutions are estab
 | [ADR-021](./ADR-021-video-ocr-reads-the-whole-recording-server-side.md) | Video OCR Reads the Whole Recording, Server-Side, and Measures Its Own Coverage | **Accepted** | 2026-10-01 |
 | [ADR-022](./ADR-022-guild-tag-is-a-mutable-tenant-key.md) | The Guild TAG Is a Mutable Tenant Key — Renamed in Place by Deferred Cascade | **Accepted** | 2026-10-03 |
 | [ADR-023](./ADR-023-an-event-counts-in-the-week-of-its-start.md) | An Event Counts in the ISO Week of Its Start (UTC), Enforced by the Database | **Accepted** | 2026-11-06 |
+| [ADR-024](./ADR-024-ai-calls-go-through-openrouter.md) | Every AI Call Goes Through OpenRouter (google/gemini-3.8-flash) | **Accepted** | 2026-11-06 |
 
 ---
 

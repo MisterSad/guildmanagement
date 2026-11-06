@@ -2,6 +2,31 @@
 
 ## [Unreleased]
 
+- **The AI moves to OpenRouter (ADR-024).** The OCR (screenshots and screen recordings), the Migration Hub summary and the Discord profile verification now call `google/gemini-3.8-flash` through OpenRouter. They fall back to `google/gemini-3.7-flash`. Each call uses one client, `_shared/openrouter.ts`, keyed by the new `OPENROUTER_API_KEY` secret. `_shared/gemini.ts` and `_shared/gemini-vision.ts` are removed.
+  - **Reasoning is kept as low as the model allows.** The owner asked for none, to save tokens. Both models declare it mandatory on OpenRouter, and the owner kept 3.8-flash, so every call sends `reasoning: { effort: "low", exclude: true }`.
+    - Budgets stay generous (32,768 tokens for the OCR), and a `length` finish is refused and the next model tried, never parsed.
+    - Each call logs its token usage, so the real cost of the reasoning can be measured.
+  - **Video.**
+    - The recording is sent inline as base64, streamed so it is never held in memory as one string. OpenRouter's Google endpoints take no upload, so the File API, the 8 fps sampling and the high media resolution of ADR-021 are gone.
+    - Gemini's default sampling (~1 fps) applies. The coverage check and the second pass remain. **Coverage is to be measured after deployment.**
+    - The cap drops from 64 to 20 MiB: bucket (migration `ocr_videos_20mb`), Edge Function and browser. The recordings scanned on 2026-11-05/06 weighed 13.9 to 17.3 MB.
+  - **Privacy.**
+    - Requests are routed only to providers that do not collect the data (`provider.data_collection: "deny"`).
+    - `privacy.html` names OpenRouter as the processor (relaying to Google) and drops the 48-hour retention of a recording at Google.
+    - The logger also redacts any `sk-or-…` key.
+  - **Fixed on the way.**
+    - Every model call now has a timeout (audit OCR-09).
+    - The OCR handler is finally executed by a test (audit OCR-15).
+    - A streamed body that never closed was caught by its own test before shipping.
+  - **Tests.**
+    - New `supabase/functions/_shared/openrouter.test.ts` (8 tests).
+    - New `supabase/functions/ocr-guild-members/index.test.ts` (3 tests).
+    - The vitest checks that read the Gemini call shapes are rewritten for the new client; the File API and frame-rate tests go with the code they tested. `tests/ocr_video_gemini.test.js` is renamed to `ocr_video_coverage.test.js`.
+  - **Owner actions.**
+    1. Create a new OpenRouter key, since the one shared in chat must be revoked.
+    2. Set it as the `OPENROUTER_API_KEY` Supabase secret **before** this deploys.
+    3. Keep `GEMINI_API_KEY` until production is validated.
+
 - **Security (audit SEC2-01, critical): another guild's player could be taken over.**
   - **The flaw.** An account that had claimed no player was treated as the player whose UID equals its login id. The attack chain:
     1. Create a guild through Discord onboarding, on the victim's game server.

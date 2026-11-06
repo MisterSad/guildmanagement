@@ -13,19 +13,19 @@ describe('Ticket 2.1: Zod Runtime Environment Validator (env.ts)', () => {
   it('successfully parses valid environment variables with all fields', () => {
     const fullEnv = {
       ...validBaseEnv,
-      GEMINI_API_KEY: 'AIzaSyFakeKey1234567890',
+      OPENROUTER_API_KEY: 'sk-or-v1-fakekeyfakekeyfakekey',
     };
 
     const env = getValidatedEnv(fullEnv);
     expect(env.SUPABASE_URL).toBe('https://example-project.supabase.co');
     expect(env.SUPABASE_SERVICE_ROLE_KEY).toBe('test-service-role-key-9876543210');
     expect(env.SUPABASE_ANON_KEY).toBe('test-anon-key-1234567890');
-    expect(env.GEMINI_API_KEY).toBe('AIzaSyFakeKey1234567890');
+    expect(env.OPENROUTER_API_KEY).toBe('sk-or-v1-fakekeyfakekeyfakekey');
   });
 
-  it('defaults GEMINI_API_KEY to empty string when not provided', () => {
+  it('defaults OPENROUTER_API_KEY to empty string when not provided', () => {
     const env = getValidatedEnv(validBaseEnv);
-    expect(env.GEMINI_API_KEY).toBe('');
+    expect(env.OPENROUTER_API_KEY).toBe('');
     expect(env.SUPABASE_URL).toBe('https://example-project.supabase.co');
   });
 
@@ -66,19 +66,13 @@ describe('Ticket 2.1: Zod Runtime Environment Validator (env.ts)', () => {
     expect(() => getValidatedEnv(emptyKey)).toThrow(ConfigurationError);
   });
 
-  it('enforces non-empty GEMINI_API_KEY when requireGemini option is true', () => {
-    // Missing when required
-    expect(() => getValidatedEnv(validBaseEnv, { requireGemini: true })).toThrow(ConfigurationError);
-
-    // Empty string when required
-    expect(() => getValidatedEnv({ ...validBaseEnv, GEMINI_API_KEY: '' }, { requireGemini: true })).toThrow(
+  it('enforces a non-empty OPENROUTER_API_KEY when requireAi is set (ADR-024)', () => {
+    expect(() => getValidatedEnv(validBaseEnv, { requireAi: true })).toThrow(ConfigurationError);
+    expect(() => getValidatedEnv({ ...validBaseEnv, OPENROUTER_API_KEY: '' }, { requireAi: true })).toThrow(
       ConfigurationError
     );
-
-    // Success when provided
-    const validWithGemini = { ...validBaseEnv, GEMINI_API_KEY: 'valid-gemini-key' };
-    const env = getValidatedEnv(validWithGemini, { requireGemini: true });
-    expect(env.GEMINI_API_KEY).toBe('valid-gemini-key');
+    const env = getValidatedEnv({ ...validBaseEnv, OPENROUTER_API_KEY: 'sk-or-v1-validkey' }, { requireAi: true });
+    expect(env.OPENROUTER_API_KEY).toBe('sk-or-v1-validkey');
   });
 
   it('formats explicit error messages and attaches Zod issues to ConfigurationError', () => {
@@ -115,7 +109,8 @@ describe('Ticket 2.1: Static Containment - Edge Functions use getValidatedEnv', 
     expect(content).toContain('import { getValidatedEnv } from "../_shared/env.ts";');
     expect(content).toContain('const env = getValidatedEnv();');
     expect(content).not.toContain('Deno.env.get(');
-    // Preserves required header interpolation for existing security tests
-    expect(content).toContain('"x-goog-api-key": GEMINI_API_KEY');
+    // The AI key comes from the validated env and goes only to the shared client.
+    expect(content).toContain('const OPENROUTER_API_KEY = env.OPENROUTER_API_KEY');
+    expect(content).toContain('apiKey: OPENROUTER_API_KEY');
   });
 });

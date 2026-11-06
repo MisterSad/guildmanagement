@@ -162,41 +162,28 @@ describe('the provisioner creates roles the verification flow can actually match
   });
 });
 
-describe('one Gemini model list for the whole backend', () => {
+describe('one AI model list for the whole backend (ADR-024)', () => {
   function walk(dir, out = []) {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
       const full = path.join(dir, entry.name);
       if (entry.isDirectory()) walk(full, out);
-      else if (/\.ts$/.test(entry.name)) out.push(full);
+      else if (/\.ts$/.test(entry.name) && !/\.test\.ts$/.test(entry.name)) out.push(full);
     }
     return out;
   }
 
   const files = walk(path.resolve(__dirname, '../supabase/functions'));
 
-  it('mentions no Gemini model Google never published', () => {
-    // gemini-3.5-flash / gemini-3.7-flash / gemini-3-flash-preview: the
-    // Claude/GPT minor-version scheme pattern-matched onto the wrong vendor
-    // (finding B1). Each one costs a full round trip and a 404.
-    // Only a quoted occurrence is a model identifier the code would actually
-    // send; _shared/gemini.ts names these in prose precisely to record that they
-    // are not real, and that comment must stay readable.
-    const offenders = files.filter((f) => /["']gemini-3/.test(fs.readFileSync(f, 'utf-8')));
-    expect(offenders.map((f) => path.basename(f))).toEqual([]);
-    // Wired-to-real-data guard: the real list IS quoted, so a broken regex
-    // cannot make this vacuous.
-    const geminiSrc = fs.readFileSync(path.resolve(__dirname, '../supabase/functions/_shared/gemini.ts'), 'utf-8');
-    expect(/["']gemini-flash-latest["']/.test(geminiSrc)).toBe(true);
+  it('quotes a model identifier in one file only: _shared/openrouter.ts', () => {
+    const offenders = files.filter((f) => /["']google\/gemini-|["']gemini-[0-9a-z]/.test(fs.readFileSync(f, 'utf-8')));
+    expect(offenders.map((f) => path.basename(f))).toEqual(['openrouter.ts']);
   });
 
-  it('leaves gemini-vision.ts with no model list of its own', () => {
-    const src = fs.readFileSync(path.resolve(__dirname, '../supabase/functions/_shared/gemini-vision.ts'), 'utf-8');
-    expect(src).toContain('from "./gemini.ts"');
-    expect(src).toContain('GEMINI_MODEL_FALLBACKS');
-    expect(src).not.toMatch(/MODELS_TO_TRY\s*=\s*\[/);
-    // And it inherits the measured thinking-budget fix.
-    expect(src).toContain('thinking_budget: 0');
-    expect(src).toContain('geminiSupportsThinking');
+  it('leaves the Discord profile verification with no model or provider of its own', () => {
+    const src = fs.readFileSync(path.resolve(__dirname, '../supabase/functions/_shared/ai-vision.ts'), 'utf-8');
+    expect(src).toContain('from "./openrouter.ts"');
+    expect(src).toContain('callOpenRouter(');
+    expect(src).not.toContain('googleapis.com');
   });
 });
 

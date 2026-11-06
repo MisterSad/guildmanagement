@@ -1,5 +1,7 @@
 # ADR-012: SHA-256 OCR Deduplication Cache for Gemini Vision
 
+> Since ADR-024 (2026-11-06) the model is reached through OpenRouter (`google/gemini-3.8-flash`); the cache below is unchanged.
+
 - **Status**: Accepted — **and, as of 2026-09-26, actually deployed** (see the addendum)
 - **Date**: 2026-09-20
 - **Authors**: Lead Architect & SecOps

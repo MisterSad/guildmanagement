@@ -24,7 +24,6 @@ import path from 'node:path';
 import { handleOcrFiles } from '../src/modules/app/ocr/ocr.controller';
 import { setCurrentOcrMetric, setOcrExtractedPlayers, getOcrExtractedPlayers } from '../src/modules/app/ocr/ocr.meta';
 import { setGuildMembers, clearMembersStore } from '../src/modules/app/members/members.store';
-import { geminiSupportsThinking } from '../supabase/functions/_shared/gemini.ts';
 import { setDbClient, resetSupabaseClient } from '../src/core/api/supabase';
 import { patchAppState } from '../src/core/state/app-state';
 
@@ -34,59 +33,28 @@ const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$
 
 // ── The server half ─────────────────────────────────────────────────────────
 
-describe('the Gemini call cannot spend its answer on thinking', () => {
+// Since ADR-024 the model is called through _shared/openrouter.ts, whose
+// behaviour is run by supabase/functions/_shared/openrouter.test.ts: a `length`
+// finish is refused and the next model tried, never parsed. What stays here is
+// the OCR function's own budget. Reasoning cannot be turned off on
+// google/gemini-3.8-flash (it is mandatory there), so the budget it shares with
+// the answer must stay generous.
+describe('the OCR answer keeps its headroom', () => {
   const fn = stripComments(read('supabase/functions/ocr-guild-members/index.ts'));
-
-  it('asks for no thinking at all, because OCR is transcription', () => {
-    expect(fn).toContain('thinking_config: { thinking_budget: 0 }');
-  });
+  const client = stripComments(read('supabase/functions/_shared/openrouter.ts'));
 
   it('leaves real headroom for the answer', () => {
-    const cap = /max_output_tokens:\s*(\d+)/.exec(fn);
-    expect(cap, 'max_output_tokens must still be set explicitly').toBeTruthy();
+    const cap = /maxTokens:\s*(\d+)/.exec(fn);
+    expect(cap, 'maxTokens must be set explicitly').toBeTruthy();
     expect(Number(cap[1])).toBeGreaterThanOrEqual(32768);
-    expect(fn, 'the old shared-with-thinking budget must not come back').not.toContain('max_output_tokens: 8192');
   });
 
-  it('only sends thinking_config to models that accept it', () => {
-    // Gemini 2.0 answers 400 INVALID_ARGUMENT rather than ignoring it, and it
-    // is in the fallback list.
-    expect(geminiSupportsThinking('gemini-flash-latest')).toBe(true);
-    expect(geminiSupportsThinking('gemini-2.5-flash')).toBe(true);
-    expect(geminiSupportsThinking('gemini-2.0-flash')).toBe(false);
-    expect(fn).toContain('geminiSupportsThinking(modelName)');
+  it('asks for the lowest reasoning the model accepts', () => {
+    expect(client).toContain('reasoning: { effort: "low", exclude: true }');
   });
 
-  it('retries without thinking_config rather than failing on a 400', () => {
-    // An optimisation must never be able to take the whole feature down.
-    expect(fn).toContain('resp.status === 400 && geminiSupportsThinking(modelName)');
-    const retry = fn.slice(fn.indexOf('resp.status === 400'), fn.indexOf('if (!resp.ok)'));
-    expect(retry).toContain('generationConfig: baseGenerationConfig');
-    expect(retry).not.toContain('thinking_budget');
-  });
-});
-
-describe('a truncated answer is refused, not parsed', () => {
-  const fn = stripComments(read('supabase/functions/ocr-guild-members/index.ts'));
-
-  it('checks finishReason before accepting the text', () => {
-    const check = fn.indexOf('finishReason !== "STOP"');
-    const accept = fn.indexOf('geminiResultRaw = textCandidate');
-    expect(check).toBeGreaterThan(-1);
-    expect(accept).toBeGreaterThan(-1);
-    expect(check, 'the guard must come before the assignment it guards').toBeLessThan(accept);
-  });
-
-  it('falls through to the next model instead of breaking out', () => {
-    // `break` on a truncated candidate is what removed every chance of
-    // recovery: the loop ended, then JSON.parse threw, then the user got a 500.
-    const guard = fn.slice(fn.indexOf('finishReason !== "STOP"'), fn.indexOf('if (textCandidate) {'));
-    expect(guard).toContain('continue;');
-    expect(guard).not.toContain('break;');
-  });
-
-  it('records the token usage, so the next investigation has the numbers', () => {
-    expect(fn).toContain('usage: respData?.usageMetadata ?? null');
+  it('refuses anything but a clean stop', () => {
+    expect(client).toContain('if (finish !== "stop")');
   });
 });
 

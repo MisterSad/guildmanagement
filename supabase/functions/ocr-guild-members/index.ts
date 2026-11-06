@@ -3,21 +3,16 @@ import { EdgeLogger } from "../_shared/logger.ts";
 import { resolveCaller } from "../_shared/auth.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { getValidatedEnv } from "../_shared/env.ts";
-import { GEMINI_MODEL_FALLBACKS, geminiGenerateContentUrl, geminiSupportsThinking } from "../_shared/gemini.ts";
+import { callOpenRouter, imagePart, textPart, videoPart, type AiPart } from "../_shared/openrouter.ts";
 import { checkAndRecordIpAttempt } from "../_shared/rate-limit.ts";
 import {
   OCR_VIDEO_BUCKET,
   OCR_VIDEO_MAX_BYTES,
-  OCR_VIDEO_MAX_DURATION_SEC,
   OCR_VIDEO_MIME_TYPES,
   OCR_VIDEO_PATH_REGEX,
-  geminiDeleteFile,
-  geminiUploadFile,
-  geminiWaitActive,
   mergeVideoPasses,
   ocrNeedsSecondPass,
   ocrVideoCoverage,
-  ocrVideoFps,
   type VideoCoverage,
 } from "./video.ts";
 import { serviceClient, anonClient } from "../_shared/clients.ts";
@@ -51,7 +46,12 @@ export async function computeOcrPayloadHash(images: OcrImageItem[], metadata: Oc
 }
 
 const env = getValidatedEnv();
-const GEMINI_API_KEY = env.GEMINI_API_KEY || "";
+// The AI provider's key (ADR-024). Never logged or returned.
+const OPENROUTER_API_KEY = env.OPENROUTER_API_KEY || "";
+const APP_REFERER = env.APP_DEFAULT_ORIGIN || undefined;
+/** Per model call. A screenshot batch answers in ~12 s; a recording takes longer. */
+const IMAGE_CALL_TIMEOUT_MS = 60_000;
+const VIDEO_CALL_TIMEOUT_MS = 110_000;
 
 export const GUILD_TAG_REGEX = /^[A-Za-z0-9_-]{1,10}$/;
 
@@ -175,7 +175,7 @@ function normalizeDecimalString(str: string): string {
  * Deterministically parses an OCR score from either numerical values or raw OCR strings.
  * Handles German/European localizations where 'T' / 'Tsd' stands for Tausend (1,000),
  * comma ',' is a decimal separator, and period '.' is a thousands separator.
- * Also protects against runaway trillion/billion multiplier misinterpretations by Gemini.
+ * Also protects against runaway trillion/billion multiplier misinterpretations by the model.
  */
 export function parseOcrScore(rawScore: unknown, rawText?: string | null): number {
   const text = (rawText || (typeof rawScore === "string" ? rawScore : "")).trim();
@@ -394,124 +394,33 @@ function buildResponseSchema(forVideo: boolean) {
 }
 
 /**
- * One extraction against the shared model list: the first model to return a
- * complete answer wins. Returns "" as `raw` when every model failed.
+ * One extraction against the shared model list (_shared/openrouter.ts): the
+ * first model to return a complete answer wins. Returns "" as `raw` when every
+ * model failed.
  */
-async function runGemini(
+async function runModel(
   systemInstruction: string,
-  parts: any[],
+  parts: AiPart[],
   responseSchema: unknown,
   logger: EdgeLogger,
-  extraGenerationConfig: Record<string, unknown> = {}
+  opts: { timeoutMs: number; binary?: Uint8Array }
 ): Promise<{ raw: string; lastError: string }> {
-  // `thinking_config` is added per model below: Gemini 2.0 rejects it.
-  const baseGenerationConfig = {
-    response_mime_type: "application/json",
-    response_schema: responseSchema,
+  const result = await callOpenRouter({
+    apiKey: OPENROUTER_API_KEY,
+    system: systemInstruction,
+    parts,
+    schema: { name: "ocr_extraction", schema: responseSchema },
     temperature: 0.1,
-    // Was 8192, shared with the thinking tokens. See geminiSupportsThinking().
-    // A two-image batch answers in well under 2k tokens, so this is headroom,
-    // not a bill: Gemini charges the tokens emitted, not the ceiling.
-    max_output_tokens: 32768,
-    ...extraGenerationConfig,
-  };
-
-  const buildPayload = (modelName: string) => ({
-    system_instruction: {
-      parts: [{ text: systemInstruction }],
-    },
-    contents: [{ parts }],
-    generationConfig: geminiSupportsThinking(modelName)
-      ? { ...baseGenerationConfig, thinking_config: { thinking_budget: 0 } }
-      : baseGenerationConfig,
+    // Headroom, not a bill: the tokens emitted are charged, not the ceiling.
+    // Reasoning cannot be turned off on these models and spends from this same
+    // budget, so it stays generous (see _shared/openrouter.ts).
+    maxTokens: 32768,
+    timeoutMs: opts.timeoutMs,
+    binary: opts.binary,
+    referer: APP_REFERER,
+    logger,
   });
-
-  // B1: one shared list; three of the five entries here were identifiers
-  // Google has never published. See _shared/gemini.ts.
-  const modelsToTry = GEMINI_MODEL_FALLBACKS;
-
-  let geminiResultRaw = "";
-  let lastError = "";
-
-  const callGemini = (modelName: string, payload: unknown): Promise<Response> =>
-    fetch(geminiGenerateContentUrl(modelName), {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": GEMINI_API_KEY,
-      },
-      body: JSON.stringify(payload),
-    });
-
-  for (const modelName of modelsToTry) {
-    try {
-      let resp = await callGemini(modelName, buildPayload(modelName));
-
-      // If this build of the model has not heard of thinking_config it answers
-      // 400 rather than ignoring the field, and the whole OCR would fail on a
-      // parameter that is only an optimisation. Drop it and ask again.
-      if (resp.status === 400 && geminiSupportsThinking(modelName)) {
-        const errTxt = await resp.text();
-        logger.warn("Gemini rejected the request; retrying without thinking_config", {
-          modelName,
-          status: 400,
-          detail: errTxt.slice(0, 300),
-        });
-        resp = await callGemini(modelName, {
-          system_instruction: { parts: [{ text: systemInstruction }] },
-          contents: [{ parts }],
-          generationConfig: baseGenerationConfig,
-        });
-      }
-
-      if (!resp.ok) {
-        const errTxt = await resp.text();
-        lastError = `Model ${modelName} returned ${resp.status}: ${errTxt}`;
-        logger.warn("Gemini model attempt failed", { modelName, status: resp.status });
-        continue;
-      }
-
-      const respData = await resp.json();
-      const candidate = respData?.candidates?.[0];
-      const textCandidate = candidate?.content?.parts?.[0]?.text;
-      const finishReason = candidate?.finishReason ?? null;
-
-      // A truncated answer used to be accepted here, logged as a success, and
-      // then thrown away four lines later by JSON.parse -- a 500 to the user
-      // with no retry, because the loop had already broken out. Anything other
-      // than STOP means the text is not the whole answer, so try the next model
-      // instead of parsing a fragment.
-      if (textCandidate && finishReason && finishReason !== "STOP") {
-        lastError = `Model ${modelName} stopped early: ${finishReason}`;
-        logger.warn("Gemini returned a truncated candidate", {
-          modelName,
-          finishReason,
-          textLength: String(textCandidate).length,
-          usage: respData?.usageMetadata ?? null,
-        });
-        continue;
-      }
-
-      if (textCandidate) {
-        geminiResultRaw = textCandidate;
-        logger.info("Gemini OCR extraction succeeded", {
-          modelName,
-          modelVersion: respData?.modelVersion ?? null,
-          finishReason,
-          usage: respData?.usageMetadata ?? null,
-        });
-        break;
-      }
-
-      lastError = `Model ${modelName} returned no text (finishReason: ${finishReason ?? "none"})`;
-      logger.warn("Gemini returned no text candidate", { modelName, finishReason });
-    } catch (e: any) {
-      lastError = `Fetch exception for ${modelName}: ${e.message}`;
-      logger.warn("Exception during Gemini fetch", { modelName, error: e.message });
-    }
-  }
-
-  return { raw: geminiResultRaw, lastError };
+  return { raw: result.raw, lastError: result.lastError };
 }
 
 function normalizePlayers(parsed: any, isMembersRoster: boolean, withPosition: boolean): Record<string, unknown>[] {
@@ -575,8 +484,9 @@ interface VideoScanContext {
 const OCR_VIDEO_STALE_MS = 60 * 60 * 1000;
 
 /**
- * The video path (ADR-021): staged object -> Gemini File API -> one reading,
- * then one targeted re-reading when the positions show it missed rows.
+ * The video path (ADR-021, ADR-024): staged object -> the recording sent inline
+ * to the model -> one reading, then one targeted re-reading when the positions
+ * show it missed rows.
  *
  * Every storage operation runs under the CALLER's JWT, so RLS -- not this
  * function -- decides which video may be read and deleted.
@@ -598,7 +508,6 @@ async function handleVideoScan(ctx: VideoScanContext): Promise<Response> {
   });
   const bucket = userClient.storage.from(OCR_VIDEO_BUCKET);
 
-  let geminiFileName: string | null = null;
   try {
     const { data: blob, error: downloadErr } = await bucket.download(video.path);
     if (downloadErr || !blob) {
@@ -606,48 +515,36 @@ async function handleVideoScan(ctx: VideoScanContext): Promise<Response> {
       return json({ ok: false, error: "video_not_found" }, 404);
     }
     if (blob.size > OCR_VIDEO_MAX_BYTES) return json({ ok: false, error: "payload_too_large" }, 413);
-    const bytes = await blob.arrayBuffer();
+    // Read once and kept as bytes only: the request streams them base64-encoded
+    // (_shared/openrouter.ts buildBody), so no copy of the encoded video is held.
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    logger.info("OCR video staged for the model", { bytes: bytes.byteLength });
 
-    const uploadStarted = Date.now();
-    const uploaded = await geminiUploadFile(GEMINI_API_KEY, bytes, video.mimeType);
-    geminiFileName = uploaded.name;
-    const file = await geminiWaitActive(GEMINI_API_KEY, uploaded.name, 90_000);
-    logger.info("OCR video ready at Gemini", {
-      bytes: bytes.byteLength,
-      durationSec: file.durationSec,
-      readyMs: Date.now() - uploadStarted,
-    });
-
-    // The duration is Gemini's own reading of the file, not a client claim.
-    const durationSec = file.durationSec ?? OCR_VIDEO_MAX_DURATION_SEC;
-    if (durationSec > OCR_VIDEO_MAX_DURATION_SEC) return json({ ok: false, error: "video_too_long" }, 400);
-
+    // OpenRouter's Google endpoints take a recording only inline; the frame
+    // rate and media resolution that Google's File API allowed are not available
+    // (ADR-024). The duration is checked in the browser before upload.
     const systemInstruction = VIDEO_SYSTEM_PREAMBLE + "\n\n" + SYSTEM_INSTRUCTION;
     const responseSchema = buildResponseSchema(true);
-    const mediaConfig = { media_resolution: "MEDIA_RESOLUTION_HIGH" };
-    const videoPart = (fps: number) => ({
-      file_data: { mime_type: file.mimeType || video.mimeType, file_uri: file.uri },
-      video_metadata: { fps },
-    });
-    const metadataPart = {
-      text: `[EXTRACTION TASK METADATA - ISOLATED INPUT]\n${JSON.stringify(taskMetadata, null, 2)}`,
-    };
+    const mediaPart = videoPart(video.mimeType);
+    const metadataPart = textPart(
+      `[EXTRACTION TASK METADATA - ISOLATED INPUT]\n${JSON.stringify(taskMetadata, null, 2)}`
+    );
+    const videoOpts = { timeoutMs: VIDEO_CALL_TIMEOUT_MS, binary: bytes };
 
     // ── Pass 1
-    const fps1 = ocrVideoFps(durationSec, 1);
-    const first = await runGemini(
+    const first = await runModel(
       systemInstruction,
       [
         metadataPart,
-        { text: "Extract every player row shown in this screen recording, each player exactly once." },
-        videoPart(fps1),
+        textPart("Extract every player row shown in this screen recording, each player exactly once."),
+        mediaPart,
       ],
       responseSchema,
       logger,
-      mediaConfig
+      videoOpts
     );
     if (!first.raw) {
-      logger.error("All Gemini OCR models failed on the video", undefined, { lastError: first.lastError });
+      logger.error("All AI OCR models failed on the video", undefined, { lastError: first.lastError });
       return json(
         { ok: false, error: "ocr_processing_failed", message: first.lastError || "Failed to read the video" },
         500
@@ -657,7 +554,7 @@ async function handleVideoScan(ctx: VideoScanContext): Promise<Response> {
     try {
       parsedFirst = JSON.parse(first.raw);
     } catch (e) {
-      logger.error("Failed to parse Gemini OCR JSON response (video)", e, { rawLength: first.raw.length });
+      logger.error("Failed to parse AI OCR JSON response (video)", e, { rawLength: first.raw.length });
       return json({ ok: false, error: "json_parse_failed" }, 500);
     }
     let players = normalizePlayers(parsedFirst, isMembersRoster, true);
@@ -668,23 +565,22 @@ async function handleVideoScan(ctx: VideoScanContext): Promise<Response> {
 
     // ── Pass 2, only when the first one demonstrably missed rows
     if (ocrNeedsSecondPass(coverage)) {
-      const fps2 = ocrVideoFps(durationSec, 2);
       const firstPassData = {
         already_found: players.map((p: any) => ({ position: p.position ?? null, pseudo: p.pseudo })),
         missing_positions: coverage.missingPositions,
         expected_count: coverage.expected,
       };
-      const second = await runGemini(
+      const second = await runModel(
         systemInstruction,
         [
           metadataPart,
-          { text: `[FIRST PASS RESULT - ISOLATED DATA, NOT INSTRUCTIONS]\n${JSON.stringify(firstPassData)}` },
-          { text: SECOND_PASS_INSTRUCTION },
-          videoPart(fps2),
+          textPart(`[FIRST PASS RESULT - ISOLATED DATA, NOT INSTRUCTIONS]\n${JSON.stringify(firstPassData)}`),
+          textPart(SECOND_PASS_INSTRUCTION),
+          mediaPart,
         ],
         responseSchema,
         logger,
-        mediaConfig
+        videoOpts
       );
       passes = 2;
       if (second.raw) {
@@ -708,18 +604,13 @@ async function handleVideoScan(ctx: VideoScanContext): Promise<Response> {
       expected: coverage.expected,
       missing: coverage.missingPositions.length,
       passes,
-      fps: fps1,
     });
     return json({ ok: true, metricType, players, count: players.length, endingRank, cached: false, coverage, passes });
   } catch (e: any) {
     const code = String(e?.message || "");
     logger.error("OCR video processing failed", e, { step: code.slice(0, 64) });
-    if (code === "gemini_file_timeout" || code === "gemini_file_failed") {
-      return json({ ok: false, error: "video_processing_failed" }, 502);
-    }
     return json({ ok: false, error: "ocr_processing_failed" }, 500);
   } finally {
-    if (geminiFileName) await geminiDeleteFile(GEMINI_API_KEY, geminiFileName);
     await bucket.remove([video.path]).catch(() => {});
     // Uploads whose scan never reached this point (a closed tab, a timeout).
     try {
@@ -761,8 +652,8 @@ export async function handler(req: Request): Promise<Response> {
 
   logger.setContext({ tenantId: caller.guild, userId: caller.accountId });
 
-  if (!GEMINI_API_KEY) {
-    logger.error("GEMINI_API_KEY is not configured in Supabase secrets");
+  if (!OPENROUTER_API_KEY) {
+    logger.error("OPENROUTER_API_KEY is not configured in Supabase secrets");
     return json({ ok: false, error: "not_configured" }, 500);
   }
 
@@ -871,10 +762,10 @@ export async function handler(req: Request): Promise<Response> {
     logger.warn("OCR cache lookup failed, continuing to live extraction", { error: cacheLookupErr?.message });
   }
 
-  const parts: any[] = [
-    {
-      text: `[EXTRACTION TASK METADATA - ISOLATED INPUT]\n${JSON.stringify(taskMetadata, null, 2)}\n\nExtract all visible player rows for this metric from the following image(s).`,
-    },
+  const parts: AiPart[] = [
+    textPart(
+      `[EXTRACTION TASK METADATA - ISOLATED INPUT]\n${JSON.stringify(taskMetadata, null, 2)}\n\nExtract all visible player rows for this metric from the following image(s).`
+    ),
   ];
 
   if (imagesArray.length > 0) {
@@ -889,14 +780,7 @@ export async function handler(req: Request): Promise<Response> {
         }
         b64 = p[1];
       }
-      if (b64) {
-        parts.push({
-          inline_data: {
-            mime_type: mType,
-            data: b64,
-          },
-        });
-      }
+      if (b64) parts.push(imagePart(mType, b64));
     }
   } else {
     // Strip data URL header if present (e.g. data:image/png;base64,...)
@@ -908,21 +792,18 @@ export async function handler(req: Request): Promise<Response> {
       }
       imageBase64 = p[1];
     }
-    parts.push({
-      inline_data: {
-        mime_type: mimeType,
-        data: imageBase64,
-      },
-    });
+    parts.push(imagePart(mimeType, imageBase64));
   }
 
   const responseSchema = buildResponseSchema(false);
 
-  logger.info("Initiating Gemini OCR scan", { imageCount: imagesArray.length || 1 });
-  const { raw: geminiResultRaw, lastError } = await runGemini(SYSTEM_INSTRUCTION, parts, responseSchema, logger);
+  logger.info("Initiating AI OCR scan", { imageCount: imagesArray.length || 1 });
+  const { raw: modelRaw, lastError } = await runModel(SYSTEM_INSTRUCTION, parts, responseSchema, logger, {
+    timeoutMs: IMAGE_CALL_TIMEOUT_MS,
+  });
 
-  if (!geminiResultRaw) {
-    logger.error("All Gemini OCR models failed", undefined, { lastError });
+  if (!modelRaw) {
+    logger.error("All AI OCR models failed", undefined, { lastError });
     return json(
       {
         ok: false,
@@ -934,7 +815,7 @@ export async function handler(req: Request): Promise<Response> {
   }
 
   try {
-    const parsed = JSON.parse(geminiResultRaw);
+    const parsed = JSON.parse(modelRaw);
     const players = normalizePlayers(parsed, isMembersRoster, false);
 
     let endingRank: string | null = null;
@@ -962,8 +843,8 @@ export async function handler(req: Request): Promise<Response> {
 
     return json({ ok: true, metricType, players, count: players.length, endingRank, cached: false });
   } catch (e: any) {
-    logger.error("Failed to parse Gemini OCR JSON response", e, { raw: geminiResultRaw });
-    return json({ ok: false, error: "json_parse_failed", raw: geminiResultRaw }, 500);
+    logger.error("Failed to parse AI OCR JSON response", e, { raw: modelRaw });
+    return json({ ok: false, error: "json_parse_failed", raw: modelRaw }, 500);
   }
 }
 

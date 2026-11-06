@@ -814,7 +814,7 @@ describe('Regression: discord-profile-verification stays a thin caller', () => {
 
   it('rate-limits by discord_user_id before calling the metered OCR API', () => {
     const rateLimitIdx = fnSrc.indexOf('checkAndRecordDiscordAttempt');
-    const ocrIdx = fnSrc.indexOf('callGeminiVision(');
+    const ocrIdx = fnSrc.indexOf('callVisionModel(');
     expect(rateLimitIdx).toBeGreaterThan(-1);
     expect(ocrIdx).toBeGreaterThan(rateLimitIdx);
   });

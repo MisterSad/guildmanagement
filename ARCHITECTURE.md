@@ -50,13 +50,13 @@
 │  │ │   └─ JWT-Gated (`verify_jwt = true`):                                           │  │
 │  │ │       ├─ `member-portal`: Cryptographically resolved player portal backend      │  │
 │  │ │       ├─ `admin-accounts`: Centralized admin role provisioner (`admin-authz.ts`)│  │
-│  │ │       ├─ `ocr-guild-members`: Gemini vision multimodal OCR — screenshots OR     │  │
+│  │ │       ├─ `ocr-guild-members`: AI OCR via OpenRouter (ADR-024) — screenshots OR │  │
 │  │ │       │   a screen-recording video read from the `ocr-videos` bucket; Members   │  │
 │  │ │       │   scans also detect R1-R4 rank from the roster's section headers        │  │
 │  │ │       ├─ `discord-webhook-proxy`: Whitelisted Discord webhook proxy (SSRF safe) │  │
 │  │ │       ├─ `guild-data-export`: Guild data export (JWT-gated)                     │  │
 │  │ │       ├─ `tickets`: Bug-report ticketing console backend                        │  │
-│  │ │       └─ `migration-summary`: Gemini summariser for the Migration Hub wiki      │  │
+│  │ │       └─ `migration-summary`: AI summariser (OpenRouter) for the Migration Hub  │  │
 │  │ └─ Shared Modules: _shared/auth.ts, _shared/logger.ts, _shared/rate-limit.ts,     │  │
 │  │     _shared/admin-authz.ts, _shared/shadow-session.ts, _shared/cors.ts            │  │
 │  └───────────────────────────────────────────────────────────────────────────────────┘  │
@@ -232,24 +232,24 @@ Two input paths into one Edge Function, `ocr-guild-members` (`verify_jwt = true`
           │      SHA-256 of images + metadata looked up in `public.ocr_cache` (ADR-012)
           │
           └─ Screen recording (MP4 / MOV / WebM): `callGeminiOcrVideoApi`
-               1. Client refuses > 64 MB or > 300 s (duration read from metadata)
+               1. Client refuses > 20 MB or > 300 s (duration read from metadata)
                2. Upload to the private Storage bucket `ocr-videos` at
                   `<guild>/<uuid>.<ext>` (`ocr.service.ts:uploadOcrVideo`).
                   RLS on storage.objects: INSERT/SELECT/DELETE only if
                   `check_user_guild_write_access(<guild>)` — members cannot upload
                   (migration `20261001194004_ocr_videos_bucket.sql`, which also
-                  sets the 64 MiB limit and the three MIME types)
+                  sets the three MIME types; `ocr_videos_20mb` caps it at 20 MiB)
                3. POST /functions/v1/ocr-guild-members { video: { path, mimeType } }
                   `ocr-guild-members/index.ts:handleVideoScan`:
                   - per-account budget: 20 video scans / 10 min, fails closed
                   - downloads the object with a client carrying the CALLER's JWT,
                     so storage RLS decides which video can be read
-                  - uploads it to the Gemini File API, waits until ACTIVE,
-                    refuses > 300 s as measured by Gemini
-                  - one reading at an fps sized to a 600-frame budget (max 8 fps);
-                    gaps in the leaderboard positions (or the roster counter)
+                  - sends it inline (base64, streamed) to OpenRouter
+                    (`_shared/openrouter.ts`, google/gemini-3.8-flash, ADR-024);
+                    the frame rate is the provider's default (~1 fps)
+                  - gaps in the leaderboard positions (or the roster counter)
                     trigger one targeted second pass (`video.ts`)
-                  - finally: deletes the Gemini file, deletes the object, and
+                  - finally: deletes the object, and
                     removes that guild's staged objects older than 1 hour
                4. The client also calls `removeOcrVideo` in a `finally`, for a
                   call that never reached the function

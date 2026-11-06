@@ -99,43 +99,25 @@ describe('H3 — terms.html is a self-contained legal page again', () => {
   });
 });
 
-describe('B1 — one Gemini model list, without invented identifiers', () => {
-  const shared = read('supabase/functions/_shared/gemini.ts');
-  const ocr = read('supabase/functions/ocr-guild-members/index.ts');
-  const summary = read('supabase/functions/migration-summary/index.ts');
+describe('B1 — one AI model list for the whole backend (ADR-024)', () => {
+  const shared = read('supabase/functions/_shared/openrouter.ts');
+  const callers = [
+    ['ocr-guild-members', read('supabase/functions/ocr-guild-members/index.ts')],
+    ['migration-summary', read('supabase/functions/migration-summary/index.ts')],
+    ['ai-vision', read('supabase/functions/_shared/ai-vision.ts')],
+  ];
 
-  it('names no model Google has never published', () => {
-    // Gemini has never used a `3.5` or `3.7` minor-version scheme -- that is the
-    // Claude/GPT naming shape, pattern-matched onto the wrong vendor. Each cost
-    // a full round trip and a 404 on the fallback path.
-    for (const invented of ['gemini-3.5-flash', 'gemini-3.7-flash', 'gemini-3-flash-preview']) {
-      expect(stripComments(shared), invented).not.toContain(invented);
-      expect(stripComments(ocr), invented).not.toContain(invented);
-      expect(stripComments(summary), invented).not.toContain(invented);
-    }
+  it("names the owner's model first and its fallback second", () => {
+    const list = shared.slice(shared.indexOf('OPENROUTER_MODELS'));
+    const models = [...list.slice(0, 200).matchAll(/"(google\/[a-z0-9.-]+)"/g)].map((m) => m[1]);
+    expect(models).toEqual(['google/gemini-3.8-flash', 'google/gemini-3.7-flash']);
   });
 
-  it('keeps the one model production logs showed actually serving, first', () => {
-    const list = shared.slice(shared.indexOf('GEMINI_MODEL_FALLBACKS'));
-    const first = list.match(/"([a-z0-9.-]+)"/);
-    expect(first[1]).toBe('gemini-flash-latest');
-  });
-
-  it('says plainly that the slugs could not be verified against the live API', () => {
-    // An unauthenticated call is rejected 403 before the model name is resolved,
-    // so a valid and an invented slug are indistinguishable without the key.
-    expect(shared).toContain('403');
-    expect(shared).toContain('before* it resolves the model name');
-  });
-
-  it('leaves neither function with its own opinion', () => {
-    for (const [name, src] of [
-      ['ocr-guild-members', ocr],
-      ['migration-summary', summary],
-    ]) {
-      expect(src, `${name} must use the shared list`).toContain('GEMINI_MODEL_FALLBACKS');
-      expect(stripComments(src), `${name} must not hardcode a model`).not.toMatch(/"gemini-[a-z0-9.-]+"/);
-      expect(src, `${name} must use the shared URL builder`).toContain('geminiGenerateContentUrl(modelName)');
+  it('leaves no caller with its own model or its own provider', () => {
+    for (const [name, src] of callers) {
+      expect(src, `${name} must call the shared client`).toContain('callOpenRouter');
+      expect(stripComments(src), `${name} must not hardcode a model`).not.toMatch(/"google\/gemini-[a-z0-9.-]+"/);
+      expect(src, `${name} must not call Google directly`).not.toContain('generativelanguage.googleapis.com');
     }
   });
 });

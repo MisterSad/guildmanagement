@@ -166,8 +166,10 @@ describe('every host the browser is allowed to reach is disclosed as a processor
   });
 
   it('also discloses the processors called server-side, which no CSP can reveal', () => {
-    // Gemini and Render are never contacted by the browser, so connect-src says
-    // nothing about them. They are disclosed because the code calls them.
+    // The AI provider (OpenRouter, relaying to Google's Gemini models, ADR-024)
+    // and Render are never contacted by the browser, so connect-src says nothing
+    // about them. They are disclosed because the code calls them.
+    expect(privacyText).toMatch(/OpenRouter/);
     expect(privacyText).toMatch(/Gemini/);
     expect(privacyText).toMatch(/Render/);
     expect(privacyText).toMatch(/Vercel/);

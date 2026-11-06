@@ -37,7 +37,7 @@
 import { EdgeLogger } from "../_shared/logger.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { checkAndRecordDiscordAttempt } from "../_shared/rate-limit.ts";
-import { callGeminiVision } from "../_shared/gemini-vision.ts";
+import { callVisionModel } from "../_shared/ai-vision.ts";
 import {
   normalizeTag,
   resolveExpectedTag,
@@ -53,7 +53,8 @@ import type { AdminClient } from "../_shared/db.ts";
 import { serviceClient } from "../_shared/clients.ts";
 import { serveUnlessTest } from "../_shared/serve.ts";
 
-const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY") || "";
+// The AI provider's key (ADR-024). Never logged or returned.
+const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY") || "";
 const DISCORD_BOT_TOKEN = Deno.env.get("DISCORD_BOT_TOKEN") || "";
 const DISCORD_WORKER_SECRET = Deno.env.get("DISCORD_WORKER_SECRET") || "";
 
@@ -288,8 +289,8 @@ export async function handler(req: Request): Promise<Response> {
     return json({ ok: false, error: "unauthorized" }, 401);
   }
 
-  if (!GEMINI_API_KEY || !DISCORD_BOT_TOKEN) {
-    logger.error("GEMINI_API_KEY or DISCORD_BOT_TOKEN not configured");
+  if (!OPENROUTER_API_KEY || !DISCORD_BOT_TOKEN) {
+    logger.error("OPENROUTER_API_KEY or DISCORD_BOT_TOKEN not configured");
     return json({ ok: false, error: "not_configured" }, 500);
   }
 
@@ -354,9 +355,9 @@ Return ONLY a JSON object: {"pseudo": "string", "guild_tag": "string or null", "
     b64 = p[1];
   }
 
-  const visionResult = await callGeminiVision(GEMINI_API_KEY, prompt, [{ mimeType: mType, base64Data: b64 }]);
+  const visionResult = await callVisionModel(OPENROUTER_API_KEY, prompt, [{ mimeType: mType, base64Data: b64 }]);
   if (!visionResult.ok || !visionResult.raw) {
-    logger.error("Gemini OCR failed for profile verification", undefined, { error: visionResult.error });
+    logger.error("AI OCR failed for profile verification", undefined, { error: visionResult.error });
     const botMsgId = await postChannelMessage(
       channelId,
       "❌ Couldn't read your screenshot. Please try again with a clearer, uncropped image of your profile."

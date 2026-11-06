@@ -345,6 +345,7 @@ export function setOcrVideoCoverage(coverage: OcrVideoCoverage | null): void {
 export function getOcrMeta(metric?: string): OcrMetricMeta {
   return OCR_METRICS_META[metric || currentOcrMetric] || OCR_METRICS_META.power;
 }
+/** Display label only: the server picks the model (supabase/functions/_shared/openrouter.ts, ADR-024). */
 export function getOcrModel(): string {
-  return 'gemini-flash-latest';
+  return 'google/gemini-3.8-flash';
 }

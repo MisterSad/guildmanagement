@@ -1,6 +1,6 @@
 # ADR-021: Video OCR reads the whole recording, server-side, and measures its own coverage
 
-- **Status**: Accepted
+- **Status**: Accepted; **amended by ADR-024** (2026-11-06): the recording now goes inline through OpenRouter, so the Gemini File API, the frame rate and `MEDIA_RESOLUTION_HIGH` described below no longer apply, and the cap is 20 MiB. The coverage check and the second pass stand.
 - **Date**: 2026-10-01 (phase 1); phase 2 on 2026-10-03
 - **Supersedes**: the in-browser frame extractor (`extractFramesFromVideo`)
 - **Related**: ADR-003 (tenant isolation), ADR-012 (OCR cache, image path), ADR-017 (versioned Edge Functions), ADR-018 (GDPR data inventory)
@@ -101,4 +101,4 @@ matches, and as exact when its score matches too.
   `ocr.render.ts` — the coverage banner.
 - `supabase/migrations/20261001194004_ocr_videos_bucket.sql` — the bucket and
   its policies.
-- Tests: `tests/ocr_video_gemini.test.js`, `tests/ocr_video_client.test.js`.
+- Tests: `tests/ocr_video_coverage.test.js` (was `ocr_video_gemini.test.js`), `tests/ocr_video_client.test.js`.

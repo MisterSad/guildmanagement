@@ -52,9 +52,11 @@ describe('no fallback to a real tenant (AGENTS.md)', () => {
 describe('privacy.html says what the system does', () => {
   const policy = read('privacy.html');
 
-  it("discloses the transient storage of screen recordings and Google's 48-hour limit", () => {
+  it('discloses the transient storage of screen recordings, and that the AI processor keeps none (ADR-024)', () => {
     expect(policy).toContain('3.2. Screenshots and screen recordings.');
-    expect(policy).toContain('automatically within 48 hours');
+    // The recording now travels inline through OpenRouter: no 48-hour deposit at Google any more.
+    expect(policy).toContain('within the transcription request itself');
+    expect(policy).not.toContain('automatically within 48 hours');
     expect(policy).not.toContain('no disk persistence and no object storage');
   });
 

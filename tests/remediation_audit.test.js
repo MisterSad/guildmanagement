@@ -271,13 +271,10 @@ describe('Audit Remediation Verification Suite', () => {
     );
     expect(discordContent).toContain('redirect: "error"');
 
-    // 5. ocr-guild-members uses x-goog-api-key header
-    const ocrContent = fs.readFileSync(
-      path.resolve(__dirname, '../supabase/functions/ocr-guild-members/index.ts'),
-      'utf-8'
-    );
-    expect(ocrContent).toContain('"x-goog-api-key": GEMINI_API_KEY');
-    expect(ocrContent).not.toContain('?key=${GEMINI_API_KEY}');
+    // 5. The AI key travels in a header, never in a URL (ADR-024: OpenRouter).
+    const aiClient = fs.readFileSync(path.resolve(__dirname, '../supabase/functions/_shared/openrouter.ts'), 'utf-8');
+    expect(aiClient).toContain('Authorization: `Bearer ${opts.apiKey}`');
+    expect(aiClient).not.toMatch(/[?&]key=/);
   });
 
   it('W8: verifies canonical migration reconciliation, idempotence and reload notifications', () => {

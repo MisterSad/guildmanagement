@@ -1,7 +1,7 @@
 /**
- * The video OCR path (ADR-021): the recording goes to Gemini whole, and what
- * this repository adds is the check a model cannot be trusted with -- whether
- * it read every row.
+ * The video OCR path (ADR-021, ADR-024): the recording goes to the model whole,
+ * inline through OpenRouter, and what this repository adds is the check a model
+ * cannot be trusted with -- whether it read every row.
  */
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
@@ -9,14 +9,9 @@ import path from 'node:path';
 import {
   OCR_VIDEO_MAX_BYTES,
   OCR_VIDEO_PATH_REGEX,
-  ocrVideoFps,
-  parseGeminiDuration,
   ocrVideoCoverage,
   ocrNeedsSecondPass,
   mergeVideoPasses,
-  geminiUploadFile,
-  geminiWaitActive,
-  geminiDeleteFile,
 } from '../supabase/functions/ocr-guild-members/video.ts';
 
 const rootDir = path.resolve(__dirname, '..');
@@ -24,42 +19,6 @@ const read = (p) => fs.readFileSync(path.join(rootDir, p), 'utf8');
 const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
 
 const rows = (positions) => positions.map((p) => ({ pseudo: 'P' + p, position: p }));
-
-describe('frame rate', () => {
-  it('samples a short scroll densely and never below 1 fps', () => {
-    expect(ocrVideoFps(25)).toBe(8);
-    expect(ocrVideoFps(88)).toBe(6);
-    expect(ocrVideoFps(300)).toBe(2);
-    expect(ocrVideoFps(10_000)).toBe(1);
-  });
-
-  it('stays inside the frame budget', () => {
-    for (const d of [5, 25, 43, 88, 150, 300]) {
-      expect(ocrVideoFps(d) * d).toBeLessThanOrEqual(600 + 8 * 1);
-    }
-  });
-
-  it('looks closer on the second pass, within its own ceiling', () => {
-    expect(ocrVideoFps(25, 2)).toBe(10);
-    expect(ocrVideoFps(300, 2)).toBe(4);
-  });
-
-  it('falls back to the longest allowed duration when Gemini reports none', () => {
-    expect(ocrVideoFps(NaN)).toBe(ocrVideoFps(300));
-  });
-});
-
-describe('Gemini durations', () => {
-  it('parses protobuf Duration strings', () => {
-    expect(parseGeminiDuration('25.561s')).toBeCloseTo(25.561);
-    expect(parseGeminiDuration('88s')).toBe(88);
-  });
-  it('refuses anything else', () => {
-    expect(parseGeminiDuration('88')).toBeNull();
-    expect(parseGeminiDuration(88)).toBeNull();
-    expect(parseGeminiDuration(undefined)).toBeNull();
-  });
-});
 
 describe('coverage', () => {
   it('reports nothing missing for a contiguous reading', () => {
@@ -144,107 +103,6 @@ describe('merging the second pass', () => {
   });
 });
 
-describe('Gemini File API', () => {
-  const KEY = 'test-key-not-a-secret';
-
-  const fakeFetch = (handlers) => {
-    const calls = [];
-    const fn = async (url, init = {}) => {
-      calls.push({ url, init });
-      return handlers[calls.length - 1](url, init);
-    };
-    fn.calls = calls;
-    return fn;
-  };
-
-  it('uploads with the key in a header and never in a URL', async () => {
-    const fetchImpl = fakeFetch([
-      () =>
-        new Response(null, {
-          status: 200,
-          headers: { 'x-goog-upload-url': 'https://upload.example/session?upload_id=abc' },
-        }),
-      () =>
-        new Response(
-          JSON.stringify({ file: { name: 'files/abc123', uri: 'https://g/files/abc123', mimeType: 'video/mp4' } }),
-          { status: 200 }
-        ),
-    ]);
-    const file = await geminiUploadFile(KEY, new ArrayBuffer(10), 'video/mp4', fetchImpl);
-    expect(file).toEqual({
-      name: 'files/abc123',
-      uri: 'https://g/files/abc123',
-      mimeType: 'video/mp4',
-      durationSec: null,
-    });
-    for (const c of fetchImpl.calls) {
-      expect(c.url).not.toContain(KEY);
-      expect(c.init.headers['x-goog-api-key']).toBe(KEY);
-    }
-    expect(fetchImpl.calls[0].init.headers['X-Goog-Upload-Header-Content-Length']).toBe('10');
-    expect(fetchImpl.calls[1].init.headers['X-Goog-Upload-Command']).toBe('upload, finalize');
-  });
-
-  it('fails on a start without an upload URL, naming only the step', async () => {
-    const fetchImpl = fakeFetch([() => new Response('nope', { status: 403 })]);
-    await expect(geminiUploadFile(KEY, new ArrayBuffer(1), 'video/mp4', fetchImpl)).rejects.toThrow(
-      'gemini_upload_start_403'
-    );
-  });
-
-  it('refuses a file name it did not expect', async () => {
-    const fetchImpl = fakeFetch([
-      () => new Response(null, { status: 200, headers: { 'x-goog-upload-url': 'https://u' } }),
-      () => new Response(JSON.stringify({ file: { name: '../etc', uri: 'x' } }), { status: 200 }),
-    ]);
-    await expect(geminiUploadFile(KEY, new ArrayBuffer(1), 'video/mp4', fetchImpl)).rejects.toThrow(
-      'gemini_upload_bad_response'
-    );
-  });
-
-  it('waits for ACTIVE and reads the duration Gemini measured', async () => {
-    const fetchImpl = fakeFetch([
-      () => new Response(JSON.stringify({ name: 'files/abc', uri: 'u', state: 'PROCESSING' }), { status: 200 }),
-      () =>
-        new Response(
-          JSON.stringify({
-            name: 'files/abc',
-            uri: 'u',
-            state: 'ACTIVE',
-            mimeType: 'video/mp4',
-            videoMetadata: { videoDuration: '25.5s' },
-          }),
-          { status: 200 }
-        ),
-    ]);
-    const sleeps = [];
-    const file = await geminiWaitActive(KEY, 'files/abc', 60_000, fetchImpl, async (ms) => {
-      sleeps.push(ms);
-    });
-    expect(file.durationSec).toBe(25.5);
-    expect(sleeps).toEqual([1000]);
-  });
-
-  it('gives up on FAILED and on the deadline', async () => {
-    const failed = fakeFetch([() => new Response(JSON.stringify({ state: 'FAILED' }), { status: 200 })]);
-    await expect(geminiWaitActive(KEY, 'files/abc', 60_000, failed, async () => {})).rejects.toThrow(
-      'gemini_file_failed'
-    );
-    const forever = async () => new Response(JSON.stringify({ state: 'PROCESSING' }), { status: 200 });
-    await expect(geminiWaitActive(KEY, 'files/abc', 0, forever, async () => {})).rejects.toThrow('gemini_file_timeout');
-  });
-
-  it('never deletes a name outside files/', async () => {
-    let called = false;
-    const ok = await geminiDeleteFile(KEY, 'models/gemini', async () => {
-      called = true;
-      return new Response(null);
-    });
-    expect(ok).toBe(false);
-    expect(called).toBe(false);
-  });
-});
-
 describe('the staged-object path the client may send', () => {
   const uuid = '0f8fad5b-d9cb-469f-a165-70867728950e';
   it('accepts <guild>/<uuid>.<ext>', () => {
@@ -284,15 +142,18 @@ describe('ocr-guild-members, video branch', () => {
     expect(fn).toContain('checkAndRecordIpAttempt(admin, `ocr-video:${caller.accountId}`');
   });
 
-  it('deletes the Gemini file and the staged object whatever happens', () => {
+  it('deletes the staged object whatever happens', () => {
     const fin = fn.slice(fn.indexOf('} finally {', fn.indexOf('async function handleVideoScan')));
-    expect(fin).toContain('geminiDeleteFile(GEMINI_API_KEY, geminiFileName)');
     expect(fin).toContain('bucket.remove([video.path])');
   });
 
-  it('takes the duration from Gemini, not from the client', () => {
-    expect(fn).toContain('file.durationSec');
-    expect(fn).not.toMatch(/durationSec:\s*z\./);
+  it('sends the recording inline through the shared AI client, streamed rather than copied (ADR-024)', () => {
+    const body = fn.slice(fn.indexOf('async function handleVideoScan'));
+    expect(body).toContain('videoPart(video.mimeType)');
+    expect(body).toContain('binary: bytes');
+    // No provider is called directly any more: _shared/openrouter.ts is the one way.
+    expect(fn).not.toContain('generativelanguage.googleapis.com');
+    expect(fn).not.toContain('GEMINI_API_KEY');
   });
 
   it('sends what the first pass found as isolated data, never spliced into the instruction', () => {
@@ -307,19 +168,17 @@ describe('ocr-guild-members, video branch', () => {
     );
     expect(pre[1]).not.toContain('${');
   });
-
-  it('reads video at high media resolution', () => {
-    expect(fn).toContain('media_resolution: "MEDIA_RESOLUTION_HIGH"');
-  });
 });
 
 describe('the ocr-videos bucket', () => {
   const sql = read('supabase/migrations/20261001194004_ocr_videos_bucket.sql');
 
-  it('is private and capped like the Edge Function', () => {
-    expect(sql).toMatch(/'ocr-videos',\s*'ocr-videos',\s*false,\s*67108864/);
-    expect(OCR_VIDEO_MAX_BYTES).toBe(67108864);
+  it('is private, and capped at 20 MiB like the Edge Function since ADR-024', () => {
+    expect(sql).toMatch(/'ocr-videos',\s*'ocr-videos',\s*false,/);
     expect(sql).toContain("ARRAY['video/mp4', 'video/quicktime', 'video/webm']");
+    const cap = read('supabase/migrations/20261106154451_ocr_videos_20mb.sql');
+    expect(cap).toMatch(/SET file_size_limit = 20971520/);
+    expect(OCR_VIDEO_MAX_BYTES).toBe(20971520);
   });
 
   it('gates insert, read and delete on the guild in the first path segment', () => {
