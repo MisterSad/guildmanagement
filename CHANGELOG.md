@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+- **V3.36.0: today's work, announced.** The app version is bumped (`APP_VERSION`, `package.json`).
+  - `DISCORD_CHANGELOG.md` is rewritten from scratch as one note for guild leaders and players, in three Discord-sized messages, each under 2,000 characters. It covers:
+    - the Season 2 notice and what the reset deletes and keeps;
+    - events counted in the week they started, with the mandatory start date and the week shown, and past data corrected;
+    - the new OCR model and the 20 MB recording limit;
+    - fewer silent failures and clearer session conflicts;
+    - the Migration Hub's removal;
+    - the transfer security fix and the all-digit account IDs.
+  - **Deployment.** Every Vercel deployment of 2026-11-06 had been blocked: on the Hobby plan, a private repository refuses commits whose co-author is not a project member. The owner made the repository public. Before that, the whole git history was scanned for secrets: only test fixtures and `.env.example` were found.
+  - The V3.35.0 note remains in git history.
+
 - **Season 2: a notice for everyone, and one button that only the super admin can press (owner decisions, 2026-11-06).**
   - **Notice.** Every signed-in user, admin or player, sees it on every visit while the app is in season 1: "Season 2 is coming soon. All recorded data — events and event history — will be deleted when Season 2 begins. Players and their military stats are kept." The season comes from the database (`gm_season_status()`), so the notice disappears for everyone the moment Season 2 starts. If the season cannot be read, nothing is shown and the app is never blocked.
   - **Start Season 2.** A card in the super-admin tab, shown to the super admin only. It asks for the exact phrase `START SEASON 2`, then calls `gm_start_season_2`, which:

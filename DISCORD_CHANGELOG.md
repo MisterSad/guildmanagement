@@ -1,56 +1,43 @@
-📢 **FGF Guild Management Tool Update — CHANG_V3.35.0**
+📢 **FGF Guild Management Tool Update — CHANG_V3.36.0**
 
-**🧰 A big clean-up under the hood, and what it changes for you**
+**🏁 Season 2 is coming**
 
-Over the last few days I rebuilt a lot of the tool's foundations. You won't see most of it, but you'll feel it.
+You'll see a notice when you open the tool: **Season 2 is coming soon.** When it begins, I'll reset the recorded data for every guild:
+• **Deleted:** events and event history, weekly Glory, weekly stats, power history, and your SvS/GvG opponent lists.
+• **Kept:** your players and their military stats (powers, current Glory), your chest settings, sanctions, absences and accounts.
 
-**⚡ Faster to open**
-• The sign-in page and the Player Portal now load about **3× less**. Players no longer download the officers' Command Center along with their own pages.
-• On a phone or a slow connection, the first screen shows up noticeably sooner.
-• In the Command Center, each tab now loads the first time you open it instead of everything at once.
+The notice disappears once Season 2 has started. Want to keep a copy of this season? Export your guild data before then.
 
-**✅ No more half-saved changes**
-These actions are now saved **in one go: completely, or not at all**:
-• banning a player;
-• adding or editing a member;
-• moving or deleting an event;
-• clearing history;
-• importing an OCR scan;
-• creating a migration group.
-
-So a dropped connection can no longer leave a banned player on the roster, or a rename only half done.
+**📅 Events now count in the right week**
+An event now always counts in the week it **started**, even if you close it or type its scores days later.
+• Starting an event asks for its **start date and time** (UTC). The window shows which week it will count in, e.g. *Counts in week W44 (26/10 → 01/11/2026)*.
+• Closing an event keeps its start date, so scores typed afterwards stay in the right week.
+• Changing the start date moves the whole event to the new week.
+• I fixed the past data too: sessions that had been split across two weeks, Shadowfront squads filed in the wrong week, and SvS/GvG dates that had shifted.
 
 ---8<---
 
-**⚔️ For officers: what you'll notice**
+**⚔️ For officers**
 
-**📸 OCR imports are all or nothing**
-If one row is refused, for example a UID already taken, a banned player, or an R5 who would be removed, **nothing is saved**. The tool tells you which row to fix, so you never end up with a half-imported roster.
+**📸 New AI behind OCR**
+Screenshot and screen-recording scans now run on a newer AI model.
+• **Screen recordings are limited to 20 MB**, about 2 minutes at normal quality. Recent scans were all below that.
+• Please keep an eye on long, fast scrolls. If a scan misses players, tell me so I can tune it.
 
-**📅 Moving an SvS or GvG to another week**
-The war results and daily scores now move with the event. They no longer stay stuck on the old date.
+**🛠️ Fewer surprises**
+• Ending an Arms Race stage or a Shadowfront squad no longer says "done" when the save actually failed.
+• Moving a session to another time on the same day no longer clashes with that day's other session.
+• If another officer already ended a session in another tab, you now get a clear message instead of overwriting their work.
+• A Shadowfront squad prepared after a session ended no longer merges into the old one.
 
-**🧹 Clear history**
-It now leaves the event that's still running alone, and squads that haven't started yet.
-
-**🔗 Discord webhooks**
-• Once a webhook is saved, the tool no longer shows its link. The field just says **"Set — paste a URL to replace"**.
-• Why: anyone who has that link can post in your channel. Now it never leaves the server.
-• Need the link? Discord → **Server Settings → Integrations → Webhooks**.
-• Only real Discord webhook links are accepted.
+**🗂️ Migration Hub removed**
+The Migration Hub wiki is gone. It was barely used, and its pages and comments have been deleted. Cross-server transfers still work as before.
 
 ---8<---
-
-**♿ Easier to use, for everyone**
-• **Pop-ups behave properly.** **Escape** closes them, the keyboard stays inside the window, and you land back where you were when it closes.
-• **Form fields have proper names**, so screen readers can announce them.
-• **Easier to read:** red "danger" buttons and purple labels have stronger contrast.
-• **Easier to tap:** the Privacy and Terms links are bigger on phones.
 
 **🔒 Safer**
-• **Stricter browser security rules.** Your browser now refuses any style or script that doesn't come from the tool itself. Injected content can't dress itself up as part of the interface.
-• **One place for permissions.** Every check of who can do what now goes through one place on the server.
-• **Tested before release.** Many more automated tests run the real code, database rules included, before anything goes live.
+• **I fixed a security issue around player transfers.** A player can no longer be moved to another guild by someone who isn't really that player.
+• **Account IDs can't be only digits any more**, so they can't be mistaken for an in-game UID.
 
 **What changes for you:** nothing to do. If a page looks odd right after the update, reload it once.
 
