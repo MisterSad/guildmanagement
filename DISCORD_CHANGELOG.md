@@ -1,4 +1,4 @@
-📢 **FGF Guild Management Tool Update — CHANG_V3.36.0**
+📢 **FGF Guild Management Tool Update: CHANG_V3.36.0**
 
 **🏁 Season 2 is coming**
 

@@ -14,7 +14,7 @@
   - The V3.35.0 note remains in git history.
 
 - **Season 2: a notice for everyone, and one button that only the super admin can press (owner decisions, 2026-11-06).**
-  - **Notice.** Every signed-in user, admin or player, sees it on every visit while the app is in season 1: "Season 2 is coming soon. All recorded data — events and event history — will be deleted when Season 2 begins. Players and their military stats are kept." The season comes from the database (`gm_season_status()`), so the notice disappears for everyone the moment Season 2 starts. If the season cannot be read, nothing is shown and the app is never blocked.
+  - **Notice.** Every signed-in user, admin or player, sees it on every visit while the app is in season 1: "Season 2 is coming soon. When it begins, all recorded data (events and event history) will be deleted. Players and their military stats are kept." The season comes from the database (`gm_season_status()`), so the notice disappears for everyone the moment Season 2 starts. If the season cannot be read, nothing is shown and the app is never blocked.
   - **Start Season 2.** A card in the super-admin tab, shown to the super admin only. It asks for the exact phrase `START SEASON 2`, then calls `gm_start_season_2`, which:
     - refuses anyone but a signed-in super admin, including the service role, and refuses a second run;
     - deletes, for every guild and in one transaction:

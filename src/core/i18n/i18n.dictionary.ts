@@ -139,7 +139,7 @@ export const EN: Record<string, string> = {
   toast_duplicate_account: 'This identifier already exists!',
   season2_notice_title: 'Season 2',
   season2_notice_body:
-    'Season 2 is coming soon. All recorded data — events and event history — will be deleted when Season 2 begins. Players and their military stats are kept.',
+    'Season 2 is coming soon. When it begins, all recorded data (events and event history) will be deleted. Players and their military stats are kept.',
   season2_notice_ok: 'Got it',
   season2_card_body:
     'Starting Season 2 deletes the recorded data of every guild: events and their history, weekly Glory, weekly stats snapshots, power history and the SvS/GvG opponent lists. Players and their military stats are kept. The Season 2 notice disappears for everyone. This cannot be undone.',
