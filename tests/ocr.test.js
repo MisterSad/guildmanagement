@@ -248,7 +248,7 @@ describe('Ticket 1.1: ocr-guild-members Prompt Injection Protection & Zod Schema
 
   it('defines and applies Zod schema for request validation with strict metadata', () => {
     expect(fnContent).toContain('import { z } from "https://esm.sh/zod@3.23.8";');
-    expect(fnContent).toContain('GUILD_TAG_REGEX = /^[A-Za-z0-9_-]{1,10}$/');
+    expect(fnContent).toContain('GUILD_TAG_REGEX = /^[A-Za-z0-9_-]{1,12}$/');
     expect(fnContent).toContain('GuildTagSchema');
     expect(fnContent).toContain('MetadataSchema');
     expect(fnContent).toContain('OcrRequestSchema');
@@ -258,8 +258,11 @@ describe('Ticket 1.1: ocr-guild-members Prompt Injection Protection & Zod Schema
     expect(fnContent).toContain('invalid_payload');
   });
 
-  it('enforces guildTag regex /^[A-Za-z0-9_-]{1,10}$/ rejecting prompt injections and malformed tags', () => {
-    const tagRegex = /^[A-Za-z0-9_-]{1,10}$/;
+  it('enforces guildTag regex /^[A-Za-z0-9_-]{1,12}$/ rejecting prompt injections and malformed tags', () => {
+    // 12, like a guild TAG in the database: 10 refused NW_NEWWORLD and SKAVEBLIGHT (2026-11-06).
+    const { GUILD_TAG_REGEX: tagRegex } = { GUILD_TAG_REGEX: /^[A-Za-z0-9_-]{1,12}$/ };
+    expect(tagRegex.test('NW_NEWWORLD')).toBe(true);
+    expect(tagRegex.test('SKAVEBLIGHT')).toBe(true);
     // Valid tags
     expect(tagRegex.test('PR1M')).toBe(true);
     expect(tagRegex.test('ALPHA')).toBe(true);

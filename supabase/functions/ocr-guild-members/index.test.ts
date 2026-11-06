@@ -111,3 +111,35 @@ Deno.test("a member cannot spend the AI budget", async () => {
     uninstallFake();
   }
 });
+
+Deno.test("a guild whose TAG is 11 or 12 characters can scan (NW_NEWWORLD, 2026-11-06)", async () => {
+  const fake = new FakeSupabase();
+  fake.install();
+  fake.table("guilds").push({ id: "NW_NEWWORLD", server_number: "9001" });
+  const jwt = seedAccount(fake, { id: "t_admin_nw", role: "guild_admin", guild: "NW_NEWWORLD", server_number: "9001" });
+  scriptAi(
+    () =>
+      new Response(
+        JSON.stringify({
+          choices: [
+            {
+              finish_reason: "stop",
+              message: { content: JSON.stringify({ metric: "members", guild_tag: null, endingRank: null, players: [] }) },
+            },
+          ],
+        }),
+        { status: 200 }
+      )
+  );
+  try {
+    for (const tag of ["NW_NEWWORLD", "SKAVEBLIGHT1"]) {
+      const res = await handler(post({ ...IMAGE, metadata: { metricType: "members", guildTag: tag } }, jwt));
+      assertEquals(res.status, 200, tag);
+    }
+    const tooLong = await handler(post({ ...IMAGE, metadata: { metricType: "members", guildTag: "THIRTEENCHARS" } }, jwt));
+    assertEquals(tooLong.status, 400);
+  } finally {
+    globalThis.fetch = realFetch;
+    uninstallFake();
+  }
+});

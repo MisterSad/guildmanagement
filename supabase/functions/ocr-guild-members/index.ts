@@ -53,7 +53,11 @@ const APP_REFERER = env.APP_DEFAULT_ORIGIN || undefined;
 const IMAGE_CALL_TIMEOUT_MS = 60_000;
 const VIDEO_CALL_TIMEOUT_MS = 110_000;
 
-export const GUILD_TAG_REGEX = /^[A-Za-z0-9_-]{1,10}$/;
+// Up to 12 characters, like a guild TAG in the database (gm_rename_guild and
+// guild creation accept ^[A-Z0-9_]{2,12}$). It was 10, which refused every
+// OCR scan of the guilds whose TAG is 11 or 12 characters long
+// (NW_NEWWORLD, SKAVEBLIGHT on 2026-11-06).
+export const GUILD_TAG_REGEX = /^[A-Za-z0-9_-]{1,12}$/;
 
 export const VALID_METRICS = [
   "members",
