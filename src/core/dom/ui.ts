@@ -11,6 +11,7 @@ import { formatNumber, formatPower, escapeHTML } from '../utils/text';
 import { formatChartDate, pad2 } from '../utils/date';
 import { showToast } from './toast';
 import { t } from '../i18n/i18n';
+import { isoWeekKey } from '../config/events';
 
 /** Formats a text input with thousands separators, preserving the caret. */
 export function attachNumberFormatter(input: HTMLInputElement | null): void {
@@ -45,6 +46,21 @@ export function attachNumberFormatter(input: HTMLInputElement | null): void {
       /* ignore */
     }
   });
+}
+
+/**
+ * "W45 (03/11 → 09/11/2026)": the ISO week, in UTC, that a session starting at
+ * `startAt` counts in (ADR-023).
+ */
+export function startWeekLabel(startAt: string | Date): string {
+  const d = new Date(startAt);
+  if (isNaN(d.getTime())) return '';
+  const key = isoWeekKey(d);
+  const day = d.getUTCDay() || 7;
+  const monday = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - day + 1));
+  const sunday = new Date(monday.getTime() + 6 * 86400000);
+  const dm = (x: Date): string => pad2(x.getUTCDate()) + '/' + pad2(x.getUTCMonth() + 1);
+  return key.slice(5) + ' (' + dm(monday) + ' → ' + dm(sunday) + '/' + sunday.getUTCFullYear() + ')';
 }
 
 export interface PickEventStartOptions {
@@ -96,6 +112,7 @@ export function pickEventStart(
     defTime +
     '">' +
     '</div>' +
+    '<p id="evt-start-week" class="u-fs-0_8rem gm-dim" aria-live="polite"></p>' +
     '</div>' +
     '<div class="u-gap-1rem confirm-actions">' +
     '<button id="evt-start-cancel" class="gm-btn gm-btn-ghost">' +
@@ -122,6 +139,20 @@ export function pickEventStart(
     callback(result);
   };
   adoptDialog(overlay, { onEscape: () => close(null) });
+
+  // The week the session will count in (ADR-023): the ISO week of the start
+  // date in UTC, shown live so the officer sees it before confirming.
+  const dateInput = document.getElementById('evt-start-date') as HTMLInputElement | null;
+  const weekHint = document.getElementById('evt-start-week');
+  const renderWeek = (): void => {
+    if (!weekHint || !dateInput) return;
+    const v = dateInput.value;
+    weekHint.textContent = /^\d{4}-\d{2}-\d{2}$/.test(v)
+      ? t('event_start_counts_in_week') + ' ' + startWeekLabel(v + 'T12:00:00Z')
+      : '';
+  };
+  if (dateInput) dateInput.addEventListener('input', renderWeek);
+  renderWeek();
 
   const cancelBtn = document.getElementById('evt-start-cancel');
   if (cancelBtn) cancelBtn.addEventListener('click', () => close(null));

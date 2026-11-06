@@ -7,7 +7,6 @@
 
 import { getSupabaseClient } from '../../core/api/supabase';
 import { guildWrite } from '../../core/api/guild-rpc';
-import { buildEventSessionId, sessionIdBase } from '../../core/config/events';
 import {
   EventStatus,
   EventParticipant,
@@ -17,7 +16,26 @@ import {
   WarOpponentKind,
 } from '../../types/database';
 import { logger } from '../../core/logger/logger';
+import { t } from '../../core/i18n/i18n';
 import type { DbClient } from '../../core/api/db-client';
+
+/** Session write refusals the officer can act on, by the server's code. */
+const SESSION_ERROR_KEYS: Record<string, string> = {
+  start_required: 'event_err_start_required',
+  start_out_of_range: 'event_err_start_out_of_range',
+  already_active: 'event_err_already_active',
+  stale_session: 'event_err_stale_session',
+  session_exists: 'event_err_session_exists',
+};
+
+/** The message to show for a failed session start, end or reschedule. */
+export function sessionWriteMessage(err: unknown): string {
+  const code = err && typeof err === 'object' && 'code' in err ? String((err as { code: unknown }).code) : '';
+  const key = SESSION_ERROR_KEYS[code];
+  if (key) return t(key);
+  const message = err instanceof Error ? err.message : String(err || '');
+  return t('toast_err_generic') + (message ? ' ' + message : '');
+}
 
 export type WarEventName = 'SvS' | 'GvG';
 
@@ -110,82 +128,31 @@ export class EventsService {
   }
 
   /**
-   * Session ids already taken today, read under the day's prefix only.
-   *
-   * Starting a daily session picks the first free `-n` suffix. The ids used to
-   * be read as every participant row of the guild for that event, which
-   * PostgREST caps at 1,000 rows with no order. Above that cap (9 guilds, up to
-   * 3,036 rows) today's ids could be missing from the answer, and the new
-   * session would reuse a taken id and merge into it (audit PERF-03).
-   *
-   * `participantEvent` is the event_name the participant rows carry, which
-   * differs from the session's event for Shadowfront squads.
+   * Starts a session (Events, Arms Race stage or Shadowfront squad) server-side
+   * through gm_start_event_session (ADR-023). The start is mandatory: it decides
+   * the week the session counts in, whenever it is closed or its scores are
+   * typed. The server builds the id, same-day suffix included (EVT-05), so the
+   * browser no longer reads the ids taken today. Throws on refusal
+   * (`start_required`, `already_active`...).
    */
-  public static async takenSessionIdsToday(
-    guild: string,
-    participantEvent: string,
-    sessionEvent: string,
-    startAt?: string | Date | null
-  ): Promise<{ ok: true; ids: string[] } | { ok: false; error: string }> {
-    const base = sessionIdBase(sessionEvent, startAt || new Date());
-    if (!base) return { ok: true, ids: [] };
-    const supabase = getSupabaseClient();
-    if (!supabase) return { ok: false, error: 'no_client' };
-
-    const { data, error } = await supabase
-      .from('event_participants')
-      .select('session_id')
-      .eq('guild', guild)
-      .eq('event_name', participantEvent)
-      .like('session_id', base + '-%');
-    if (error) {
-      logger.error("Error reading today's session ids", error, { guild, participantEvent, base });
-      return { ok: false, error: error.message };
-    }
-    const ids = Array.from(
-      new Set(
-        ((data || []) as Array<{ session_id: string | null }>)
-          .map((r) => r.session_id)
-          .filter((id): id is string => !!id)
-      )
-    );
-    return { ok: true, ids };
+  public static async startSession(
+    eventName: string,
+    stage: string | null,
+    startAt: string
+  ): Promise<{ ok: true; session_id: string; week_start: string; start_at: string }> {
+    return guildWrite('gm_start_event_session', {
+      p_event_name: eventName,
+      p_stage: stage,
+      p_start_at: startAt,
+    });
   }
 
-  public static async startEventSession(
-    eventName: string,
-    guild: string,
-    startAt?: string
-  ): Promise<{ ok: boolean; session_id?: string; error?: string }> {
-    const supabase = getSupabaseClient();
-    if (!supabase) return { ok: false, error: 'no_client' };
-
-    const activeSessions = await this.getActiveSessions(guild);
-    const existingIds = activeSessions.map((s) => s.session_id).filter((id): id is string => id !== null);
-    const sessionId = buildEventSessionId(eventName, startAt, existingIds);
-
-    const { data, error } = await supabase
-      .from('event_status')
-      .upsert(
-        {
-          event_name: eventName,
-          guild,
-          session_id: sessionId,
-          is_active: true,
-          start_at: startAt || new Date().toISOString(),
-        },
-        { onConflict: 'guild,event_name' }
-      )
-      .select()
-      .single();
-
-    if (error) {
-      logger.error('Error starting event session', error, { eventName, guild, sessionId });
-      return { ok: false, error: error.message };
-    }
-
-    logger.info('Event session started successfully', { eventName, guild, sessionId });
-    return { ok: true, session_id: data.session_id };
+  /**
+   * Ends the current session and keeps its start (ADR-023). Refuses a stale
+   * tab: `sessionId` must still be the running one (`stale_session`, EVT-07).
+   */
+  public static async endSession(eventName: string, sessionId: string): Promise<{ ok: true; session_id: string }> {
+    return guildWrite('gm_end_event_session', { p_event_name: eventName, p_session_id: sessionId });
   }
 
   public static async submitParticipantScore(participant: EventParticipant): Promise<{ ok: boolean; error?: string }> {
@@ -439,11 +406,6 @@ export function fetchTabEventStatus(db: DbClient, guild: string | null, dbEvents
     .in('event_name', dbEvents);
   query = query.eq('guild', guild);
   return query;
-}
-
-/** Upsert an event's `event_status` row (start or end of a session). */
-export function upsertEventStatus(db: DbClient, row: Record<string, unknown>) {
-  return db.from('event_status').upsert(row, { onConflict: 'guild,event_name' });
 }
 
 /** Enrol the guild's members into a session through `gm_populate_event_participants`. */

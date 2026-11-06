@@ -18,7 +18,7 @@ import {
   type EventTabState,
   EventsService,
   fetchTabEventStatus,
-  upsertEventStatus,
+  sessionWriteMessage,
   populateEventParticipants,
   fetchActiveEventStatuses,
   fetchEventSessionParticipants,
@@ -48,9 +48,9 @@ import { getGuildConfig, setGuildConfig } from '../../../core/config/guild-confi
 import { paintEventCoeffLabels } from '../../../core/config/event-coeff-labels';
 import { getClient } from '../../../core/api/supabase';
 import { getActiveGuild } from '../../../core/auth/roles';
-import { buildEventSessionId } from '../../../core/config/events';
+import { rescheduledSessionId } from '../../../core/config/events';
 import { showToast } from '../../../core/dom/toast';
-import { attachNumberFormatter, pickEventStart } from '../../../core/dom/ui';
+import { attachNumberFormatter, pickEventStart, startWeekLabel } from '../../../core/dom/ui';
 import { t } from '../../../core/i18n/i18n';
 import { notifyDiscordEvent } from '../../../core/integrations/discord';
 import { runInChunks } from '../../../core/utils/async';
@@ -143,65 +143,40 @@ export class EventsView {
   }
 
   // ── Start a new session ───────────────────────────────────────────────────
+  // The start is mandatory and decides the week the session counts in, whenever
+  // it ends (ADR-023). The server builds the session id.
   private async startEvent(
     tabKey: string,
     dbEventName: string,
     stage: string | null,
     startAt?: string | null
   ): Promise<void> {
-    const db = getClient();
-    if (!db) return;
-    const currentG = this.currentGuild();
-    const ref = startAt || new Date();
-    if (!currentG) {
+    if (!this.currentGuild()) {
       showToast(t('guild_unresolved'), 'error');
       return;
     }
-    // Today's taken session ids, to resolve same-day collisions.
-    const taken = await EventsService.takenSessionIdsToday(currentG, dbEventName, dbEventName, ref);
-    if (!taken.ok) {
-      // Unknown ids could mean a duplicate: refuse rather than merge sessions.
-      showToast(t('toast_err_generic') + ' ' + taken.error, 'error');
+    if (!startAt) {
+      showToast(t('event_err_start_required'), 'error');
       return;
     }
-    const sessionId = buildEventSessionId(dbEventName, ref, taken.ids);
     try {
-      const statusRes = await upsertEventStatus(db, {
-        guild: currentG,
-        event_name: dbEventName,
-        is_active: true,
-        session_id: sessionId,
-        stage: stage || null,
-        start_at: startAt || null,
-        updated_at: new Date().toISOString(),
-      });
-      if (statusRes.error) throw statusRes.error;
+      const started = await EventsService.startSession(dbEventName, stage || null, startAt);
       showToast(t('event_session_started'), 'success');
-      notifyDiscordEvent(dbEventName, startAt || sessionId, 'start');
-    } catch (err: any) {
+      notifyDiscordEvent(dbEventName, startAt || started.session_id, 'start');
+    } catch (err: unknown) {
       console.error('startEvent', err);
-      showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+      showToast(sessionWriteMessage(err), 'error');
     }
     await this.loadEvent(tabKey);
   }
 
   // ── End current session ───────────────────────────────────────────────────
+  // Ending keeps the start: later scores still count in the start week.
   private async endEvent(tabKey: string): Promise<void> {
-    const db = getClient();
-    if (!db) return;
     const s = this.state[tabKey];
-    if (!s.activeEventName) return;
-    const currentG = this.currentGuild();
+    if (!s.activeEventName || !s.sessionId) return;
     try {
-      const statusRes = await upsertEventStatus(db, {
-        guild: currentG,
-        event_name: s.activeEventName,
-        is_active: false,
-        session_id: s.sessionId,
-        stage: s.stage,
-        updated_at: new Date().toISOString(),
-      });
-      if (statusRes.error) throw statusRes.error;
+      await EventsService.endSession(s.activeEventName, s.sessionId);
       s.activeEventName = null;
       s.sessionId = null;
       s.stage = null;
@@ -209,9 +184,10 @@ export class EventsView {
       this.renderStatus(tabKey);
       this.renderInactive(tabKey);
       showToast(t('event_session_ended'), 'success');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('endEvent', err);
-      showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+      showToast(sessionWriteMessage(err), 'error');
+      await this.loadEvent(tabKey);
     }
   }
 
@@ -973,7 +949,7 @@ export class EventsView {
             // One transaction (M4a): status and participants move together, and
             // an SvS/GvG war session with its daily scores follows a change of
             // week (they used to stay behind on the old session id).
-            const newSessionId = buildEventSessionId(s.activeEventName as string, new Date(startAt), []);
+            const newSessionId = rescheduledSessionId(s.activeEventName as string, s.sessionId, startAt);
             const moved = await EventsService.rescheduleSession(
               s.activeEventName as string,
               s.sessionId,
@@ -985,9 +961,9 @@ export class EventsView {
             showToast(t('toast_member_updated'), 'success');
             notifyDiscordEvent(s.activeEventName as string, startAt, 'edit');
             await this.loadEvent(tabKey);
-          } catch (err: any) {
+          } catch (err: unknown) {
             console.error('editEventSchedule update', err);
-            showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+            showToast(sessionWriteMessage(err), 'error');
           }
         }
       );
@@ -1050,7 +1026,16 @@ export class EventsView {
         dimSpan.style.marginLeft = '0.5rem';
         statusLine.appendChild(dimSpan);
       }
-      dimSpan.textContent = s.isActive && s.startAt ? ' · ' + formatDateTimeUTC(s.startAt) : '';
+      // The start and the week it makes the session count in (ADR-023).
+      dimSpan.textContent =
+        s.isActive && s.startAt
+          ? ' · ' +
+            formatDateTimeUTC(s.startAt) +
+            ' · ' +
+            t('event_start_counts_in_week') +
+            ' ' +
+            startWeekLabel(s.startAt)
+          : '';
     }
 
     if (actionsDiv) {

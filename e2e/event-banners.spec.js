@@ -40,3 +40,22 @@ for (const { tab, start } of EVENT_BANNERS) {
     await expect(page.locator(`#${tab} ${start}`)).toBeVisible();
   });
 }
+
+// ADR-023: a session counts in the ISO week of its start date (UTC). The
+// start dialog shows that week before the officer confirms, on the built
+// bundle and under the strict CSP.
+test('the start dialog shows the week the session will count in', async ({ page }) => {
+  await page.locator('.gm-nav-item[data-gm-nav-item="events"]').click();
+  await page.locator('#event-svs [data-gm-event-tab="event-shadowfront"]').click();
+  await page.locator('#event-shadowfront .sf-squad-start-btn').first().click();
+
+  const dialog = page.locator('#evt-start-overlay');
+  await expect(dialog).toBeVisible();
+  const hint = dialog.locator('#evt-start-week');
+  await expect(hint).toHaveText(/^Counts in week W\d{2} \(\d{2}\/\d{2} → \d{2}\/\d{2}\/\d{4}\)$/);
+
+  await dialog.locator('#evt-start-date').fill('2026-11-01');
+  await expect(hint).toHaveText('Counts in week W44 (26/10 → 01/11/2026)');
+  await dialog.locator('#evt-start-date').fill('2026-11-02');
+  await expect(hint).toHaveText('Counts in week W45 (02/11 → 08/11/2026)');
+});

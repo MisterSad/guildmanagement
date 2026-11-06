@@ -2,6 +2,28 @@
 
 ## [Unreleased]
 
+- **An event counts in the week of its start date (phase 2 of 3: screens).**
+  - **Start and end on the server, for Events, Arms Race and Shadowfront.**
+    - Starting calls `gm_start_event_session`, through the new `EventsService.startSession`. A start date is required, and the server builds the id.
+    - Ending calls `gm_end_event_session`, through `EventsService.endSession`. It no longer wipes the start and is refused from a stale tab.
+    - The three views no longer write `event_status` directly. `upsertEventStatus`, `upsertStageStatus`, `upsertActiveSquadStatus`, `takenSessionIdsToday` and the unused `startEventSession` are removed.
+  - **The week is shown.**
+    - The start dialog shows, live, the week the session will count in, e.g. "Counts in week W44 (26/10 → 01/11/2026)", next to the date.
+    - The event banners show it next to the start.
+  - **Errors are no longer swallowed.**
+    - Ending an Arms Race stage or a Shadowfront squad used to report success even when the write failed (EVT-12).
+    - A refusal now gives a message the officer can act on: start required, start out of range, already running, stale tab, or date already used.
+  - **Reschedule keeps a same-day id.** `rescheduledSessionId` keeps the id for a move within the day (or within the ISO week for SvS/GvG). It used to recompute it as `-1` and collide with the day's other session (EVT-05).
+  - **Shadowfront.** A squad prepared after a session ended no longer reuses that session's id, so it no longer merges into its history.
+  - **Smaller fixes.**
+    - Arms Race read `new Date('ARA-…')`, an invalid date, for a member added mid-session.
+    - The player portal read `week_start` in local time instead of UTC.
+  - **Not in this change.** Starting a Shadowfront squad still moves, rather than copies, the previous session's squad rows (EVT-06). Copying collides with the one-squad-per-week rule and needs an owner decision.
+  - **Verified.**
+    - New `tests/event_week_attribution.test.js`, 10 tests: the RPC calls and their arguments, the refusal messages, the week label (Sunday 23:30, ISO year change), the live dialog hint, and the same-day reschedule ids.
+    - New e2e test in `e2e/event-banners.spec.js`: the dialog's week hint on the built bundle, under the strict CSP.
+    - Results: 2,522 unit tests and 64 e2e tests pass; lint and type-check are clean.
+
 - **An event counts in the week of its start date (phase 1 of 3: database).** Owner decisions, 2026-11-06: every session has a mandatory start date and time; it counts in the ISO week (Monday 00:00 UTC) of that start, whenever it is closed or its scores are typed; UTC is the reference; correcting a start moves the whole session.
   - **Why.**
     - Ending an Arms Race stage or a Shadowfront squad wiped `event_status.start_at`, so every later write (OCR, history, a member added) fell back to `getWeekStart(start_at || new Date())`: the week of typing, not the week of the event.

@@ -89,7 +89,8 @@ describe('Audit Remediation Verification Suite', () => {
       'utf-8'
     );
     expect(eventsServiceContent).toContain(".eq('is_active', true)");
-    expect(eventsServiceContent).toContain('is_active: true');
+    // A session starts server-side since ADR-023 (gm_start_event_session).
+    expect(eventsServiceContent).toContain("guildWrite('gm_start_event_session'");
     expect(eventsServiceContent).not.toContain(".eq('active', true)");
 
     const portalServiceContent = fs.readFileSync(

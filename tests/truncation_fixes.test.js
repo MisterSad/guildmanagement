@@ -33,7 +33,6 @@ vi.mock('../src/core/api/supabase', () => ({ getSupabaseClient: () => mockSupaba
 
 const { fetchAllRows } = await import('../src/core/api/paginate.ts');
 const { sessionIdBase, buildEventSessionId } = await import('../src/core/config/events.ts');
-const { EventsService } = await import('../src/modules/events/events.service.ts');
 
 describe('fetchAllRows reads past the 1,000-row cap', () => {
   const source = Array.from({ length: 2500 }, (_, i) => ({ id: i }));
@@ -87,34 +86,9 @@ describe("session ids: only today's are read", () => {
     response = { data: [], error: null };
   });
 
-  it('takenSessionIdsToday filters by prefix server-side and de-duplicates', async () => {
-    response = {
-      data: [{ session_id: 'ARA-20261003-1' }, { session_id: 'ARA-20261003-1' }, { session_id: 'ARA-20261003-2' }],
-      error: null,
-    };
-    const res = await EventsService.takenSessionIdsToday('DEMO', 'Arms Race Stage A', 'Arms Race Stage A', day);
-    expect(likeCalls).toEqual([['session_id', 'ARA-20261003-%']]);
-    expect(res).toEqual({ ok: true, ids: ['ARA-20261003-1', 'ARA-20261003-2'] });
-  });
-
-  it('reports a failed read instead of returning an empty list', async () => {
-    response = { data: null, error: { message: 'boom' } };
-    const res = await EventsService.takenSessionIdsToday('DEMO', 'Defend Trade Route', 'Defend Trade Route', day);
-    expect(res.ok).toBe(false);
-  });
-
-  it("the three views refuse to start a session when today's ids are unknown", () => {
-    for (const f of [
-      'src/modules/armsrace/views/ArmsRaceView.ts',
-      'src/modules/events/views/EventsView.ts',
-      'src/modules/shadowfront/views/ShadowfrontView.ts',
-    ]) {
-      const src = read(f);
-      expect(src, f).toContain('EventsService.takenSessionIdsToday(');
-      expect(src, f).toMatch(/if \(!taken\.ok\) \{[\s\S]{0,200}return;/);
-      expect(src, f).not.toMatch(/select\('session_id'\)\s*\.eq\('guild'/);
-    }
-  });
+  // Starting a session no longer reads the ids taken today: the server builds
+  // the id and its suffix (gm_start_event_session, ADR-023), so the 1,000-row
+  // cap cannot hide a taken id. tests/event_week_attribution.test.js runs it.
 });
 
 describe('whole-history reads', () => {

@@ -94,6 +94,22 @@ export function buildEventSessionId(eventName?: string, startAt?: string | Date,
   return `${base}-${n}`;
 }
 
+/**
+ * The id a running session takes when its start moves to `newStart`. A move
+ * within the same day (daily events) or the same ISO week (SvS/GvG) keeps the
+ * id: it is the same session at another time, and recomputing it from no taken
+ * ids would collide with the day's other sessions (EVT-05). A move to another
+ * day or week takes that day's first id; the server refuses it
+ * (`session_exists`) if that id is already a session.
+ */
+export function rescheduledSessionId(eventName: string, oldSessionId: string | null, newStart: string | Date): string {
+  const base = sessionIdBase(eventName, newStart);
+  if (oldSessionId && base && oldSessionId.indexOf(base + '-') === 0) return oldSessionId;
+  const next = buildEventSessionId(eventName, newStart, []);
+  if (oldSessionId && !base && next === oldSessionId) return oldSessionId;
+  return next;
+}
+
 export { GVG_DAILY_TASKS };
 export { newSessionId } from '../utils/date';
 

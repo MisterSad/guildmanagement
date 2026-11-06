@@ -30,7 +30,6 @@ import {
   fetchArmsRaceParticipants,
   fetchStageParticipants,
   populateStageParticipants,
-  upsertStageStatus,
   fetchStageStartAt,
   updateStageParticipation,
   type ArmsRaceStageKey,
@@ -38,12 +37,12 @@ import {
   type ArmsRaceParticipantRow,
 } from '../armsrace.service';
 import { pendingApprovalHtml, wirePendingApprovals } from '../../events/pending-approval';
-import { EventsService } from '../../events/events.service';
+import { EventsService, sessionWriteMessage } from '../../events/events.service';
 import { getClient } from '../../../core/api/supabase';
 import { getActiveGuild } from '../../../core/auth/roles';
-import { buildEventSessionId } from '../../../core/config/events';
+import { rescheduledSessionId, sessionDateFromId } from '../../../core/config/events';
 import { showToast } from '../../../core/dom/toast';
-import { pickEventStart } from '../../../core/dom/ui';
+import { pickEventStart, startWeekLabel } from '../../../core/dom/ui';
 import { t } from '../../../core/i18n/i18n';
 import { notifyDiscordEvent } from '../../../core/integrations/discord';
 import { formatDateTimeUTC, getWeekStart } from '../../../core/utils/date';
@@ -146,75 +145,46 @@ export class ArmsRaceView {
   private async startStage(stageKey: ArmsRaceStageKey, startAt: string | null): Promise<void> {
     const db = getClient();
     if (!db) return;
-    const stg = this.state.stages[stageKey];
     const evName = ARMSRACE_STAGE_EVENTS[stageKey];
-    const stageLetter = armsRaceStageLetter(stageKey);
     const currentG = getActiveGuild();
     if (!currentG) {
       // H2: starting a stage writes. Refuse rather than write into ALPHA.
       showToast(t('guild_unresolved'), 'error');
       return;
     }
-    let sessionId: string;
-    if (stg && stg.active && stg.sessionId) {
-      sessionId = stg.sessionId;
-    } else {
-      const taken = await EventsService.takenSessionIdsToday(currentG, evName, evName, startAt || null);
-      if (!taken.ok) {
-        // Unknown ids could mean a duplicate: refuse rather than merge sessions.
-        showToast(t('toast_err_generic') + ' ' + taken.error, 'error');
-        return;
-      }
-      sessionId = buildEventSessionId(evName, startAt || new Date(), taken.ids);
+    if (!startAt) {
+      showToast(t('event_err_start_required'), 'error');
+      return;
     }
 
     try {
-      const res = await upsertStageStatus(db, {
-        guild: currentG,
-        event_name: evName,
-        is_active: true,
-        session_id: sessionId,
-        start_at: startAt || null,
-        stage: stageLetter,
-        updated_at: new Date().toISOString(),
-      });
-      if (res.error) throw res.error;
-
-      const week = getWeekStart(startAt);
-      const rpcRes = await populateStageParticipants(db, stageKey, sessionId, week, currentG);
+      // The server builds the id and records the start, which decides the
+      // week the stage counts in (ADR-023).
+      const started = await EventsService.startSession(evName, armsRaceStageLetter(stageKey), startAt);
+      const rpcRes = await populateStageParticipants(db, stageKey, started.session_id, started.week_start, currentG);
       if (rpcRes.error) throw rpcRes.error;
 
       showToast('Arms Race ' + armsRaceStageLabel(stageKey) + ' - ' + (t('event_started') || 'Started'), 'success');
-      notifyDiscordEvent(evName, startAt || sessionId, 'start');
-    } catch (err: any) {
+      notifyDiscordEvent(evName, startAt, 'start');
+    } catch (err: unknown) {
       console.error('startStage', err);
-      showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+      showToast(sessionWriteMessage(err), 'error');
     }
     await this.load();
   }
 
   private async endStage(stageKey: ArmsRaceStageKey): Promise<void> {
-    const db = getClient();
-    if (!db) return;
     const stg = this.state.stages[stageKey];
-    if (!stg.active) return;
-    const currentG = getActiveGuild();
+    if (!stg.active || !stg.sessionId) return;
 
     try {
-      await upsertStageStatus(db, {
-        guild: currentG,
-        event_name: ARMSRACE_STAGE_EVENTS[stageKey],
-        is_active: false,
-        session_id: stg.sessionId,
-        start_at: null,
-        stage: armsRaceStageLetter(stageKey),
-        updated_at: new Date().toISOString(),
-      });
-    } catch (err) {
+      // Ending keeps the start: later scores still count in the start week.
+      await EventsService.endSession(ARMSRACE_STAGE_EVENTS[stageKey], stg.sessionId);
+      showToast(t('event_session_ended'), 'success');
+    } catch (err: unknown) {
       console.error('endStage', err);
+      showToast(sessionWriteMessage(err), 'error');
     }
-
-    showToast(t('event_session_ended'), 'success');
     await this.load();
   }
 
@@ -241,8 +211,8 @@ export class ArmsRaceView {
 
           try {
             // One transaction (M4a): status and participants move together.
-            // Recalculate session_id: pass [] to avoid collision check (renaming).
-            const newSessionId = buildEventSessionId(ARMSRACE_STAGE_EVENTS[stageKey], new Date(startAt), []);
+            // A move within the same day keeps the id (EVT-05).
+            const newSessionId = rescheduledSessionId(ARMSRACE_STAGE_EVENTS[stageKey], stg.sessionId, startAt);
             const moved = await EventsService.rescheduleSession(
               ARMSRACE_STAGE_EVENTS[stageKey],
               stg.sessionId,
@@ -255,9 +225,9 @@ export class ArmsRaceView {
             notifyDiscordEvent(ARMSRACE_STAGE_EVENTS[stageKey], startAt, 'edit');
 
             await this.load();
-          } catch (err: any) {
+          } catch (err: unknown) {
             console.error('editStageSchedule update', err);
-            showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+            showToast(sessionWriteMessage(err), 'error');
           }
         }
       );
@@ -316,7 +286,8 @@ export class ArmsRaceView {
         stg.participants.push({
           event_name: ARMSRACE_STAGE_EVENTS[k],
           session_id: stg.sessionId,
-          week_start: getWeekStart(stg.startAt || new Date(stg.sessionId as string)),
+          // Display only: the database files the row in the session's week.
+          week_start: getWeekStart(stg.startAt || sessionDateFromId(stg.sessionId) || new Date()),
           pseudo: pseudo,
           participated: 0,
           score: null,
@@ -354,7 +325,7 @@ export class ArmsRaceView {
     const statusText = isActive ? t('event_active') : t('event_inactive');
     const dotColor = isActive ? 'var(--success)' : 'var(--fg-dim)';
     const subText = stg.startAt
-      ? formatDateTimeUTC(stg.startAt)
+      ? formatDateTimeUTC(stg.startAt) + ' · ' + t('event_start_counts_in_week') + ' ' + startWeekLabel(stg.startAt)
       : isActive
         ? t('event_active')
         : t('event_not_active_hint');

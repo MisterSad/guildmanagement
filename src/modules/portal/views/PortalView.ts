@@ -145,7 +145,8 @@ export class PortalView {
     Object.keys(history || {}).forEach((key) => {
       const list = ((history[key].history || []) as any[]).filter((h) => {
         if (!h.week_start) return true;
-        const d = new Date(h.week_start + 'T00:00:00');
+        // A week_start is a UTC Monday (ADR-023): read it in UTC, not local time.
+        const d = new Date(h.week_start + 'T00:00:00Z');
         return !isNaN(d.getTime()) && d >= cutoff;
       });
       const attended = list.filter((h) => h.participated || h.sub_present).length;

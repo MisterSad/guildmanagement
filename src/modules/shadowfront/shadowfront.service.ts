@@ -387,28 +387,10 @@ export function moveSquadAssignmentsSession(
     .eq('session_id', oldSessionId);
 }
 
-/** Marks a squad active on a session, with its start time. */
-export function upsertActiveSquadStatus(
-  db: DbClient,
-  guild: string | null,
-  squad: ShadowfrontSquadKey,
-  sessionId: string,
-  startAt: string | null
-) {
-  return db.from('event_status').upsert(
-    {
-      guild: guild,
-      event_name: SHADOWFRONT_SQUAD_EVENT[squad],
-      is_active: true,
-      session_id: sessionId,
-      start_at: startAt || null,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: 'guild,event_name' }
-  );
-}
-
-/** Marks a squad inactive, keeping the given session id and clearing its start. */
+/**
+ * Records a squad being prepared under a provisional session id, inactive. The
+ * database keeps any start already recorded for that id (ADR-023).
+ */
 export function upsertInactiveSquadStatus(
   db: DbClient,
   guild: string | null,

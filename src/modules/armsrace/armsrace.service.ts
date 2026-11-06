@@ -155,11 +155,6 @@ export function populateStageParticipants(
   return db.rpc('gm_populate_event_participants', buildPopulateParams(stageKey, sessionId, weekStart, guild));
 }
 
-/** Upsert a stage's `event_status` row (start or end). */
-export function upsertStageStatus(db: DbClient, row: Record<string, unknown>) {
-  return db.from('event_status').upsert(row, { onConflict: 'guild,event_name' });
-}
-
 /** Read a stage's scheduled start. */
 export function fetchStageStartAt(db: DbClient, guild: string | null, eventName: string) {
   return db.from('event_status').select('start_at').eq('guild', guild).eq('event_name', eventName).maybeSingle();

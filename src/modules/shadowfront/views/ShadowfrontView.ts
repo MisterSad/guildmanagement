@@ -40,14 +40,14 @@ import {
 } from '../shadowfront.service';
 import * as ShadowfrontData from '../shadowfront.service';
 import { pendingApprovalHtml, wirePendingApprovals } from '../../events/pending-approval';
-import { EventsService } from '../../events/events.service';
+import { EventsService, sessionWriteMessage } from '../../events/events.service';
 import { fetchAllRows } from '../../../core/api/paginate';
 import { getClient } from '../../../core/api/supabase';
 import { getActiveGuild } from '../../../core/auth/roles';
-import { buildEventSessionId, sessionDateFromId } from '../../../core/config/events';
+import { buildEventSessionId, rescheduledSessionId, sessionDateFromId } from '../../../core/config/events';
 import { getGuildConfig } from '../../../core/config/guild-config';
 import { showToast } from '../../../core/dom/toast';
-import { pickEventStart } from '../../../core/dom/ui';
+import { pickEventStart, startWeekLabel } from '../../../core/dom/ui';
 import { t } from '../../../core/i18n/i18n';
 import {
   formatDiscordRoleMention,
@@ -249,62 +249,54 @@ export class ShadowfrontView {
     if (!db) return;
     const sq = this.state.squads[squad];
     const currentG = getActiveGuild();
-    const oldSessionId = sq ? sq.sessionId : null;
-    let sessionId: string;
-    if (sq && sq.sessionId && !sq.ended) {
-      sessionId = sq.sessionId;
-    } else {
-      if (!currentG) {
-        showToast(t('guild_unresolved'), 'error');
-        return;
-      }
-      const taken = await EventsService.takenSessionIdsToday(
-        currentG,
-        SHADOWFRONT_EVENT_NAME,
-        SHADOWFRONT_SQUAD_EVENT[squad],
-        startAt || null
-      );
-      if (!taken.ok) {
-        // Unknown ids could mean a duplicate: refuse rather than merge sessions.
-        showToast(t('toast_err_generic') + ' ' + taken.error, 'error');
-        return;
-      }
-      sessionId = buildEventSessionId(SHADOWFRONT_SQUAD_EVENT[squad], startAt || new Date(), taken.ids);
+    if (!currentG) {
+      showToast(t('guild_unresolved'), 'error');
+      return;
     }
-    if (sq) sq.ended = false;
+    if (!startAt) {
+      showToast(t('event_err_start_required'), 'error');
+      return;
+    }
+    const oldSessionId = sq ? sq.sessionId : null;
     try {
-      if (oldSessionId && oldSessionId !== sessionId) {
-        await ShadowfrontData.moveSquadAssignmentsSession(db, currentG, oldSessionId, sessionId);
+      // The server builds the id and records the start, which decides the week
+      // the squad session counts in (ADR-023).
+      const started = await EventsService.startSession(SHADOWFRONT_SQUAD_EVENT[squad], null, startAt);
+      if (oldSessionId && oldSessionId !== started.session_id) {
+        // The squad prepared (or last run) under another id comes along. The
+        // database files the moved rows in the new session's week.
+        const moved = await ShadowfrontData.moveSquadAssignmentsSession(db, currentG, oldSessionId, started.session_id);
+        if (moved.error) throw moved.error;
       }
-      const res = await ShadowfrontData.upsertActiveSquadStatus(db, currentG, squad, sessionId, startAt);
-      if (res.error) throw res.error;
+      if (sq) sq.ended = false;
 
-      await this.syncParticipantRows(sessionId);
+      await this.syncParticipantRows(started.session_id);
 
       showToast(this.squadLabel(squad) + ' - ' + t('sf_squad_started'), 'success');
 
-      notifyDiscordEvent(SHADOWFRONT_SQUAD_EVENT[squad], startAt || sessionId, 'start');
-    } catch (err: any) {
+      notifyDiscordEvent(SHADOWFRONT_SQUAD_EVENT[squad], startAt, 'start');
+    } catch (err: unknown) {
       console.error('startSquad', err);
-      showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+      showToast(sessionWriteMessage(err), 'error');
     }
     await this.load();
   }
 
   private async endSquads(squads: ShadowfrontSquadKey[]): Promise<void> {
-    const db = getClient();
-    if (!db) return;
-    const currentG = getActiveGuild();
+    let failed: unknown = null;
     for (let i = 0; i < squads.length; i++) {
-      const squad = squads[i];
-      const currentSession = this.state.squads[squad] ? this.state.squads[squad].sessionId : null;
+      const sq = this.state.squads[squads[i]];
+      if (!sq || !sq.active || !sq.sessionId) continue;
       try {
-        await ShadowfrontData.upsertInactiveSquadStatus(db, currentG, squad, currentSession);
+        // Ending keeps the start: later scores still count in the start week.
+        await EventsService.endSession(SHADOWFRONT_SQUAD_EVENT[squads[i]], sq.sessionId);
       } catch (err) {
         console.error('endSquad', err);
+        failed = failed || err;
       }
     }
-    showToast(t('sf_squad_ended'), 'success');
+    if (failed) showToast(sessionWriteMessage(failed), 'error');
+    else showToast(t('sf_squad_ended'), 'success');
     await this.load();
   }
 
@@ -333,7 +325,7 @@ export class ShadowfrontView {
             // One transaction (M4a): status, squad rows and participants move to
             // the new start and session id together, or not at all. Four of the
             // six writes this replaces never checked their error.
-            const newSessionId = buildEventSessionId(SHADOWFRONT_SQUAD_EVENT[squad], new Date(startAt), []);
+            const newSessionId = rescheduledSessionId(SHADOWFRONT_SQUAD_EVENT[squad], sq.sessionId, startAt);
             const moved = await EventsService.rescheduleSession(
               SHADOWFRONT_SQUAD_EVENT[squad],
               sq.sessionId,
@@ -346,9 +338,9 @@ export class ShadowfrontView {
             notifyDiscordEvent(SHADOWFRONT_SQUAD_EVENT[squad], startAt, 'edit');
 
             await this.load();
-          } catch (err: any) {
+          } catch (err: unknown) {
             console.error('editSquadSchedule update', err);
-            showToast(t('toast_err_generic') + ' ' + err.message, 'error');
+            showToast(sessionWriteMessage(err), 'error');
           }
         }
       );
@@ -433,7 +425,14 @@ export class ShadowfrontView {
     const currentG = getActiveGuild();
 
     if (!sq.sessionId || sq.ended) {
-      sq.sessionId = buildEventSessionId(SHADOWFRONT_SQUAD_EVENT[squad], sq.startAt || new Date());
+      // A squad prepared before its start gets a provisional id; starting it
+      // gives it its real id and start. Never reuse the id of the session that
+      // just ended: the new squad would merge into its history.
+      sq.sessionId = buildEventSessionId(
+        SHADOWFRONT_SQUAD_EVENT[squad],
+        new Date(),
+        sq.sessionId ? [sq.sessionId] : []
+      );
       sq.ended = false;
       try {
         await ShadowfrontData.upsertInactiveSquadStatus(db, currentG, squad, sq.sessionId);
@@ -591,7 +590,7 @@ export class ShadowfrontView {
     const statusText = isActive ? t('event_active') : t('event_inactive');
     const dotColor = isActive ? 'var(--success)' : 'var(--fg-dim)';
     const subText = sq.startAt
-      ? formatDateTimeUTC(sq.startAt)
+      ? formatDateTimeUTC(sq.startAt) + ' · ' + t('event_start_counts_in_week') + ' ' + startWeekLabel(sq.startAt)
       : isActive
         ? t('event_active')
         : t('sf_squad_inactive_hint');
