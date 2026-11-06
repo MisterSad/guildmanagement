@@ -2,6 +2,24 @@
 
 ## [Unreleased]
 
+- **Security (audit SEC2-01, critical): another guild's player could be taken over.**
+  - **The flaw.** An account that had claimed no player was treated as the player whose UID equals its login id. The attack chain:
+    1. Create a guild through Discord onboarding, on the victim's game server.
+    2. Create an account whose id is the victim's in-game UID.
+    3. Sign in with it and request the victim's transfer into your guild through the player portal.
+    4. Approve that transfer as the target guild. The victim's roster row, history and member account move into your guild.
+    5. Reset that member account's password and sign in as the victim.
+  - The same flaw let anyone read any player's event history, metrics and KPIs.
+  - **Fixed in three places.**
+    - `member-portal` keys the player on the claimed UID only. An account with none now gets `403 player_not_linked`. The `get-active-sessions without a player` characterization snapshot changes on purpose: the old one shows the portal looking a roster row up by the account id.
+    - Migration `player_is_its_claimed_uid` removes `OR a.id = p_uid` from `request_guild_transfer`, `gm_get_player_event_history`, `gm_get_player_metrics_history` and `gm_personal_kpis` (BE-B-04).
+    - `admin-accounts create` refuses an all-digit id (`id_numeric`), with a message in the accounts screen.
+  - **Measured on production before the fix (read-only).** All 104 member accounts have a UID set, and no account's id equals a roster UID: no legitimate user depended on the fallback, and the chain had not been used.
+  - **Verified.**
+    - New SQL test `supabase/tests/14_player_is_its_claimed_uid.sql` (8 assertions). It fails against the old function bodies and passes against the new ones.
+    - New Deno tests in `member-portal` (the attack is refused, and no RPC is called) and `admin-accounts`.
+    - Results: 128 Deno tests, 189 SQL assertions, 2,522 unit tests and the e2e suite pass. A dry run on production, rolled back, left no function honouring an account id.
+
 - **An event counts in the week of its start date (phase 3 of 3: documentation).**
   - New **ADR-023**: the owner's four rules, the registry and its triggers, and the invariants:
     - never compute a week in the browser for a write;

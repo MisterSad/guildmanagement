@@ -55,6 +55,10 @@ export async function create(ctx: AdminContext): Promise<Response> {
   const createParsed = CreateSchema.safeParse(body);
   if (!createParsed.success) return json({ ok: false, error: "missing_fields" }, 400);
   const id = createParsed.data.id;
+  // An in-game player UID is all digits. An account id that looks like one
+  // could be mistaken for that player wherever an id and a UID meet, which is
+  // how a guild admin could act as another guild's player (audit SEC2-01).
+  if (/^[0-9]+$/.test(id)) return json({ ok: false, error: "id_numeric" }, 400);
   // Generated here, exactly like `reset-password`, and returned once. The
   // client used to generate it and never display it, so every officer who
   // clicked "Generate Access" got an account nobody could sign in to.

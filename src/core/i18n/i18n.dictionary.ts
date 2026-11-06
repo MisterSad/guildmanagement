@@ -137,6 +137,7 @@ export const EN: Record<string, string> = {
   toast_err_import_participants: 'Error importing participants:',
   toast_copied: 'Password copied!',
   toast_duplicate_account: 'This identifier already exists!',
+  toast_account_id_numeric: 'An identifier cannot be only digits: that is what player UIDs look like. Add a letter.',
   toast_duplicate_member: 'This username is already in the guild!',
   toast_duplicate_uid: 'This UID is already used by another member.',
   validation_pseudo_invalid: 'Invalid username.',

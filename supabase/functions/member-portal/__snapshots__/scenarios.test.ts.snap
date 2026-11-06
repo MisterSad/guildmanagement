@@ -258,31 +258,13 @@ snapshot[`member-portal: get-active-sessions without a player 1`] = `
       name: "accounts",
       op: "select",
     },
-    {
-      args: null,
-      filters: [
-        [
-          "uid",
-          "eq",
-          "p_none",
-        ],
-        [
-          "guild",
-          "eq",
-          "TB",
-        ],
-      ],
-      kind: "from",
-      name: "guild_members",
-      op: "select",
-    },
   ],
   response: {
     body: {
-      error: "player_not_found",
+      error: "player_not_linked",
       ok: false,
     },
-    status: 200,
+    status: 403,
   },
 }
 `;

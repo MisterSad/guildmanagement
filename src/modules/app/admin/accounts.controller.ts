@@ -394,6 +394,7 @@ async function onCreateAccountSubmit(e: Event): Promise<void> {
 // when the local list is stale and the check above let it through.
 function createErrorMessage(code: string | undefined): string {
   if (code === 'account_exists') return t('toast_duplicate_account');
+  if (code === 'id_numeric') return t('toast_account_id_numeric');
   return code || 'create_failed';
 }
 

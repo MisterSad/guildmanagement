@@ -21,7 +21,7 @@ export interface PortalContext {
   logger: EdgeLogger;
   json: (body: unknown, status?: number) => Response;
   identity: PlayerIdentity;
-  /** The player key: the claimed in-game UID, or the account id. */
+  /** The player key: the in-game UID the account claimed (never its account id, SEC2-01). */
   uid: string;
   /** The action's payload, already parsed by its schema when it has one. */
   payload: any;

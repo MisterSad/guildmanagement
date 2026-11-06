@@ -576,6 +576,10 @@
     {
       "version": "20261106145045",
       "name": "event_sessions_week_attribution"
+    },
+    {
+      "version": "20261106151518",
+      "name": "player_is_its_claimed_uid"
     }
   ]
 }

@@ -104,6 +104,20 @@ Deno.test("a guild admin can only create a guild admin of its own guild, whateve
   }
 });
 
+Deno.test("an account id made only of digits is refused: it would pass for a player UID (SEC2-01)", async () => {
+  const { fake, jwt } = setup();
+  try {
+    const r = await call({ action: "create", id: "1917131" }, jwt.adminA);
+    assertEquals(r.status, 400);
+    assertEquals(r.body?.error, "id_numeric");
+    assertEquals(fake.rpcCalls("gm_admin_upsert").length, 0);
+    const ok = await call({ action: "create", id: "officer1917131" }, jwt.adminA);
+    assertEquals(ok.body?.ok, true);
+  } finally {
+    uninstallFake();
+  }
+});
+
 Deno.test("a server admin cannot create an account for a guild of another server", async () => {
   const { fake, jwt } = setup();
   try {

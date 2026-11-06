@@ -148,7 +148,11 @@ describe('member-portal no longer decrypts the shadow secret on every request', 
 
   it('resolves the player UID from the caller resolved by _shared/auth.ts', () => {
     expect(code).toContain('const caller = await resolveCaller(req, admin);');
-    expect(code).toContain('uid: caller.uid || caller.accountId,');
+    // The player is the UID the account claimed, never its account id: that
+    // fallback let an account named after another guild's player act as them
+    // (SEC2-01). member-portal/index.test.ts runs the refusal.
+    expect(code).toContain('uid: caller.uid ?? null,');
+    expect(code).not.toMatch(/caller\.uid\s*\|\|\s*caller\.accountId/);
   });
 
   it('makes no gm_get_shadow call and reads no player_uid field', () => {

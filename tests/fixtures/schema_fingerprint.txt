@@ -777,8 +777,8 @@ function|gm_get_chest_tiers(p_guild text, p_event_name text)|be731fefe05f180c93f
 function|gm_get_daily_scores(p_guild text, p_event_name text, p_session_id text)|7c513ad0da6d0c3e1963b20e3d8cdac0
 function|gm_get_join_code(p_guild text)|26569a7497f97aca60a4482053f20dbb
 function|gm_get_player_absences(p_uid text)|ee20f5b76efdcb2fb40bd018a67544a6
-function|gm_get_player_event_history(p_uid text, p_limit integer)|2db0ec9fa702898d2d73ff56096efb01
-function|gm_get_player_metrics_history(p_uid text, p_limit integer)|4ce66cb44783697d30f2c9b822459e09
+function|gm_get_player_event_history(p_uid text, p_limit integer)|e519731dad69c5e3af302047521875b1
+function|gm_get_player_metrics_history(p_uid text, p_limit integer)|5db72bbb8b95c346b64b9dd3244abae4
 function|gm_get_shadow(p_id text)|6a09fd0fd18ca9fcdbacef72e5445c56
 function|gm_get_war_session(p_guild text, p_event_name text, p_session_id text)|0bf0849fb35a070ea7876e5056ceb3d4
 function|gm_guild_tag_history(p_guild text)|972a95f7c62141f3db12cd83d26032cd
@@ -793,7 +793,7 @@ function|gm_list_tickets()|4e0e71eff2a603e535fb9750655bbcdb
 function|gm_list_transfer_eligible_guilds(p_guild text)|d113505306129d63dfd6399d67cea7f0
 function|gm_list_war_sessions(p_guild text, p_event_name text)|02a5a5e16b1d9e72386442782d97bddb
 function|gm_log_player_audit(p_action_type text, p_pseudo text, p_uid text, p_guild text, p_server_number text, p_message text, p_metadata jsonb, p_level text, p_service text)|282ef61848970143aa5b8ff8ab6f230b
-function|gm_personal_kpis(p_uid text)|b5191222631b3094a18ab1d5c32a8979
+function|gm_personal_kpis(p_uid text)|6ca154b9663568ec1e34174c0125617d
 function|gm_player_session_guild_stats(p_guild text, p_pseudo text)|1a099be10dce528d0bc758a022e1501d
 function|gm_player_stats(p_guild text, p_pseudo text, p_weeks integer)|f1276d97503de175b46793643087c48a
 function|gm_populate_event_participants(p_event_name text, p_session_id text, p_week_start date, p_guild text)|bd31d956a36c2368b7c33f871b447534
@@ -852,7 +852,7 @@ function|handle_updated_at()|09371f5ffe86a8d54fcaf2a3e4fc07e4
 function|is_server_admin()|4c9700a2fb8abdfdf17aa5a3572ee6ba
 function|is_super_admin()|b682c5de8e579e0aaace01722604391d
 function|prevent_duplicate_member_uid()|3f1e3c8a168e4ab7ef830054747c0f4d
-function|request_guild_transfer(p_uid text, p_target_guild text)|01ca73d7c46adbc03a7bb7bca2de05a1
+function|request_guild_transfer(p_uid text, p_target_guild text)|92a1b175ba3bae3aee1654227acde67b
 function|resolve_guild_transfer(p_transfer_id uuid, p_action text)|0636818344fbd6be30717950dc97f55c
 function|servers_in_open_migration_group(p_server_a text, p_server_b text)|1a396e49c0aaa7afc07f355d1efb1bb8
 index|account_backup_codes_code_hash_key|72eb31550a87b7ca747d2a1677c54f19

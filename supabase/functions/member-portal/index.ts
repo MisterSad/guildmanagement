@@ -69,8 +69,12 @@ async function getIdentity(req: Request, admin: AdminClient): Promise<PlayerIden
     accountId: caller.accountId,
     role: caller.role,
     guild: caller.guild,
-    // An account that never claimed a player is keyed by its own id.
-    uid: caller.uid || caller.accountId,
+    // The player is the in-game UID the account claimed, and only that. An
+    // account that never claimed one is no player at all: it used to be keyed
+    // by its own id, so a guild_admin could create an account whose id was
+    // another guild's player UID and act as that player -- request their
+    // transfer, read their metrics and KPIs (audit SEC2-01).
+    uid: caller.uid ?? null,
   };
 }
 
@@ -130,9 +134,14 @@ export async function handler(req: Request): Promise<Response> {
     }
 
     const identity = await getIdentity(req, admin);
-    if (!identity || !identity.uid) {
+    if (!identity) {
       logger.warn("Unauthorized attempt to access member-portal", { action });
       return json({ ok: false, error: "unauthorized" }, 401);
+    }
+    if (!identity.uid) {
+      // Signed in, but not linked to an in-game player (SEC2-01).
+      logger.warn("member-portal call from an account with no player", { action, accountId: identity.accountId });
+      return json({ ok: false, error: "player_not_linked" }, 403);
     }
     const uid = identity.uid;
     logger.setContext({ tenantId: identity.guild, userId: uid });
