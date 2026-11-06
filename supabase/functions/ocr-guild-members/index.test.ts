@@ -124,7 +124,9 @@ Deno.test("a guild whose TAG is 11 or 12 characters can scan (NW_NEWWORLD, 2026-
           choices: [
             {
               finish_reason: "stop",
-              message: { content: JSON.stringify({ metric: "members", guild_tag: null, endingRank: null, players: [] }) },
+              message: {
+                content: JSON.stringify({ metric: "members", guild_tag: null, endingRank: null, players: [] }),
+              },
             },
           ],
         }),
@@ -136,7 +138,9 @@ Deno.test("a guild whose TAG is 11 or 12 characters can scan (NW_NEWWORLD, 2026-
       const res = await handler(post({ ...IMAGE, metadata: { metricType: "members", guildTag: tag } }, jwt));
       assertEquals(res.status, 200, tag);
     }
-    const tooLong = await handler(post({ ...IMAGE, metadata: { metricType: "members", guildTag: "THIRTEENCHARS" } }, jwt));
+    const tooLong = await handler(
+      post({ ...IMAGE, metadata: { metricType: "members", guildTag: "THIRTEENCHARS" } }, jwt)
+    );
     assertEquals(tooLong.status, 400);
   } finally {
     globalThis.fetch = realFetch;
