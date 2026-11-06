@@ -572,6 +572,10 @@
     {
       "version": "20261004123020",
       "name": "drop_demo_tenant"
+    },
+    {
+      "version": "20261106145045",
+      "name": "event_sessions_week_attribution"
     }
   ]
 }

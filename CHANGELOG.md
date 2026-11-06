@@ -2,6 +2,33 @@
 
 ## [Unreleased]
 
+- **An event counts in the week of its start date (phase 1 of 3: database).** Owner decisions, 2026-11-06: every session has a mandatory start date and time; it counts in the ISO week (Monday 00:00 UTC) of that start, whenever it is closed or its scores are typed; UTC is the reference; correcting a start moves the whole session.
+  - **Why.**
+    - Ending an Arms Race stage or a Shadowfront squad wiped `event_status.start_at`, so every later write (OCR, history, a member added) fell back to `getWeekStart(start_at || new Date())`: the week of typing, not the week of the event.
+    - Several RPCs fell back to `now()` or `updated_at`, and `gm_upsert_war_session` replaced the war start with `now()` on every save (audit EVT-02).
+    - Measured on production: 12 sessions split across two weeks, 34 rows on a non-Monday week, 234 Shadowfront squad rows one to six weeks before their session, and war sessions dated outside their own week.
+  - **Migration `event_sessions_week_attribution`.**
+    - New registry `event_sessions`, one row per `(guild, session_id)` with the start and its week. It is private: RLS is forced, there is no API grant, and it follows a TAG rename through its FK.
+    - Triggers make every write path take its week from the registry: RPCs, direct PostgREST writes, Edge Functions and the worker.
+      - `event_participants` and `shadowfront_squads` take the session's week, whatever the caller sends.
+      - `war_sessions` takes the session's start.
+      - An end that sends `start_at = NULL` keeps the start.
+      - A corrected start moves every row of the session.
+    - New checks: every `week_start` is a Monday, and a running session must have a start.
+    - New `gm_start_event_session`: the start is mandatory and bounded, and the server builds the id with its same-day suffix (EVT-05).
+    - New `gm_end_event_session`: it keeps the start and refuses a stale tab (EVT-07).
+    - `gm_reschedule_event_session` moves the registry first and refuses to merge into an existing session.
+    - `gm_list_event_sessions` reads the start from the registry.
+    - It backfills the 1,107 existing sessions and realigns their rows, recomputes the weekly snapshots of the weeks that changed, and writes one audit line with the counts.
+  - **Verified.**
+    - On a local replay of all 144 migrations: the 152 existing SQL assertions pass, plus 29 new ones in `supabase/tests/13_event_week_attribution.sql`. These start on a Sunday at 23:30, close the session, then import by OCR, write directly and edit the week in a later week: every row stays in the start week.
+    - A dry run on production, rolled back and then checked unchanged:
+      - 1,107 sessions registered (118 from an officer's start, 989 rebuilt);
+      - 47 participation rows and 234 squad rows realigned;
+      - 44 war session starts restored;
+      - 26 snapshot weeks recomputed;
+      - afterwards, no session spans two weeks and no `week_start` falls off a Monday.
+
 - **Shadowfront: the session controls are back.** Since the strict CSP (V3.35.0), the Shadowfront tab showed no banner: no Start, End, Edit or Delete for either squad. `styles.css` still hid `#event-shadowfront .gm-event-banner`, a rule written for a static banner that no longer exists. The view's own banner used to escape it through its inline `display: flex`; as a `u-d-flex` class it lost to the ID selector. The dead rule is removed. Covered by `e2e/event-banners.spec.js` (Shadowfront and Arms Race banners visible on the built bundle), which fails with the rule and passes without it.
 
 - **The DEMO tenant is retired** (owner decision, 2026-10-04): anyone can create a guild themselves now, so the shared sandbox no longer earns its keep.

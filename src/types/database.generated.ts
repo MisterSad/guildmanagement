@@ -534,6 +534,50 @@ export type Database = {
           },
         ]
       }
+      event_sessions: {
+        Row: {
+          created_at: string
+          ended_at: string | null
+          event_name: string
+          guild: string
+          session_id: string
+          start_at: string
+          start_source: string
+          updated_at: string
+          week_start: string
+        }
+        Insert: {
+          created_at?: string
+          ended_at?: string | null
+          event_name: string
+          guild: string
+          session_id: string
+          start_at: string
+          start_source?: string
+          updated_at?: string
+          week_start: string
+        }
+        Update: {
+          created_at?: string
+          ended_at?: string | null
+          event_name?: string
+          guild?: string
+          session_id?: string
+          start_at?: string
+          start_source?: string
+          updated_at?: string
+          week_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_sessions_guild_fkey"
+            columns: ["guild"]
+            isOneToOne: false
+            referencedRelation: "guilds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_status: {
         Row: {
           event_name: string
@@ -1697,7 +1741,10 @@ export type Database = {
         Args: { p_guild: string }
         Returns: boolean
       }
-      gm_add_member: { Args: { p_guild: string; p_member: Json }; Returns: Json }
+      gm_add_member: {
+        Args: { p_guild: string; p_member: Json }
+        Returns: Json
+      }
       gm_add_member_to_active_events: {
         Args: { p_guild: string; p_pseudo: string }
         Returns: number
@@ -1749,7 +1796,12 @@ export type Database = {
         Returns: undefined
       }
       gm_ban_member: {
-        Args: { p_guild: string; p_pseudo: string; p_reason: string; p_uid: string }
+        Args: {
+          p_guild: string
+          p_pseudo: string
+          p_reason: string
+          p_uid: string
+        }
         Returns: Json
       }
       gm_caller_guild: { Args: never; Returns: string }
@@ -1947,6 +1999,10 @@ export type Database = {
           ok: boolean
           previous_discord_user_id: string
         }[]
+      }
+      gm_end_event_session: {
+        Args: { p_event_name: string; p_guild: string; p_session_id: string }
+        Returns: Json
       }
       gm_erase_account: { Args: { p_account_id: string }; Returns: Json }
       gm_erase_player: {
@@ -2219,6 +2275,19 @@ export type Database = {
         Returns: Json
       }
       gm_session_is_valid: { Args: never; Returns: boolean }
+      gm_session_start_from_id: {
+        Args: { p_session_id: string }
+        Returns: string
+      }
+      gm_session_week: {
+        Args: {
+          p_event_name: string
+          p_guild: string
+          p_hint: string
+          p_session_id: string
+        }
+        Returns: string
+      }
       gm_set_join_code: {
         Args: { p_code: string; p_guild: string }
         Returns: Json
@@ -2226,6 +2295,15 @@ export type Database = {
       gm_snowflake_created_at: {
         Args: { p_snowflake: string }
         Returns: string
+      }
+      gm_start_event_session: {
+        Args: {
+          p_event_name: string
+          p_guild: string
+          p_stage: string
+          p_start_at: string
+        }
+        Returns: Json
       }
       gm_stats_events: {
         Args: { p_bucket: string; p_guild: string; p_weeks?: string[] }
@@ -2384,6 +2462,7 @@ export type Database = {
           status: string
         }[]
       }
+      gm_week_of: { Args: { p_at: string }; Returns: string }
       is_server_admin: { Args: never; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
       request_guild_transfer: {
