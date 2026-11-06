@@ -137,6 +137,23 @@ export const EN: Record<string, string> = {
   toast_err_import_participants: 'Error importing participants:',
   toast_copied: 'Password copied!',
   toast_duplicate_account: 'This identifier already exists!',
+  season2_notice_title: 'Season 2',
+  season2_notice_body:
+    'Season 2 is coming soon. All recorded data — events and event history — will be deleted when Season 2 begins. Players and their military stats are kept.',
+  season2_notice_ok: 'Got it',
+  season2_card_body:
+    'Starting Season 2 deletes the recorded data of every guild: events and their history, weekly Glory, weekly stats snapshots, power history and the SvS/GvG opponent lists. Players and their military stats are kept. The Season 2 notice disappears for everyone. This cannot be undone.',
+  season2_start_btn: 'Start Season 2',
+  season2_start_title: 'Start Season 2 for every guild',
+  season2_start_deleted:
+    'Deleted for every guild: events and event history, weekly Glory, weekly stats snapshots, power history, SvS/GvG opponent lists.',
+  season2_start_kept:
+    'Kept: players and their military stats (powers, current Glory), chest tiers, sanctions, absences, accounts.',
+  season2_start_type: 'To confirm, type',
+  season2_start_failed: 'Season 2 could not start:',
+  season2_started_toast: 'Season 2 has started: {n} records deleted.',
+  season2_already_started: 'Season 2 has started. The recorded data of the previous season was deleted.',
+  season2_status_unknown: 'The current season could not be read. Reload to try again.',
   toast_account_id_numeric: 'An identifier cannot be only digits: that is what player UIDs look like. Add a letter.',
   toast_duplicate_member: 'This username is already in the guild!',
   toast_duplicate_uid: 'This UID is already used by another member.',

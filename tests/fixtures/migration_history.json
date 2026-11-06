@@ -588,6 +588,10 @@
     {
       "version": "20261106161319",
       "name": "drop_migration_hub"
+    },
+    {
+      "version": "20261106162047",
+      "name": "season_2"
     }
   ]
 }

@@ -17,6 +17,7 @@ import { styleRef } from '../../../core/dom/style-refs';
 import { adoptDialog } from '../../../components/ui/Dialog';
 import { loadAdmin } from '../admin-loader';
 import { portalViewLazy } from '../lazy-views';
+import { showSeasonNoticeIfDue } from '../season/season';
 import { fetchAccountGuild, fetchAccountGuildAndServer, fetchGuildServerNumber } from './auth.service';
 import { getAppState, patchAppState, resetAppState } from '../../../core/state/app-state';
 import { showToast } from '../dialogs/dialogs.service';
@@ -218,6 +219,8 @@ export function revealPortal(): void {
   if (container) container.classList.add('portal-wide');
 
   void portalViewLazy.get().then((v) => v.loadDashboard());
+  // Season 2 notice, on every visit while the app is in season 1.
+  void showSeasonNoticeIfDue();
 }
 
 /**
@@ -239,6 +242,8 @@ export async function revealAdmin(role: string): Promise<void> {
   // name and nobody noticed it was the wrong one. Now that an unresolved
   // tenant says so out loud, the staleness is plain, so re-render here.
   shellView.renderSidebar();
+  // Season 2 notice, on every visit while the app is in season 1.
+  void showSeasonNoticeIfDue();
 }
 
 async function fetchGuildsIfAvailable(): Promise<void> {

@@ -12,7 +12,8 @@ import { t, getLang, setLang, applyTranslations } from '../src/core/i18n/i18n';
 import { EN } from '../src/core/i18n/i18n.dictionary';
 
 describe('i18n dictionary (golden)', () => {
-  it('keeps the full 552-key English dictionary', () => {
+  it('keeps the full 565-key English dictionary', () => {
+    // 565 since Season 2 added its notice, card and confirmation (13 season2_* keys).
     // 552 since the Migration Hub left (gm_nav_migration_hub), 2026-11-06.
     // 553 since SEC2-01 added toast_account_id_numeric.
     // 552 since ADR-023 added the start dialog's week hint
@@ -29,7 +30,7 @@ describe('i18n dictionary (golden)', () => {
     // `sf_commanders_full`. 531 since finding H2 added `guild_unresolved`, the
     // message shown when the active tenant cannot be resolved -- which used to
     // silently become ALPHA.
-    expect(Object.keys(EN).length).toBe(552);
+    expect(Object.keys(EN).length).toBe(565);
   });
 
   it('has no empty translation value', () => {

@@ -28,6 +28,7 @@ import {
 import { loadGuildSettings, fetchGuildRequests } from './admin/guild-requests.controller';
 import { renderGuildsList } from './admin/guilds.controller';
 import { renderMigrationGroupsList } from './admin/migration-groups.controller';
+import { renderSeasonCard } from './season/season';
 import { loadGuildTagCard } from './admin/guild-rename';
 // M5: every tab view is its own chunk, imported when its tab is first shown.
 import {
@@ -211,6 +212,7 @@ export async function triggerTabDataLoad(tabId: string): Promise<void> {
       await runLoader('guilds', () => fetchGuilds());
       await runLoader('guilds-list', () => renderGuildsList());
       await runLoader('migration-groups', () => renderMigrationGroupsList());
+      await runLoader('season', () => renderSeasonCard());
       await runLoader('accounts', () => fetchAccounts());
       await runLoader('account-guild-select', () => populateAccountGuildSelect());
       await runLoader('admin-invite', () => wireAdminInvite());

@@ -2,6 +2,34 @@
 
 ## [Unreleased]
 
+- **Season 2: a notice for everyone, and one button that only the super admin can press (owner decisions, 2026-11-06).**
+  - **Notice.** Every signed-in user, admin or player, sees it on every visit while the app is in season 1: "Season 2 is coming soon. All recorded data — events and event history — will be deleted when Season 2 begins. Players and their military stats are kept." The season comes from the database (`gm_season_status()`), so the notice disappears for everyone the moment Season 2 starts. If the season cannot be read, nothing is shown and the app is never blocked.
+  - **Start Season 2.** A card in the super-admin tab, shown to the super admin only. It asks for the exact phrase `START SEASON 2`, then calls `gm_start_season_2`, which:
+    - refuses anyone but a signed-in super admin, including the service role, and refuses a second run;
+    - deletes, for every guild and in one transaction:
+      - events and their history, weekly Glory included;
+      - daily war scores and war sessions;
+      - the SvS/GvG opponent lists;
+      - Shadowfront squads and sign-ups;
+      - the event sessions;
+      - the weekly stats snapshots;
+      - the power history;
+    - keeps every player and their military stats (all of `guild_members`), along with chest tiers, sanctions, absences, transfers and accounts;
+    - records the counts in the audit log and moves the app to season 2.
+  - **New table.** `app_season`, one row, private: forced RLS, read only through the function.
+  - **No backup.** There is no automatic backup (owner decision of 2026-10-03), so the deletion is irreversible.
+  - **Measured on production (rolled-back dry run).** The button would delete:
+    - 87,139 participation rows and 15,802 daily scores;
+    - 91 war sessions and 58 opponents;
+    - 1,172 squad rows and 220 sign-ups;
+    - 133 statuses and 1,107 sessions;
+    - 519 snapshots and 11,983 power readings.
+
+    It would keep 5,033 players.
+  - **Verified.**
+    - `supabase/tests/15_season_2.sql` (22 assertions): every role refused, the phrase exact, the deletion complete, players and stats intact, no second run.
+    - `tests/season_2.test.js` (6 tests): the notice, the hidden card, the phrase gate.
+
 - **The Migration Hub is removed (owner decision, 2026-11-06).**
   - **What goes.**
     - The wiki screen, its navigation entry, routing and markup. That covers `MigrationHubView`, its types, the image compressor it alone used, 60 utility classes only it used, and its user guide.

@@ -10,7 +10,7 @@ Never claim completion without proof, and never fabricate a result. Measure agai
 - **Frontend**: TypeScript ES modules in `src/`, built by Vite. No UI framework. Modules call each other by typed import; the client (`setDbClient`/`getClient`) and the state (`app-state.ts`) are modules, not globals. The app installs exactly one global, the frozen `window.GM_E2E` the e2e suite drives (`tests/gm_bridge_contract.test.js` pins it); add nothing to `window`.
 - **Backend**: Supabase Postgres 17 (RLS, `SECURITY DEFINER`, `SET search_path = ''`) + Deno Edge Functions. 13 deployed, 13 in the repo — keep it reconciled (ADR-017). Deploys run from CI only.
 - **Hosting**: Vercel. No service worker behaviour, no PWA, no cookies, no analytics.
-- **Scale** (measured 2026-11-06): 62 guilds, ~5,033 members, ~87,139 participation rows, 38 tables, 79 policies, 11 cron jobs. Re-measure rather than trust this line.
+- **Scale** (measured 2026-11-06): 62 guilds, ~5,033 members, ~87,139 participation rows, 39 tables, 79 policies, 11 cron jobs. Re-measure rather than trust this line.
 
 ## Invariants that are easy to break
 - **Four roles**: `super_admin`, `server_admin`, `guild_admin`, `member`. Resolved from `accounts` via `auth.uid()` — never from client-supplied data.

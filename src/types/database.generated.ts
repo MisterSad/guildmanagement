@@ -165,6 +165,27 @@ export type Database = {
           },
         ]
       }
+      app_season: {
+        Row: {
+          id: boolean
+          season: number
+          started_at: string | null
+          started_by: string | null
+        }
+        Insert: {
+          id?: boolean
+          season?: number
+          started_at?: string | null
+          started_by?: string | null
+        }
+        Update: {
+          id?: boolean
+          season?: number
+          started_at?: string | null
+          started_by?: string | null
+        }
+        Relationships: []
+      }
       banned_players: {
         Row: {
           created_at: string
@@ -2125,6 +2146,7 @@ export type Database = {
         Args: { p_event_name: string; p_guild: string; p_tiers: Json }
         Returns: Json
       }
+      gm_season_status: { Args: never; Returns: Json }
       gm_session_is_valid: { Args: never; Returns: boolean }
       gm_session_start_from_id: {
         Args: { p_session_id: string }
@@ -2156,6 +2178,7 @@ export type Database = {
         }
         Returns: Json
       }
+      gm_start_season_2: { Args: { p_confirm: string }; Returns: Json }
       gm_stats_events: {
         Args: { p_bucket: string; p_guild: string; p_weeks?: string[] }
         Returns: Json
