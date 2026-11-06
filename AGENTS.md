@@ -10,13 +10,14 @@ Never claim completion without proof, and never fabricate a result. Measure agai
 - **Frontend**: TypeScript ES modules in `src/`, built by Vite. No UI framework. Modules call each other by typed import; the client (`setDbClient`/`getClient`) and the state (`app-state.ts`) are modules, not globals. The app installs exactly one global, the frozen `window.GM_E2E` the e2e suite drives (`tests/gm_bridge_contract.test.js` pins it); add nothing to `window`.
 - **Backend**: Supabase Postgres 17 (RLS, `SECURITY DEFINER`, `SET search_path = ''`) + Deno Edge Functions. 14 deployed, 14 in the repo — keep it reconciled (ADR-017). Deploys run from CI only.
 - **Hosting**: Vercel. No service worker behaviour, no PWA, no cookies, no analytics.
-- **Scale** (measured 2026-10-04): 35 guilds, ~3,802 members, ~54,375 participation rows, 39 tables, 86 policies, 11 cron jobs (after the DEMO removal).
+- **Scale** (measured 2026-11-06): 62 guilds, ~5,033 members, ~87,139 participation rows, 40 tables, 86 policies, 11 cron jobs. Re-measure rather than trust this line.
 
 ## Invariants that are easy to break
 - **Four roles**: `super_admin`, `server_admin`, `guild_admin`, `member`. Resolved from `accounts` via `auth.uid()` — never from client-supplied data.
 - **No per-tenant branching, and no hardcoded tenant list.** An unresolved tenant fails visibly; it never falls back to a real guild.
 - **No inline style, anywhere.** The CSP has no `'unsafe-inline'` (`style-src 'self'`): a `style="..."` attribute, a `<style>` element or `setAttribute('style', …)` is refused by the browser and the element renders unstyled. Static styles are `u-*` classes in `utilities.css` (`legal.css` for the legal pages); a value computed at render time goes through `styleRef()` / `styleAttr()` (`src/core/dom/style-refs.ts`); `element.style.x = …` (CSSOM) is allowed. `tests/csp_strict.test.js` and the e2e fixture (any CSP violation fails the test) enforce it.
 - **The guild TAG is a mutable tenant key** (ADR-022). A new column carrying a tag needs a `DEFERRABLE INITIALLY IMMEDIATE` FK (`ON UPDATE CASCADE` to `guilds`), or an entry in `gm_rename_guild`. `tests/guild_rename_migration.test.js` checks it against the regenerated types.
+- **An event counts in the ISO week (Monday, UTC) of its start** (ADR-023). The database derives every `week_start` from `event_sessions`; never compute a week in the browser for a write, never end a session by nulling `event_status.start_at`, and start/end only through `gm_start_event_session` / `gm_end_event_session`.
 - **`core/` never imports `modules/`.**
 - **`src/core/state/app-state.ts` is the only writer** of cross-cutting state. Never assign `window.currentGuild` and friends directly.
 - **The app is free** (ADR-015) and has **no PWA or push** (ADR-016). Do not reintroduce either, and do not document them.

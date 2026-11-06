@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+- **An event counts in the week of its start date (phase 3 of 3: documentation).**
+  - New **ADR-023**: the owner's four rules, the registry and its triggers, and the invariants:
+    - never compute a week in the browser for a write;
+    - never end a session by nulling its start;
+    - any new per-session table with a `week_start` takes it from `event_sessions`.
+  - ADR-002 now points to it.
+  - The ADR-023 invariant is added to AGENTS.md.
+  - The scale figures are re-measured on production (2026-11-06) in AGENTS.md, PROJECT_CONTEXT.md and ARCHITECTURE.md: 62 guilds, ~5,033 members, ~87,139 participation rows, 40 tables, 86 policies, 11 cron jobs. They were last counted on 2026-10-04 and had drifted by roughly 75 %.
+
 - **An event counts in the week of its start date (phase 2 of 3: screens).**
   - **Start and end on the server, for Events, Arms Race and Shadowfront.**
     - Starting calls `gm_start_event_session`, through the new `EventsService.startSession`. A start date is required, and the server builds the id.

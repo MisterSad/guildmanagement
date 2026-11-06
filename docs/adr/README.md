@@ -29,6 +29,7 @@ Whenever major design decisions, patterns, or critical bug resolutions are estab
 | [ADR-020](./ADR-020-discord-guild-roles-require-a-roster-row.md) | A Discord Guild Role Requires a Roster Row, on the Channel's Own Game Server | **Accepted** | 2026-09-28 |
 | [ADR-021](./ADR-021-video-ocr-reads-the-whole-recording-server-side.md) | Video OCR Reads the Whole Recording, Server-Side, and Measures Its Own Coverage | **Accepted** | 2026-10-01 |
 | [ADR-022](./ADR-022-guild-tag-is-a-mutable-tenant-key.md) | The Guild TAG Is a Mutable Tenant Key — Renamed in Place by Deferred Cascade | **Accepted** | 2026-10-03 |
+| [ADR-023](./ADR-023-an-event-counts-in-the-week-of-its-start.md) | An Event Counts in the ISO Week of Its Start (UTC), Enforced by the Database | **Accepted** | 2026-11-06 |
 
 ---
 

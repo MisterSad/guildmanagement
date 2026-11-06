@@ -24,3 +24,4 @@ Establish deterministic, chronologically sortable `session_id` generation rules 
 - Never cast `session_id` to timestamp (e.g. `session_id::timestamptz` is forbidden).
 - Participation rates in `gm_personal_kpis` and `StatsService` must count **distinct sessions** per player, not raw row counts.
 - Scoring keys across `src/core/config/events.ts`, `window.GM.eventScoringKey`, `public.gm_event_scoring_key`, and `member-portal` must remain strictly identical.
+- The week a session counts in is the ISO week (Monday, UTC) of its **start**, held in `event_sessions` and enforced by trigger, not the week its id names or the week a row is written (ADR-023, 2026-11-06). Session ids are now built server-side by `gm_start_event_session`; `buildEventSessionId` remains for reschedules and Glory history keys.
