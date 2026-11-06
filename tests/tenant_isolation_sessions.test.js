@@ -51,25 +51,7 @@ describe('a member cannot move players (SEC-05)', () => {
   });
 });
 
-describe('migration wiki: the author guild owns its pages (SEC-08, DB-07)', () => {
-  it('gives owner_guild an ADR-022 foreign key', () => {
-    expect(sql).toMatch(
-      /FOREIGN KEY \(owner_guild\)\s+REFERENCES public\.guilds\(id\) ON UPDATE CASCADE ON DELETE SET NULL DEFERRABLE INITIALLY IMMEDIATE/
-    );
-  });
-
-  it('the front shows Edit and Delete only to the author guild, and sends no author fields', async () => {
-    const { canManageWikiPage } = await import('../src/modules/migration/views/MigrationHubView.ts');
-    expect(canManageWikiPage({ owner_guild: 'ALPHA' }, 'ALPHA', 'guild_admin')).toBe(true);
-    expect(canManageWikiPage({ owner_guild: 'BETA' }, 'ALPHA', 'guild_admin')).toBe(false);
-    expect(canManageWikiPage({ owner_guild: 'BETA' }, null, 'super_admin')).toBe(true);
-    const view = read('src/modules/migration/views/MigrationHubView.ts');
-    expect(view).not.toMatch(
-      /created_by_account_id:|updated_by_account_id:|author_account_id:|author_role:|author_guild_id:/
-    );
-    expect(view).toContain("const editBtnEl = document.getElementById('migration-hub-edit-btn');");
-  });
-});
+// The migration wiki block (SEC-08, DB-07) went with the Migration Hub, removed on 2026-11-06.
 
 describe('banned players stay off the roster (BE-B-06)', () => {
   it('refuses a banned UID on insert and on a guild or UID change', () => {

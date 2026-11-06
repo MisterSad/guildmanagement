@@ -95,7 +95,6 @@ describe('supabase/config.toml Edge Function coverage', () => {
       'discord-webhook-proxy',
       'ocr-guild-members',
       'tickets',
-      'migration-summary',
     ]) {
       expect(functionBlocks.get(name), `${name} must be declared with verify_jwt = true`).toBe(true);
     }

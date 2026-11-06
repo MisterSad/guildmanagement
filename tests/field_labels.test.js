@@ -32,7 +32,7 @@ function unnamedFields(doc) {
 describe('form field names in index.html', () => {
   it('names every field', () => {
     document.documentElement.innerHTML = html.replace(/^<!DOCTYPE html>/i, '');
-    expect(document.querySelectorAll('input, select, textarea').length).toBeGreaterThan(80);
+    expect(document.querySelectorAll('input, select, textarea').length).toBeGreaterThan(70); // 80 before the Migration Hub's fields left (2026-11-06)
     expect(unnamedFields(document)).toEqual([]);
   });
 

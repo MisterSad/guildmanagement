@@ -137,7 +137,7 @@ describe('config.toml stays the single declaration of verify_jwt', () => {
     expect(missing).toEqual([]);
   });
 
-  it('keeps the seven JWT-gated functions gated', () => {
+  it('keeps the six JWT-gated functions gated', () => {
     for (const fn of [
       'admin-accounts',
       'member-portal',
@@ -145,7 +145,6 @@ describe('config.toml stays the single declaration of verify_jwt', () => {
       'discord-webhook-proxy',
       'ocr-guild-members',
       'tickets',
-      'migration-summary',
     ]) {
       expect(block(fn), `${fn} must stay verify_jwt = true`).toMatch(/verify_jwt\s*=\s*true/);
     }

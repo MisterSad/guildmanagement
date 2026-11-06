@@ -164,7 +164,7 @@ The 14 functions in `supabase/functions/` and their `verify_jwt` setting in `sup
 | `guild-request` | `discord-webhook-proxy` |
 | `event-reminders` (cron secret) | `ocr-guild-members` |
 | `discord-bot-interactions` (Ed25519 signature) | `tickets` |
-| `discord-profile-verification` (worker shared secret) | `migration-summary` |
+| `discord-profile-verification` (worker shared secret) | |
 
 **Disaster recovery only** (CI unavailable): from a clean checkout of the commit to restore, run `supabase functions deploy <fn> --project-ref vgweufzwmfwplusskmuf`, with no other flag, so that `verify_jwt` still comes from `supabase/config.toml`.
 

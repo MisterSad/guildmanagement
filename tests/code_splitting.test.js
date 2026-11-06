@@ -26,7 +26,6 @@ const LAZY = [
   'src/modules/glory/views/GloryView.ts',
   'src/modules/tickets/views/TicketsView.ts',
   'src/modules/sanctions/views/SanctionsView.ts',
-  'src/modules/migration/views/MigrationHubView.ts',
   // The admin chunk: the shell chrome, the router and the admin controllers.
   'src/modules/app/admin-shell.ts',
   'src/modules/app/router.ts',
@@ -101,7 +100,8 @@ describe('code splitting', () => {
 
   it('reaches the lazy views only through lazy-views.ts and the admin through admin-loader.ts', () => {
     const lazyViews = fs.readFileSync(path.join(src, 'modules/app/lazy-views.ts'), 'utf8');
-    for (const view of LAZY.slice(0, 11)) {
+    for (const view of LAZY.slice(0, 10)) {
+      // 10 lazy views since the Migration Hub left (2026-11-06)
       const spec = '../' + view.replace(/^src\/modules\//, '').replace(/\.ts$/, '');
       expect(lazyViews).toContain(`import('${spec}')`);
     }

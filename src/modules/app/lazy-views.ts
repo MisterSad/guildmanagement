@@ -27,7 +27,6 @@ import type { HistoryView } from '../history/views/HistoryView';
 import type { GloryView } from '../glory/views/GloryView';
 import type { TicketsView } from '../tickets/views/TicketsView';
 import type { SanctionsView } from '../sanctions/views/SanctionsView';
-import type { MigrationHubView } from '../migration/views/MigrationHubView';
 
 export interface LazyView<T> {
   /** Imports the view on first call; every call resolves to the same singleton. */
@@ -83,9 +82,6 @@ export const historyViewLazy = lazyView<HistoryView>(() =>
 export const gloryViewLazy = lazyView<GloryView>(() => import('../glory/views/GloryView').then((m) => m.gloryView));
 export const ticketsViewLazy = lazyView<TicketsView>(() =>
   import('../tickets/views/TicketsView').then((m) => m.ticketsView)
-);
-export const migrationHubViewLazy = lazyView<MigrationHubView>(() =>
-  import('../migration/views/MigrationHubView').then((m) => m.migrationHubView)
 );
 // The sanctions form is wired by init(); it used to run at boot, it now runs
 // with the first load -- the form cannot be submitted before its tab is shown.

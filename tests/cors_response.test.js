@@ -14,7 +14,6 @@ const CORS_BEARING_FUNCTIONS = [
   'discord-webhook-proxy',
   'ocr-guild-members',
   'tickets',
-  'migration-summary',
 ];
 
 describe('CORS Response Origin Echo & Closure Regression Suite (v125.3)', () => {

@@ -13,7 +13,6 @@ import path from 'path';
 vi.mock('../src/core/config/guild-config', () => ({ getGuildConfig: vi.fn() }));
 import { getGuildConfig } from '../src/core/config/guild-config';
 import { resolveCoeff, paintEventCoeffLabels } from '../src/core/config/event-coeff-labels';
-import { canManageWikiPage } from '../src/modules/migration/views/MigrationHubView';
 import { edgeSource, edgeFunctionBody } from './helpers/edge-source.js';
 
 const read = (p) => fs.readFileSync(path.resolve(__dirname, '..', p), 'utf-8');
@@ -79,26 +78,7 @@ describe('8. Stats speaks English', () => {
   });
 });
 
-describe('9. Migration Hub page deletion', () => {
-  it('only the author guild or a super admin sees Edit and Delete (mirrors the wiki policies)', () => {
-    expect(canManageWikiPage({ owner_guild: 'ALPHA' }, 'ALPHA', 'guild_admin')).toBe(true);
-    expect(canManageWikiPage({ owner_guild: 'BETA' }, 'ALPHA', 'guild_admin')).toBe(false);
-    expect(canManageWikiPage({ owner_guild: null }, 'ALPHA', 'server_admin')).toBe(false);
-    expect(canManageWikiPage({ owner_guild: 'BETA' }, null, 'super_admin')).toBe(true);
-  });
-  it('a refused delete is reported, not announced as done', () => {
-    const src = read('src/modules/migration/views/MigrationHubView.ts');
-    // M4b: the query lives in migration.service; the view checks its result.
-    expect(read('src/modules/migration/migration.service.ts')).toContain(".delete().eq('id', pageId).select('id')");
-    expect(src).toContain('await deleteWikiPage(db, page.id)');
-    expect(src).toContain('if (error || !data || data.length === 0)');
-  });
-  it('the page title is escaped in the HTML confirm dialog', () => {
-    const src = read('src/modules/migration/views/MigrationHubView.ts');
-    expect(src).toContain('${escapeHTML(page.title)}');
-    expect(src).not.toContain('delete "${page.title}"');
-  });
-});
+// 9. (Migration Hub page deletion) went with the Migration Hub, removed on 2026-11-06.
 
 describe('6. in-app help no longer describes removed features', () => {
   it('drops the stale wording', () => {

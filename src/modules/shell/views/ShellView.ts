@@ -105,16 +105,6 @@ export const NAV_ITEMS: ShellNavItem[] = [
   },
 
   {
-    id: 'migration-hub',
-    tabId: 'admin-migration-hub',
-    m3Icon: 'hub',
-    icon: 'ph-arrows-left-right',
-    labelKey: 'gm_nav_migration_hub',
-    section: 'admin',
-    adminOnly: true,
-    panels: ['admin-migration-hub'],
-  },
-  {
     id: 'accounts',
     tabId: 'admin-home',
     m3Icon: 'manage_accounts',

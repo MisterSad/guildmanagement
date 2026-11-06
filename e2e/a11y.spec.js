@@ -134,7 +134,6 @@ const ADMIN_TABS = [
   'glory',
   'history',
   'stats',
-  'migration-hub',
   'accounts',
   'discord',
   'sanctions',

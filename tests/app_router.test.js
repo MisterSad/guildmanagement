@@ -29,9 +29,6 @@ vi.mock('../src/modules/app/admin/guild-requests.controller', () => ({
 }));
 vi.mock('../src/modules/app/admin/guilds.controller', () => ({ renderGuildsList: vi.fn() }));
 vi.mock('../src/modules/app/admin/migration-groups.controller', () => ({ renderMigrationGroupsList: vi.fn() }));
-vi.mock('../src/modules/migration/views/MigrationHubView', () => ({
-  migrationHubView: { load: vi.fn(), destroy: vi.fn() },
-}));
 vi.mock('../src/modules/tickets/views/TicketsView', () => ({ ticketsView: { load: vi.fn() } }));
 vi.mock('../src/modules/sanctions/views/SanctionsView', () => ({
   sanctionsView: { init: vi.fn(), load: vi.fn(), destroy: vi.fn() },
@@ -59,7 +56,6 @@ import {
 import { loadGuildSettings, fetchGuildRequests } from '../src/modules/app/admin/guild-requests.controller';
 import { renderGuildsList } from '../src/modules/app/admin/guilds.controller';
 import { renderMigrationGroupsList } from '../src/modules/app/admin/migration-groups.controller';
-import { migrationHubView } from '../src/modules/migration/views/MigrationHubView';
 import { ticketsView } from '../src/modules/tickets/views/TicketsView';
 import { sanctionsView } from '../src/modules/sanctions/views/SanctionsView';
 import { overviewView } from '../src/modules/overview/views/OverviewView';
@@ -219,7 +215,6 @@ describe('triggerTabDataLoad — /src domain routing', () => {
     await triggerTabDataLoad('stats-admin');
     await triggerTabDataLoad('tab-sanctions');
     await triggerTabDataLoad('tab-tickets');
-    await triggerTabDataLoad('migration-hub');
 
     expect(overviewView.load).toHaveBeenCalledTimes(1);
     expect(eventsView.loadEvent).toHaveBeenCalledWith('SvS');
@@ -232,7 +227,6 @@ describe('triggerTabDataLoad — /src domain routing', () => {
     expect(statsView.load).toHaveBeenCalledTimes(1);
     expect(sanctionsView.load).toHaveBeenCalledTimes(1);
     expect(ticketsView.load).toHaveBeenCalledTimes(1);
-    expect(migrationHubView.load).toHaveBeenCalledTimes(1);
   });
 
   it('tears down the previous view when the tab changes', async () => {

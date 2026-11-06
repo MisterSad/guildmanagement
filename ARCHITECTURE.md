@@ -35,7 +35,7 @@
 ┌─────────────────────────────────────────────────────────────────────────────────────────┐
 │                                   EDGE & SECURITY LAYER                                 │
 │  ┌───────────────────────────────────────────────────────────────────────────────────┐  │
-│  │ Supabase Deno TypeScript Edge Functions (`supabase/functions/`) — 14 live         │  │
+│  │ Supabase Deno TypeScript Edge Functions (`supabase/functions/`) — 13 live         │  │
 │  │ ├─ Public (`verify_jwt = false`):                                                 │  │
 │  │ │   ├─ `auth-login`: Bcrypt dual-read, lockout, IP rate limit, JWT issuer         │  │
 │  │ │   ├─ `auth-discord`: Discord OAuth sign-in (PKCE state row, one-time ticket)    │  │
@@ -56,7 +56,6 @@
 │  │ │       ├─ `discord-webhook-proxy`: Whitelisted Discord webhook proxy (SSRF safe) │  │
 │  │ │       ├─ `guild-data-export`: Guild data export (JWT-gated)                     │  │
 │  │ │       ├─ `tickets`: Bug-report ticketing console backend                        │  │
-│  │ │       └─ `migration-summary`: AI summariser (OpenRouter) for the Migration Hub  │  │
 │  │ └─ Shared Modules: _shared/auth.ts, _shared/logger.ts, _shared/rate-limit.ts,     │  │
 │  │     _shared/admin-authz.ts, _shared/shadow-session.ts, _shared/cors.ts            │  │
 │  └───────────────────────────────────────────────────────────────────────────────────┘  │
@@ -67,7 +66,7 @@
 │                                   DATABASE LAYER (Postgres 17)                          │
 │  ┌───────────────────────────────────────────────────────────────────────────────────┐  │
 │  │ Supabase Postgres 17 (Multi-Tenant Schema with Zero-Trust Row Level Security)       │  │
-│  │ ├─ 40 persistent tables, all RLS + FORCE RLS, 86 policies (2026-11-06)           │  │
+│  │ ├─ 38 persistent tables, all RLS + FORCE RLS, 79 policies (2026-11-06)           │  │
 │  │ ├─ Security Definer Access Helpers with `SET search_path TO ''`                   │  │
 │  │ ├─ Deterministic Event Session Generator: `public.gm_event_session_id()`           │  │
 │  │ ├─ Distributed Audit Ledger: `public.system_audit_logs` (service_role only)       │  │
@@ -155,7 +154,7 @@ The Player Portal (`src/modules/portal/`: `PortalView` + `portal.service.ts`) ne
 
 ### 4. Database Topology & Access Helpers
 
-#### 4.1 Database Tables (**40 persistent tables**, counted live 2026-11-06; all have RLS *and* FORCE RLS, across 86 policies):
+#### 4.1 Database Tables (**38 persistent tables**, counted live 2026-11-06 after the Migration Hub drop; all have RLS *and* FORCE RLS, across 79 policies):
 - **Core Tenant / Roster** (20): `guilds` (**62 rows**), `guild_members` (**~5,033 rows**), `event_status`, `event_sessions` (one row per session: its start and the ISO week it counts in — ADR-023), `event_participants` (**~87,139 rows** — the permanent attendance ledger), `war_opponents`, `war_sessions`, `event_daily_scores`, `event_chest_tiers` (SvS/GvG granular war — added 2026-09-13, see §4.4), `shadowfront_squads` (weekly squad *assignments* — does not reliably retain history once a later session overwrites it, unlike `event_participants`; see the Shadowfront attendance-rate note below), `shadowfront_signups`, `weekly_scores`, `sanctions`, `banned_players`, `guild_config`, `guild_transfers`, `player_name_history`, `player_metrics_history`, `server_migration_groups`, `server_migration_group_servers`. `diplomatic_treaties` was dropped in Phase 3 (0 rows, no UI).
 
 > **These figures were counted against production on 2026-11-06, not estimated.** The previous set (13 / ~1,540 / ~33k) understated the live system by roughly a factor of two and had been carried forward unchecked. Re-measure rather than adjust: `SELECT count(*)` on the three tables.
@@ -166,9 +165,9 @@ The Player Portal (`src/modules/portal/`: `PortalView` + `portal.service.ts`) ne
 - **Leader Hall E2EE (Signal Protocol) — removed entirely (0)**: the seven `e2ee_*` tables are dropped. Verified against `pg_class`, not assumed from a migration file.
 - **Support** (1): `tickets` (in-app bug-report console). `gm_payments` was dropped in Phase 1 with the rest of the payment surface.
 - **Observability** (1): `system_audit_logs` (service_role-only INSERT).
-- **Not yet sorted into the groups above** (10, listed so the inventory matches `pg_class`): `guild_tag_history` (one row per guild TAG change, drives the 7-day cooldown — ADR-022), `guild_weekly_snapshots` (ADR-019), `ocr_cache` (ADR-012), `migration_wiki_pages`, `migration_wiki_comments`, `account_link_codes`, `discord_auth_tickets`, `discord_auth_throttle`, `discord_oauth_states`, `discord_rally_responses`.
+- **Not yet sorted into the groups above** (8, listed so the inventory matches `pg_class`; the two Migration Hub wiki tables were dropped on 2026-11-06): `guild_tag_history` (one row per guild TAG change, drives the 7-day cooldown — ADR-022), `guild_weekly_snapshots` (ADR-019), `ocr_cache` (ADR-012), `account_link_codes`, `discord_auth_tickets`, `discord_auth_throttle`, `discord_oauth_states`, `discord_rally_responses`.
 
-> **Count note**: count tables from `pg_class`, never from the number of `CREATE TABLE` statements in the migration chain — the chain also contains the drops, so the two diverge every time something is removed, which is how this document came to claim 42. As of 2026-11-06 there are **40** (`event_sessions` added by ADR-023), every one with RLS and FORCE RLS enabled (`pg_class`, `relkind = 'r'`, schema `public`). Phases 1–3 dropped `gm_payments`, `diplomatic_treaties`, the seven `e2ee_*` tables and the two Web Push tables, and the passkey removal of 2026-10-03 dropped `account_passkeys` and `webauthn_challenges`; `tmp_demo_roster` is a session-scoped `TEMP` staging table and never appears in the count.
+> **Count note**: count tables from `pg_class`, never from the number of `CREATE TABLE` statements in the migration chain — the chain also contains the drops, so the two diverge every time something is removed, which is how this document came to claim 42. As of 2026-11-06 there are **38** (`event_sessions` added by ADR-023, the two wiki tables dropped with the Migration Hub), every one with RLS and FORCE RLS enabled (`pg_class`, `relkind = 'r'`, schema `public`). Phases 1–3 dropped `gm_payments`, `diplomatic_treaties`, the seven `e2ee_*` tables and the two Web Push tables, and the passkey removal of 2026-10-03 dropped `account_passkeys` and `webauthn_challenges`; `tmp_demo_roster` is a session-scoped `TEMP` staging table and never appears in the count.
 
 > ⚠️ **Note on `shadowfront_squads` completeness**: a long-tenured player can show more attended Shadowfront weeks (`event_participants`) than surviving squad-assignment rows (`shadowfront_squads`), because the latter doesn't reliably retain every past week once a later session overwrites it. The Stats attendance-rate calculation (`src/core/config/events.ts:computeShadowfrontAttendanceRate`) floors its denominator at the attended count to stay mathematically capped at 100%, but the underlying gap in `shadowfront_squads` itself is unresolved — any *new* feature reading that table should not assume it is a complete historical ledger.
 
@@ -305,7 +304,7 @@ The Leader Hall feature (1:1 and group Signal-Protocol messaging between guild l
 
 ### 9. Production Security & Quality Hardening (September 2026)
 
-- **FORCE ROW LEVEL SECURITY across 100% of public tables** ([ADR-010](./docs/adr/ADR-010-force-row-level-security-all-public-tables.md)): Multi-tenant isolation is enforced even against table owners and superusers via `FORCE ROW LEVEL SECURITY` on every public table (40 on 2026-11-06, `ocr_cache` and `event_sessions` included) and on any new one.
+- **FORCE ROW LEVEL SECURITY across 100% of public tables** ([ADR-010](./docs/adr/ADR-010-force-row-level-security-all-public-tables.md)): Multi-tenant isolation is enforced even against table owners and superusers via `FORCE ROW LEVEL SECURITY` on every public table (38 on 2026-11-06, `ocr_cache` and `event_sessions` included) and on any new one.
 - **Client Error Reporting & Sentry APM** ([ADR-011](./docs/adr/ADR-011-client-error-reporting-and-sentry-apm.md)): `ClientLogger` routes crash telemetry through the rate-limited `public.gm_report_client_error` RPC (`search_path = ''`). Production runtime crashes are captured by `@sentry/browser` with strict PII and token scrubbers.
 - **SHA-256 OCR Deduplication Cache** ([ADR-012](./docs/adr/ADR-012-sha256-ocr-deduplication-cache.md)): Gemini Vision roster analysis computes a canonical SHA-256 fingerprint over image buffers and scan metadata, serving cache hits in <50ms with `cached: true` and persisting entries in `public.ocr_cache` with a 7-day TTL.
 - **WCAG 2.2 Level AA Modal Accessibility** ([ADR-013](./docs/adr/ADR-013-wcag-2-2-aa-dialog-accessibility-and-focus-trap.md)): every dialog goes through `src/components/ui/Dialog.ts` — `openDialog()` builds one (`showConfirm` included), `adoptDialog()` wraps the 16 hand-built overlays and the OCR modal without changing their markup, and all of them share one stack, so a confirm opened over a modal owns the keyboard. `Dialog.ts` applies dynamic semantic roles (`alertdialog` for `tone: 'danger'`, `dialog` otherwise), traps keyboard focus bidirectionally, sets `aria-hidden="true"` on `#app` during modal display, and restores focus to `previouslyFocused` on dismissal.

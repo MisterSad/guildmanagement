@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+- **The Migration Hub is removed (owner decision, 2026-11-06).**
+  - **What goes.**
+    - The wiki screen, its navigation entry, routing and markup. That covers `MigrationHubView`, its types, the image compressor it alone used, 60 utility classes only it used, and its user guide.
+    - The `migration-summary` Edge Function and `_shared/intel-access.ts`.
+    - Migration `drop_migration_hub` drops `migration_wiki_pages` and `migration_wiki_comments`, with their 7 policies, triggers and indexes, and the 4 helpers only those policies used. Owner decision: permanent deletion, without export, of the 18 pages and 6 comments.
+    - `gm_erase_account` (GDPR) and `gm_purge_guild_data` are redefined without their wiki steps.
+  - **What stays.** The cross-server migration groups (`server_migration_groups`, `servers_in_open_migration_group`), which gate cross-server transfers, are not the Hub.
+  - **Counts.** 38 tables, 79 policies, 13 Edge Functions. Updated in AGENTS.md, ARCHITECTURE.md, PROJECT_CONTEXT.md and README.md.
+  - **Privacy.** `privacy.html` no longer mentions wiki text, the AI summary or the wiki author erasure.
+  - **Tests.** The Hub's own tests (`migration_hub`, `migration_ai_summary`, `04_wiki_ownership.sql`, `image_compressor`) are removed. The tests that counted the Hub are updated: panels 16 → 15, lazy views 11 → 10, JWT-gated functions 7 → 6, i18n keys 553 → 552.
+  - **Verified.**
+    - Gate: 2,457 unit tests, 63 e2e tests (the Hub tab is gone from the a11y sweep), 139 Deno tests and 179 SQL assertions on a replay.
+    - A dry run on production, rolled back, dropped cleanly to 38 tables and 79 policies.
+  - **Owner action.** The deployed `migration-summary` function must be deleted in the Supabase dashboard (Edge Functions → migration-summary → Delete). CI deploys but never deletes a function, and the MCP has no delete.
+
 - **The AI moves to OpenRouter (ADR-024).** The OCR (screenshots and screen recordings), the Migration Hub summary and the Discord profile verification now call `google/gemini-3.8-flash` through OpenRouter. They fall back to `google/gemini-3.7-flash`. Each call uses one client, `_shared/openrouter.ts`, keyed by the new `OPENROUTER_API_KEY` secret. `_shared/gemini.ts` and `_shared/gemini-vision.ts` are removed.
   - **Reasoning is kept as low as the model allows.** The owner asked for none, to save tokens. Both models declare it mandatory on OpenRouter, and the owner kept 3.8-flash, so every call sends `reasoning: { effort: "low", exclude: true }`.
     - Budgets stay generous (32,768 tokens for the OCR), and a `length` finish is refused and the next model tried, never parsed.

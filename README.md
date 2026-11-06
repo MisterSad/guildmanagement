@@ -57,8 +57,6 @@ Players sign in with Discord and join their guild once, with the guild's join co
 ### Roster scanning (OCR)
 Rather than retyping a roster, officers upload screenshots or a screen recording of the in-game member list or a metrics panel. It is transcribed automatically, matched against the existing roster, and presented as a diff — joins, departures, renames and power changes — for the officer to accept or reject. A screenshot is not stored: only the transcribed text and a fingerprint of the image are cached, briefly, so re-submitting the same screenshot costs nothing. A screen recording is first uploaded to private storage readable only by that guild's administrators, read once by the AI, and deleted as soon as it has been transcribed.
 
-### Migration Hub
-A wiki for cross-server intelligence during server migrations: pages scoped to a guild or to a whole server, categorised (recruitment, diplomacy, intel), with comments and live updates. It is the largest feature in the app and, until now, the least documented.
 
 ### Badges
 A catalog of 45 badges computed from real participation and progression — earned state, progress, and what is left to do for each one.

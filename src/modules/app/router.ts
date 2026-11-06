@@ -31,7 +31,6 @@ import { renderMigrationGroupsList } from './admin/migration-groups.controller';
 import { loadGuildTagCard } from './admin/guild-rename';
 // M5: every tab view is its own chunk, imported when its tab is first shown.
 import {
-  migrationHubViewLazy,
   ticketsViewLazy,
   sanctionsViewLazy,
   overviewViewLazy,
@@ -81,14 +80,10 @@ function resetTabChrome(): void {
  * Views that hold resources beyond their DOM and must be torn down when the
  * user navigates away from them.
  *
- * Seven views define a `destroy()`; before this, **none of them was ever
- * called**, so everything they allocate leaked for the lifetime of the session:
+ * Views that define a `destroy()` used to have it **never called**, so
+ * everything they allocate leaked for the lifetime of the session (the Migration
+ * Hub, which held two Realtime channels, was removed on 2026-11-06):
  *
- *  - `GM_MIGRATION_HUB` holds two Realtime WebSocket channels. Worse than a
- *    leak: its page handler listens for `event: '*'` and re-runs a full
- *    `select('*')` of the wiki table on any remote change, so with *n* admins
- *    editing, each edit triggered *n* full refetches -- including for the n-1
- *    users sitting on a completely different tab.
  *  - `GM_OVERVIEW` holds two `setInterval`s (event countdowns and the timezone
  *    clocks) that kept firing and touching the DOM of a hidden tab forever.
  *  - `GM_SANCTIONS` holds a `rad-lang-change` window listener.
@@ -99,18 +94,13 @@ function resetTabChrome(): void {
  * for a member rather than one tab among others.
  *
  * Both listed views re-arm their resources inside `load()` (OverviewView
- * re-creates its timers, MigrationHubView re-subscribes once `destroy()` has
- * nulled the channels), so destroy-then-load is safe and idempotent.
+ * re-creates its timers), so destroy-then-load is safe and idempotent.
  */
 interface TeardownTarget {
   readonly label: string;
   readonly destroy: () => void;
 }
 
-const MIGRATION_HUB_TEARDOWN: TeardownTarget = {
-  label: 'MigrationHubView',
-  destroy: () => migrationHubViewLazy.peek()?.destroy(),
-};
 const OVERVIEW_TEARDOWN: TeardownTarget = {
   label: 'OverviewView',
   destroy: () => overviewViewLazy.peek()?.destroy(),
@@ -121,8 +111,6 @@ const SANCTIONS_TEARDOWN: TeardownTarget = {
 };
 
 const TEARDOWN_BY_TAB: Record<string, TeardownTarget> = {
-  'admin-migration-hub': MIGRATION_HUB_TEARDOWN,
-  'migration-hub': MIGRATION_HUB_TEARDOWN,
   'gm-overview': OVERVIEW_TEARDOWN,
   'overview': OVERVIEW_TEARDOWN,
   'tab-sanctions': SANCTIONS_TEARDOWN,
@@ -230,9 +218,6 @@ export async function triggerTabDataLoad(tabId: string): Promise<void> {
     }
 
     // ── Migrated /src-backed view modules ────────────────────────────────────
-    if (tabId === 'admin-migration-hub' || tabId === 'migration-hub') {
-      await runLoader('migration-hub', async () => (await migrationHubViewLazy.get()).load());
-    }
     if (tabId === 'tab-tickets') {
       await runLoader('tickets', async () => (await ticketsViewLazy.get()).load());
     }

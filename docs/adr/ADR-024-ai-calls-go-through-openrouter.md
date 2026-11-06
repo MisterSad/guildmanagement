@@ -9,7 +9,7 @@
 
 Three Edge Functions called Google's Gemini API directly, with `GEMINI_API_KEY`:
 - `ocr-guild-members` reads screenshots and screen recordings;
-- `migration-summary` summarises Migration Hub notes;
+- `migration-summary` summarised Migration Hub notes (removed with the Hub on 2026-11-06);
 - `discord-profile-verification` reads a profile screenshot posted in Discord.
 
 The owner chose to move them to OpenRouter, with the model

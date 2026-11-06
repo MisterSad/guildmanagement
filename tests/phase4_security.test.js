@@ -22,13 +22,7 @@ describe('M14 — a suspended account is authorized for nothing', () => {
   const _auth = stripComments(read('supabase/functions/_shared/auth.ts'));
 
   it('every consumer gates on the role, which is what makes this work', () => {
-    for (const f of [
-      'tickets',
-      'ocr-guild-members',
-      'migration-summary',
-      'discord-webhook-proxy',
-      'guild-data-export',
-    ]) {
+    for (const f of ['tickets', 'ocr-guild-members', 'discord-webhook-proxy', 'guild-data-export']) {
       const src = read(`supabase/functions/${f}/index.ts`);
       expect(src, `${f} must gate on caller.role`).toMatch(/caller\.role/);
     }
@@ -274,7 +268,6 @@ describe('C1 — session revocation is now real, not merely documented', () => {
       'tickets',
       'guild-data-export',
       'ocr-guild-members',
-      'migration-summary',
       'discord-webhook-proxy',
     ]) {
       const src = read(`supabase/functions/${f}/index.ts`);

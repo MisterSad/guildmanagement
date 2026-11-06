@@ -14,7 +14,6 @@ import { squash } from './helpers/source-text.js';
 import fs from 'fs';
 import path from 'path';
 import { transferActionFor } from '../src/modules/app/members/members.store';
-import { canReadIntel } from '../supabase/functions/_shared/intel-access.ts';
 import { categorizeOcrDiff } from '../src/modules/ocr/ocr.service';
 
 const read = (p) => fs.readFileSync(path.resolve(__dirname, '..', p), 'utf-8');
@@ -76,66 +75,7 @@ describe('1. transfers: whoever asks never decides', () => {
   });
 });
 
-describe('2. Migration Hub AI summary: checked on the data actually read', () => {
-  const guildAdmin = { role: 'guild_admin', guild: 'ALPHA', serverNumber: '1058' };
-  const serverAdmin = { role: 'server_admin', guild: null, serverNumber: '1058' };
-
-  it('guild intel: own guild only for a guild admin, own server for a server admin', () => {
-    expect(
-      canReadIntel(guildAdmin, { scope: 'guild', guildId: 'ALPHA', serverNumber: '1058', guildServerNumber: '1058' })
-    ).toBe(true);
-    expect(
-      canReadIntel(guildAdmin, { scope: 'guild', guildId: 'OMEGA', serverNumber: '1058', guildServerNumber: '1058' })
-    ).toBe(false);
-    expect(
-      canReadIntel(serverAdmin, { scope: 'guild', guildId: 'OMEGA', serverNumber: '1058', guildServerNumber: '1058' })
-    ).toBe(true);
-    expect(
-      canReadIntel(serverAdmin, { scope: 'guild', guildId: 'FAR', serverNumber: '2000', guildServerNumber: '2000' })
-    ).toBe(false);
-  });
-
-  it('server intel: own server only, for guild admins too', () => {
-    expect(canReadIntel(guildAdmin, { scope: 'server', guildId: null, serverNumber: '1058' })).toBe(true);
-    expect(canReadIntel(guildAdmin, { scope: 'server', guildId: null, serverNumber: '2000' })).toBe(false);
-  });
-
-  it('refuses members, unknown scopes and missing data', () => {
-    expect(
-      canReadIntel(
-        { role: 'member', guild: 'ALPHA', serverNumber: '1058' },
-        { scope: 'server', guildId: null, serverNumber: '1058' }
-      )
-    ).toBe(false);
-    expect(canReadIntel(guildAdmin, { scope: 'weird', guildId: 'ALPHA', serverNumber: '1058' })).toBe(false);
-    expect(canReadIntel(guildAdmin, { scope: 'guild', guildId: null, serverNumber: '1058' })).toBe(false);
-    expect(
-      canReadIntel(
-        { role: 'guild_admin', guild: 'ALPHA', serverNumber: null },
-        { scope: 'server', guildId: null, serverNumber: '1058' }
-      )
-    ).toBe(false);
-  });
-
-  const fn = read('supabase/functions/migration-summary/index.ts');
-  it("checks a page against the page's own scope, not the request's", () => {
-    expect(squash(fn)).toMatch(
-      /scope: page\.scope, guildId: page\.guild_id \?\? null, serverNumber: page\.server_number \?\? null/
-    );
-  });
-  it('rate-limits per account, and never echoes the provider error', () => {
-    expect(fn).toContain('`migration-summary:${caller.accountId}`');
-    expect(fn).not.toContain('message: lastError');
-  });
-  it('names the right game', () => {
-    expect(fn).not.toContain('Whiteout Survival');
-  });
-  it('is disclosed in privacy.html', () => {
-    const privacy = read('privacy.html');
-    expect(privacy).toContain('AI summary in the Migration Hub');
-    expect(privacy).toContain('Bug reports submitted from the Service');
-  });
-});
+// 2. (Migration Hub AI summary) went with the Migration Hub, removed on 2026-11-06.
 
 describe('3. the R5 leader is never removed by accident', () => {
   const roster = [

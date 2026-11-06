@@ -139,7 +139,7 @@ describe('the router tears down the view it navigates away from', () => {
     // than a teardown that silently stops happening.
     expect(router).toContain('TEARDOWN_BY_TAB');
     // M5: the views are lazy; only one already loaded has anything to release.
-    for (const view of ['migrationHubView', 'overviewView', 'sanctionsView']) {
+    for (const view of ['overviewView', 'sanctionsView']) {
       expect(router, `${view} must be torn down`).toContain(`${view}Lazy.peek()?.destroy()`);
     }
   });
@@ -177,7 +177,6 @@ describe('the views the router tears down actually define destroy', () => {
   // The router holds the view objects directly, so the bridge is no longer the
   // thing that has to carry it -- the view is.
   const views = {
-    migrationHubView: 'src/modules/migration/views/MigrationHubView.ts',
     overviewView: 'src/modules/overview/views/OverviewView.ts',
     sanctionsView: 'src/modules/sanctions/views/SanctionsView.ts',
   };
@@ -189,28 +188,4 @@ describe('the views the router tears down actually define destroy', () => {
   }
 });
 
-describe('Migration Hub realtime no longer amplifies', () => {
-  const view = read('src/modules/migration/views/MigrationHubView.ts');
-  const code = stripComments(view);
-
-  it('debounces the page-change reload instead of refetching per event', () => {
-    expect(code).toContain('reloadFromRealtime');
-    expect(code).toMatch(/debounce\(/);
-    // The handler must no longer call load() directly.
-    const pagesAt = code.indexOf("table: 'migration_wiki_pages'");
-    const handler = code.slice(pagesAt, code.indexOf('.subscribe()', pagesAt));
-    expect(handler).toContain('this.reloadFromRealtime()');
-    expect(handler).not.toMatch(/this\.load\(\);/);
-  });
-
-  it('will not resurrect the channels after destroy has removed them', () => {
-    // `debounce` exposes no cancel, so a reload scheduled just before the user
-    // navigates away would otherwise fire after destroy() and re-subscribe.
-    const decl = code.slice(code.indexOf('reloadFromRealtime = debounce'), code.indexOf('}, 800)'));
-    expect(decl).toContain('if (!this.realtimeChannel) return;');
-  });
-
-  it('keeps the comments handler targeted, as it already was', () => {
-    expect(code).toContain('payload.new?.page_id === activePageId');
-  });
-});
+// The Migration Hub realtime block went with the Migration Hub, removed on 2026-11-06.

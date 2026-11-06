@@ -3,7 +3,8 @@
  *
  * The one way this project calls an AI model (ADR-024): OpenRouter's
  * OpenAI-compatible chat completions API, for the OCR (screenshots and screen
- * recordings), the Migration Hub summary and the Discord profile verification.
+ * recordings) and the Discord profile verification. (The Migration Hub summary
+ * used it too, until the Hub was removed on 2026-11-06.)
  * It replaces the direct Google Gemini calls (`_shared/gemini.ts`, removed).
  *
  * Owner decisions, 2026-11-06:

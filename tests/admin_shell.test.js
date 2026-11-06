@@ -59,11 +59,11 @@ describe('the admin chunk', () => {
     await loadAdmin();
     expect(a).toBe(b);
 
-    // The 16 tab panels are direct children of #dashboard-view, after its header,
+    // The 15 tab panels (16 until the Migration Hub left, 2026-11-06) are direct children of #dashboard-view, after its header,
     // which is where the shell adopts them; the OCR modal sits after #app.
     const dashboard = document.getElementById('dashboard-view');
     const panels = [...dashboard.children].filter((c) => c.matches('main.tab-panel'));
-    expect(panels).toHaveLength(16);
+    expect(panels).toHaveLength(15);
     expect(dashboard.firstElementChild.tagName).toBe('HEADER');
     expect(document.getElementById('app').nextElementSibling.id).toBe('ocr-modal-overlay');
     expect(document.getElementById('admin-panels-slot')).toBeNull();

@@ -24,7 +24,6 @@ Short, step-by-step guides for guild leaders, officers and players. Each file is
 12. [Sanctions and banned players](12-sanctions-and-bans.md)
 13. [Move players between guilds (transfers)](13-guild-transfers.md)
 16. [The officer's weekly routine](16-officer-weekly-routine.md)
-17. [Migration Hub: your shared intel notebook](17-migration-hub.md)
 
 ## 🆘 Help
 14. [Report a bug or suggest an idea](14-report-a-bug.md)

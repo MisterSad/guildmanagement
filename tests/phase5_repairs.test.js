@@ -103,7 +103,6 @@ describe('B1 — one AI model list for the whole backend (ADR-024)', () => {
   const shared = read('supabase/functions/_shared/openrouter.ts');
   const callers = [
     ['ocr-guild-members', read('supabase/functions/ocr-guild-members/index.ts')],
-    ['migration-summary', read('supabase/functions/migration-summary/index.ts')],
     ['ai-vision', read('supabase/functions/_shared/ai-vision.ts')],
   ];
 
