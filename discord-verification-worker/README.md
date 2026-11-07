@@ -63,6 +63,30 @@ There's no "role ID" to configure -- roles are resolved dynamically by name. On 
 
 **A tag is only ever matched within one game server.** The candidate guilds are those sharing the channel guild's own `guilds.server_number`, so a guild on another game server carrying the same tag resolves to nothing and its members get `[VISITOR]` here -- and cannot be blocked from their own server either. A channel guild with **no** server number can resolve no tag at all: set it in the app (Settings -> Guild), or every screenshot there becomes a visitor. Two guilds sharing a tag on one server is reported to the officer channel and never guessed.
 
+## Rename-only channels (servers outside any guild)
+
+A channel can run the screenshot reader in a narrower mode: a profile screenshot posted there renames its author after what it shows (`[TAG] Pseudo #server`, the tag read off the screenshot; `Pseudo #server` when there is none) and **nothing else** happens. No role is read, given or removed, nothing is written to the roster or to an account, the bot posts no message, adds no reaction and deletes nothing. It is meant for a Discord server that belongs to no FGF guild.
+
+The mode lives in the table `public.discord_channel_modes` (one row per channel, the channel's Discord server, and `mode = 'rename_only'`). Deny-all to clients and read-only to `service_role`: an operator adds a row from the Supabase SQL editor:
+
+```sql
+INSERT INTO public.discord_channel_modes (channel_id, discord_server_id, mode)
+VALUES ('<channel id>', '<server id>', 'rename_only');
+```
+
+The worker picks it up within 5 minutes (no restart). The Edge Function reads the mode itself for every screenshot, so a request cannot choose it, and a row only applies to the server it names. A rename-only channel never takes the verification path, even if a guild also lists it as its verification channel.
+
+The bot needs `Manage Nicknames` and `Read Message History` on that server, and its role must sit above the members it renames; Discord never lets a bot rename the server owner.
+
+**Backfill.** The live bot only sees new messages. To rename the authors of the screenshots already in the channel, on the VM:
+
+```bash
+sudo node /opt/fgf-guild-management/discord-verification-worker/backfill-rename.js --channel <channel id> --dry-run
+sudo node /opt/fgf-guild-management/discord-verification-worker/backfill-rename.js --channel <channel id>
+```
+
+It reads the whole history (100 messages per request), takes each author's most recent readable screenshot, skips members who left, and waits out Discord's rate limits. Progress is recorded in `/var/lib/fgf-discord-bot/rename-backfill-<channel>.json`, so a re-run only reads authors who posted a newer screenshot or were deferred. Each screenshot read counts against the per-user attempt throttle (5 per 10 minutes, the dry run included): an author reported `deferred` is retried by running the same command again later. It refuses a channel that is not configured `rename_only`.
+
 ## Slash commands
 
 Registered globally on startup (merged into any existing global commands, so other commands are never wiped):

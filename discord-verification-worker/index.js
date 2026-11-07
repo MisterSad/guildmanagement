@@ -30,6 +30,7 @@ import {
 import { provisionDiscordServer, buildServerTemplate, summarizeTemplate } from "./server-provisioner.js";
 import { CTA_CLICK_SUFFIX, ctaSessionFromRows, ctaHeaderFromEmbed } from "./rally.js";
 import { isOfficerOf, escapeLike } from "./officer-scope.js";
+import { renameOnlyChannelMap, imageAttachmentOf, forwardScreenshot } from "./rename-only.js";
 import { createClient } from "@supabase/supabase-js";
 import WebSocket from "ws";
 
@@ -105,6 +106,48 @@ async function refreshChannelMap() {
   }
   channelToGuild = next;
   console.log(`Verification channel map refreshed: ${channelToGuild.size} guild(s) configured.`);
+}
+
+// Rename-only channels (public.discord_channel_modes): channel id -> Discord
+// server id. A screenshot there renames its author and does nothing else; the
+// Edge Function re-reads the mode itself rather than trusting this map.
+let renameOnlyChannels = new Map();
+
+async function refreshRenameOnlyMap() {
+  const { data, error } = await supabase
+    .from("discord_channel_modes")
+    .select("channel_id, discord_server_id, mode");
+
+  if (error) {
+    // Keep the last known map: a transient error must not silently turn a
+    // channel off, nor on.
+    console.error("Failed to refresh rename-only channel map:", error.message);
+    return;
+  }
+  renameOnlyChannels = renameOnlyChannelMap(data);
+  console.log(`Rename-only channel map refreshed: ${renameOnlyChannels.size} channel(s) configured.`);
+}
+
+// No reaction, no reply, no DM, no deletion: in a rename-only channel the
+// nickname is the only visible effect (owner request, 2026-11-07).
+async function handleRenameOnlyMessage(message) {
+  const attachment = imageAttachmentOf(message.attachments);
+  if (!attachment) return;
+  const { status, result } = await forwardScreenshot({
+    fetchImpl: fetch,
+    functionUrl: VERIFICATION_FUNCTION_URL,
+    secret: DISCORD_WORKER_SECRET,
+    userId: message.author.id,
+    username: message.author.username,
+    serverId: message.guild.id,
+    channelId: message.channel.id,
+    attachment,
+  });
+  if (result?.ok === true) {
+    console.log(`Rename-only: ${message.author.id} ${result.changed ? "renamed" : "already named"} in ${message.guild.id}.`);
+  } else {
+    console.warn(`Rename-only: ${message.author.id} not renamed (${result?.error || `http_${status}`}).`);
+  }
 }
 
 // Optional per-guild verified-role ID (guild_config key discord_member_role_id),
@@ -2142,11 +2185,13 @@ client.once("ready", async () => {
   );
   discordReady = true;
   await refreshChannelMap();
+  await refreshRenameOnlyMap();
   await refreshMemberRoleMap();
   await refreshAuditChannelMap();
   await registerSlashCommands();
   setInterval(async () => {
     await refreshChannelMap();
+    await refreshRenameOnlyMap();
     await refreshMemberRoleMap();
     await refreshAuditChannelMap();
   }, 5 * 60 * 1000);
@@ -2170,6 +2215,13 @@ client.on("guildCreate", async (guild) => {
 client.on("messageCreate", async (message) => {
   try {
     if (message.author.bot || !message.guild) return;
+
+    // Checked first: a rename-only channel never takes the verification path,
+    // even if a guild also lists it as its verification channel.
+    if (renameOnlyChannels.get(message.channel.id) === message.guild.id) {
+      await handleRenameOnlyMessage(message);
+      return;
+    }
 
     const fgfGuild = channelToGuild.get(message.channel.id);
     if (!fgfGuild) return;

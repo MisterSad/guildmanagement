@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+- **Rename-only channels for the Discord bot (owner request, 2026-11-07).** A channel listed in the new table `discord_channel_modes` with `mode = 'rename_only'` renames the author of a profile screenshot after what it shows, with the visitor naming rule (`[TAG] Pseudo #server`, or `Pseudo #server` with no tag), and does nothing else: no role, no roster or account write, no message, reaction or deletion.
+  - Configuration, not code: no server or channel id is written in the worker or the Edge Function. The table is deny-all to clients and read-only to `service_role`; the Edge Function resolves the mode itself from the channel and server it is told about.
+  - `discord-verification-worker/backfill-rename.js` renames the authors of the screenshots already in such a channel: full history, most recent readable screenshot per author, members who left skipped, Discord rate limits waited out, progress recorded so a re-run redoes nothing. `--dry-run` previews.
+  - Tested by running the flow: Deno handler tests (the only database calls are the mode lookup and the attempt throttle; the only Discord calls are one member read and one `nick`-only PATCH), vitest for the backfill (idempotence, most recent valid screenshot, members who left, rate limits, dry run), SQL tests for the table's grants on a replayed database.
+
 - **A visitor's nickname now shows their own guild tag (owner decision, 2026-11-07).** A player from a guild this server does not host still gets the Visitor role, but is renamed `[TAG] Pseudo #server` with the tag read off their screenshot (for example `[SB] Bob #1042`), so officers see where a visitor comes from.
   - A screenshot with no guild tag keeps `[VISITOR] Pseudo #server`.
   - A player of one of this server's guilds who is refused by the roster check is unchanged: Pending role, `Pseudo #server`, nothing written to the roster.

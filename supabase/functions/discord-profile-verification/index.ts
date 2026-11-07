@@ -23,6 +23,10 @@
  *       or no matching role yet. Visitor is the safe default for an
  *       unrecognized or not-yet-configured guild, never a guess at roster data.
  *
+ * A channel listed in public.discord_channel_modes as `rename_only` takes none
+ * of these paths: the author is renamed after the screenshot and nothing else
+ * happens (see handleRenameOnly).
+ *
  * Every guild_members / ban / roster / gate decision lives in
  * _shared/discord-verification.ts (testable with a fake Supabase client); this
  * file stays the thin caller for OCR, the Discord role lookup, and every
@@ -50,6 +54,7 @@ import {
   ExtractedProfile,
   RefusalReason,
 } from "../_shared/discord-verification.ts";
+import { resolveChannelMode, isSnowflake } from "../_shared/discord-channel-mode.ts";
 import type { AdminClient } from "../_shared/db.ts";
 import { serviceClient } from "../_shared/clients.ts";
 import { serveUnlessTest } from "../_shared/serve.ts";
@@ -65,6 +70,56 @@ const VISITOR_ROLE_NAME = "VISITOR";
 // Resolved by name from the server's live role list, exactly like VISITOR --
 // no new config key. A server without one falls back to Visitor.
 const PENDING_ROLE_NAME = "PENDING";
+
+// OCR extraction -- single-profile prompt, calibrated against the app's
+// actual in-game profile screen layout: pseudo at the top, a "[TAG]
+// GuildName" pill right below it, "Power" and "Total Glory" as labeled
+// stat rows, and "UID: <digits>" at the very bottom of the screen
+// (distinctly shorter than the Power/Glory numbers -- don't confuse them).
+// Shared by verification and by the rename-only mode, so both read a
+// screenshot the same way.
+const PROFILE_PROMPT = `You are an OCR expert for Foundation Galactic Frontier (FGF) player profile screenshots. The profile screen layout is: the player's username near the top; a rounded pill just below it showing "[TAG] GuildName" (e.g. "[PR1M] ALPHA"); a "Power" stat row with a large number (e.g. "111,161,059"); a "Total Glory" stat row with a large number (e.g. "77,771,070"); and at the very bottom of the screen a much shorter "UID: <digits>" value (e.g. "UID: 1917131") followed by a server tag like "#1058" -- do not confuse the short UID with the much larger Power/Glory numbers.
+
+Extract:
+1. "pseudo": the username at the top.
+2. "guild_tag": only the tag portion inside the brackets of the "[TAG] GuildName" pill (e.g. "PR1M", not "PR1M ALPHA" and not including the brackets). CRITICAL: Read the exact characters inside the brackets verbatim. External guilds have varied tags (e.g. "SB", "WAR", "SOL", etc.). Do NOT guess, auto-complete, or substitute with "IMK", "PR1M", or "OMG" if the letters are different. If no pill or brackets are visible, return null.
+3. "server_number": only the digits after "#" at the bottom of the screen (e.g. "#1058" -> "1058"), or null if not visible.
+4. "power": the Power stat converted to a pure integer, stripping commas (e.g. "111,161,059" -> 111161059) and expanding abbreviations (e.g. "145.2M" -> 145200000, "500K" -> 500000).
+5. "glory": the Total Glory stat, converted the same way, or null if not visible.
+6. "uid": the digits after "UID:" at the bottom of the screen, or null if not visible.
+
+Return ONLY a JSON object: {"pseudo": "string", "guild_tag": "string or null", "server_number": "string or null", "power": number, "glory": number or null, "uid": "string or null"}`;
+
+type ProfileReading =
+  | { ok: true; raw: any }
+  | { ok: false; error: "ocr_failed" | "json_parse_failed"; detail?: string };
+
+async function readProfile(imageBase64: string, mimeType: string): Promise<ProfileReading> {
+  let b64 = imageBase64;
+  let mType = mimeType;
+  if (b64.includes(";base64,")) {
+    const p = b64.split(";base64,");
+    if (p[0].includes("image/")) mType = p[0].split(":")[1];
+    b64 = p[1];
+  }
+  const visionResult = await callVisionModel(OPENROUTER_API_KEY, PROFILE_PROMPT, [
+    { mimeType: mType, base64Data: b64 },
+  ]);
+  if (!visionResult.ok || !visionResult.raw) return { ok: false, error: "ocr_failed", detail: visionResult.error };
+  try {
+    return { ok: true, raw: JSON.parse(visionResult.raw) };
+  } catch {
+    return { ok: false, error: "json_parse_failed" };
+  }
+}
+
+function extractServerNumber(raw: any): string | null {
+  return raw?.server_number
+    ? String(raw.server_number)
+        .replace(/[^0-9]/g, "")
+        .trim() || null
+    : null;
+}
 
 function safeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
@@ -272,6 +327,138 @@ function pendingPlayerMessage(
   }
 }
 
+// ---------------------------------------------------------------------------
+// Rename-only mode (public.discord_channel_modes).
+//
+// The screenshot renames its author after what it shows -- the same
+// "[TAG] Pseudo #Server" rule as a visitor, the tag read off the screenshot --
+// and nothing else happens: no role is read, given or removed, nothing is
+// written to the roster or to an account, no message is posted, nothing is
+// deleted. The only database access is the mode lookup and the attempt
+// throttle, which fails closed like every rate limit (AGENTS rule 7). A
+// screenshot with no guild tag gives "Pseudo #Server": with no role behind it,
+// a "[VISITOR]" prefix would claim a status this mode never grants.
+//
+// Idempotent: a member who already carries the nickname is not patched again.
+// `dry_run` (the backfill's preview) reads and decides but never patches.
+// ---------------------------------------------------------------------------
+
+interface RenameOnlyRequest {
+  discordUserId: string;
+  discordServerId: string;
+  imageBase64: string;
+  mimeType: string;
+  dryRun: boolean;
+}
+
+async function retryAfterSeconds(res: Response): Promise<number> {
+  const header = Number(res.headers.get("retry-after"));
+  let fromBody = Number.NaN;
+  try {
+    fromBody = Number((await res.json())?.retry_after);
+  } catch {
+    /* no body */
+  }
+  const seconds = Number.isFinite(fromBody) && fromBody > 0 ? fromBody : header;
+  return Number.isFinite(seconds) && seconds > 0 ? Math.min(seconds, 600) : 5;
+}
+
+async function handleRenameOnly(
+  json: (body: unknown, status?: number) => Response,
+  logger: EdgeLogger,
+  admin: AdminClient,
+  r: RenameOnlyRequest
+): Promise<Response> {
+  if (!isSnowflake(r.discordUserId)) return json({ ok: false, error: "bad_request" }, 400);
+
+  const throttle = await checkAndRecordDiscordAttempt(admin, r.discordUserId, {
+    limit: 5,
+    windowMs: 10 * 60 * 1000,
+  });
+  if (!throttle.allowed) return json({ ok: false, mode: "rename_only", error: "rate_limited" }, 429);
+
+  const reading = await readProfile(r.imageBase64, r.mimeType);
+  if (!reading.ok) {
+    if (reading.error === "ocr_failed")
+      logger.error("AI OCR failed in rename-only mode", undefined, { error: reading.detail });
+    return json({ ok: false, mode: "rename_only", error: reading.error }, reading.error === "ocr_failed" ? 502 : 200);
+  }
+  const raw = reading.raw;
+  const pseudo = String(raw?.pseudo || "").trim();
+  const uid = raw?.uid ? String(raw.uid).trim() : "";
+  // The UID is what tells a profile screen from any other picture.
+  if (!pseudo || !uid) return json({ ok: false, mode: "rename_only", error: "missing_fields_in_ocr" }, 200);
+
+  const nickname = buildNickname(visitorTagDisplay(raw?.guild_tag), pseudo, extractServerNumber(raw));
+  const memberPath = `/guilds/${r.discordServerId}/members/${r.discordUserId}`;
+
+  let currentNick: string | null = null;
+  try {
+    const memberRes = await discordFetch(memberPath, { method: "GET" });
+    if (memberRes.status === 404) return json({ ok: false, mode: "rename_only", error: "member_not_found" }, 200);
+    if (memberRes.status === 429) {
+      return json(
+        {
+          ok: false,
+          mode: "rename_only",
+          error: "discord_rate_limited",
+          retry_after: await retryAfterSeconds(memberRes),
+        },
+        429
+      );
+    }
+    if (!memberRes.ok) {
+      logger.warn("Discord member lookup failed in rename-only mode", { status: memberRes.status });
+      return json({ ok: false, mode: "rename_only", error: "discord_error" }, 502);
+    }
+    const member = await memberRes.json();
+    currentNick = typeof member?.nick === "string" ? member.nick : null;
+  } catch (e) {
+    logger.error("Discord member lookup threw in rename-only mode", e);
+    return json({ ok: false, mode: "rename_only", error: "discord_error" }, 502);
+  }
+
+  if (currentNick === nickname) {
+    return json({ ok: true, mode: "rename_only", nickname, previous_nickname: currentNick, changed: false });
+  }
+  if (r.dryRun) {
+    return json({
+      ok: true,
+      mode: "rename_only",
+      nickname,
+      previous_nickname: currentNick,
+      changed: false,
+      dry_run: true,
+    });
+  }
+
+  try {
+    // `nick` only: a PATCH without `roles` leaves every role untouched.
+    const patchRes = await discordFetch(memberPath, { method: "PATCH", body: JSON.stringify({ nick: nickname }) });
+    if (patchRes.status === 429) {
+      return json(
+        {
+          ok: false,
+          mode: "rename_only",
+          error: "discord_rate_limited",
+          retry_after: await retryAfterSeconds(patchRes),
+        },
+        429
+      );
+    }
+    if (patchRes.status === 404) return json({ ok: false, mode: "rename_only", error: "member_not_found" }, 200);
+    if (!patchRes.ok) {
+      // 403: the server owner, or a member whose top role sits above the bot's.
+      logger.warn("Discord nickname PATCH refused in rename-only mode", { status: patchRes.status });
+      return json({ ok: false, mode: "rename_only", error: "cannot_rename", status: patchRes.status }, 200);
+    }
+  } catch (e) {
+    logger.error("Discord nickname PATCH threw in rename-only mode", e);
+    return json({ ok: false, mode: "rename_only", error: "discord_error" }, 502);
+  }
+  return json({ ok: true, mode: "rename_only", nickname, previous_nickname: currentNick, changed: true });
+}
+
 export async function handler(req: Request): Promise<Response> {
   const json = makeJson(req);
   const logger = new EdgeLogger("discord-profile-verification", req);
@@ -309,7 +496,7 @@ export async function handler(req: Request): Promise<Response> {
   const mimeType: string = String(body?.mime_type || "image/png").trim();
   const imageBase64: string = String(body?.image_base64 || "");
 
-  if (!discordUserId || !discordServerId || !channelId || !fgfGuild || !imageBase64) {
+  if (!discordUserId || !discordServerId || !channelId || !imageBase64) {
     return json({ ok: false, error: "missing_fields" }, 400);
   }
   if (imageBase64.length > MAX_IMAGE_BYTES) {
@@ -317,6 +504,32 @@ export async function handler(req: Request): Promise<Response> {
   }
 
   const admin = serviceClient();
+
+  // A channel configured as rename-only does that and nothing else, whatever
+  // the request carries. Resolved from the database, never from the body.
+  const channelMode = await resolveChannelMode(admin, discordServerId, channelId);
+  if (channelMode.ok && channelMode.mode === "rename_only") {
+    if (body?.dry_run !== undefined && typeof body.dry_run !== "boolean") {
+      return json({ ok: false, error: "bad_request" }, 400);
+    }
+    logger.setContext({ userId: discordUserId });
+    return handleRenameOnly(json, logger, admin, {
+      discordUserId,
+      discordServerId,
+      imageBase64,
+      mimeType,
+      dryRun: body?.dry_run === true,
+    });
+  }
+  // Verification proper needs the guild the channel belongs to. Without one,
+  // a failed mode lookup must not fall through to anything: it fails visibly.
+  if (!fgfGuild) {
+    if (!channelMode.ok) {
+      logger.error("Could not read discord_channel_modes for a channel with no guild", undefined, { channelId });
+      return json({ ok: false, error: "mode_unavailable" }, 503);
+    }
+    return json({ ok: false, error: "missing_fields" }, 400);
+  }
   logger.setContext({ tenantId: fgfGuild, userId: discordUserId });
 
   const throttle = await checkAndRecordDiscordAttempt(admin, discordUserId, {
@@ -331,51 +544,18 @@ export async function handler(req: Request): Promise<Response> {
     return json({ ok: false, error: "rate_limited", bot_message_id: botMsgId }, 429);
   }
 
-  // OCR extraction -- single-profile prompt, calibrated against the app's
-  // actual in-game profile screen layout: pseudo at the top, a "[TAG]
-  // GuildName" pill right below it, "Power" and "Total Glory" as labeled
-  // stat rows, and "UID: <digits>" at the very bottom of the screen
-  // (distinctly shorter than the Power/Glory numbers -- don't confuse them).
-  const prompt = `You are an OCR expert for Foundation Galactic Frontier (FGF) player profile screenshots. The profile screen layout is: the player's username near the top; a rounded pill just below it showing "[TAG] GuildName" (e.g. "[PR1M] ALPHA"); a "Power" stat row with a large number (e.g. "111,161,059"); a "Total Glory" stat row with a large number (e.g. "77,771,070"); and at the very bottom of the screen a much shorter "UID: <digits>" value (e.g. "UID: 1917131") followed by a server tag like "#1058" -- do not confuse the short UID with the much larger Power/Glory numbers.
-
-Extract:
-1. "pseudo": the username at the top.
-2. "guild_tag": only the tag portion inside the brackets of the "[TAG] GuildName" pill (e.g. "PR1M", not "PR1M ALPHA" and not including the brackets). CRITICAL: Read the exact characters inside the brackets verbatim. External guilds have varied tags (e.g. "SB", "WAR", "SOL", etc.). Do NOT guess, auto-complete, or substitute with "IMK", "PR1M", or "OMG" if the letters are different. If no pill or brackets are visible, return null.
-3. "server_number": only the digits after "#" at the bottom of the screen (e.g. "#1058" -> "1058"), or null if not visible.
-4. "power": the Power stat converted to a pure integer, stripping commas (e.g. "111,161,059" -> 111161059) and expanding abbreviations (e.g. "145.2M" -> 145200000, "500K" -> 500000).
-5. "glory": the Total Glory stat, converted the same way, or null if not visible.
-6. "uid": the digits after "UID:" at the bottom of the screen, or null if not visible.
-
-Return ONLY a JSON object: {"pseudo": "string", "guild_tag": "string or null", "server_number": "string or null", "power": number, "glory": number or null, "uid": "string or null"}`;
-
-  let b64 = imageBase64;
-  let mType = mimeType;
-  if (b64.includes(";base64,")) {
-    const p = b64.split(";base64,");
-    if (p[0].includes("image/")) mType = p[0].split(":")[1];
-    b64 = p[1];
-  }
-
-  const visionResult = await callVisionModel(OPENROUTER_API_KEY, prompt, [{ mimeType: mType, base64Data: b64 }]);
-  if (!visionResult.ok || !visionResult.raw) {
-    logger.error("AI OCR failed for profile verification", undefined, { error: visionResult.error });
+  const reading = await readProfile(imageBase64, mimeType);
+  if (!reading.ok) {
+    if (reading.error === "ocr_failed") {
+      logger.error("AI OCR failed for profile verification", undefined, { error: reading.detail });
+    }
     const botMsgId = await postChannelMessage(
       channelId,
       "❌ Couldn't read your screenshot. Please try again with a clearer, uncropped image of your profile."
     );
-    return json({ ok: false, error: "ocr_failed", bot_message_id: botMsgId }, 500);
+    return json({ ok: false, error: reading.error, bot_message_id: botMsgId }, 500);
   }
-
-  let rawExtracted: any;
-  try {
-    rawExtracted = JSON.parse(visionResult.raw);
-  } catch {
-    const botMsgId = await postChannelMessage(
-      channelId,
-      "❌ Couldn't read your screenshot. Please try again with a clearer, uncropped image of your profile."
-    );
-    return json({ ok: false, error: "json_parse_failed", bot_message_id: botMsgId }, 500);
-  }
+  const rawExtracted = reading.raw;
 
   const pseudo = String(rawExtracted?.pseudo || "").trim();
   const extractedUid = rawExtracted?.uid ? String(rawExtracted.uid).trim() : "";
