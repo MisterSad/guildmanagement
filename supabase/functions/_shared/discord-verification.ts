@@ -63,6 +63,33 @@ export function bracketed(raw: string | null | undefined): string {
   return `[${t}]`;
 }
 
+/**
+ * The tag a VISITOR's nickname carries: the guild tag read off their own
+ * screenshot, bracketed ("[SB]"), so officers see which guild a visitor comes
+ * from (owner's request, 2026-11-07). The role stays Visitor; only the
+ * nickname changes.
+ *
+ * The value is OCR output, so it is treated as untrusted text: the original
+ * casing is kept, but brackets, mention/markdown characters (@ # : ` * _ ~ |
+ * < >) and control characters are dropped, whitespace is collapsed, and it is
+ * capped at 12 characters (the longest tag a guild can have). An empty result
+ * returns "", and the caller falls back to "[VISITOR]".
+ */
+export const VISITOR_TAG_MAX_LENGTH = 12;
+export function visitorTagDisplay(raw: string | null | undefined): string {
+  const cleaned = Array.from(String(raw ?? "").replace(/\s+/g, " "))
+    .filter((ch) => {
+      const code = ch.codePointAt(0) ?? 0;
+      return code >= 0x20 && code !== 0x7f && !"[]@#:`*_~|<>\\".includes(ch);
+    })
+    .join("")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, VISITOR_TAG_MAX_LENGTH)
+    .trim();
+  return cleaned ? `[${cleaned}]` : "";
+}
+
 export async function resolveExpectedTag(admin: AdminClient, fgfGuild: string): Promise<string> {
   const { data: tagConfigRow } = await admin
     .from("guild_config")

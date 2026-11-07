@@ -28,6 +28,8 @@ import {
   resolveExpectedTag,
   resolveHomeServerNumber,
   resolveTagToGuildOnServer,
+  visitorTagDisplay,
+  VISITOR_TAG_MAX_LENGTH,
   isPlaceholderUid,
   findRosterMember,
   requiresRosterMembership,
@@ -152,6 +154,32 @@ describe('normalizeTag / bracketed', () => {
     expect(bracketed('  DEMO ')).toBe('[DEMO]');
     expect(bracketed('')).toBe('');
     expect(bracketed(null)).toBe('');
+  });
+});
+
+describe('visitorTagDisplay', () => {
+  it('brackets the tag read off the screenshot, keeping its casing', () => {
+    expect(visitorTagDisplay('SB')).toBe('[SB]');
+    expect(visitorTagDisplay('[WaR]')).toBe('[WaR]');
+    expect(visitorTagDisplay('  Sol  ')).toBe('[Sol]');
+  });
+
+  it('returns "" for no tag, so the caller falls back to [VISITOR]', () => {
+    expect(visitorTagDisplay(null)).toBe('');
+    expect(visitorTagDisplay(undefined)).toBe('');
+    expect(visitorTagDisplay('   ')).toBe('');
+    expect(visitorTagDisplay('[]')).toBe('');
+  });
+
+  it('treats OCR output as untrusted: no mention, markdown or control characters', () => {
+    expect(visitorTagDisplay('@everyone')).toBe('[everyone]');
+    expect(visitorTagDisplay('<@123>')).toBe('[123]');
+    expect(visitorTagDisplay('**B**_\u0007x`')).toBe('[Bx]');
+    expect(visitorTagDisplay('A\n  B')).toBe('[A B]');
+  });
+
+  it('caps the tag at the longest a guild can have', () => {
+    expect(visitorTagDisplay('ABCDEFGHIJKLMNOP')).toBe(`[${'ABCDEFGHIJKLMNOP'.slice(0, VISITOR_TAG_MAX_LENGTH)}]`);
   });
 });
 
@@ -753,12 +781,15 @@ describe('Regression: discord-profile-verification role decision', () => {
     expect(fnSrc).toContain('findRoleByNormalizedName(serverRoles, PENDING_ROLE_NAME)');
   });
 
-  it('tags all external or unrecognized guilds with [VISITOR] nickname prefix', () => {
+  it('names a visitor after the tag on their screenshot, [VISITOR] when it shows none, and keeps the Visitor role', () => {
     const visitorIdx = fnSrc.indexOf('if (!matchedGuildRole)');
     const guildMemberIdx = fnSrc.indexOf('Real guild member candidate');
     const visitorBlock = fnSrc.slice(visitorIdx, guildMemberIdx);
-    expect(visitorBlock).toContain('visitorTagDisplay = `[${VISITOR_ROLE_NAME}]`');
-    expect(visitorBlock).toContain('buildNickname(visitorTagDisplay, pseudo, serverNum)');
+    expect(squash(visitorBlock)).toContain(
+      squash(
+        'buildNickname( visitorTagDisplay(rawExtracted?.guild_tag) || `[${VISITOR_ROLE_NAME}]`, pseudo, serverNum )'
+      )
+    );
     expect(squash(visitorBlock)).toContain(
       squash('assignRoleAndNickname(discordServerId, discordUserId, visitorRole.id, visitorNickname, logger')
     );

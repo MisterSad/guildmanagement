@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+- **A visitor's nickname now shows their own guild tag (owner decision, 2026-11-07).** A player from a guild this server does not host still gets the Visitor role, but is renamed `[TAG] Pseudo #server` with the tag read off their screenshot (for example `[SB] Bob #1042`), so officers see where a visitor comes from.
+  - A screenshot with no guild tag keeps `[VISITOR] Pseudo #server`.
+  - A player of one of this server's guilds who is refused by the roster check is unchanged: Pending role, `Pseudo #server`, nothing written to the roster.
+  - The tag is OCR output, so `visitorTagDisplay()` (`_shared/discord-verification.ts`) keeps its casing but drops brackets, mention and markdown characters and control characters, and caps it at 12 characters. Unit-tested.
+  - Long nicknames are still cut at Discord's 32 characters, at the end (owner's choice).
+
 - **The Discord bot leaves Render for an Oracle Cloud Always Free VM (owner decision, 2026-11-07).** Render's always-on tier is paid and its free tier spins down, which drops the Gateway connection, so the bot had stopped.
   - `discord-verification-worker/deploy/oracle/` holds an idempotent `setup.sh` (install or update), a sandboxed systemd unit, an env template and an optional heartbeat timer for Better Stack.
   - The code is root-owned and read-only to the `fgfbot` user, and the secrets sit in `/etc/fgf-discord-bot/env` (root, mode 600). The script never writes a secret and starts the bot only once the required variables are filled in.

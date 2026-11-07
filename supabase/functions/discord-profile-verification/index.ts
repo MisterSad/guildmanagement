@@ -46,6 +46,7 @@ import {
   evaluateVerification,
   resolveAuditChannelId,
   postAuditMessage,
+  visitorTagDisplay,
   ExtractedProfile,
   RefusalReason,
 } from "../_shared/discord-verification.ts";
@@ -195,7 +196,7 @@ async function assignRoleAndNickname(
 
 // "[TAG] Pseudo #Server" -- applied on both the guild-member path and the
 // Visitor path (owner's request: even a Visitor's tag+server should be
-// trackable), truncated defensively to Discord's 32-char nickname limit.
+// trackable; a visitor carries the tag read off their screenshot), truncated defensively to Discord's 32-char nickname limit.
 // An empty tag yields "Pseudo #Server": the pending path must not stamp a
 // membership claim it is in the middle of refusing.
 function buildNickname(tagDisplay: string, pseudo: string, serverNumber: string | null): string {
@@ -469,10 +470,18 @@ Return ONLY a JSON object: {"pseudo": "string", "guild_tag": "string or null", "
       return json({ ok: false, error: "no_matching_role", bot_message_id: botMsgId }, 200);
     }
 
-    // Visitor path: All external or unrecognized guilds MUST be tagged [VISITOR].
+    // Visitor path: the Visitor ROLE, and a nickname carrying the guild tag
+    // read off the screenshot ("[SB] Pseudo #1042") so officers can see where
+    // a visitor comes from (owner's request, 2026-11-07). No tag on the
+    // screenshot keeps "[VISITOR] Pseudo #server". A player of one of this
+    // server's own guilds who is refused by the roster never gets here: that
+    // is the pending path below.
     const serverNum = extractedServerNumber || homeServerNumber || null;
-    const visitorTagDisplay = `[${VISITOR_ROLE_NAME}]`;
-    const visitorNickname = buildNickname(visitorTagDisplay, pseudo, serverNum);
+    const visitorNickname = buildNickname(
+      visitorTagDisplay(rawExtracted?.guild_tag) || `[${VISITOR_ROLE_NAME}]`,
+      pseudo,
+      serverNum
+    );
 
     const patched = await assignRoleAndNickname(
       discordServerId,
