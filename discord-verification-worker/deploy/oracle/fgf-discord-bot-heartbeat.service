@@ -1,0 +1,17 @@
+# Pings HEARTBEAT_URL only while the worker reports it is connected to Discord
+# (its local listener answers 200 once ready, 503 before). Does nothing when
+# HEARTBEAT_URL is empty. Triggered by fgf-discord-bot-heartbeat.timer.
+
+[Unit]
+Description=FGF Discord bot heartbeat
+After=fgf-discord-bot.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/fgf-discord-bot/env
+DynamicUser=true
+ExecStart=/bin/sh -c '[ -z "$HEARTBEAT_URL" ] && exit 0; curl -fsS -m 10 "http://127.0.0.1:${PORT:-3000}/" >/dev/null && curl -fsS -m 10 -o /dev/null "$HEARTBEAT_URL"'
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true

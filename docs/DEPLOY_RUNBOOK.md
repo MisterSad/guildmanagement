@@ -170,7 +170,7 @@ The 14 functions in `supabase/functions/` and their `verify_jwt` setting in `sup
 
 **Reconcile after a deploy** (ADR-017): the deployed set must equal the directories of `supabase/functions/`. Compare `list_edge_functions` (Supabase MCP) with `ls supabase/functions/`; no CI check can see the platform side.
 
-> **Discord verification worker**: `discord-verification-worker/` is a standalone, always-on Node.js Gateway listener — **not** an Edge Function — deployed separately (Render). It holds no business logic and calls the `discord-profile-verification` Edge Function with the shared `DISCORD_WORKER_SECRET`.
+> **Discord verification worker**: `discord-verification-worker/` is a standalone, always-on Node.js Gateway listener — **not** an Edge Function — deployed separately on an Oracle Cloud Always Free VM as a systemd service (`discord-verification-worker/deploy/oracle/`, see the worker README). It holds no business logic and calls the `discord-profile-verification` Edge Function with the shared `DISCORD_WORKER_SECRET`.
 
 > **Deleted in Phase 1 (2026-09-26)**: `gm-create-order`, `gm-order-status`, `gm-stripe-webhook` (payment removal — the platform is free, ADR-015), plus two functions that were live on the platform with **no source in this repository**: `gm-revolut-webhook` (public, `verify_jwt = false`) and `webauthn-spike` (a leftover probe). `auth-passkey` was deleted on 2026-10-03 with passkeys. Every deployed function must have its source versioned here.
 

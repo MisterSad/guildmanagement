@@ -1,0 +1,50 @@
+# systemd unit for the Discord Gateway worker on a plain Linux VM
+# (Oracle Cloud Always Free, see ../../README.md "Deploying on an Oracle Cloud VM").
+# Installed by setup.sh as /etc/systemd/system/fgf-discord-bot.service.
+
+[Unit]
+Description=FGF Guild Management Discord bot (Gateway worker)
+Wants=network-online.target
+After=network-online.target
+# Never give up: a Discord or Supabase outage must not leave the bot stopped
+# for good once it is over.
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=fgfbot
+Group=fgfbot
+WorkingDirectory=/opt/fgf-guild-management/discord-verification-worker
+# Secrets live here, root-owned, mode 600. systemd reads it as root before
+# dropping to fgfbot, so the bot user cannot read the file itself.
+EnvironmentFile=/etc/fgf-discord-bot/env
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node index.js
+Restart=always
+RestartSec=10
+
+# Hardening: the worker only needs outbound HTTPS/WebSocket. The code is
+# root-owned and read-only to it, so a compromised process cannot persist.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+RestrictNamespaces=true
+LockPersonality=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+SystemCallArchitectures=native
+UMask=0077
+MemoryMax=512M
+
+[Install]
+WantedBy=multi-user.target

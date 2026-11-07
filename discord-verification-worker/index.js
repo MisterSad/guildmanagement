@@ -46,14 +46,14 @@ const {
 } = process.env;
 
 // The player-command Edge Function lives next to the verification one, so its
-// URL is derived rather than made a new Render env var the owner has to set.
+// URL is derived rather than made a new env var the owner has to set.
 // An explicit INTERACTIONS_FUNCTION_URL still wins if it is ever set.
 const INTERACTIONS_FUNCTION_URL =
   (process.env.INTERACTIONS_FUNCTION_URL || "").trim() ||
   (VERIFICATION_FUNCTION_URL || "").replace(/\/discord-profile-verification\/?$/, "/discord-bot-interactions");
 
 // Where the bot sends people to sign in. A constant with an override rather
-// than a new required Render variable: the production origin is the one
+// than a new required env variable: the production origin is the one
 // auth-discord's APP_DEFAULT_ORIGIN already names.
 const APP_URL = ((process.env.APP_URL || "").trim() || "https://guildmanagement.vercel.app").replace(/\/+$/, "");
 
@@ -79,7 +79,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   // Without an explicit transport, older runtimes fail to resolve WebSocket
   // and the Realtime client crashes at startup. Node >= 22 ships a global
   // WebSocket, but pinning the "ws" implementation keeps behavior identical
-  // across local dev and Render.
+  // across local dev and the VM.
   realtime: { transport: WebSocket },
 });
 
@@ -156,11 +156,10 @@ async function refreshAuditChannelMap() {
   console.log(`Audit channel map refreshed: ${auditChannelByGuild.size} guild(s) configured.`);
 }
 
-// Render creates this as a Web Service (the MCP tool used to provision it
-// has no "background worker" type) -- that expects an HTTP port bound for
-// health checks, even though the actual job here is a Gateway connection,
-// not serving requests. This listener exists ONLY to satisfy that check;
-// it carries no business logic and nothing ever calls it on purpose.
+// Health listener: 200 once the Gateway is connected, 503 before. Added for
+// Render's health checks; on the Oracle VM only the local heartbeat timer
+// (deploy/oracle/fgf-discord-bot-heartbeat.service) calls it, and the VM
+// firewall keeps it unreachable from outside. No business logic.
 let discordReady = false;
 createServer((_req, res) => {
   res.writeHead(discordReady ? 200 : 503, { "Content-Type": "application/json" });
@@ -179,7 +178,7 @@ const client = new Client({
     // the Discord Developer Portal makes the bot fail to log in entirely
     // ("Used disallowed intents") -- the whole bot, not just one command. So it
     // is opt-in: flip "Server Members Intent" in the portal, then set
-    // DISCORD_GUILD_MEMBERS_INTENT=true on Render. /reconcile-roles says so
+    // DISCORD_GUILD_MEMBERS_INTENT=true in the env file. /reconcile-roles says so
     // when it is missing.
     ...(MEMBERS_INTENT_ENABLED ? [GatewayIntentBits.GuildMembers] : []),
   ],
@@ -1512,7 +1511,7 @@ async function handleReconcileRoles(interaction) {
       content:
         "❌ I can't list who holds a role yet: that needs Discord's **Server Members Intent**, which is privileged.\n" +
         "1. Discord Developer Portal ➔ your application ➔ **Bot** ➔ enable **Server Members Intent**.\n" +
-        "2. On Render, set `DISCORD_GUILD_MEMBERS_INTENT=true` and restart the worker.\n" +
+        "2. In the bot's env file, set `DISCORD_GUILD_MEMBERS_INTENT=true` and restart the bot.\n" +
         "I deliberately do not request it by default: declaring it while the toggle is off makes me fail to log in entirely.",
       ephemeral: true,
     });

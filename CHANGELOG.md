@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+- **The Discord bot leaves Render for an Oracle Cloud Always Free VM (owner decision, 2026-11-07).** Render's always-on tier is paid and its free tier spins down, which drops the Gateway connection, so the bot had stopped.
+  - `discord-verification-worker/deploy/oracle/` holds an idempotent `setup.sh` (install or update), a sandboxed systemd unit, an env template and an optional heartbeat timer for Better Stack.
+  - The code is root-owned and read-only to the `fgfbot` user, and the secrets sit in `/etc/fgf-discord-bot/env` (root, mode 600). The script never writes a secret and starts the bot only once the required variables are filled in.
+  - Tested in an Ubuntu 24.04 container: install, update re-run, permissions (the bot user can read neither the env file nor write the code), the missing-variable refusal, and `systemd-analyze verify`. Not yet run on a real Oracle VM.
+  - The worker README's deployment section, `DEPLOY_RUNBOOK.md`, `PROJECT_CONTEXT.md` and the `/reconcile-roles` instructions no longer point at Render.
+
 - **V3.36.0: today's work, announced.** The app version is bumped (`APP_VERSION`, `package.json`).
   - `DISCORD_CHANGELOG.md` is rewritten from scratch as one note for guild leaders and players, in three Discord-sized messages, each under 2,000 characters. It covers:
     - the Season 2 notice and what the reset deletes and keeps;
