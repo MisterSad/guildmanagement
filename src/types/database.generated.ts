@@ -298,6 +298,27 @@ export type Database = {
         }
         Relationships: []
       }
+      discord_channel_modes: {
+        Row: {
+          channel_id: string
+          created_at: string
+          discord_server_id: string
+          mode: string
+        }
+        Insert: {
+          channel_id: string
+          created_at?: string
+          discord_server_id: string
+          mode: string
+        }
+        Update: {
+          channel_id?: string
+          created_at?: string
+          discord_server_id?: string
+          mode?: string
+        }
+        Relationships: []
+      }
       discord_link_codes: {
         Row: {
           code: string
