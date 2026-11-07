@@ -10,7 +10,7 @@ Requires Node.js >= 22 (the `ws` package is pinned as the Realtime transport for
 
 The worker runs as a systemd service on a small Ubuntu VM. Render was dropped on 2026-11-07: its free tier spins down on inactivity, which drops the Gateway connection, and the always-on tier is paid. Everything needed lives in [`deploy/oracle/`](deploy/oracle/):
 
-- `setup.sh` installs **or updates** the worker (idempotent): Node 22, a `fgfbot` system user, a sparse clone of this repo in `/opt/fgf-guild-management` (root-owned, read-only to the bot), `npm ci --omit=dev --ignore-scripts`, and the systemd units. It never writes a secret, and it only starts the bot once the required variables are filled in.
+- `setup.sh` installs **or updates** the worker (idempotent): Node 22, a `fgfbot` system user, a shallow clone of this repo in `/opt/fgf-guild-management` (root-owned, read-only to the bot), `npm ci --omit=dev --ignore-scripts`, and the systemd units. It never writes a secret, and it only starts the bot once the required variables are filled in.
 - `fgf-discord-bot.service` runs `node index.js` as `fgfbot`, restarts it forever (`Restart=always`, no start limit), and sandboxes it (read-only filesystem, no capabilities, 512 MB cap).
 - `env.example` is the template for `/etc/fgf-discord-bot/env` (root, mode 600), the only place the secrets live on the VM.
 - `fgf-discord-bot-heartbeat.{service,timer}` pings `HEARTBEAT_URL` every 5 minutes, but only while the local listener says the bot is connected to Discord. Point it at a Better Stack heartbeat to be alerted when the bot goes silent. Empty = disabled.

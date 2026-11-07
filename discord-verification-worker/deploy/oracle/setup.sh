@@ -63,9 +63,11 @@ if [ -d "$APP_DIR/.git" ]; then
   git -C "$APP_DIR" fetch --depth 1 origin "$BRANCH"
   git -C "$APP_DIR" reset --hard "origin/$BRANCH"
 else
+  # A plain shallow clone: `clone --sparse` breaks on the git 2.25 that
+  # Ubuntu 20.04 ships. A leftover from an interrupted clone is removed first.
+  rm -rf "$APP_DIR"
   log "Cloning $REPO_URL into $APP_DIR"
-  git clone --depth 1 --branch "$BRANCH" --filter=blob:none --sparse "$REPO_URL" "$APP_DIR"
-  git -C "$APP_DIR" sparse-checkout set discord-verification-worker
+  git clone --quiet --depth 1 --branch "$BRANCH" "$REPO_URL" "$APP_DIR"
 fi
 log "Code at $(git -C "$APP_DIR" log -1 --format='%h %s')"
 
