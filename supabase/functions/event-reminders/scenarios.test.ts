@@ -151,6 +151,9 @@ Deno.test('a Discord refusal releases the lock', async (t) => {
   });
 });
 
+// A GvG session of the week of 2026-10-05, live in event_status.
+const GVG_WEEK = [{ guild: 'TA', event_name: 'GvG', session_id: 'g', start_at: '2026-10-05T00:00:00Z' }];
+
 Deno.test('GvG daily tasks at Monday 00:03', async (t) => {
   await run(t, { at: '2026-10-05T00:03:00Z' });
 });
@@ -162,6 +165,7 @@ Deno.test('GvG daily tasks forced outside their slot', async (t) => {
 Deno.test('Saturday 00:02: GvG daily, War Prism and the SvS portal of an active week', async (t) => {
   await run(t, {
     at: '2026-10-10T00:02:00Z',
+    events: GVG_WEEK,
     warSessions: [{ guild: 'TA', event_name: 'SvS', start_at: '2026-10-05T10:00:00Z' }],
   });
 });
@@ -169,9 +173,22 @@ Deno.test('Saturday 00:02: GvG daily, War Prism and the SvS portal of an active 
 Deno.test('Friday 23:56: GvG and SvS 5-minute reminders, with a GvG template', async (t) => {
   await run(t, {
     at: '2026-10-09T23:56:00Z',
-    events: [{ guild: 'TA', event_name: 'SvS', session_id: 'w', start_at: null }],
+    events: [...GVG_WEEK, { guild: 'TA', event_name: 'SvS', session_id: 'w', start_at: null }],
     config: [{ guild: 'TA', key: 'tpl_gvg_reminder_title', value: '{event_name} at {date} {guild_tag}' }],
   });
+});
+
+Deno.test('ticket #14: an SvS week gets no GvG reminder, forced or not, unless it has a GvG session', async (t) => {
+  const svs = [{ guild: 'TA', event_name: 'SvS', session_id: 'w', start_at: '2026-10-05T00:00:00Z' }];
+  const svsWar = [{ guild: 'TA', event_name: 'SvS', start_at: '2026-10-05T00:00:00Z' }];
+  // Saturday 00:02 of an SvS week: the SvS portal posts, no War Prism, no daily tasks.
+  await run(t, { at: '2026-10-10T00:02:00Z', events: svs });
+  // Monday 00:03, the SvS known only by its war_sessions row: no daily tasks.
+  await run(t, { at: '2026-10-05T00:03:00Z', warSessions: svsWar });
+  // A forced replay does not reach an SvS week either.
+  await run(t, { at: '2026-10-07T15:00:00Z', query: '?force=gvg&guild=ta', events: svs });
+  // A GvG session of the same week outranks an SvS row left active.
+  await run(t, { at: '2026-10-10T22:01:00Z', events: [...svs, ...GVG_WEEK] });
 });
 
 Deno.test('SvS garrison on Friday 20:01, and nothing when the week has no SvS', async (t) => {

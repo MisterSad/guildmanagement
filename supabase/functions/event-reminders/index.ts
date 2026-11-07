@@ -6,7 +6,7 @@
  * config in four queries, and runs each reminder block per guild:
  *
  *   standard.ts  Arms Race / Trade Route / Shadowfront: 30 min, 5 min, start
- *   gvg.ts       GvG daily task list, Saturday War Prism / War Fortress
+ *   gvg.ts       GvG daily task list, Saturday War Prism / War Fortress, never in an SvS week
  *   svs.ts       SvS garrison, portal and battle, in an SvS week only
  *   calamity.ts  Calamity Befalls, 10 minutes before each of 16 rounds
  *
@@ -20,8 +20,8 @@ import { serviceClient } from '../_shared/clients.ts';
 import { serveUnlessTest } from '../_shared/serve.ts';
 import { STATIC_CONFIG_KEYS, type GuildRun } from './shared.ts';
 import { runStandardEvents, type ActiveEvent } from './standard.ts';
-import { runGvgDailyTasks, runGvgSaturday } from './gvg.ts';
-import { runSvs } from './svs.ts';
+import { runGvgDailyTasks, runGvgSaturday, isGvgWeek, gvgRemindersAllowed } from './gvg.ts';
+import { runSvs, isSvsWeek } from './svs.ts';
 import { runCalamity } from './calamity.ts';
 
 let logger = new EdgeLogger('event-reminders');
@@ -138,21 +138,24 @@ export async function handler(req: Request): Promise<Response> {
       }
     }
 
-    // RC6: durable SvS war_sessions rows per guild — calendar-week fallback so
-    // weekly SvS reminders keep firing even when the live event_status.start_at
-    // is stale or missing. Single batched query before the guild loop.
-    const svsWarByGuild: Record<string, Array<number | null>> = {};
+    // RC6: durable SvS and GvG war_sessions rows per guild: the calendar-week
+    // fallback that keeps weekly war reminders firing even when the live
+    // event_status row was ended or its start_at is stale. An SvS week gets
+    // the SvS reminders and, unless it also has a GvG session, no GvG ones.
+    // Single batched query before the guild loop.
+    const warByGuild: Record<'SvS' | 'GvG', Record<string, Array<number | null>>> = { SvS: {}, GvG: {} };
     if (GUILDS.length > 0) {
       const wsRes = await supabase
         .from('war_sessions')
-        .select('guild, start_at')
+        .select('guild, event_name, start_at')
         .in('guild', GUILDS)
-        .eq('event_name', 'SvS');
+        .in('event_name', ['SvS', 'GvG']);
       if (wsRes.error) throw wsRes.error;
       for (const row of wsRes.data || []) {
         if (!row || !row.guild) continue;
+        const byGuild = row.event_name === 'GvG' ? warByGuild.GvG : warByGuild.SvS;
         const ms = row.start_at ? new Date(row.start_at).getTime() : null;
-        (svsWarByGuild[row.guild] ||= []).push(Number.isNaN(ms as number) ? null : ms);
+        (byGuild[row.guild] ||= []).push(Number.isNaN(ms as number) ? null : ms);
       }
     }
 
@@ -174,9 +177,11 @@ export async function handler(req: Request): Promise<Response> {
 
       // The order is the order Discord receives them in.
       await runStandardEvents(run, events);
-      await runGvgDailyTasks(run);
-      await runGvgSaturday(run);
-      await runSvs(run, events, svsWarByGuild[guild] || []);
+      const svsWeek = isSvsWeek(now, events, warByGuild.SvS[guild] || []);
+      const gvgAllowed = gvgRemindersAllowed(svsWeek, isGvgWeek(now, events, warByGuild.GvG[guild] || []));
+      await runGvgDailyTasks(run, gvgAllowed);
+      await runGvgSaturday(run, gvgAllowed);
+      await runSvs(run, svsWeek);
       await runCalamity(run);
     }
 

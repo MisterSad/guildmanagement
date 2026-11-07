@@ -1,10 +1,14 @@
 /**
  * GvG: the daily task list (Monday to Saturday at 00:01 UTC) and the Saturday
- * War Prism / War Fortress starts with their 5-minute reminders.
+ * War Prism / War Fortress starts with their 5-minute reminders. Both fall on
+ * the same Saturday as SvS, so a week is one or the other: an SvS week gets no
+ * GvG reminder (ticket #14: a guild running SvS got the whole GvG week in
+ * Discord), unless a GvG session of that week says otherwise. A guild that
+ * never starts a war in the app keeps its GvG reminders as a weekly clock.
  */
 
 import { GVG_DAILY_TASKS, buildGvgDailyTaskEmbed } from '../_shared/gvg-tasks.ts';
-import { isToggleEnabled, resolveGuildWebhook } from '../_shared/reminder-rules.ts';
+import { isToggleEnabled, resolveGuildWebhook, isGvgEventName, isWarActiveForWeek } from '../_shared/reminder-rules.ts';
 import {
   claimSlot,
   settleSlot,
@@ -19,8 +23,35 @@ import {
   pad2,
   type GuildRun,
 } from './shared.ts';
+import type { ActiveEvent } from './standard.ts';
 
-export async function runGvgDailyTasks(run: GuildRun): Promise<void> {
+/**
+ * Whether GvG reminders post this week: not in an SvS week, unless the week
+ * also has a GvG session (an explicit GvG start outranks an SvS row that was
+ * left active). `?force=gvg` does not bypass it: a forced replay never posts
+ * GvG into an SvS week.
+ */
+export function gvgRemindersAllowed(svsWeek: boolean, gvgWeek: boolean): boolean {
+  return gvgWeek || !svsWeek;
+}
+
+/**
+ * Whether the guild has a GvG session in the UTC week of `now`: an active GvG
+ * event_status row started this week (or with no start_at), or a GvG
+ * war_sessions row of this week, so ending the session early on Saturday does
+ * not cut the remaining War Fortress reminders.
+ */
+export function isGvgWeek(now: number, events: ActiveEvent[], warSessionTimestampsMs: Array<number | null>): boolean {
+  const gvgEvent = events.find((e) => isGvgEventName(e.event_name));
+  return isWarActiveForWeek(now, {
+    eventActive: !!gvgEvent,
+    eventStartAtMs: gvgEvent && gvgEvent.start_at ? new Date(gvgEvent.start_at).getTime() : null,
+    warSessionTimestampsMs,
+  });
+}
+
+export async function runGvgDailyTasks(run: GuildRun, allowed: boolean): Promise<void> {
+  if (!allowed) return;
   const { config, now, forceGvg } = run;
   const webhookUrlGvg = resolveGuildWebhook(config, 'gvg');
   if (!isToggleEnabled(config, 'notify_gvg_daily_tasks') || webhookUrlGvg === '') return;
@@ -150,7 +181,8 @@ function buildSaturdayMessage(run: GuildRun, slot: GvgSlot, gvgGuildTag: string)
   return reminderBody(content, embedTitle, embedDesc, color, fields);
 }
 
-export async function runGvgSaturday(run: GuildRun): Promise<void> {
+export async function runGvgSaturday(run: GuildRun, allowed: boolean): Promise<void> {
+  if (!allowed) return;
   const { config, now } = run;
   const webhookUrl = resolveGuildWebhook(config, 'gvg');
   if (!isToggleEnabled(config, 'notify_gvg_pvp') || webhookUrl === '') return;

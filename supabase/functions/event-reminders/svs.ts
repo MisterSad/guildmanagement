@@ -192,24 +192,24 @@ function buildMessage(run: GuildRun, slot: SvsSlot, svsGuildTag: string) {
   return reminderBody(content, embedTitle, embedDesc, color, fields);
 }
 
-export async function runSvs(
-  run: GuildRun,
-  events: ActiveEvent[],
-  warSessionTimestampsMs: Array<number | null>
-): Promise<void> {
-  const { config, now } = run;
-  // RC6: the session is active when it belongs to the current UTC calendar
-  // week — either an active event_status SvS row whose start_at falls in the
-  // week (or has no start_at), or a durable war_sessions SvS row of the
-  // week. The legacy 7.5-day sliding window silently killed weekly SvS
-  // reminders mid-cycle and is gone.
+/**
+ * RC6: the guild runs an SvS in the current UTC calendar week: an active
+ * event_status SvS row whose start_at falls in the week (or has no start_at),
+ * or a durable war_sessions SvS row of the week. The legacy 7.5-day sliding
+ * window silently killed weekly SvS reminders mid-cycle and is gone.
+ */
+export function isSvsWeek(now: number, events: ActiveEvent[], warSessionTimestampsMs: Array<number | null>): boolean {
   const svsEvent = events.find((e) => isSvsEventName(e.event_name));
-  const isSvsActive = isSvsActiveForWeek(now, {
+  return isSvsActiveForWeek(now, {
     eventActive: !!svsEvent,
     eventStartAtMs: svsEvent && svsEvent.start_at ? new Date(svsEvent.start_at).getTime() : null,
     warSessionTimestampsMs,
   });
-  if (!isSvsActive) return;
+}
+
+export async function runSvs(run: GuildRun, svsWeek: boolean): Promise<void> {
+  if (!svsWeek) return;
+  const { config, now } = run;
 
   const { tag: svsGuildTag } = blockRoleTag(config, 'discord_role_id_svs');
 

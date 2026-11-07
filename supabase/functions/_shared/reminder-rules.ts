@@ -87,6 +87,11 @@ export function isSvsEventName(name: string | null | undefined): boolean {
   return n === 'SVS' || n.startsWith('SVS ');
 }
 
+export function isGvgEventName(name: string | null | undefined): boolean {
+  const n = normalizeEventName(name);
+  return n === 'GVG' || n.startsWith('GVG ');
+}
+
 export function eventPrefixForName(name: string | null | undefined): string {
   const n = normalizeEventName(name);
   if (n.includes('ARMS RACE')) return 'armsrace';
@@ -132,7 +137,12 @@ export interface SvsWeekProbe {
   warSessionTimestampsMs: Array<number | null>;
 }
 
-export function isSvsActiveForWeek(nowMs: number, probe: SvsWeekProbe): boolean {
+/**
+ * Whether a weekly war (SvS or GvG) runs in the UTC week of nowMs. The same
+ * rule gates both: a GvG reminder in a week with no GvG session is a ghost
+ * notification (ticket #14), exactly like an SvS one.
+ */
+export function isWarActiveForWeek(nowMs: number, probe: SvsWeekProbe): boolean {
   if (probe.eventActive) {
     if (probe.eventStartAtMs === null || Number.isNaN(probe.eventStartAtMs)) return true;
     if (isTimestampInCurrentUtcWeek(nowMs, probe.eventStartAtMs)) return true;
@@ -142,3 +152,6 @@ export function isSvsActiveForWeek(nowMs: number, probe: SvsWeekProbe): boolean 
   }
   return false;
 }
+
+/** The SvS name the RC6 tests and svs.ts know it by. */
+export const isSvsActiveForWeek = isWarActiveForWeek;

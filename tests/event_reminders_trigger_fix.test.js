@@ -21,10 +21,12 @@ import {
   normalizeEventName,
   isStandardEventName,
   isSvsEventName,
+  isGvgEventName,
   eventPrefixForName,
   utcWeekStartMs,
   isTimestampInCurrentUtcWeek,
   isSvsActiveForWeek,
+  isWarActiveForWeek,
 } from '../supabase/functions/_shared/reminder-rules';
 
 const migrationPath = path.resolve(
@@ -152,6 +154,18 @@ describe('RC5: canonical standard-event name matching', () => {
     expect(isSvsEventName(' svs ')).toBe(true);
     expect(isSvsEventName('SvS Week 1')).toBe(true);
     expect(isSvsEventName('GvG')).toBe(false);
+  });
+
+  it('isGvgEventName matches the GvG session row leniently (ticket #14)', () => {
+    expect(isGvgEventName('GvG')).toBe(true);
+    expect(isGvgEventName(' gvg ')).toBe(true);
+    expect(isGvgEventName('GvG Week 2')).toBe(true);
+    expect(isGvgEventName('SvS')).toBe(false);
+    expect(isGvgEventName('GvGx')).toBe(false);
+  });
+
+  it('SvS and GvG weeks are judged by one rule', () => {
+    expect(isSvsActiveForWeek).toBe(isWarActiveForWeek);
   });
 });
 
