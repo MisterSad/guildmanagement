@@ -65,7 +65,7 @@ There's no "role ID" to configure -- roles are resolved dynamically by name. On 
 
 ## Rename-only channels (servers outside any guild)
 
-A channel can run the screenshot reader in a narrower mode: a profile screenshot posted there renames its author after what it shows (`[TAG] Pseudo #server`, the tag read off the screenshot; `Pseudo #server` when there is none) and **nothing else** happens. No role is read, given or removed, nothing is written to the roster or to an account, the bot posts no message, adds no reaction and deletes nothing. It is meant for a Discord server that belongs to no FGF guild.
+A channel can run the screenshot reader in a narrower mode: a profile screenshot posted there renames its author after what it shows (`[TAG] Pseudo #server`, the tag read off the screenshot; `Pseudo #server` when there is none) and **nothing else** happens beyond a reaction on the screenshot: ⏳ while it is read, then ✅ (renamed, or already named so) or ❌ (not a readable profile, the bot may not rename that member, or a temporary failure). No role is read, given or removed, nothing is written to the roster or to an account, the bot posts no message and deletes nothing. The backfill does not react on old messages. It is meant for a Discord server that belongs to no FGF guild.
 
 The mode lives in the table `public.discord_channel_modes` (one row per channel, the channel's Discord server, and `mode = 'rename_only'`). Deny-all to clients and read-only to `service_role`: an operator adds a row from the Supabase SQL editor:
 

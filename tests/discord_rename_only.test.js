@@ -18,6 +18,7 @@ import {
   screenshotsByAuthor,
   classify,
   runBackfill,
+  renameOnlySucceeded,
 } from '../discord-verification-worker/rename-only.js';
 
 const SERVER = '1525831969710014625';
@@ -193,6 +194,17 @@ describe('history', () => {
   });
 });
 
+describe('reaction', () => {
+  it("is ✅ only when the author now carries the screenshot's name", () => {
+    expect(renameOnlySucceeded({ ok: true, changed: true })).toBe(true);
+    expect(renameOnlySucceeded({ ok: true, changed: false })).toBe(true);
+    for (const error of ['cannot_rename', 'missing_fields_in_ocr', 'rate_limited', 'member_not_found']) {
+      expect(renameOnlySucceeded({ ok: false, error }), error).toBe(false);
+    }
+    expect(renameOnlySucceeded(null)).toBe(false);
+  });
+});
+
 describe('runBackfill', () => {
   it("uses each author's most recent VALID screenshot", async () => {
     const { summary, forwarded, state } = await backfill({
@@ -297,10 +309,11 @@ describe('worker wiring', () => {
     expect(listener.indexOf('renameOnlyChannels.get(')).toBeLessThan(listener.indexOf('channelToGuild.get('));
   });
 
-  it('the rename-only handler reacts, replies, deletes and grants nothing', () => {
+  it('the rename-only handler reacts ⏳ then ✅/❌, and replies, deletes and grants nothing', () => {
     expect(handler.length).toBeGreaterThan(100);
+    expect(handler).toContain('addReaction(message, "⏳")');
+    expect(handler).toContain('settleFeedback(message, renameOnlySucceeded(result))');
     for (const forbidden of [
-      'react(',
       'reply(',
       '.send(',
       'delete(',

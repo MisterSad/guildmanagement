@@ -2,8 +2,8 @@
  * discord-verification-worker/rename-only.js
  *
  * Rename-only channels (public.discord_channel_modes): a profile screenshot
- * posted there renames its author after what it shows, and nothing else
- * happens. The Edge Function owns the decision (it re-reads the mode itself);
+ * posted there renames its author after what it shows; the live bot also
+ * reacts ✅ or ❌ on it, and nothing else happens. The Edge Function owns the decision (it re-reads the mode itself);
  * this module only finds the screenshots, forwards them, and, for the backfill,
  * walks a channel's history and keeps a record of what it already did.
  *
@@ -35,6 +35,15 @@ export function imageAttachmentOf(attachments) {
     return typeof type === "string" && type.startsWith("image/");
   });
   return found ? { url: found.url, contentType: found.contentType ?? found.content_type } : null;
+}
+
+/**
+ * Whether a forwarded screenshot earns ✅: the author now carries the name the
+ * screenshot gives (renamed, or already named so). Anything else is ❌,
+ * including a member the bot may not rename and a transient failure.
+ */
+export function renameOnlySucceeded(result) {
+  return result?.ok === true;
 }
 
 /**

@@ -30,7 +30,7 @@ import {
 import { provisionDiscordServer, buildServerTemplate, summarizeTemplate } from "./server-provisioner.js";
 import { CTA_CLICK_SUFFIX, ctaSessionFromRows, ctaHeaderFromEmbed } from "./rally.js";
 import { isOfficerOf, escapeLike } from "./officer-scope.js";
-import { renameOnlyChannelMap, imageAttachmentOf, forwardScreenshot } from "./rename-only.js";
+import { renameOnlyChannelMap, imageAttachmentOf, forwardScreenshot, renameOnlySucceeded } from "./rename-only.js";
 import { createClient } from "@supabase/supabase-js";
 import WebSocket from "ws";
 
@@ -128,21 +128,31 @@ async function refreshRenameOnlyMap() {
   console.log(`Rename-only channel map refreshed: ${renameOnlyChannels.size} channel(s) configured.`);
 }
 
-// No reaction, no reply, no DM, no deletion: in a rename-only channel the
-// nickname is the only visible effect (owner request, 2026-11-07).
+// The nickname is the effect; the only other thing a rename-only channel sees
+// is a reaction on the screenshot (owner request, 2026-11-08): ⏳ while it is
+// read, then ✅ (renamed, or already carrying that name) or ❌. No reply, no
+// DM, no deletion, no role.
 async function handleRenameOnlyMessage(message) {
   const attachment = imageAttachmentOf(message.attachments);
   if (!attachment) return;
-  const { status, result } = await forwardScreenshot({
-    fetchImpl: fetch,
-    functionUrl: VERIFICATION_FUNCTION_URL,
-    secret: DISCORD_WORKER_SECRET,
-    userId: message.author.id,
-    username: message.author.username,
-    serverId: message.guild.id,
-    channelId: message.channel.id,
-    attachment,
-  });
+  await addReaction(message, "⏳");
+  let status = 0;
+  let result = null;
+  try {
+    ({ status, result } = await forwardScreenshot({
+      fetchImpl: fetch,
+      functionUrl: VERIFICATION_FUNCTION_URL,
+      secret: DISCORD_WORKER_SECRET,
+      userId: message.author.id,
+      username: message.author.username,
+      serverId: message.guild.id,
+      channelId: message.channel.id,
+      attachment,
+    }));
+  } catch (e) {
+    result = { ok: false, error: `forward_failed: ${e.message}` };
+  }
+  await settleFeedback(message, renameOnlySucceeded(result));
   if (result?.ok === true) {
     console.log(`Rename-only: ${message.author.id} ${result.changed ? "renamed" : "already named"} in ${message.guild.id}.`);
   } else {

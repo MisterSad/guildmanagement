@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- **Rename-only channels now react on the screenshot (owner request, 2026-11-08).** The bot worked but left no visible trace, so it looked inactive. It now adds ⏳ while it reads a screenshot, then ✅ when the author carries the name the screenshot gives (renamed, or already named so) or ❌ otherwise. Still no reply, no deletion, no role. The backfill does not react on old messages.
+
 - **Rename-only channels for the Discord bot (owner request, 2026-11-07).** A channel listed in the new table `discord_channel_modes` with `mode = 'rename_only'` renames the author of a profile screenshot after what it shows, with the visitor naming rule (`[TAG] Pseudo #server`, or `Pseudo #server` with no tag), and does nothing else: no role, no roster or account write, no message, reaction or deletion.
   - Configuration, not code: no server or channel id is written in the worker or the Edge Function. The table is deny-all to clients and read-only to `service_role`; the Edge Function resolves the mode itself from the channel and server it is told about.
   - `discord-verification-worker/backfill-rename.js` renames the authors of the screenshots already in such a channel: full history, most recent readable screenshot per author, members who left skipped, Discord rate limits waited out, progress recorded so a re-run redoes nothing. `--dry-run` previews.
