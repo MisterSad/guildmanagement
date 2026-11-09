@@ -596,6 +596,10 @@
     {
       "version": "20261107113855",
       "name": "discord_channel_modes"
+    },
+    {
+      "version": "20261109004604",
+      "name": "season_2_safeupdate"
     }
   ]
 }

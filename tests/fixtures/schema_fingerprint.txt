@@ -774,7 +774,7 @@ function|gm_session_week(p_guild text, p_session_id text, p_event_name text, p_h
 function|gm_set_join_code(p_guild text, p_code text)|648e6e30f7e67cafc93bdc23846ef924
 function|gm_snowflake_created_at(p_snowflake text)|6a5dd6c7bdd06be8b94afe79efd68e0c
 function|gm_start_event_session(p_guild text, p_event_name text, p_stage text, p_start_at timestamp with time zone)|678c018cc6ed6f612744ffa7204b99ee
-function|gm_start_season_2(p_confirm text)|55cc07cfd3c933d47df3effc8a3a81f7
+function|gm_start_season_2(p_confirm text)|4abf9e84dc2e895bf3ed8e03ea6e6805
 function|gm_stats_events(p_guild text, p_bucket text, p_weeks date[])|f71f2e81fb6a200a94deff35cd2c0a3d
 function|gm_stats_health(p_guild text, p_weeks integer)|7f665405ee1a10519b08505037285c0e
 function|gm_stats_members(p_guild text, p_weeks date[], p_trend boolean)|b4b339cb0ce19cb19d55465f897c2d1c
